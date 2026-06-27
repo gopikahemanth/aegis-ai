@@ -1,0 +1,21 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Generated output
+generated/
+generated-project/
+**/generated/
+**/generated-project/
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+
+# VS Code
+.vscode/settings.json

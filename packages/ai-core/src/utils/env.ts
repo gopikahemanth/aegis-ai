@@ -1,7 +1,26 @@
 import dotenv from "dotenv";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
-dotenv.config();
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+let current = __dirname;
+
+while (!existsSync(join(current, "pnpm-workspace.yaml"))) {
+  const parent = dirname(current);
+
+  if (parent === current) {
+    throw new Error("Could not locate repository root.");
+  }
+
+  current = parent;
+}
+
+dotenv.config({
+  path: join(current, ".env"),
+});
 
 const schema = z.object({
   OPENAI_API_KEY: z.string().optional(),

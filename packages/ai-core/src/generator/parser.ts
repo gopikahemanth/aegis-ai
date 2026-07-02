@@ -1,7 +1,4 @@
-export interface GeneratedFile {
-  path: string;
-  content: string;
-}
+import type { GeneratedFile } from "../writer/writer.js";
 
 export class Parser {
   parse(response: string): GeneratedFile[] {

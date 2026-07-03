@@ -1,12 +1,12 @@
 import { Orchestrator } from "@aegis/ai-core";
-import { GroqProvider } from "@aegis/ai-core";
+import { ProviderFactory } from "@aegis/ai-core";
 
 import { DependencyInstaller } from "@aegis/project-builder";
 import { BuildRunner } from "@aegis/project-builder";
 import { ErrorAnalyzer } from "@aegis/project-builder";
-import { Fixer } from "@aegis/ai-core";
+import { SelfHealer } from "@aegis/ai-core";
 export class ExecutionEngine {
-  private readonly provider = new GroqProvider();
+private readonly provider = ProviderFactory.createDefaultProvider();
 
   private readonly orchestrator = new Orchestrator(this.provider);
 
@@ -16,7 +16,7 @@ export class ExecutionEngine {
 
   private readonly analyzer = new ErrorAnalyzer();
 
-  private readonly fixer = new Fixer(this.provider);
+private readonly healer = new SelfHealer(this.provider);
 
   private readonly maxRetries = 3;
 
@@ -60,6 +60,10 @@ export class ExecutionEngine {
   );
 
   console.log(error);
+
+  const report = await this.healer.heal(error);
+
+   console.log(report);
 
   if (attempt === this.maxRetries) {
     console.log("Maximum retry limit reached.");

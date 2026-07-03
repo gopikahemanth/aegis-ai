@@ -4,7 +4,7 @@ import { GroqProvider } from "@aegis/ai-core";
 import { DependencyInstaller } from "@aegis/project-builder";
 import { BuildRunner } from "@aegis/project-builder";
 import { ErrorAnalyzer } from "@aegis/project-builder";
-
+import { Fixer } from "@aegis/ai-core";
 export class ExecutionEngine {
   private readonly provider = new GroqProvider();
 
@@ -15,6 +15,10 @@ export class ExecutionEngine {
   private readonly builder = new BuildRunner();
 
   private readonly analyzer = new ErrorAnalyzer();
+
+  private readonly fixer = new Fixer(this.provider);
+
+  private readonly maxRetries = 3;
 
   async execute(request: string) {
     console.log("Generating project...");
@@ -35,24 +39,36 @@ export class ExecutionEngine {
 
     console.log(install.exitCode);
 
-    console.log("Building project...");
+   for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+  console.log(`Build attempt ${attempt}/${this.maxRetries}`);
 
-    const build = await this.builder.build(
-      "pnpm",
-      "./generated/project"
-    );
+  const build = await this.builder.build(
+    "pnpm",
+    "./generated/project"
+  );
 
-    console.log(build);
+  if (build.success) {
+    console.log("✅ Build succeeded.");
+    return true;
+  }
 
-    if (!build.success) {
-      const error = this.analyzer.analyze(
-        build.stderr,
-        build.stdout
-      );
+  console.log("❌ Build failed.");
 
-      console.log(error);
-    }
+  const error = this.analyzer.analyze(
+    build.stderr,
+    build.stdout
+  );
 
-    return build.success;
+  console.log(error);
+
+  if (attempt === this.maxRetries) {
+    console.log("Maximum retry limit reached.");
+    return false;
+  }
+
+  console.log("Retrying build...");
+}
+
+return false;
   }
 }

@@ -60,8 +60,15 @@ private readonly healer = new SelfHealer(this.provider);
   );
 
   console.log(error);
+const report = await this.healer.heal(
+  request,
+  error,
+  "./generated/project",
+);
 
-  const report = await this.healer.heal(error);
+console.log(report);
+
+console.log(report);
 
    console.log(report);
 

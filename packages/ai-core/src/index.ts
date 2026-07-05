@@ -6,4 +6,5 @@ export * from "./generator/parser.js";
 export * from "./providers/index.js";
 export * from "./writer/writer.js";
 export * from "./healing/index.js";
-
+export * from "./architect/index.js";
+export * from "./prompts/index.js";

@@ -6,3 +6,5 @@ export * from "./error-analyzer.js";
 export * from "./build-result.js";
 export * from "./structure.js";
 export * from "./templates.js";
+export * from "./frameworks/index.js";
+export * from "./project-creator.js";

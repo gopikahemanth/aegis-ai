@@ -16,11 +16,17 @@ export class ValidateAction {
     console.log(
       "Executing VALIDATE",
     );
-
+   if (!state.generatedResponse) {
+  return {
+    success: false,
+    state,
+  };
+}
     const result =
-      this.validator.validate(
-        state.projectPath,
-      );
+     this.validator.validate(
+    state.projectPath,
+    state.framework ?? "",
+);
 
     if (!result.passed) {
 

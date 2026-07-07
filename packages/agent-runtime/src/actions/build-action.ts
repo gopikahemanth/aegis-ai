@@ -1,26 +1,21 @@
 import type { AgentState } from "../state/agent-state.js";
 import type { ActionResult } from "./action-result.js";
 
-export class ReviewAction {
+export class BuildAction {
   async execute(
     state: AgentState,
   ): Promise<ActionResult> {
 
     console.log(
-      "Executing REVIEW",
+      "Executing BUILD",
     );
-    if (!state.generatedResponse) {
-  return {
-    success: false,
-    state,
-  };
-}
+
     return {
       success: true,
 
       state: {
         ...state,
-        reviewPassed: true,
+        buildPassed: true,
       },
     };
   }

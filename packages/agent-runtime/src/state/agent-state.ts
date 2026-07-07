@@ -7,6 +7,8 @@ export interface AgentState {
 
   framework?: string;
 
+  generatedResponse?: string;
+
   currentStep: AgentStep;
 
   reviewPassed: boolean;

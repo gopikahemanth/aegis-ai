@@ -15,10 +15,10 @@ async execute(
     );
 
     const result =
-      await this.orchestrator.generateProject(
-        state.request,
-        state.projectPath,
-      );
+  await this.orchestrator.generateCode(
+    state.request,
+    state.projectPath,
+  );
 
 return {
   success: true,
@@ -26,6 +26,7 @@ return {
   state: {
     ...state,
     framework: result.framework,
+    generatedResponse: result.response,
   },
 };
   }

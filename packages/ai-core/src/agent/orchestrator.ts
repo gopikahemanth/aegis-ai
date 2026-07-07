@@ -124,6 +124,45 @@ private write(
     outputDirectory,
   };
 }
+async generateCode(
+  request: string,
+  outputDirectory: string,
+) {
+  const plan =
+    this.planner.createPlan(request);
+
+  const specification =
+    this.analyzer.analyze(request);
+
+  const architecture =
+    this.architect.plan(specification);
+
+  const framework =
+    this.selector.select(architecture);
+
+  console.log(
+    "Framework:",
+    framework,
+  );
+
+  const prompt =
+    this.promptEngine.build(
+      plan,
+      architecture,
+      request,
+      outputDirectory,
+    );
+
+  const response =
+    await this.generate(
+      prompt,
+    );
+
+  return {
+    framework,
+    response,
+  };
+}
 async generateApplication(
   request: string,
   outputDirectory: string,

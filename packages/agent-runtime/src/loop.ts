@@ -1,47 +1,64 @@
 import type { AgentState } from "./state/agent-state.js";
+
 import { AgentStep } from "./steps/agent-step.js";
 import { AgentExecutor } from "./executor/agent-executor.js";
-import { NextStepResolver } from "./loop/next-step-resolver.js";
+
+import { WorkflowEngine } from "./workflow/workflow-engine.js";
+
 export class AgentLoop {
-  private readonly resolver =
-  new NextStepResolver();
+
+  private readonly workflow =
+    new WorkflowEngine();
+
   constructor(
     private readonly executor: AgentExecutor,
   ) {}
 
   async run(
-    state: AgentState,
-  ): Promise<AgentState> {
+  state: AgentState,
+): Promise<AgentState> {
 
-    console.log(
-      "Agent loop started...",
-    );
-
-    let currentState = state;
-
-    while (!currentState.completed) {
-
-     const step =
-  this.resolver.resolve(
-    currentState,
+  console.log(
+    "Agent loop started...",
   );
 
-if (step === AgentStep.FINISHED) {
-  currentState = {
-    ...currentState,
-    completed: true,
-  };
+  let currentState = state;
 
-  continue;
-}
+  while (!currentState.completed) {
 
-currentState =
-  await this.executor.execute(
-    step,
-    currentState,
-  );
+    const result =
+      await this.executor.execute(
+        currentState.currentStep,
+        currentState,
+      );
+
+    currentState =
+      result.state;
+
+    if (currentState.completed) {
+      break;
     }
 
-    return currentState;
+    currentState = {
+      ...currentState,
+      currentStep:
+        this.workflow.next(
+          currentState.currentStep,
+          result.success,
+        ),
+    };
+
+    if (
+      currentState.currentStep ===
+      AgentStep.FINISHED
+    ) {
+      currentState = {
+        ...currentState,
+        completed: true,
+      };
+    }
   }
+
+  return currentState;
+}
 }

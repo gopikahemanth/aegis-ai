@@ -3,7 +3,7 @@ import { AgentStep } from "../steps/agent-step.js";
 
 import { GenerateAction } from "./generate-action.js";
 import { ReviewAction } from "./review-action.js";
-
+import { ValidateAction } from "./validate-action.js";
 import type { Orchestrator } from "@aegis/ai-core";
 
 export class ActionRegistry {
@@ -21,6 +21,9 @@ export class ActionRegistry {
     const review =
       new ReviewAction();
 
+    const validate =
+  new ValidateAction();
+
     executor.register(
       AgentStep.GENERATE,
       (state) => generate.execute(state),
@@ -30,5 +33,11 @@ export class ActionRegistry {
       AgentStep.REVIEW,
       (state) => review.execute(state),
     );
+
+    executor.register(
+  AgentStep.VALIDATE,
+  (state) =>
+    validate.execute(state),
+);
   }
 }

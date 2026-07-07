@@ -1,15 +1,14 @@
 import type { AgentState } from "../state/agent-state.js";
-import { AgentStep } from "../steps/agent-step.js";
 import type { Orchestrator } from "@aegis/ai-core";
-
+import type { ActionResult } from "./action-result.js";
 export class GenerateAction {
   constructor(
     private readonly orchestrator: Orchestrator,
   ) {}
 
-  async execute(
-    state: AgentState,
-  ): Promise<AgentState> {
+async execute(
+  state: AgentState,
+): Promise<ActionResult> {
 
     console.log(
       "Executing GENERATE",
@@ -22,9 +21,12 @@ export class GenerateAction {
       );
 
 return {
-  ...state,
-  framework: result.framework,
-  currentStep: AgentStep.REVIEW,
+  success: true,
+
+  state: {
+    ...state,
+    framework: result.framework,
+  },
 };
   }
 }

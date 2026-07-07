@@ -1,19 +1,22 @@
 import type { AgentState } from "../state/agent-state.js";
-import { AgentStep } from "../steps/agent-step.js";
+import type { ActionResult } from "./action-result.js";
+
 export class ReviewAction {
   async execute(
     state: AgentState,
-  ): Promise<AgentState> {
+  ): Promise<ActionResult> {
 
     console.log(
       "Executing REVIEW",
     );
 
-   return {
-  ...state,
-  reviewPassed: true,
-  completed: true,
-  currentStep: AgentStep.FINISHED,
-};
+    return {
+      success: true,
+
+      state: {
+        ...state,
+        reviewPassed: true,
+      },
+    };
   }
 }

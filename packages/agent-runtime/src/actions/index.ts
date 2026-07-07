@@ -6,3 +6,4 @@ export * from "./action-result.js";
 export * from "./write-action.js";
 export * from "./install-action.js";
 export * from "./build-action.js";
+export * from "./heal-action.js";

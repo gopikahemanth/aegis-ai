@@ -7,6 +7,7 @@ import { ValidateAction } from "./validate-action.js";
 import { WriteAction } from "./write-action.js";
 import { InstallAction } from "./install-action.js";
 import { BuildAction } from "./build-action.js";
+import { HealAction } from "./heal-action.js";
 import type { Orchestrator } from "@aegis/ai-core";
 
 export class ActionRegistry {
@@ -35,6 +36,9 @@ export class ActionRegistry {
 
   const build =
   new BuildAction();
+
+  const heal =
+  new HealAction();
 
     executor.register(
       AgentStep.GENERATE,
@@ -66,6 +70,12 @@ executor.register(
   AgentStep.BUILD,
   (state) =>
     build.execute(state),
+);
+
+executor.register(
+  AgentStep.HEAL,
+  (state) =>
+    heal.execute(state),
 );
   }
 }

@@ -1,5 +1,6 @@
 import { PromptSections } from "./sections.js";
 import { PromptTemplates } from "./templates.js";
+import { ContextEngine } from "../context/context-engine.js";
 
 import type { ProjectSpecification } from "../architect/specification.js";
 
@@ -10,11 +11,15 @@ export class PromptBuilderEngine {
   private readonly templates =
     new PromptTemplates();
 
-  build(
-    plan: { title: string }[],
-    spec: ProjectSpecification,
-    request: string,
-  ) {
+private readonly contextEngine =
+  new ContextEngine();
+
+ build(
+  plan: { title: string }[],
+  spec: ProjectSpecification,
+  request: string,
+  projectPath: string,
+) {
     const execution =
       this.sections.executionPlan(plan);
 
@@ -22,18 +27,27 @@ export class PromptBuilderEngine {
       this.sections.architecture(
         JSON.stringify(spec, null, 2),
       );
+ const fullContext =
+  this.contextEngine.build(
+    request,
+    projectPath,
+  );;
+    const framework =
+  this.sections.frameworkRules();
 
-    const user =
-      this.sections.userRequest(request);
+const user =
+  this.sections.userRequest(request);
 
-    const rules =
-      this.sections.outputRules();
+const rules =
+  this.sections.outputRules();
 
-    return this.templates.projectGeneration(
-      execution,
-      architecture,
-      user,
-      rules,
-    );
+return this.templates.projectGeneration(
+  execution,
+  architecture,
+  fullContext,
+  framework,
+  user,
+  rules,
+);
   }
 }

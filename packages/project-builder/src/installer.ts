@@ -8,9 +8,9 @@ export class DependencyInstaller {
     cwd: string,
   ) {
     const args =
-      packageManager === "npm"
-        ? ["install"]
-        : ["install"];
+  packageManager === "pnpm"
+    ? ["install", "--ignore-workspace"]
+    : ["install"];
 
     return this.terminal.run(packageManager, args, cwd);
   }

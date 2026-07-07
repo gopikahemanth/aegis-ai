@@ -2,6 +2,8 @@ import { Planner } from "./planner.js";
 import { Memory } from "./memory.js";
 import { FrameworkSelector } from "../architect/index.js";
 import { PromptBuilderEngine } from "../prompts/index.js";
+import { FrameworkValidator } from "../validator/framework-validator.js";
+import { Reviewer } from "../reviewer/reviewer.js";
 
 import { Generator } from "../generator/generator.js";
 import { Parser } from "../generator/parser.js";
@@ -30,6 +32,10 @@ export class Orchestrator {
 
   private readonly parser = new Parser();
 
+    private readonly reviewer = new Reviewer();
+
+  private readonly validator = new FrameworkValidator();
+
   private readonly writer = new FileWriter();
 
   private readonly selector =new FrameworkSelector();
@@ -42,51 +48,131 @@ export class Orchestrator {
     this.generator = new Generator(provider);
   }
 
-  async generateProject(
-    request: string,
-    outputDirectory: string,
-  ) {
-    this.memory.add(request);
+  private async generate(
+  prompt: string,
+) {
+  return this.generator.generate(
+    prompt,
+  );
+}
+private parse(
+  response: string,
+) {
+  return this.parser.parse(
+    response,
+  );
+}
+private review(
+  files: ReturnType<Parser["parse"]>,
+) {
+  const report =
+    this.reviewer.review(files);
 
-    const plan = this.planner.createPlan(request);
+  if (!report.passed) {
+    console.log(
+      "Review issues:",
+    );
 
-    const specification =
-      this.analyzer.analyze(request);
+    console.table(
+      report.issues,
+    );
+  }
 
-    const architecture =
-      this.architect.plan(specification);
+  return report;
+}
+private validate(
+  framework: string,
+  files: ReturnType<Parser["parse"]>,
+) {
+  return this.validator.validate(
+    framework,
+    files,
+  );
+}
+private write(
+  files: ReturnType<FrameworkValidator["validate"]>,
+  outputDirectory: string,
+) {
+  this.writer.write(
+    files,
+    outputDirectory,
+  );
+}
+ async generateProject(
+  request: string,
+  outputDirectory: string,
+) {
+  this.memory.add(request);
 
-    const framework =
-      this.selector.select(architecture);
+  const plan = this.planner.createPlan(request);
 
-   console.log("Framework:", framework);
+  const specification =
+    this.analyzer.analyze(request);
 
-    const architecturePrompt =
-      this.promptBuilder.build(architecture);
+  const architecture =
+    this.architect.plan(specification);
 
-  const prompt =
+  const framework =
+    this.selector.select(architecture);
+
+  console.log("Framework:", framework);
+
+  return {
+    framework,
+    plan,
+    specification,
+    outputDirectory,
+  };
+}
+async generateApplication(
+  request: string,
+  outputDirectory: string,
+) {
+  const plan = this.planner.createPlan(request);
+
+  const specification =
+    this.analyzer.analyze(request);
+
+  const architecture =
+    this.architect.plan(specification);
+  const framework =
+  this.selector.select(architecture);
+
+console.log("Framework:", framework);
+
+ const prompt =
   this.promptEngine.build(
     plan,
     architecture,
     request,
+    outputDirectory,
   );
 
-    const response =
-      await this.generator.generate(prompt);
+ const response =
+  await this.generate(
+    prompt,
+  );
 
-    const files =
-      this.parser.parse(response);
+const parsedFiles =
+  this.parse(
+    response,
+  );
 
-    this.writer.write(
-      files,
-      outputDirectory,
-    );
+this.review(
+  parsedFiles,
+);
 
-    return {
-      plan,
-      specification,
-      filesCreated: files.length,
-      outputDirectory,
-    };
-  }
+const files =
+  this.validate(
+    framework,
+    parsedFiles,
+  );
+this.write(
+  files,
+  outputDirectory,
+);
+  return {
+    filesCreated: files.length,
+  };
+}
 }

@@ -16,25 +16,43 @@ export class HealAction {
       "Executing HEAL",
     );
 
-    const error =
-      this.analyzer.analyze(
-        "Build failed.",
-        "",
-      );
+   const error =
+  this.analyzer.analyze(
+    state.buildStderr ?? "",
+    state.buildStdout ?? "",
+  );
 
     console.log(
       "Heal Summary:",
       error.summary,
     );
 
-    return {
-      success: true,
+   const attempts =
+  state.healAttempts + 1;
 
-      state: {
-        ...state,
-        healAttempts:
-          state.healAttempts + 1,
-      },
-    };
+const maxAttempts = 3;
+
+if (attempts > maxAttempts) {
+  console.log(
+    `Maximum healing attempts (${maxAttempts}) reached.`,
+  );
+
+  return {
+    success: false,
+    state: {
+      ...state,
+      healAttempts: attempts,
+      completed: true,
+    },
+  };
+}
+
+return {
+  success: true,
+  state: {
+    ...state,
+    healAttempts: attempts,
+  },
+};
   }
 }

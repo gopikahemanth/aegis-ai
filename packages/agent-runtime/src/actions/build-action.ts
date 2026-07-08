@@ -26,10 +26,11 @@ export class BuildAction {
       success: result.success,
 
       state: {
-        ...state,
-        buildPassed:
-          result.success,
-      },
+  ...state,
+  buildPassed: result.success,
+  buildStdout: result.stdout,
+  buildStderr: result.stderr,
+},
     };
   }
 }

@@ -214,4 +214,7 @@ this.write(
     filesCreated: files.length,
   };
 }
+getProvider() {
+  return this.provider;
+}
 }

@@ -8,6 +8,7 @@ import { WriteAction } from "./write-action.js";
 import { InstallAction } from "./install-action.js";
 import { BuildAction } from "./build-action.js";
 import { HealAction } from "./heal-action.js";
+import { SelfHealer } from "@aegis/ai-core";
 import type { Orchestrator } from "@aegis/ai-core";
 
 export class ActionRegistry {
@@ -36,9 +37,15 @@ export class ActionRegistry {
 
   const build =
   new BuildAction();
+const healer =
+  new SelfHealer(
+    orchestrator.getProvider(),
+  );
 
-  const heal =
-  new HealAction();
+const heal =
+  new HealAction(
+    healer,
+  );
 
     executor.register(
       AgentStep.GENERATE,

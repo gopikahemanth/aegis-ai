@@ -2,12 +2,15 @@ import type { AgentState } from "../state/agent-state.js";
 import type { ActionResult } from "./action-result.js";
 
 import { ErrorAnalyzer } from "@aegis/project-builder";
-
+import { SelfHealer } from "@aegis/ai-core";
+import type { HealingReport } from "@aegis/ai-core";
 export class HealAction {
+  constructor(
+    private readonly healer: SelfHealer,
+  ) {}
 
   private readonly analyzer =
     new ErrorAnalyzer();
-
   async execute(
     state: AgentState,
   ): Promise<ActionResult> {
@@ -26,7 +29,11 @@ export class HealAction {
       "Heal Summary:",
       error.summary,
     );
-
+   await this.healer.heal(
+  state.request,
+  error,
+  state.projectPath,
+);
    const attempts =
   state.healAttempts + 1;
 

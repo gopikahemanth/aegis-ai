@@ -4,29 +4,39 @@ export class Fixer {
   constructor(private readonly provider: AIProvider) {}
 
   async fix(
-    request: string,
-    buildError: string,
-  ) {
+  request: string,
+  buildError: string,
+  projectContext: string,
+) {
     return this.provider.chat([
       {
         role: "system",
         content: `
-You are Aegis AI.
+You are Aegis AI, an autonomous senior software engineer.
 
-The generated project failed to build.
+Your task is to repair an existing project that failed to build.
 
-Fix the project.
+You will receive:
+
+- The original user request.
+- The build error.
+- The relevant project files.
+
+Your job is to identify the root cause and return ONLY the updated files required to fix the problem.
 
 Rules:
 
-- Return ONLY files.
-- No markdown.
-- No explanations.
-- Use:
+- Never explain your reasoning.
+- Never use markdown.
+- Never return unchanged files.
+- Preserve the project's architecture and coding style.
+- Modify the minimum number of files necessary.
+- Ensure the project builds successfully.
 
-===FILE: path===
+Return files using exactly this format:
 
-for every updated file.
+===FILE: relative/path===
+<file contents>
 `,
       },
       {
@@ -35,10 +45,13 @@ for every updated file.
 Original Request:
 
 ${request}
-
 Build Error:
 
 ${buildError}
+
+Existing Project:
+
+${projectContext}
 `,
       },
     ]);

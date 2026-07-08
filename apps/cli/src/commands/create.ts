@@ -10,8 +10,9 @@ export async function createCommand() {
 
   const engine = new ExecutionEngine();
 
-  const success = await engine.execute(prompt);
+console.log("Generating project...");
 
+const success = await engine.execute(prompt);
   if (success) {
     console.log("🎉 Project generated successfully.");
   } else {

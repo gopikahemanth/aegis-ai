@@ -13,4 +13,9 @@ const orchestrator =
 const runtime =
   new AgentRuntime(orchestrator);
 
-runtime.start().catch(console.error);
+runtime
+  .start(
+    "Create a modern landing page with HTML, CSS and JavaScript. Separate every file.",
+    "./generated/runtime-demo",
+  )
+  .catch(console.error);

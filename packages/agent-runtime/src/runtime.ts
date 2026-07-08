@@ -30,7 +30,10 @@ private readonly stateFactory =
 
   }
 
-  async start() {
+ async start(
+  request: string,
+  projectPath: string,
+): Promise<boolean> {
     console.log("=== Aegis AI Runtime ===");
 
 this.registry.register(
@@ -45,11 +48,12 @@ this.registry.register(
 
 const state =
   this.stateFactory.create(
-    "Create a modern landing page with HTML, CSS and JavaScript. Separate every file.",
-    "./generated/runtime-demo",
+    request,
+    projectPath,
   );
-   await this.loop.run(
-  state,
-);
+
+await this.loop.run(state);
+
+return true;
   }
 }

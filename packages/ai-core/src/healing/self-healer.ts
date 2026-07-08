@@ -22,11 +22,18 @@ export class SelfHealer {
     console.log("Analyzing build error...");
 
     console.log(error.summary);
+
+console.log("Before ContextEngine");
+
 const projectContext =
   this.context.build(
     request,
     projectPath,
   );
+
+console.log("After ContextEngine");
+
+console.log("Calling Fixer...");
 
 const response =
   await this.fixer.fix(
@@ -35,11 +42,18 @@ const response =
     projectContext,
   );
 
-    const filesPatched = this.patchEngine.apply(
-      response,
-      projectPath,
-    );
+console.log("Fixer returned.");
 
+console.log("AI Fix Response:");
+console.log(response);
+
+const filesPatched =
+  this.patchEngine.apply(
+    response,
+    projectPath,
+  );
+
+console.log(`Patched ${filesPatched} file(s).`);
     return {
       attempts: 1,
       fixed: filesPatched > 0,

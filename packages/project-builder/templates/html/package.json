@@ -3,6 +3,6 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
-  "build": "exit 1"
+    "build": "echo Build successful"
   }
 }

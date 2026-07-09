@@ -33,7 +33,28 @@ export class FileSelector {
     file: CodebaseEntry,
   ) {
     let score = 0;
+    const path =
+  file.path.toLowerCase();
 
+if (
+  request.includes("build") ||
+  request.includes("error")
+) {
+  if (path.endsWith("package.json"))
+    score += 50;
+
+  if (path.endsWith("tsconfig.json"))
+    score += 40;
+
+  if (path.includes("vite.config"))
+    score += 40;
+
+  if (path.includes("next.config"))
+    score += 40;
+
+  if (path.includes("tailwind.config"))
+    score += 40;
+}
     switch (file.type) {
       case "component":
         if (

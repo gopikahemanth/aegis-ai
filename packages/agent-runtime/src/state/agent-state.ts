@@ -19,6 +19,8 @@ export interface AgentState {
 
   buildStderr?: string;
 
+  lastBuildError?: string;
+
   testPassed: boolean;
 
   deployCompleted: boolean;

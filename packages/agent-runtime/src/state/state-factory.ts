@@ -7,24 +7,30 @@ export class StateFactory {
     projectPath: string,
   ): AgentState {
 
-    return {
-      request,
-      projectPath,
+   return {
+  request,
+  projectPath,
 
-      currentStep:
-        AgentStep.GENERATE,
+  currentStep:
+    AgentStep.GENERATE,
 
-      reviewPassed: false,
+  reviewPassed: false,
 
-      buildPassed: false,
+  buildPassed: false,
 
-      testPassed: false,
+  buildStdout: "",
 
-      deployCompleted: false,
+  buildStderr: "",
 
-      healAttempts: 0,
+  lastBuildError: "",
 
-      completed: false,
-    };
+  testPassed: false,
+
+  deployCompleted: false,
+
+  healAttempts: 0,
+
+  completed: false,
+};
   }
 }

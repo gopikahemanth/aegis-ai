@@ -25,7 +25,26 @@ export class HealAction {
         state.buildStderr ?? "",
         state.buildStdout ?? "",
       );
+    const currentError =
+  `${state.buildStdout ?? ""}\n${state.buildStderr ?? ""}`;
 
+if (
+  state.lastBuildError &&
+  state.lastBuildError === currentError &&
+  state.healAttempts > 0
+) {
+  console.log(
+    "Build error unchanged. Stopping healing.",
+  );
+
+  return {
+    success: false,
+    state: {
+      ...state,
+      completed: true,
+    },
+  };
+}
     console.log(
       "Heal Summary:",
       error.summary,
@@ -73,12 +92,13 @@ export class HealAction {
       };
     }
 
-    return {
-      success: true,
-      state: {
-        ...state,
-        healAttempts: attempts,
-      },
-    };
+   return {
+  success: true,
+  state: {
+    ...state,
+    healAttempts: attempts,
+    lastBuildError: currentError,
+  },
+};
   }
 }

@@ -32,14 +32,23 @@ console.log(result.stdout);
 console.log("STDERR:");
 console.log(result.stderr);
     return {
-      success: result.success,
+  success: result.success,
 
-      state: {
-  ...state,
-  buildPassed: result.success,
-  buildStdout: result.stdout,
-  buildStderr: result.stderr,
-},
-    };
+  state: {
+    ...state,
+
+    buildPassed:
+      result.success,
+
+    buildStdout:
+      result.stdout,
+
+    buildStderr:
+      result.stderr,
+
+    lastBuildError:
+      `${result.stdout}\n${result.stderr}`,
+  },
+};
   }
 }

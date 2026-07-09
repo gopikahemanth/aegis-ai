@@ -114,6 +114,34 @@ export class FileSelector {
           score += 5;
 
         break;
+       case "config":
+  if (
+    request.includes("build")
+  )
+    score += 20;
+
+  if (
+    request.includes("error")
+  )
+    score += 20;
+
+  if (
+    request.includes("dependency")
+  )
+    score += 20;
+
+  if (
+    request.includes("package")
+  )
+    score += 25;
+
+  if (
+    request.includes("config")
+  )
+    score += 15;
+
+  break;
+
     }
 
     return score;

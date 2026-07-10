@@ -8,7 +8,7 @@ import { Reviewer } from "../reviewer/reviewer.js";
 import { Generator } from "../generator/generator.js";
 import { Parser } from "../generator/parser.js";
 import { FileWriter } from "../writer/writer.js";
-
+import { SpecificationGenerator } from "../architect/specification-generator.js";
 import {
   RequirementAnalyzer,
   ArchitecturePlanner,
@@ -24,6 +24,7 @@ export class Orchestrator {
 
   private readonly analyzer = new RequirementAnalyzer();
 
+ private readonly specificationGenerator: SpecificationGenerator;
   private readonly architect = new ArchitecturePlanner();
 
   private readonly promptBuilder = new PromptBuilder();
@@ -41,13 +42,17 @@ export class Orchestrator {
   private readonly selector =new FrameworkSelector();
 
   private readonly promptEngine = new PromptBuilderEngine();
+constructor(
+  private readonly provider: AIProvider,
+) {
+  this.generator =
+    new Generator(provider);
 
-  constructor(
-    private readonly provider: AIProvider,
-  ) {
-    this.generator = new Generator(provider);
-  }
-
+  this.specificationGenerator =
+    new SpecificationGenerator(
+      provider,
+    );
+}
   private async generate(
   prompt: string,
 ) {
@@ -98,24 +103,37 @@ private write(
     outputDirectory,
   );
 }
- async generateProject(
+async generateProject(
   request: string,
   outputDirectory: string,
 ) {
   this.memory.add(request);
 
-  const plan = this.planner.createPlan(request);
+  const plan =
+    this.planner.createPlan(request);
 
   const specification =
-    this.analyzer.analyze(request);
+    await this.specificationGenerator.generate(
+      request,
+    );
+  console.log(
+  "AI Specification:",
+);
 
+console.dir(
+  specification,
+  { depth: null },
+);
   const architecture =
     this.architect.plan(specification);
 
   const framework =
     this.selector.select(architecture);
 
-  console.log("Framework:", framework);
+  console.log(
+    "Framework:",
+    framework,
+  );
 
   return {
     framework,

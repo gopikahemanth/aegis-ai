@@ -1,3 +1,7 @@
+import {
+  existsSync,
+  rmSync,
+} from "node:fs";
 import { join } from "node:path";
 
 import { copyDirectory } from "../utils/copy-directory.js";
@@ -13,6 +17,13 @@ export class ReactViteTemplate
     _projectName: string,
     output: string,
   ) {
+    if (existsSync(output)) {
+      rmSync(output, {
+        recursive: true,
+        force: true,
+      });
+    }
+
     const template = join(
       process.cwd(),
       "packages",

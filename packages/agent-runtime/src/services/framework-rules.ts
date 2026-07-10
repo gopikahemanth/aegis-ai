@@ -14,7 +14,15 @@ export const frameworkRules: Record<
     ],
   },
 
-  react: {
+  "react-vite": {
+    requiredFiles: [
+      "package.json",
+      "src",
+      "vite.config.ts",
+    ],
+  },
+
+  express: {
     requiredFiles: [
       "package.json",
       "src",

@@ -15,7 +15,7 @@ const runtime =
 
 runtime
   .start(
-    "Create a modern landing page with HTML, CSS and JavaScript. Separate every file.",
+    "Create a React admin dashboard with authentication using Tailwind CSS.",
     "./generated/runtime-demo",
   )
   .catch(console.error);

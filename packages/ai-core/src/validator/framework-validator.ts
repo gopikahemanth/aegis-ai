@@ -3,6 +3,7 @@ import type { GeneratedFile } from "../writer/writer.js";
 export class FrameworkValidator {
 private readonly blocked = {
   "react-vite": new Set([
+    // Project configuration
     "package.json",
     "package-lock.json",
     "pnpm-lock.yaml",
@@ -23,8 +24,14 @@ private readonly blocked = {
     "webpack.config.js",
     "next.config.js",
 
-    "src/index.tsx",
+    // Template files
+    "index.html",
 
+    "src/main.tsx",
+    "src/vite-env.d.ts",
+
+    // Legacy files
+    "src/index.tsx",
     "index.js",
     "App.js",
     "script.js",

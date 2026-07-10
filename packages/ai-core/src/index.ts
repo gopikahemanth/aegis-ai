@@ -8,3 +8,4 @@ export * from "./writer/writer.js";
 export * from "./healing/index.js";
 export * from "./architect/index.js";
 export * from "./prompts/index.js";
+export * from "./edit/edit-engine.js";

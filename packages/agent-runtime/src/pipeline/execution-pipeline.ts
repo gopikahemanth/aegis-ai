@@ -4,17 +4,20 @@ import { ErrorAnalyzer } from "@aegis/project-builder";
 
 import { SelfHealer } from "@aegis/ai-core";
 import type { AIProvider } from "@aegis/ai-core";
-
+import { DependencyResolver } from "@aegis/project-builder";
 import type { PipelineResult } from "./pipeline-result.js";
 
 export class ExecutionPipeline {
-  private readonly installer = new DependencyInstaller();
+private readonly installer = new DependencyInstaller();
 
-  private readonly builder = new BuildRunner();
+private readonly builder = new BuildRunner();
 
-  private readonly analyzer = new ErrorAnalyzer();
+private readonly analyzer = new ErrorAnalyzer();
 
-  private readonly healer: SelfHealer;
+private readonly dependencyResolver =
+  new DependencyResolver();
+
+private readonly healer: SelfHealer;
 
   private readonly maxRetries = 3;
 
@@ -62,17 +65,37 @@ export class ExecutionPipeline {
       console.log("❌ Build failed.");
 
       const error = this.analyzer.analyze(
-        build.stderr,
-        build.stdout,
-      );
+  build.stderr,
+  build.stdout,
+);
 
-      console.log(error);
+console.log(error);
 
-      await this.healer.heal(
-        request,
-        error,
-        projectPath,
-      );
+const packages =
+  this.dependencyResolver.resolve(
+    error.details,
+  );
+
+if (packages.length > 0) {
+  console.log(
+  "Installing missing packages:",
+  packages,
+);
+
+await this.installer.installPackages(
+  "pnpm",
+  projectPath,
+  packages,
+);
+
+continue;
+}
+
+await this.healer.heal(
+  request,
+  error,
+  projectPath,
+);
     }
 
     return {

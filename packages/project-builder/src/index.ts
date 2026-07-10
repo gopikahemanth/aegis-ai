@@ -8,3 +8,4 @@ export * from "./structure.js";
 export * from "./templates.js";
 export * from "./frameworks/index.js";
 export * from "./project-creator.js";
+export * from "./dependency-resolver.js";

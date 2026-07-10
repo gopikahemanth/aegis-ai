@@ -8,10 +8,35 @@ export class DependencyInstaller {
     cwd: string,
   ) {
     const args =
-  packageManager === "pnpm"
-    ? ["install", "--ignore-workspace"]
-    : ["install"];
+      packageManager === "pnpm"
+        ? ["install", "--ignore-workspace"]
+        : ["install"];
 
-    return this.terminal.run(packageManager, args, cwd);
+    return this.terminal.run(
+      packageManager,
+      args,
+      cwd,
+    );
+  }
+
+  async installPackages(
+    packageManager: "npm" | "pnpm" | "yarn",
+    cwd: string,
+    packages: string[],
+  ) {
+    if (packages.length === 0) {
+      return;
+    }
+
+    const args =
+      packageManager === "npm"
+        ? ["install", ...packages]
+        : ["add", ...packages];
+
+    return this.terminal.run(
+      packageManager,
+      args,
+      cwd,
+    );
   }
 }

@@ -11,8 +11,9 @@
     "dev": "tsx src/index.ts"
   },
   "dependencies": {
-    "@aegis/agent-runtime": "workspace:*"
-  },
+  "@aegis/agent-runtime": "workspace:*",
+  "@aegis/ai-core": "workspace:*"
+},
   "devDependencies": {
     "@types/node": "^24.0.0",
     "tsx": "^4.22.4",

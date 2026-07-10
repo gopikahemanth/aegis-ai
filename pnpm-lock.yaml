@@ -23,6 +23,9 @@ importers:
       '@aegis/agent-runtime':
         specifier: workspace:*
         version: link:../../packages/agent-runtime
+      '@aegis/ai-core':
+        specifier: workspace:*
+        version: link:../../packages/ai-core
     devDependencies:
       '@types/node':
         specifier: ^24.0.0

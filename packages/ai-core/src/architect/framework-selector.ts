@@ -1,19 +1,64 @@
 import type { ProjectSpecification } from "./specification.js";
 
 export class FrameworkSelector {
-  select(spec: ProjectSpecification): string {
-    if (spec.frontend === "React") {
-      return "react-vite";
+  private readonly supported =
+    new Set([
+      "react-vite",
+      "express",
+      "next",
+      "html",
+    ]);
+
+  select(
+    spec: ProjectSpecification,
+  ): string {
+
+    let framework = "html";
+
+    switch (spec.frontend) {
+      case "React":
+        framework = "react-vite";
+        break;
+
+      case "Next.js":
+        framework = "next";
+        break;
+
+      case "Angular":
+        framework = "angular";
+        break;
+
+      case "Vue":
+        framework = "vue";
+        break;
+
+      case "Svelte":
+        framework = "svelte";
+        break;
     }
 
-    if (spec.backend === "Express") {
-      return "express";
+    if (
+      framework === "html" &&
+      spec.backend
+    ) {
+      switch (spec.backend) {
+        case "Express":
+          framework = "express";
+          break;
+
+        case "NestJS":
+          framework = "nestjs";
+          break;
+      }
     }
 
-    if (spec.type === "website") {
+    if (
+      !this.supported.has(framework)
+    ) {
+
       return "html";
     }
 
-    return "html";
+    return framework;
   }
 }

@@ -1,4 +1,5 @@
-import { EditEngine, GroqProvider } from "@aegis/ai-core";
+import { EditPipeline } from "@aegis/agent-runtime";
+import { GroqProvider } from "@aegis/ai-core";
 import { resolve } from "node:path";
 
 export async function editCommand() {
@@ -20,20 +21,19 @@ export async function editCommand() {
   const provider =
     new GroqProvider();
 
-  const editor =
-    new EditEngine(
-      provider,
-    );
-
+ const pipeline =
+  new EditPipeline(
+    provider,
+  );
   console.log(
     `Editing project: ${projectPath}`,
   );
 
-  const result =
-    await editor.edit(
-      instruction,
-      projectPath,
-    );
+ const result =
+  await pipeline.execute(
+    instruction,
+    projectPath,
+  );
 
   console.log(result);
 }

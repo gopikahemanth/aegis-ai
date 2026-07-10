@@ -10,7 +10,7 @@ import { Parser } from "../generator/parser.js";
 import { FileWriter } from "../writer/writer.js";
 import { SpecificationGenerator } from "../architect/specification-generator.js";
 import {
-  RequirementAnalyzer,
+
   ArchitecturePlanner,
   PromptBuilder,
 } from "../architect/index.js";
@@ -22,7 +22,6 @@ export class Orchestrator {
 
   private readonly memory = new Memory();
 
-  private readonly analyzer = new RequirementAnalyzer();
 
  private readonly specificationGenerator: SpecificationGenerator;
   private readonly architect = new ArchitecturePlanner();
@@ -149,8 +148,10 @@ async generateCode(
   const plan =
     this.planner.createPlan(request);
 
-  const specification =
-    this.analyzer.analyze(request);
+const specification =
+  await this.specificationGenerator.generate(
+    request,
+  );
 
   const architecture =
     this.architect.plan(specification);
@@ -188,7 +189,9 @@ async generateApplication(
   const plan = this.planner.createPlan(request);
 
   const specification =
-    this.analyzer.analyze(request);
+  await this.specificationGenerator.generate(
+    request,
+  );
 
   const architecture =
     this.architect.plan(specification);

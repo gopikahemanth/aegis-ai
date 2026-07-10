@@ -5,7 +5,7 @@ import {
 import { join } from "node:path";
 
 import { copyDirectory } from "../utils/copy-directory.js";
-
+import { findRepoRoot } from "../utils/repo-root.js";
 import type { FrameworkTemplate } from "./framework.js";
 
 export class ReactViteTemplate
@@ -24,13 +24,16 @@ export class ReactViteTemplate
       });
     }
 
-    const template = join(
-      process.cwd(),
-      "packages",
-      "project-builder",
-      "templates",
-      "react-vite",
-    );
+    const repoRoot =
+  findRepoRoot(process.cwd());
+
+const template = join(
+  repoRoot,
+  "packages",
+  "project-builder",
+  "templates",
+  "react-vite",
+);
 
     copyDirectory(
       template,

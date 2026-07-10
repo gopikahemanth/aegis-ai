@@ -41,6 +41,11 @@ Example:
         },
       ]);
 
-    return JSON.parse(response);
-  }
+
+const cleaned = response
+  .replace(/```(?:json)?/gi, "")
+  .trim();
+
+
+return JSON.parse(cleaned);}
 }

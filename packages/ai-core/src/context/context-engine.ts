@@ -40,4 +40,33 @@ export class ContextEngine {
       selectedFiles,
     );
   }
+  buildWithPriorityFiles(
+  request: string,
+  projectPath: string,
+  priorityFiles: string[],
+) {
+  const files =
+    this.scanner.scan(projectPath);
+
+  const indexed =
+    this.index.build(files);
+
+  const selected =
+    this.selector.select(
+      request,
+      indexed,
+    );
+
+  const mergedFiles = [
+    ...new Set([
+      ...selected.map(file => file.path),
+      ...priorityFiles,
+    ]),
+  ];
+
+  return this.context.build(
+    projectPath,
+    mergedFiles,
+  );
+}
 }

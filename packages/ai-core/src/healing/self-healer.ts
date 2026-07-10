@@ -13,7 +13,22 @@ export class SelfHealer {
   constructor(provider: AIProvider) {
     this.fixer = new Fixer(provider);
   }
+private extractFailingFiles(
+  details: string,
+): string[] {
+  const matches =
+    details.matchAll(
+      /([A-Za-z0-9_./-]+\.(ts|tsx|js|jsx|css|json))/g,
+    );
 
+  return [
+    ...new Set(
+      [...matches].map(
+        match => match[1],
+      ),
+    ),
+  ];
+}
   async heal(
     request: string,
     error: BuildError,
@@ -25,10 +40,16 @@ export class SelfHealer {
 
 console.log("Before ContextEngine");
 
+const priorityFiles =
+  this.extractFailingFiles(
+    error.details,
+  );
+
 const projectContext =
-  this.context.build(
+  this.context.buildWithPriorityFiles(
     request,
     projectPath,
+    priorityFiles,
   );
 
 console.log("After ContextEngine");

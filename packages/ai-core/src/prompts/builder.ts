@@ -33,7 +33,9 @@ private readonly contextEngine =
     projectPath,
   );;
     const framework =
-  this.sections.frameworkRules();
+  this.sections.frameworkRules(
+    spec,
+  );
 
 const user =
   this.sections.userRequest(request);

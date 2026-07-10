@@ -1,3 +1,4 @@
+import type { ProjectSpecification } from "../architect/specification.js";
 export class PromptSections {
   executionPlan(plan: { title: string }[]) {
     return `Execution Plan
@@ -22,53 +23,37 @@ Do not recreate them.
 Modify existing files whenever possible.
 `;
 }
-  frameworkRules() {
-    return `Framework Rules
+frameworkRules(
+  spec: ProjectSpecification,
+) {
+  return `Framework Rules
 
-This project ALREADY EXISTS.
+Frontend:
+${spec.frontend ?? "None"}
 
-Framework:
-React 19 + Vite + TypeScript.
+Backend:
+${spec.backend ?? "None"}
 
-The following files ALREADY EXIST:
+Language:
+${spec.language}
 
-- package.json
-- vite.config.ts
-- tsconfig.json
-- tsconfig.node.json
-- index.html
-- src/main.tsx
+Styling:
+${spec.styling}
 
-NEVER generate or replace:
+Database:
+${spec.database ?? "None"}
 
-- package.json
-- package-lock.json
-- pnpm-lock.yaml
-- yarn.lock
+This project already exists.
 
-- vite.config.ts
-- vite.config.js
+Respect the selected frameworks.
 
-- tsconfig.json
-- tsconfig.node.json
+Do not replace project configuration.
 
-- tailwind.config.js
-- tailwind.config.cjs
+Modify existing application code whenever possible.
 
-- postcss.config.js
-- postcss.config.cjs
-
-- src/index.tsx
-
-React uses createRoot().
-
-Never use ReactDOM.render().
-
-Assume src/main.tsx already mounts the application.
-
-Generate ONLY application code.
+Never regenerate package.json, tsconfig, vite.config or lock files.
 `;
-  }
+}
 
   userRequest(request: string) {
     return `User Request

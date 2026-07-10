@@ -1,17 +1,15 @@
-import { CodebaseIndex } from "../context/codebase-index.js";
-import { FileSelector } from "../context/file-selector.js";
 import { ContextEngine } from "../context/context-engine.js";
 import { Fixer } from "../agent/fixer.js";
+import { PatchEngine } from "../healing/patch-engine.js";
+
 import type { AIProvider } from "../providers/base.js";
-import { readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
 
 export class EditEngine {
-  private readonly index = new CodebaseIndex();
+  private readonly context =
+    new ContextEngine();
 
-  private readonly selector = new FileSelector();
-
-  private readonly context = new ContextEngine();
+  private readonly patchEngine =
+    new PatchEngine();
 
   private readonly fixer: Fixer;
 
@@ -23,22 +21,7 @@ export class EditEngine {
     request: string,
     projectPath: string,
   ) {
-    const files = this.walk(projectPath);
-
-    const indexed =
-      this.index.build(files);
-
-    const selected =
-      this.selector.select(
-        request,
-        indexed,
-      );
-
-    console.log("Selected files:");
-
-    console.table(selected);
-
-    const context =
+    const projectContext =
       this.context.build(
         request,
         projectPath,
@@ -48,38 +31,21 @@ export class EditEngine {
       await this.fixer.fix(
         request,
         "",
-        context,
+        projectContext,
       );
 
-    return response;
-  }
+    const filesPatched =
+      this.patchEngine.apply(
+        response,
+        projectPath,
+      );
 
-  private walk(
-    directory: string,
-  ): string[] {
-    const files: string[] = [];
+    console.log(
+      `Patched ${filesPatched} file(s).`,
+    );
 
-    const visit = (dir: string) => {
-      for (const entry of readdirSync(dir)) {
-        const full = join(dir, entry);
-
-        const stats = statSync(full);
-
-        if (stats.isDirectory()) {
-          visit(full);
-        } else {
-          files.push(
-            relative(
-              directory,
-              full,
-            ),
-          );
-        }
-      }
+    return {
+      filesPatched,
     };
-
-    visit(directory);
-
-    return files;
   }
 }

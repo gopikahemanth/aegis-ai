@@ -11,6 +11,13 @@ ${plan.map(step => `- ${step.title}`).join("\n")}`;
 
 ${text}`;
   }
+  architecturePlan(
+  text: string,
+) {
+  return `Architecture Plan
+
+${text}`;
+}
 projectContext(files: string[]) {
   return `Existing Project Files
 

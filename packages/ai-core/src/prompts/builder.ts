@@ -14,9 +14,10 @@ export class PromptBuilderEngine {
 private readonly contextEngine =
   new ContextEngine();
 
- build(
+build(
   plan: { title: string }[],
   spec: ProjectSpecification,
+  architecturePlan: string,
   request: string,
   projectPath: string,
 ) {
@@ -27,6 +28,10 @@ private readonly contextEngine =
       this.sections.architecture(
         JSON.stringify(spec, null, 2),
       );
+      const architectureDetails =
+  this.sections.architecturePlan(
+    architecturePlan,
+  );
  const fullContext =
   this.contextEngine.build(
     request,
@@ -46,6 +51,7 @@ const rules =
 return this.templates.projectGeneration(
   execution,
   architecture,
+  architectureDetails,
   fullContext,
   framework,
   user,

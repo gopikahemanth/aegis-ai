@@ -1,22 +1,25 @@
 export class PromptTemplates {
   projectGeneration(
-    execution: string,
-    architecture: string,
-    context: string,
-    framework: string,
-    request: string,
-    rules: string,
-  ) {
-    return `
+  execution: string,
+  architecture: string,
+  architecturePlan: string,
+  fullContext: string,
+  framework: string,
+  user: string,
+  rules: string,
+){
+   return `
 ${execution}
 
 ${architecture}
 
-${context}
+${architecturePlan}
+
+${fullContext}
 
 ${framework}
 
-${request}
+${user}
 
 ${rules}
 `;

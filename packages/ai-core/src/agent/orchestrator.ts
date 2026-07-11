@@ -10,11 +10,10 @@ import { Parser } from "../generator/parser.js";
 import { FileWriter } from "../writer/writer.js";
 import { SpecificationGenerator } from "../architect/specification-generator.js";
 import {
-
   ArchitecturePlanner,
+  ArchitectureGenerator,
   PromptBuilder,
 } from "../architect/index.js";
-
 import type { AIProvider } from "../providers/base.js";
 
 export class Orchestrator {
@@ -24,7 +23,10 @@ export class Orchestrator {
 
 
  private readonly specificationGenerator: SpecificationGenerator;
+
   private readonly architect = new ArchitecturePlanner();
+
+  private readonly architectureGenerator: ArchitectureGenerator;
 
   private readonly promptBuilder = new PromptBuilder();
 
@@ -51,6 +53,11 @@ constructor(
     new SpecificationGenerator(
       provider,
     );
+
+    this.architectureGenerator =
+  new ArchitectureGenerator(
+    provider,
+  );
 }
   private async generate(
   prompt: string,
@@ -155,6 +162,10 @@ const specification =
 
   const architecture =
     this.architect.plan(specification);
+    const architecturePlan =
+  await this.architectureGenerator.generate(
+    specification,
+  );
 
   const framework =
     this.selector.select(architecture);
@@ -164,13 +175,14 @@ const specification =
     framework,
   );
 
-  const prompt =
-    this.promptEngine.build(
-      plan,
-      architecture,
-      request,
-      outputDirectory,
-    );
+ const prompt =
+  this.promptEngine.build(
+    plan,
+    architecture,
+    architecturePlan,
+    request,
+    outputDirectory,
+  );
 
   const response =
     await this.generate(
@@ -195,6 +207,12 @@ async generateApplication(
 
   const architecture =
     this.architect.plan(specification);
+
+  const architecturePlan =
+  await this.architectureGenerator.generate(
+    specification,
+  );
+
   const framework =
   this.selector.select(architecture);
 
@@ -204,6 +222,7 @@ console.log("Framework:", framework);
   this.promptEngine.build(
     plan,
     architecture,
+    architecturePlan,
     request,
     outputDirectory,
   );

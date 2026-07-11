@@ -1,6 +1,7 @@
 import { PromptSections } from "./sections.js";
 import { PromptTemplates } from "./templates.js";
 import { ContextEngine } from "../context/context-engine.js";
+import { FrameworkPromptFactory } from "./frameworks/factory.js";
 
 import type { ProjectSpecification } from "../architect/specification.js";
 
@@ -10,6 +11,9 @@ export class PromptBuilderEngine {
 
   private readonly templates =
     new PromptTemplates();
+
+private readonly frameworkFactory =
+  new FrameworkPromptFactory();
 
 private readonly contextEngine =
   new ContextEngine();
@@ -38,10 +42,9 @@ build(
     projectPath,
   );;
     const framework =
-  this.sections.frameworkRules(
-    spec,
+  this.frameworkFactory.get(
+    this.detectFramework(spec),
   );
-
 const user =
   this.sections.userRequest(request);
 
@@ -58,4 +61,22 @@ return this.templates.projectGeneration(
   rules,
 );
   }
+  private detectFramework(
+  spec: ProjectSpecification,
+): string {
+
+  if (spec.frontend === "React") {
+    return "react-vite";
+  }
+
+  if (spec.frontend === "Next.js") {
+    return "next";
+  }
+
+  if (spec.backend === "Express") {
+    return "express";
+  }
+
+  return "html";
+}
 }

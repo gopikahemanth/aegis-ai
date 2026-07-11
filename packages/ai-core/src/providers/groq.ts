@@ -1,6 +1,7 @@
 
 import Groq from "groq-sdk";
 import { env } from "../utils/env.js";
+import { ProviderError } from "./provider-error.js";
 
 import type {
   AIProvider,
@@ -22,18 +23,41 @@ export class GroqProvider implements AIProvider {
       apiKey: env.GROQ_API_KEY,
     });
   }
+async chat(
+  messages: ChatMessage[],
+  options?: ChatOptions,
+): Promise<string> {
+  try {
+    const response =
+      await this.client.chat.completions.create({
+        model:
+          options?.model ??
+          "llama-3.3-70b-versatile",
+        temperature:
+          options?.temperature ?? 0.2,
+        max_completion_tokens:
+          options?.maxTokens ?? 4096,
+        messages,
+      });
 
-  async chat(
-    messages: ChatMessage[],
-    options?: ChatOptions,
-  ): Promise<string> {
-    const response = await this.client.chat.completions.create({
-      model: options?.model ?? "llama-3.3-70b-versatile",
-      temperature: options?.temperature ?? 0.2,
-      max_completion_tokens: options?.maxTokens ?? 4096,
-      messages,
-    });
+    return (
+      response.choices[0]?.message?.content ?? ""
+    );
 
-    return response.choices[0]?.message?.content ?? "";
+  } catch (error: any) {
+
+    const retryAfter =
+      Number(
+        error?.headers?.["retry-after"],
+      ) || undefined;
+
+    throw new ProviderError(
+      error?.error?.error?.message ??
+      error?.message ??
+      "Provider request failed.",
+      retryAfter,
+      error,
+    );
   }
+}
 }

@@ -4,7 +4,9 @@ import { FrameworkSelector } from "../architect/index.js";
 import { PromptBuilderEngine } from "../prompts/index.js";
 import { FrameworkValidator } from "../validator/framework-validator.js";
 import { Reviewer } from "../reviewer/reviewer.js";
+import { AIReviewer } from "../reviewer/ai-reviewer.js";
 
+import { mergeReviewedFiles } from "../reviewer/merge-reviewed-files.js";
 import { Generator } from "../generator/generator.js";
 import { Parser } from "../generator/parser.js";
 import { FileWriter } from "../writer/writer.js";
@@ -34,7 +36,9 @@ export class Orchestrator {
 
   private readonly parser = new Parser();
 
-    private readonly reviewer = new Reviewer();
+  private readonly reviewer = new Reviewer();
+
+  private readonly aiReviewer: AIReviewer;
 
   private readonly validator = new FrameworkValidator();
 
@@ -56,6 +60,10 @@ constructor(
 
     this.architectureGenerator =
   new ArchitectureGenerator(
+    provider,
+  );
+  this.aiReviewer =
+  new AIReviewer(
     provider,
   );
 }
@@ -90,6 +98,17 @@ private review(
   }
 
   return report;
+}
+private async aiReview(
+  request: string,
+  issues: string,
+  project: string,
+) {
+  return this.aiReviewer.review(
+    request,
+    issues,
+    project,
+  );
 }
 private validate(
   framework: string,
@@ -237,14 +256,45 @@ const parsedFiles =
     response,
   );
 
-this.review(
-  parsedFiles,
-);
+const report =
+  this.review(
+    parsedFiles,
+  );
+
+let mergedFiles = parsedFiles;
+
+if (!report.passed) {
+  const issues =
+    report.issues
+      .map(
+        (issue) =>
+          `${issue.file}: ${issue.message}`,
+      )
+      .join("\n");
+
+  const aiResponse =
+    await this.aiReview(
+      request,
+      issues,
+      response,
+    );
+
+  const reviewedFiles =
+    this.parse(
+      aiResponse,
+    );
+
+  mergedFiles =
+    mergeReviewedFiles(
+      parsedFiles,
+      reviewedFiles,
+    );
+}
 
 const files =
   this.validate(
     framework,
-    parsedFiles,
+    mergedFiles,
   );
 this.write(
   files,

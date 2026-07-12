@@ -9,3 +9,6 @@ export * from "./healing/index.js";
 export * from "./architect/index.js";
 export * from "./prompts/index.js";
 export * from "./edit/edit-engine.js";
+export * from "./planner/index.js";
+export * from "./orchestrator/index.js";
+export * from "./agents/index.js";

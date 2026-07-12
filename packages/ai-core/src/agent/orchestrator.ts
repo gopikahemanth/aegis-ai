@@ -5,7 +5,9 @@ import { PromptBuilderEngine } from "../prompts/index.js";
 import { FrameworkValidator } from "../validator/framework-validator.js";
 import { Reviewer } from "../reviewer/reviewer.js";
 import { AIReviewer } from "../reviewer/ai-reviewer.js";
+import { ArchitectAgent } from "../agents/index.js";
 
+import { TaskPlanner } from "../planner/index.js";
 import { mergeReviewedFiles } from "../reviewer/merge-reviewed-files.js";
 import { Generator } from "../generator/generator.js";
 import { Parser } from "../generator/parser.js";
@@ -16,6 +18,10 @@ import {
   ArchitectureGenerator,
   PromptBuilder,
 } from "../architect/index.js";
+import {
+  ExecutionController,
+  ExecutionPhase,
+} from "../orchestrator/index.js";
 import type { AIProvider } from "../providers/base.js";
 
 export class Orchestrator {
@@ -47,9 +53,21 @@ export class Orchestrator {
   private readonly selector =new FrameworkSelector();
 
   private readonly promptEngine = new PromptBuilderEngine();
+
+  private readonly taskPlanner: TaskPlanner;
+
+  private readonly execution = new ExecutionController();
+
+  private readonly architectAgent: ArchitectAgent;
+
 constructor(
   private readonly provider: AIProvider,
 ) {
+  this.architectAgent =
+  new ArchitectAgent(
+    provider,
+  );
+
   this.generator =
     new Generator(provider);
 
@@ -57,7 +75,10 @@ constructor(
     new SpecificationGenerator(
       provider,
     );
-
+   this.taskPlanner =
+  new TaskPlanner(
+    provider,
+  );
     this.architectureGenerator =
   new ArchitectureGenerator(
     provider,
@@ -137,11 +158,37 @@ async generateProject(
   const plan =
     this.planner.createPlan(request);
 
-  const specification =
-    await this.specificationGenerator.generate(
-      request,
-    );
-  console.log(
+  this.execution.enter(
+  ExecutionPhase.Requirements,
+);
+
+const {
+  specification,
+} =
+  await this.architectAgent.execute(
+    request,
+  );
+    this.execution.enter(
+  ExecutionPhase.Planning,
+);
+    const tasks =
+  await this.taskPlanner.plan(
+    specification,
+  );
+
+console.log(
+  "Implementation Tasks:",
+);
+
+console.table(
+  tasks,
+);
+
+this.execution.enter(
+  ExecutionPhase.Architecture,
+);
+
+console.log(
   "AI Specification:",
 );
 
@@ -149,8 +196,9 @@ console.dir(
   specification,
   { depth: null },
 );
-  const architecture =
-    this.architect.plan(specification);
+
+const architecture =
+  this.architect.plan(specification);
 
   const framework =
     this.selector.select(architecture);
@@ -160,12 +208,13 @@ console.dir(
     framework,
   );
 
-  return {
-    framework,
-    plan,
-    specification,
-    outputDirectory,
-  };
+ return {
+  framework,
+  plan,
+  tasks,
+  specification,
+  outputDirectory,
+};
 }
 async generateCode(
   request: string,
@@ -219,18 +268,28 @@ async generateApplication(
 ) {
   const plan = this.planner.createPlan(request);
 
-  const specification =
-  await this.specificationGenerator.generate(
+  this.execution.enter(
+  ExecutionPhase.Requirements,
+);
+
+const {
+  specification,
+  architecturePlan,
+} =
+  await this.architectAgent.execute(
     request,
   );
+  this.execution.enter(
+  ExecutionPhase.Architecture,
+);
 
-  const architecture =
-    this.architect.plan(specification);
+const architecture =
+  this.architect.plan(specification);
 
-  const architecturePlan =
-  await this.architectureGenerator.generate(
-    specification,
-  );
+  this.execution.enter(
+  ExecutionPhase.Planning,
+);
+
 
   const framework =
   this.selector.select(architecture);
@@ -245,7 +304,9 @@ console.log("Framework:", framework);
     request,
     outputDirectory,
   );
-
+this.execution.enter(
+  ExecutionPhase.Implementation,
+);
  const response =
   await this.generate(
     prompt,
@@ -255,7 +316,9 @@ const parsedFiles =
   this.parse(
     response,
   );
-
+this.execution.enter(
+  ExecutionPhase.Review,
+);
 const report =
   this.review(
     parsedFiles,
@@ -290,7 +353,9 @@ if (!report.passed) {
       reviewedFiles,
     );
 }
-
+this.execution.enter(
+  ExecutionPhase.Validation,
+);
 const files =
   this.validate(
     framework,
@@ -300,6 +365,7 @@ this.write(
   files,
   outputDirectory,
 );
+this.execution.complete();
   return {
     filesCreated: files.length,
   };

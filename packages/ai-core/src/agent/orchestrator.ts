@@ -5,9 +5,10 @@ import { PromptBuilderEngine } from "../prompts/index.js";
 import { FrameworkValidator } from "../validator/framework-validator.js";
 import { Reviewer } from "../reviewer/reviewer.js";
 import { AIReviewer } from "../reviewer/ai-reviewer.js";
-import { ArchitectAgent } from "../agents/index.js";
-
-import { TaskPlanner } from "../planner/index.js";
+import {
+  ArchitectAgent,
+  PlannerAgent,
+} from "../agents/index.js";
 import { mergeReviewedFiles } from "../reviewer/merge-reviewed-files.js";
 import { Generator } from "../generator/generator.js";
 import { Parser } from "../generator/parser.js";
@@ -54,11 +55,11 @@ export class Orchestrator {
 
   private readonly promptEngine = new PromptBuilderEngine();
 
-  private readonly taskPlanner: TaskPlanner;
-
   private readonly execution = new ExecutionController();
 
   private readonly architectAgent: ArchitectAgent;
+
+  private readonly plannerAgent: PlannerAgent;
 
 constructor(
   private readonly provider: AIProvider,
@@ -67,7 +68,10 @@ constructor(
   new ArchitectAgent(
     provider,
   );
-
+  this.plannerAgent =
+  new PlannerAgent(
+    provider,
+  );
   this.generator =
     new Generator(provider);
 
@@ -75,10 +79,7 @@ constructor(
     new SpecificationGenerator(
       provider,
     );
-   this.taskPlanner =
-  new TaskPlanner(
-    provider,
-  );
+
     this.architectureGenerator =
   new ArchitectureGenerator(
     provider,
@@ -171,8 +172,8 @@ const {
     this.execution.enter(
   ExecutionPhase.Planning,
 );
-    const tasks =
-  await this.taskPlanner.plan(
+   const tasks =
+  await this.plannerAgent.execute(
     specification,
   );
 

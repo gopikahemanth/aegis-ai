@@ -1,59 +1,43 @@
-import { Planner } from "./planner.js";
 import { Memory } from "./memory.js";
 import { FrameworkSelector } from "../architect/index.js";
-import { PromptBuilderEngine } from "../prompts/index.js";
 import { FrameworkValidator } from "../validator/framework-validator.js";
-import { Reviewer } from "../reviewer/reviewer.js";
-import { AIReviewer } from "../reviewer/ai-reviewer.js";
+import type { GeneratedFile } from "../writer/writer.js";
 import {
   ArchitectAgent,
   PlannerAgent,
+  CoderAgent,
+  ReviewerAgent,
 } from "../agents/index.js";
-import { mergeReviewedFiles } from "../reviewer/merge-reviewed-files.js";
-import { Generator } from "../generator/generator.js";
-import { Parser } from "../generator/parser.js";
 import { FileWriter } from "../writer/writer.js";
-import { SpecificationGenerator } from "../architect/specification-generator.js";
 import {
   ArchitecturePlanner,
-  ArchitectureGenerator,
-  PromptBuilder,
 } from "../architect/index.js";
 import {
   ExecutionController,
   ExecutionPhase,
 } from "../orchestrator/index.js";
 import type { AIProvider } from "../providers/base.js";
-
+import { ExecutionLoop } from "../execution/index.js";
+import {
+  BuildOrchestrator,
+} from "../build/index.js";
+import {
+  RepairCoordinator,
+} from "../build/index.js";
 export class Orchestrator {
-  private readonly planner = new Planner();
+
+
+  private readonly buildOrchestrator = new BuildOrchestrator();
 
   private readonly memory = new Memory();
 
-
- private readonly specificationGenerator: SpecificationGenerator;
-
   private readonly architect = new ArchitecturePlanner();
 
-  private readonly architectureGenerator: ArchitectureGenerator;
-
-  private readonly promptBuilder = new PromptBuilder();
-
-  private readonly generator: Generator;
-
-  private readonly parser = new Parser();
-
-  private readonly reviewer = new Reviewer();
-
-  private readonly aiReviewer: AIReviewer;
-
-  private readonly validator = new FrameworkValidator();
+ private readonly validator = new FrameworkValidator();
 
   private readonly writer = new FileWriter();
 
   private readonly selector =new FrameworkSelector();
-
-  private readonly promptEngine = new PromptBuilderEngine();
 
   private readonly execution = new ExecutionController();
 
@@ -61,80 +45,37 @@ export class Orchestrator {
 
   private readonly plannerAgent: PlannerAgent;
 
+  private readonly coderAgent: CoderAgent;
+
+  private readonly reviewerAgent: ReviewerAgent;
+
+  private readonly executionLoop = new ExecutionLoop();
+
+private readonly repairCoordinator: RepairCoordinator;
+
 constructor(
   private readonly provider: AIProvider,
 ) {
   this.architectAgent =
-  new ArchitectAgent(
-    provider,
-  );
+    new ArchitectAgent(provider);
+
   this.plannerAgent =
-  new PlannerAgent(
-    provider,
-  );
-  this.generator =
-    new Generator(provider);
+    new PlannerAgent(provider);
 
-  this.specificationGenerator =
-    new SpecificationGenerator(
-      provider,
-    );
+  this.coderAgent =
+    new CoderAgent(provider);
 
-    this.architectureGenerator =
-  new ArchitectureGenerator(
-    provider,
-  );
-  this.aiReviewer =
-  new AIReviewer(
-    provider,
-  );
-}
-  private async generate(
-  prompt: string,
-) {
-  return this.generator.generate(
-    prompt,
-  );
-}
-private parse(
-  response: string,
-) {
-  return this.parser.parse(
-    response,
-  );
-}
-private review(
-  files: ReturnType<Parser["parse"]>,
-) {
-  const report =
-    this.reviewer.review(files);
+  this.reviewerAgent =
+    new ReviewerAgent(provider);
 
-  if (!report.passed) {
-    console.log(
-      "Review issues:",
-    );
-
-    console.table(
-      report.issues,
-    );
-  }
-
-  return report;
+  this.repairCoordinator =
+    new RepairCoordinator(provider);
 }
-private async aiReview(
-  request: string,
-  issues: string,
-  project: string,
-) {
-  return this.aiReviewer.review(
-    request,
-    issues,
-    project,
-  );
-}
+
+
 private validate(
   framework: string,
-  files: ReturnType<Parser["parse"]>,
+  files: GeneratedFile[],
 ) {
   return this.validator.validate(
     framework,
@@ -156,8 +97,7 @@ async generateProject(
 ) {
   this.memory.add(request);
 
-  const plan =
-    this.planner.createPlan(request);
+
 
   this.execution.enter(
   ExecutionPhase.Requirements,
@@ -172,7 +112,7 @@ const {
     this.execution.enter(
   ExecutionPhase.Planning,
 );
-   const tasks =
+ const tasks =
   await this.plannerAgent.execute(
     specification,
   );
@@ -183,6 +123,25 @@ console.log(
 
 console.table(
   tasks,
+);
+
+await this.executionLoop.execute(
+  {
+    request,
+    outputDirectory,
+  },
+  tasks,
+async (task) => {
+  console.log(
+    `Executing: ${task.title}`,
+  );
+
+  return {
+    taskId: task.id,
+    success: true,
+    message: "Completed",
+  };
+},
 );
 
 this.execution.enter(
@@ -209,9 +168,8 @@ const architecture =
     framework,
   );
 
- return {
+return {
   framework,
-  plan,
   tasks,
   specification,
   outputDirectory,
@@ -221,55 +179,53 @@ async generateCode(
   request: string,
   outputDirectory: string,
 ) {
-  const plan =
-    this.planner.createPlan(request);
+  const {
+    specification,
+    architecturePlan,
+  } =
+    await this.architectAgent.execute(
+      request,
+    );
 
-const specification =
-  await this.specificationGenerator.generate(
-    request,
-  );
-
-  const architecture =
-    this.architect.plan(specification);
-    const architecturePlan =
-  await this.architectureGenerator.generate(
+  const tasks =
+  await this.plannerAgent.execute(
     specification,
   );
+  const architecture =
+    this.architect.plan(
+      specification,
+    );
 
   const framework =
-    this.selector.select(architecture);
-
-  console.log(
-    "Framework:",
-    framework,
-  );
-
- const prompt =
-  this.promptEngine.build(
-    plan,
-    architecture,
-    architecturePlan,
-    request,
-    outputDirectory,
-  );
-
-  const response =
-    await this.generate(
-      prompt,
+    this.selector.select(
+      architecture,
     );
+
+
+
+ const {
+  files,
+} =
+  await this.coderAgent.execute(
+  tasks[0],
+  architecture,
+  architecturePlan,
+  request,
+  outputDirectory,
+);
 
   return {
     framework,
-    response,
+    files,
   };
 }
 async generateApplication(
   request: string,
   outputDirectory: string,
 ) {
-  const plan = this.planner.createPlan(request);
 
-  this.execution.enter(
+
+this.execution.enter(
   ExecutionPhase.Requirements,
 );
 
@@ -280,6 +236,30 @@ const {
   await this.architectAgent.execute(
     request,
   );
+
+const tasks =
+  await this.plannerAgent.execute(
+    specification,
+  );
+await this.executionLoop.execute(
+  {
+    request,
+    outputDirectory,
+  },
+  tasks,
+ async (task) => {
+  console.log(
+    `Executing: ${task.title}`,
+  );
+
+  return {
+    taskId: task.id,
+    success: true,
+    message: "Completed",
+  };
+},
+);
+
   this.execution.enter(
   ExecutionPhase.Architecture,
 );
@@ -297,63 +277,46 @@ const architecture =
 
 console.log("Framework:", framework);
 
- const prompt =
-  this.promptEngine.build(
-    plan,
+ this.execution.enter(
+  ExecutionPhase.Implementation,
+);
+const existingFiles: string[] = [];
+let response = "";
+
+let parsedFiles: GeneratedFile[] = [];
+
+for (const task of tasks) {
+ const result =
+  await this.coderAgent.execute(
+    task,
     architecture,
     architecturePlan,
     request,
     outputDirectory,
-  );
-this.execution.enter(
-  ExecutionPhase.Implementation,
-);
- const response =
-  await this.generate(
-    prompt,
+    existingFiles,
   );
 
-const parsedFiles =
-  this.parse(
-    response,
+  response +=
+    result.response + "\n";
+
+  parsedFiles.push(
+    ...result.files,
   );
+  existingFiles.push(
+  ...result.files.map(
+    (file) => file.path,
+  ),
+);
+}
 this.execution.enter(
   ExecutionPhase.Review,
 );
-const report =
-  this.review(
+const mergedFiles =
+  await this.reviewerAgent.execute(
+    request,
+    response,
     parsedFiles,
   );
-
-let mergedFiles = parsedFiles;
-
-if (!report.passed) {
-  const issues =
-    report.issues
-      .map(
-        (issue) =>
-          `${issue.file}: ${issue.message}`,
-      )
-      .join("\n");
-
-  const aiResponse =
-    await this.aiReview(
-      request,
-      issues,
-      response,
-    );
-
-  const reviewedFiles =
-    this.parse(
-      aiResponse,
-    );
-
-  mergedFiles =
-    mergeReviewedFiles(
-      parsedFiles,
-      reviewedFiles,
-    );
-}
 this.execution.enter(
   ExecutionPhase.Validation,
 );
@@ -366,6 +329,36 @@ this.write(
   files,
   outputDirectory,
 );
+const build =
+  await this.buildOrchestrator.verify(
+    outputDirectory,
+  );
+
+if (!build.success) {
+
+  console.log();
+
+  console.log(
+    "Attempting automatic repair...",
+  );
+
+  const repairInstructions =
+    await this.repairCoordinator.repair(
+      request,
+      build.stderr,
+      response,
+    );
+
+  console.log();
+
+  console.log(
+    "AI Repair Plan:",
+  );
+
+  console.log(
+    repairInstructions,
+  );
+}
 this.execution.complete();
   return {
     filesCreated: files.length,

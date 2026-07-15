@@ -12,3 +12,4 @@ export * from "./edit/edit-engine.js";
 export * from "./planner/index.js";
 export * from "./orchestrator/index.js";
 export * from "./agents/index.js";
+export * from "./execution/index.js";

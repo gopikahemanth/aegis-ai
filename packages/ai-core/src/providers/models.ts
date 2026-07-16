@@ -11,9 +11,9 @@ export const Models = {
     default: "claude-sonnet-4",
   },
 
-  gemini: {
-    default: "gemini-2.5-pro",
-  },
+ gemini: {
+  default: "gemini-3.5-flash",
+},
 
   ollama: {
     default: "llama3.1",

@@ -129,19 +129,20 @@ await this.executionLoop.execute(
   {
     request,
     outputDirectory,
+    coder: this.coderAgent,
   },
   tasks,
-async (task) => {
-  console.log(
-    `Executing: ${task.title}`,
-  );
+  async (task) => {
+    console.log(
+      `Executing: ${task.title}`,
+    );
 
-  return {
-    taskId: task.id,
-    success: true,
-    message: "Completed",
-  };
-},
+    return {
+      taskId: task.id,
+      success: true,
+      message: "Completed",
+    };
+  },
 );
 
 this.execution.enter(
@@ -175,50 +176,7 @@ return {
   outputDirectory,
 };
 }
-async generateCode(
-  request: string,
-  outputDirectory: string,
-) {
-  const {
-    specification,
-    architecturePlan,
-  } =
-    await this.architectAgent.execute(
-      request,
-    );
 
-  const tasks =
-  await this.plannerAgent.execute(
-    specification,
-  );
-  const architecture =
-    this.architect.plan(
-      specification,
-    );
-
-  const framework =
-    this.selector.select(
-      architecture,
-    );
-
-
-
- const {
-  files,
-} =
-  await this.coderAgent.execute(
-  tasks[0],
-  architecture,
-  architecturePlan,
-  request,
-  outputDirectory,
-);
-
-  return {
-    framework,
-    files,
-  };
-}
 async generateApplication(
   request: string,
   outputDirectory: string,
@@ -245,19 +203,20 @@ await this.executionLoop.execute(
   {
     request,
     outputDirectory,
+    coder: this.coderAgent,
   },
   tasks,
- async (task) => {
-  console.log(
-    `Executing: ${task.title}`,
-  );
+  async (task) => {
+    console.log(
+      `Executing: ${task.title}`,
+    );
 
-  return {
-    taskId: task.id,
-    success: true,
-    message: "Completed",
-  };
-},
+    return {
+      taskId: task.id,
+      success: true,
+      message: "Completed",
+    };
+  },
 );
 
   this.execution.enter(
@@ -284,17 +243,23 @@ const existingFiles: string[] = [];
 let response = "";
 
 let parsedFiles: GeneratedFile[] = [];
-
+console.log("Starting implementation loop...");
 for (const task of tasks) {
- const result =
-  await this.coderAgent.execute(
-    task,
-    architecture,
-    architecturePlan,
-    request,
-    outputDirectory,
-    existingFiles,
-  );
+  console.log("Current task:", task.title);
+
+  console.log("Calling CoderAgent...");
+
+  const result =
+    await this.coderAgent.execute(
+      task,
+      architecture,
+      architecturePlan,
+      request,
+      outputDirectory,
+      existingFiles,
+    );
+
+  console.log("CoderAgent finished.");
 
   response +=
     result.response + "\n";

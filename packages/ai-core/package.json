@@ -9,14 +9,15 @@
     "dist"
   ],
   "exports": {
-  ".": "./dist/index.js"
-},
+    ".": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rimraf dist"
   },
   "dependencies": {
+    "@google/genai": "^2.12.0",
     "dotenv": "^16.5.0",
     "groq-sdk": "^0.30.0",
     "openai": "^6.45.0",

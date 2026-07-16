@@ -25,6 +25,12 @@ dotenv.config({
 const schema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   GROQ_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
+  AI_PROVIDER: z
+    .enum([
+      "groq",
+      "gemini",
+    ])
+    .default("groq"),
 });
-
 export const env = schema.parse(process.env);

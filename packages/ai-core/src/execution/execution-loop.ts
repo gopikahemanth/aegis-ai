@@ -78,6 +78,11 @@ if (!runner) {
     `No runner registered for ${context.currentStage}`,
   );
 }
+console.log("===== CONTEXT =====");
+console.dir(context, { depth: null });
+console.log("===================");
+console.log("Execution Context:");
+console.dir(context, { depth: 1 });
 
 const result =
   await runner.run(

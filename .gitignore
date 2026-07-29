@@ -5,10 +5,10 @@ node_modules
 dist
 
 # Generated output
-generated/
-generated-project/
-**/generated/
-**/generated-project/
+# generated/
+# generated-project/
+# **/generated/
+# **/generated-project/
 
 # Environment
 .env
@@ -19,3 +19,6 @@ generated-project/
 
 # VS Code
 .vscode/settings.json
+
+# Turbo Build Cache
+.turbo/

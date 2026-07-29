@@ -2,26 +2,57 @@ import { GroqProvider } from "./groq.js";
 import { ProviderRegistry } from "./registry.js";
 import { providerConfig } from "./config.js";
 import { GeminiProvider } from "./gemini.js";
+import { FailoverProvider } from "./failover.js";
+import { OllamaProvider } from "./ollama.js";
+import { OpenRouterProvider } from "./openrouter.js";
+import { env } from "../utils/env.js";
+import type { AIProvider } from "./base.js";
+
 export class ProviderFactory {
   static createRegistry() {
     const registry = new ProviderRegistry();
 
     registry.register(new GroqProvider());
     registry.register(new GeminiProvider());
+    registry.register(new OllamaProvider());
+    registry.register(new OpenRouterProvider());
 
     return registry;
   }
 
-  static createDefaultProvider() {
-    const registry = this.createRegistry();
+  static createDefaultProvider(): AIProvider {
+    const providers: AIProvider[] = [];
+    const preferred = env.AI_PROVIDER;
+
+    if (preferred === "gemini" && env.GEMINI_API_KEY) {
+      providers.push(new GeminiProvider());
+    } else if (preferred === "groq" && env.GROQ_API_KEY) {
+      providers.push(new GroqProvider());
+    } else if (preferred === "openrouter" && env.OPENROUTER_API_KEY) {
+      providers.push(new OpenRouterProvider());
+    }
+
+    if (preferred !== "gemini" && env.GEMINI_API_KEY) {
+      providers.push(new GeminiProvider());
+    }
+    if (preferred !== "groq" && env.GROQ_API_KEY) {
+      providers.push(new GroqProvider());
+    }
+    if (preferred !== "openrouter" && env.OPENROUTER_API_KEY) {
+      providers.push(new OpenRouterProvider());
+    }
+
+    // Always append local Ollama provider as the final failsafe fallback
+    providers.push(new OllamaProvider());
+
+    if (providers.length === 0) {
+      throw new Error("No AI providers configured in env.");
+    }
 
     console.log(
-      "Selected provider:",
-      providerConfig.defaultProvider,
+      `Initializing FailoverProvider with active chain: ${providers.map(p => p.name).join(" -> ")}`
     );
 
-    return registry.get(
-      providerConfig.defaultProvider,
-    );
+    return new FailoverProvider(providers);
   }
 }

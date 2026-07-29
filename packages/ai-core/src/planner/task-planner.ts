@@ -4,12 +4,16 @@ import type { AIProvider } from "../providers/base.js";
 import type { ProjectSpecification } from "../architect/specification.js";
 import type { Task } from "./task.js";
 import { JsonExtractor } from "../utils/json-extractor.js";
+import { PromptManager } from "../prompts/prompt-manager.js";
+import { DependencyScheduler } from "../execution/dependency-scheduler.js";
+
 export class TaskPlanner {
-  private readonly extractor =
-  new JsonExtractor();
+  private readonly extractor = new JsonExtractor();
+  private readonly promptManager = new PromptManager();
+  private readonly scheduler = new DependencyScheduler();
+
   constructor(
     private readonly provider: AIProvider,
-
   ) {}
 
   async plan(
@@ -20,59 +24,7 @@ export class TaskPlanner {
       await this.provider.chat([
         {
           role: "system",
-          content: `
-You are a senior software architect.
-
-Break the project into execution tasks.
-
-Each task MUST contain:
-
-Each task MUST contain:
-
-- id
-- title
-- description
-- completed
-- stage
-- priority
-- dependencies
-- estimatedComplexity
-
-Valid stages are ONLY:
-
-- Requirements
-- Architecture
-- Implementation
-- Review
-- Validation
-- Healing
-
-Return ONLY valid JSON.
-
-Example:
-[
-  {
-    "id": 1,
-    "title": "Create authentication",
-    "description": "Implement authentication module",
-    "completed": false,
-    "stage": "Implementation",
-    "priority": 1,
-    "dependencies": [],
-    "estimatedComplexity": 2
-  },
-  {
-    "id": 2,
-    "title": "Create dashboard",
-    "description": "Implement dashboard",
-    "completed": false,
-    "stage": "Implementation",
-    "priority": 2,
-    "dependencies": [1],
-    "estimatedComplexity": 4
-  }
-]
-`,
+          content: this.promptManager.getPlannerPrompt(),
         },
         {
           role: "user",
@@ -84,28 +36,59 @@ Example:
         },
       ]);
 
-console.log("========== RAW RESPONSE ==========");
-console.log(response);
+    console.log("========== RAW RESPONSE ==========");
+    console.log(response);
 
-const json =
-  this.extractor.extract(response);
+    const json =
+      this.extractor.extract(response);
 
-console.log("========== EXTRACTED JSON ==========");
-console.log(json);
-console.log("===================================");
+    console.log("========== EXTRACTED JSON ==========");
+    console.log(json);
+    console.log("===================================");
 
-const tasks =
-  JSON.parse(json) as Task[];
+    const rawTasks = JSON.parse(json) as Task[];
+    const validTaskIds = new Set(rawTasks.map(t => Number(t.id)).filter(id => !isNaN(id)));
 
-    return tasks.map(
-      (task) => ({
+    let sanitizedTasks: Task[] = rawTasks.map((task) => {
+      const id = Number(task.id);
+      const priority = Number(task.priority ?? 1);
+      const estimatedComplexity = Number(task.estimatedComplexity ?? 1);
+
+      const rawDeps = task.dependencies ?? [];
+      const dependencies = Array.isArray(rawDeps)
+        ? rawDeps
+            .map(d => Number(d))
+            .filter(d => !isNaN(d) && d !== id && validTaskIds.has(d))
+        : [];
+
+      return {
         ...task,
+        id,
+        priority: isNaN(priority) ? 1 : priority,
+        estimatedComplexity: isNaN(estimatedComplexity) ? 1 : estimatedComplexity,
+        dependencies,
+        completed: !!task.completed,
         stage:
           ExecutionStage[
             task.stage as keyof typeof ExecutionStage
           ] ??
           ExecutionStage.Implementation,
-      }),
-    );
+      };
+    });
+
+    try {
+      this.scheduler.schedule(sanitizedTasks);
+      console.log("[TaskPlanner] DAG dependency validation check successful.");
+    } catch (error: any) {
+      console.warn(
+        `[TaskPlanner] Warning: Dependency validation failed (${error.message}). Falling back to dependency-free sequential execution.`
+      );
+      sanitizedTasks = sanitizedTasks.map((task) => ({
+        ...task,
+        dependencies: [],
+      }));
+    }
+
+    return sanitizedTasks;
   }
 }

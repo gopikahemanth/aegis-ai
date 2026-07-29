@@ -6,3 +6,6 @@ export * from "./models.js";
 export * from "./registry.js";
 export * from "./types.js";
 export * from "./provider-error.js";
+export * from "./failover.js";
+export * from "./ollama.js";
+export * from "./openrouter.js";

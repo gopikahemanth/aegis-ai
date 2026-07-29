@@ -1,0 +1,9 @@
+{
+  "name": "aegis-html-app",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "npx serve -p 3000",
+    "build": "echo Build successful"
+  }
+}

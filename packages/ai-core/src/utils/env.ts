@@ -26,10 +26,13 @@ const schema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   GROQ_API_KEY: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
+  OPENROUTER_MODEL: z.string().optional(),
   AI_PROVIDER: z
     .enum([
       "groq",
       "gemini",
+      "openrouter",
     ])
     .default("groq"),
 });

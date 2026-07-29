@@ -11,11 +11,15 @@ export const Models = {
     default: "claude-sonnet-4",
   },
 
- gemini: {
-  default: "gemini-3.5-flash",
-},
+  gemini: {
+    default: "gemini-3.5-flash-lite",
+  },
 
   ollama: {
     default: "llama3.1",
+  },
+
+  openrouter: {
+    default: "deepseek/deepseek-chat",
   },
 } as const;

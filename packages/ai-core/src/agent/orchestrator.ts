@@ -9,6 +9,7 @@ import {
   ReviewerAgent,
 } from "../agents/index.js";
 import { FileWriter } from "../writer/writer.js";
+import { Parser } from "../generator/parser.js";
 import {
   ArchitecturePlanner,
 } from "../architect/index.js";
@@ -24,6 +25,8 @@ import {
 import {
   RepairCoordinator,
 } from "../build/index.js";
+import { DeploymentGenerator } from "../deploy/index.js";
+
 export class Orchestrator {
 
 
@@ -33,9 +36,13 @@ export class Orchestrator {
 
   private readonly architect = new ArchitecturePlanner();
 
- private readonly validator = new FrameworkValidator();
+  private readonly validator = new FrameworkValidator();
 
   private readonly writer = new FileWriter();
+
+  private readonly parser = new Parser();
+
+  private readonly deployGenerator = new DeploymentGenerator();
 
   private readonly selector =new FrameworkSelector();
 
@@ -249,15 +256,54 @@ for (const task of tasks) {
 
   console.log("Calling CoderAgent...");
 
-  const result =
-    await this.coderAgent.execute(
-      task,
-      architecture,
-      architecturePlan,
-      request,
-      outputDirectory,
-      existingFiles,
-    );
+    let result: { response: string; files: GeneratedFile[] } = { response: "", files: [] };
+    try {
+      result = await this.coderAgent.execute(
+        task,
+        architecture,
+        architecturePlan,
+        request,
+        outputDirectory,
+        existingFiles,
+      );
+    } catch (coderError: any) {
+      console.warn(`[Orchestrator] CoderAgent failed: ${coderError.message}`);
+      console.log(`[Orchestrator] Launching inline Coder self-healing loop...`);
+      let repairAttempts = 0;
+      let success = false;
+      let lastError = coderError;
+
+      while (repairAttempts < 3 && !success) {
+        repairAttempts++;
+        console.log(`[Self-Healing] Inline Coder repair attempt ${repairAttempts}/3...`);
+        try {
+          const repairResponse = await this.repairCoordinator.repair(
+            request,
+            lastError.message,
+            response + `\nAttempted output for task "${task.title}":\n` + (lastError.stack || lastError.message)
+          );
+
+          const repairedFiles = this.parser.parse(repairResponse);
+          if (repairedFiles.length > 0) {
+            result = {
+              response: repairResponse,
+              files: repairedFiles
+            };
+            success = true;
+            console.log(`[Self-Healing] ✓ Coder repair succeeded! Resolved placeholders.`);
+          } else {
+            throw new Error("No file changes parsed from repair response.");
+          }
+        } catch (repairErr: any) {
+          lastError = repairErr;
+          console.error(`[Self-Healing] Inline repair attempt ${repairAttempts} failed:`, repairErr.message);
+        }
+      }
+
+      if (!success) {
+        throw coderError;
+      }
+    }
 
   console.log("CoderAgent finished.");
 
@@ -294,39 +340,62 @@ this.write(
   files,
   outputDirectory,
 );
-const build =
+let build =
   await this.buildOrchestrator.verify(
     outputDirectory,
   );
 
 if (!build.success) {
+  let attempts = 0;
+  const maxRepairAttempts = 3;
 
-  console.log();
+  while (!build.success && attempts < maxRepairAttempts) {
+    attempts++;
+    console.log();
+    console.log(`[Self-Healing] Attempting automatic repair ${attempts}/${maxRepairAttempts}...`);
 
-  console.log(
-    "Attempting automatic repair...",
-  );
+    try {
+      const repairResponse =
+        await this.repairCoordinator.repair(
+          request,
+          build.stderr,
+          response,
+        );
 
-  const repairInstructions =
-    await this.repairCoordinator.repair(
-      request,
-      build.stderr,
-      response,
-    );
+      const repairedFiles = this.parser.parse(repairResponse);
+      if (repairedFiles.length > 0) {
+        console.log(`[Self-Healing] Parsed ${repairedFiles.length} corrected files. Writing to disk...`);
+        const validatedRepairedFiles = this.validate(framework, repairedFiles);
+        this.write(validatedRepairedFiles, outputDirectory);
 
-  console.log();
-
-  console.log(
-    "AI Repair Plan:",
-  );
-
-  console.log(
-    repairInstructions,
-  );
+        build = await this.buildOrchestrator.verify(outputDirectory);
+        if (build.success) {
+          console.log("[Self-Healing] ✓ Build succeeded after automatic repair!");
+          break;
+        }
+      } else {
+        console.warn("[Self-Healing] No file changes were parsed from the repair response.");
+        break;
+      }
+    } catch (error: any) {
+      console.error(`[Self-Healing] Error occurred during repair attempt ${attempts}:`, error.message);
+      break;
+    }
+  }
 }
+
+if (!build.success) {
+  console.log();
+  console.log("❌ Self-Healing: Build is still failing after maximum repair attempts.");
+}
+
+console.log("Generating deployment configurations...");
+const deployFiles = this.deployGenerator.generate(specification);
+this.write(deployFiles, outputDirectory);
+
 this.execution.complete();
   return {
-    filesCreated: files.length,
+    filesCreated: files.length + deployFiles.length,
   };
 }
 getProvider() {

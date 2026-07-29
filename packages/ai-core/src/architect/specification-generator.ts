@@ -1,7 +1,10 @@
 import type { AIProvider } from "../providers/base.js";
 import type { ProjectSpecification } from "./specification.js";
+import { PromptManager } from "../prompts/prompt-manager.js";
 
 export class SpecificationGenerator {
+  private readonly promptManager = new PromptManager();
+
   constructor(
     private readonly provider: AIProvider,
   ) {}
@@ -14,26 +17,7 @@ export class SpecificationGenerator {
       await this.provider.chat([
         {
           role: "system",
-          content: `
-You are an expert software architect.
-
-Analyze the user's request.
-
-Return ONLY valid JSON.
-
-Example:
-
-{
-  "name": "Generated Project",
-  "type": "website",
-  "frontend": "React",
-  "backend": "Express",
-  "database": "PostgreSQL",
-  "language": "TypeScript",
-  "styling": "Tailwind CSS",
-  "packageManager": "pnpm"
-}
-`,
+          content: this.promptManager.getSpecificationPrompt(),
         },
         {
           role: "user",
@@ -42,10 +26,11 @@ Example:
       ]);
 
 
-const cleaned = response
-  .replace(/```(?:json)?/gi, "")
-  .trim();
-
-
-return JSON.parse(cleaned);}
+    const startIdx = response.indexOf("{");
+    const endIdx = response.lastIndexOf("}");
+    if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) {
+      throw new Error(`Invalid JSON specification response: ${response}`);
+    }
+    const cleaned = response.substring(startIdx, endIdx + 1);
+    return JSON.parse(cleaned);}
 }

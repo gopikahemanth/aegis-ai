@@ -1,7 +1,10 @@
 import type { AIProvider } from "../providers/base.js";
 import type { ProjectSpecification } from "./specification.js";
+import { PromptManager } from "../prompts/prompt-manager.js";
 
 export class ArchitectureGenerator {
+  private readonly promptManager = new PromptManager();
+
   constructor(
     private readonly provider: AIProvider,
   ) {}
@@ -13,24 +16,7 @@ export class ArchitectureGenerator {
     return this.provider.chat([
       {
         role: "system",
-        content: `
-You are an expert software architect.
-
-Given a project specification, create a high-level architecture plan.
-
-Return ONLY plain text.
-
-Include:
-
-Pages
-Components
-Hooks
-Services
-Routes
-
-Do not generate code.
-Do not explain anything.
-`,
+        content: this.promptManager.getArchitecturePrompt(),
       },
       {
         role: "user",

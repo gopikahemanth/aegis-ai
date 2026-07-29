@@ -2,6 +2,7 @@
 import Groq from "groq-sdk";
 import { env } from "../utils/env.js";
 import { ProviderError } from "./provider-error.js";
+import { Models } from "./models.js";
 
 import type {
   AIProvider,
@@ -32,7 +33,7 @@ async chat(
       await this.client.chat.completions.create({
         model:
           options?.model ??
-          "llama-3.3-70b-versatile",
+          Models.groq.default,
         temperature:
           options?.temperature ?? 0.2,
         max_completion_tokens:

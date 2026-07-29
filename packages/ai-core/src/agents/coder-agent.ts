@@ -4,9 +4,10 @@ import { PromptBuilderEngine } from "../prompts/index.js";
 import { Generator } from "../generator/generator.js";
 import { Parser } from "../generator/parser.js";
 import { ExecutionContext } from "../context/index.js";
-import type { ProjectSpecification } from "../architect/specification.js";
+import type { SystemArchitecture } from "../architect/index.js";
 import type { PlanStep } from "../agent/planner.js";
 import type { Task } from "../planner/task.js";
+import { StubDetector } from "../generator/stub-detector.js";
 
 export class CoderAgent extends BaseAgent {
   readonly name = "Coder Agent";
@@ -25,7 +26,7 @@ export class CoderAgent extends BaseAgent {
   new ExecutionContext();
  async execute(
   task: Task,
-  architecture: ProjectSpecification,
+  architecture: SystemArchitecture,
   architecturePlan: string,
   request: string,
   outputDirectory: string,
@@ -57,6 +58,21 @@ const files =
   this.parser.parse(
     response,
   );
+
+const stubDetector = new StubDetector();
+for (const file of files) {
+  const stubs = stubDetector.detect(file.content);
+  if (stubs.length > 0) {
+    console.warn(`[CoderAgent] Warning: Placeholder patterns detected in generated file ${file.path}:`);
+    for (const finding of stubs) {
+      console.warn(`  - ${finding}`);
+    }
+    throw new Error(
+      `File generation failed: ${file.path} contains incomplete placeholders or TODO blocks:\n${stubs.join("\n")}`
+    );
+  }
+}
+
 this.context.projectMemory.add(
   files,
 );

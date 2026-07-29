@@ -1,8 +1,11 @@
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, statSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
 
 export class ProjectScanner {
   scan(projectPath: string): string[] {
+    if (!existsSync(projectPath)) {
+      return [];
+    }
     const files: string[] = [];
 
     const walk = (directory: string) => {

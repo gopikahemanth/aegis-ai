@@ -2,7 +2,6 @@ import type { GeneratedFile } from "../writer/writer.js";
 
 export class Parser {
   private readonly blockedFiles = new Set([
-    "package.json",
     "package-lock.json",
     "pnpm-lock.yaml",
     "yarn.lock",
@@ -16,7 +15,6 @@ export class Parser {
     "tailwind.config.js",
     "postcss.config.js",
     ".gitignore",
-    "index.html",
   ]);
 
   parse(response: string): GeneratedFile[] {

@@ -20,17 +20,17 @@ export class GenerateAction {
       "Executing GENERATE",
     );
 
-   const result =
-  await this.orchestrator.generateApplication(
-    state.request,
-    state.projectPath,
-  );
+    await this.creator.create(
+      state.framework ?? "react",
+      "generated-project",
+      state.projectPath,
+    );
 
-   await this.creator.create(
-  state.framework ?? "react",
-  "generated-project",
-  state.projectPath,
-);
+    const result =
+      await this.orchestrator.generateApplication(
+        state.request,
+        state.projectPath,
+      );
 
     return {
       success: true,

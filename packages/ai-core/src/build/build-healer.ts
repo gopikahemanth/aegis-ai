@@ -1,6 +1,9 @@
 import type { AIProvider } from "../providers/base.js";
+import { PromptManager } from "../prompts/prompt-manager.js";
 
 export class BuildHealer {
+  private readonly promptManager = new PromptManager();
+
   constructor(
     private readonly provider: AIProvider,
   ) {}
@@ -14,29 +17,7 @@ export class BuildHealer {
     return this.provider.chat([
       {
         role: "system",
-        content: `
-You are an expert software engineer.
-
-A project failed to build.
-
-Analyze the compiler errors and explain
-how the generated code should be fixed.
-
-Return only the repair instructions.
-`,
-      },
-      {
-        role: "user",
-        content: `
-Request:
-${request}
-
-Compiler Errors:
-${buildError}
-
-Project Summary:
-${projectSummary}
-`,
+        content: this.promptManager.getRepairPrompt(request, buildError, projectSummary),
       },
     ]);
   }

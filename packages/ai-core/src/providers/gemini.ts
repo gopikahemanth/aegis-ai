@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 import { env } from "../utils/env.js";
 import { ProviderError } from "./provider-error.js";
-import { providerConfig } from "./config.js";
+import { Models } from "./models.js";
 import type {
   AIProvider,
   ChatMessage,
@@ -39,15 +39,27 @@ export class GeminiProvider implements AIProvider {
           )
           .join("\n\n");
 
-      const response =
-        await this.client.models.generateContent({
-          model:
-  options?.model ??
-  providerConfig.defaultModel,
-          contents: prompt,
-        });
+      let timeoutId: NodeJS.Timeout | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Gemini request timed out")), 90000);
+      });
 
-      return response.text ?? "";
+      try {
+        const response = await Promise.race([
+          this.client.models.generateContent({
+            model:
+              options?.model ??
+              Models.gemini.default,
+            contents: prompt,
+          }),
+          timeoutPromise,
+        ]);
+        if (timeoutId) clearTimeout(timeoutId);
+        return response.text ?? "";
+      } catch (error) {
+        if (timeoutId) clearTimeout(timeoutId);
+        throw error;
+      }
     } catch (error: any) {
       throw new ProviderError(
         error?.message ??

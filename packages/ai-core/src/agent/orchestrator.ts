@@ -16,6 +16,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { PatchEngine } from "../healing/patch-engine.js";
 import { DependencyGraphEngine } from "../dependency/dependency-graph.js";
+import { GitIntegrationEngine } from "../git/git-engine.js";
 import {
   ArchitecturePlanner,
 } from "../architect/index.js";
@@ -210,6 +211,15 @@ export class Orchestrator {
 
     if (existingMem && existingMem.projectName) {
       console.log(`[Memory] Loaded existing project memory checkpoints for "${existingMem.projectName}".`);
+    }
+
+    // Initialize Git and checkout feature branch
+    const gitEngine = new GitIntegrationEngine();
+    try {
+      gitEngine.initRepository(outputDirectory);
+      gitEngine.createFeatureBranch(outputDirectory, request);
+    } catch (gitErr: any) {
+      console.warn(`[GitEngine] Warning: Git branch initialization failed: ${gitErr.message}`);
     }
 
     this.execution.enter(
@@ -518,6 +528,14 @@ export class Orchestrator {
       console.log("[Memory] Saved execution context, architecture patterns, and metrics to .aegis/ successfully.");
     } catch (memSaveErr: any) {
       console.warn(`[Memory] Warning: Failed to save persistent memory: ${memSaveErr.message}`);
+    }
+
+    // Commit changes and create PR report template
+    try {
+      gitEngine.commitChanges(outputDirectory, request);
+      gitEngine.generatePullRequestTemplate(outputDirectory, request, files.length + deployFiles.length);
+    } catch (gitErr: any) {
+      console.warn(`[GitEngine] Warning: Git commit operations failed: ${gitErr.message}`);
     }
 
     this.execution.complete();

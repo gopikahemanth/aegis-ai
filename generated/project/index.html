@@ -3,301 +3,411 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alex Morgan | Senior Software Engineer & Architect</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-              900: '#312e81',
-            }
-          }
-        }
-      }
-    }
-  </script>
+  <title>Alex Morgan | Principal Software Engineer & Architect</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-slate-950 text-slate-100 antialiased selection:bg-brand-500 selection:text-white min-h-screen flex flex-col">
+<body class="bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white min-h-screen flex flex-col">
 
-  <!-- Navigation -->
-  <header class="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-      <a href="#hero" class="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent flex items-center gap-2">
-        <i class="fa-solid fa-terminal text-indigo-500"></i> Alex.Morgan
+  <!-- Background Glow Effects -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    <div class="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl"></div>
+    <div class="absolute top-1/3 -right-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-40 left-1/3 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl"></div>
+  </div>
+
+  <!-- Navbar -->
+  <header class="sticky top-0 z-50 backdrop-blur-xl bg-slate-950/80 border-b border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <a href="#home" class="text-xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-mono text-sm">&lt;AM&gt;</span>
+        Alex Morgan
       </a>
-      <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-        <a href="#about" class="hover:text-indigo-400 transition-colors">About</a>
-        <a href="#skills" class="hover:text-indigo-400 transition-colors">Skills</a>
-        <a href="#projects" class="hover:text-indigo-400 transition-colors">Projects</a>
-        <a href="#experience" class="hover:text-indigo-400 transition-colors">Experience</a>
-        <a href="#contact" class="hover:text-indigo-400 transition-colors">Contact</a>
+
+      <!-- Desktop Nav -->
+      <nav class="hidden md:flex items-center gap-8">
+        <a href="#about" class="text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors">About</a>
+        <a href="#skills" class="text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors">Skills</a>
+        <a href="#projects" class="text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors">Projects</a>
+        <a href="#experience" class="text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors">Experience</a>
+        <a href="#contact" class="text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors">Contact</a>
       </nav>
-      <div class="flex items-center gap-4">
-        <a href="#contact" class="hidden sm:inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20 active:scale-95">
+
+      <div class="hidden md:flex items-center gap-4">
+        <a href="#contact" class="px-5 py-2.5 rounded-xl font-medium text-sm bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25 transition-all transform hover:-translate-y-0.5">
           Let's Talk
         </a>
-        <button id="mobile-menu-btn" aria-label="Toggle Menu" class="md:hidden p-2.5 text-slate-400 hover:text-white rounded-lg bg-slate-900 border border-slate-800">
-          <i class="fa-solid fa-bars text-lg"></i>
-        </button>
       </div>
+
+      <!-- Mobile Menu Button -->
+      <button id="mobile-menu-btn" class="md:hidden text-slate-300 hover:text-white p-2 focus:outline-none" aria-label="Toggle Menu">
+        <i class="fa-solid fa-bars text-xl"></i>
+      </button>
     </div>
-    <!-- Mobile Menu -->
-    <div id="mobile-menu" class="hidden md:hidden bg-slate-900 border-b border-slate-800 px-6 py-6 space-y-4">
-      <a href="#about" class="block text-base font-medium text-slate-300 hover:text-indigo-400">About</a>
-      <a href="#skills" class="block text-base font-medium text-slate-300 hover:text-indigo-400">Skills</a>
-      <a href="#projects" class="block text-base font-medium text-slate-300 hover:text-indigo-400">Projects</a>
-      <a href="#experience" class="block text-base font-medium text-slate-300 hover:text-indigo-400">Experience</a>
-      <a href="#contact" class="block text-base font-medium text-slate-300 hover:text-indigo-400">Contact</a>
+
+    <!-- Mobile Dropdown Menu -->
+    <div id="mobile-menu" class="hidden md:hidden bg-slate-900/95 backdrop-blur-2xl border-b border-slate-800 px-6 py-6 space-y-4">
+      <a href="#about" class="block text-slate-300 hover:text-indigo-400 font-medium py-1">About</a>
+      <a href="#skills" class="block text-slate-300 hover:text-indigo-400 font-medium py-1">Skills</a>
+      <a href="#projects" class="block text-slate-300 hover:text-indigo-400 font-medium py-1">Projects</a>
+      <a href="#experience" class="block text-slate-300 hover:text-indigo-400 font-medium py-1">Experience</a>
+      <a href="#contact" class="block text-slate-300 hover:text-indigo-400 font-medium py-1">Contact</a>
+      <div class="pt-4 border-t border-slate-800">
+        <a href="#contact" class="block text-center w-full py-3 rounded-xl font-medium bg-indigo-600 text-white">Let's Talk</a>
+      </div>
     </div>
   </header>
 
-  <main class="flex-grow pt-20">
+  <!-- Main Content Wrapper -->
+  <main class="flex-grow relative z-10">
+
     <!-- Hero Section -->
-    <section id="hero" class="relative min-h-[calc(100vh-5rem)] flex items-center justify-center px-4 overflow-hidden">
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.15)_0,transparent_70%)] pointer-events-none"></div>
-      <div class="max-w-5xl mx-auto text-center relative z-10 space-y-8 py-16">
-        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-800 text-indigo-400 text-sm font-medium shadow-xl">
-          <span class="relative flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-          </span>
-          Available for Senior Engineering & Architectural Roles
+    <section id="home" class="min-h-[calc(100vh-5rem)] flex items-center justify-center py-20 px-6">
+      <div class="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        <div class="lg:col-span-7 space-y-8">
+          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-medium">
+            <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+            Available for Senior Engineering Roles & Consulting
+          </div>
+
+          <div class="space-y-4">
+            <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1]">
+              Architecting <span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Digital Excellence</span>
+            </h1>
+            <p class="text-lg sm:text-xl text-slate-400 max-w-2xl font-normal leading-relaxed">
+              I'm Alex Morgan, a Principal Software Engineer specializing in resilient backend architectures, high-performance distributed systems, and modern immersive frontend experiences.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-4 pt-2">
+            <a href="#projects" class="px-8 py-4 rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/30 transition-all transform hover:-translate-y-0.5 flex items-center gap-3">
+              <span>Explore Projects</span>
+              <i class="fa-solid fa-arrow-right text-sm"></i>
+            </a>
+            <a href="#contact" class="px-8 py-4 rounded-xl font-semibold bg-slate-900/60 backdrop-blur-xl border border-slate-800 hover:border-slate-700 text-slate-200 transition-all transform hover:-translate-y-0.5">
+              Get in Touch
+            </a>
+          </div>
+
+          <div class="grid grid-cols-3 gap-6 pt-8 border-t border-slate-800/80 max-w-lg">
+            <div>
+              <div class="text-3xl font-extrabold text-white font-mono">8+</div>
+              <div class="text-sm text-slate-400 mt-1">Years Experience</div>
+            </div>
+            <div>
+              <div class="text-3xl font-extrabold text-white font-mono">40+</div>
+              <div class="text-sm text-slate-400 mt-1">Projects Shipped</div>
+            </div>
+            <div>
+              <div class="text-3xl font-extrabold text-white font-mono">99.9%</div>
+              <div class="text-sm text-slate-400 mt-1">Uptime Track Record</div>
+            </div>
+          </div>
         </div>
-        <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-tight">
-          Crafting Scalable Systems & <span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Immersive Digital Experiences</span>
-        </h1>
-        <p class="max-w-2xl mx-auto text-lg sm:text-xl text-slate-400 font-normal leading-relaxed">
-          Senior Software Engineer specializing in distributed cloud architectures, robust backend systems, and high-performance frontend applications.
-        </p>
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <a href="#projects" class="w-full sm:w-auto px-8 py-4 text-base font-semibold text-white bg-indigo-600 rounded-2xl hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2">
-            Explore Work <i class="fa-solid fa-arrow-right text-sm"></i>
-          </a>
-          <a href="#contact" class="w-full sm:w-auto px-8 py-4 text-base font-semibold text-slate-300 bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2">
-            Get in Touch
-          </a>
-        </div>
-        <div class="flex items-center justify-center gap-6 pt-8 text-slate-400 text-xl">
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-400 transition-colors p-2 bg-slate-900/60 rounded-xl border border-slate-800"><i class="fa-brands fa-github"></i></a>
-          <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-400 transition-colors p-2 bg-slate-900/60 rounded-xl border border-slate-800"><i class="fa-brands fa-linkedin"></i></a>
-          <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-400 transition-colors p-2 bg-slate-900/60 rounded-xl border border-slate-800"><i class="fa-brands fa-twitter"></i></a>
-          <a href="mailto:alex.morgan.dev@example.com" class="hover:text-indigo-400 transition-colors p-2 bg-slate-900/60 rounded-xl border border-slate-800"><i class="fa-solid fa-envelope"></i></a>
+
+        <div class="lg:col-span-5 flex justify-center">
+          <div class="relative w-full max-w-md">
+            <!-- Decorative gradient border frame -->
+            <div class="absolute -inset-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl blur-xl opacity-50 animate-pulse"></div>
+            
+            <div class="relative bg-slate-900/85 backdrop-blur-2xl border border-slate-800/80 rounded-3xl p-8 shadow-2xl shadow-indigo-500/10 space-y-6">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div class="flex items-center gap-2">
+                  <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                  <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                  <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                </div>
+                <span class="text-xs font-mono text-slate-400">alex-morgan.ts</span>
+              </div>
+
+              <div class="space-y-3 font-mono text-xs sm:text-sm text-slate-300">
+                <p><span class="text-purple-400">const</span> <span class="text-blue-400">engineer</span> = {</p>
+                <p class="pl-4">name: <span class="text-emerald-300">'Alex Morgan'</span>,</p>
+                <p class="pl-4">role: <span class="text-emerald-300">'Principal Coder'</span>,</p>
+                <p class="pl-4">stack: [<span class="text-emerald-300">'TypeScript'</span>, <span class="text-emerald-300">'React'</span>, <span class="text-emerald-300">'Node.js'</span>, <span class="text-emerald-300">'Go'</span>, <span class="text-emerald-300">'AWS'</span>],</p>
+                <p class="pl-4">focus: <span class="text-emerald-300">'Clean Architecture & SOLID'</span>,</p>
+                <p class="pl-4">status: <span class="text-emerald-300">'Building scalable systems'</span></p>
+                <p class="p-0">};</p>
+              </div>
+
+              <div class="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-terminal text-indigo-400"></i> Production Ready</span>
+                <span class="text-indigo-400 font-mono">v2.5.0</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- About Section -->
-    <section id="about" class="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-        <div class="lg:col-span-5">
-          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
-            <div class="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div class="aspect-square rounded-2xl bg-slate-800 overflow-hidden relative mb-6 border border-slate-700/50 flex items-center justify-center text-slate-600">
-              <i class="fa-solid fa-code text-7xl text-slate-700"></i>
-            </div>
-            <div class="space-y-2">
-              <h3 class="text-xl font-bold text-white">Alex Morgan</h3>
-              <p class="text-sm text-indigo-400 font-medium">Principal Software Engineer</p>
-              <p class="text-sm text-slate-400 pt-2">Based in San Francisco, CA. Building software that scales gracefully and delights users.</p>
-            </div>
+    <section id="about" class="py-28 px-6 border-t border-slate-900">
+      <div class="max-w-7xl mx-auto space-y-16">
+        <div class="max-w-3xl space-y-4">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-mono uppercase tracking-wider">
+            System Overview
           </div>
-        </div>
-        <div class="lg:col-span-7 space-y-6">
-          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
-            About Me
-          </div>
-          <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-            Architecting high-performance web applications with clean, maintainable code.
+          <h2 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+            Engineering robust solutions with obsessive attention to detail.
           </h2>
-          <p class="text-slate-300 text-base leading-relaxed">
-            With over 8 years of professional software engineering experience, I specialize in designing and delivering enterprise-grade cloud solutions. My core philosophy centers around SOLID principles, rigorous automated testing, and developer experience optimization.
+          <p class="text-slate-400 text-lg leading-relaxed">
+            I bridge the gap between complex low-level infrastructure and clean, intuitive user interfaces. My methodology centers around Domain-Driven Design, strict type safety, and uncompromising performance standards.
           </p>
-          <p class="text-slate-400 text-base leading-relaxed">
-            Whether mentoring engineering teams, optimizing database query execution plans, or building fluid user interfaces with React and TypeScript, I am dedicated to bridging business requirements with elite technical execution.
-          </p>
-          <div class="grid grid-cols-3 gap-6 pt-6 border-t border-slate-800/80">
-            <div>
-              <div class="text-3xl font-extrabold text-white">8+</div>
-              <div class="text-sm text-slate-400 mt-1">Years Experience</div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-8 shadow-2xl shadow-indigo-500/10 space-y-4 group hover:border-indigo-500/50 transition-all">
+            <div class="w-14 h-14 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-2xl group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-cubes"></i>
             </div>
-            <div>
-              <div class="text-3xl font-extrabold text-white">40+</div>
-              <div class="text-sm text-slate-400 mt-1">Projects Shipped</div>
+            <h3 class="text-xl font-bold text-white">Clean Architecture</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">
+              Strict separation of concerns. Implementing Repository Patterns, Dependency Injection, and SOLID principles across full-stack applications.
+            </p>
+          </div>
+
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-8 shadow-2xl shadow-indigo-500/10 space-y-4 group hover:border-purple-500/50 transition-all">
+            <div class="w-14 h-14 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 text-2xl group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-gauge-high"></i>
             </div>
-            <div>
-              <div class="text-3xl font-extrabold text-white">99.9%</div>
-              <div class="text-sm text-slate-400 mt-1">System Uptime</div>
+            <h3 class="text-xl font-bold text-white">High Performance</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">
+              Optimized rendering loops, efficient database indexing, caching layers, and minimal bundle footprints for instantaneous load speeds.
+            </p>
+          </div>
+
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-8 shadow-2xl shadow-indigo-500/10 space-y-4 group hover:border-pink-500/50 transition-all">
+            <div class="w-14 h-14 rounded-xl bg-pink-600/20 border border-pink-500/30 flex items-center justify-center text-pink-400 text-2xl group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-shield-halved"></i>
             </div>
+            <h3 class="text-xl font-bold text-white">Security & Reliability</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">
+              Zero-trust architecture, robust input validation, automated end-to-end testing suites, and seamless CI/CD delivery pipelines.
+            </p>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Skills Section -->
-    <section id="skills" class="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      <div class="text-center max-w-3xl mx-auto space-y-4 mb-16">
-        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
-          Technical Expertise
+    <section id="skills" class="py-28 px-6 border-t border-slate-900">
+      <div class="max-w-7xl mx-auto space-y-16">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div class="max-w-2xl space-y-4">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-mono uppercase tracking-wider">
+              Technical Arsenal
+            </div>
+            <h2 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+              Core Competencies & Stack
+            </h2>
+          </div>
+          <p class="text-slate-400 max-w-md text-sm">
+            A comprehensive overview of the frameworks, languages, and tools I leverage daily in enterprise production environments.
+          </p>
         </div>
-        <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Core Competencies & Stack</h2>
-        <p class="text-slate-400 text-base">A comprehensive overview of the modern tools and technologies I utilize daily.</p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <!-- Skill Card 1 -->
-        <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-xl space-y-4 hover:border-indigo-500/50 transition-colors">
-          <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-xl">
-            <i class="fa-solid fa-code"></i>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <!-- Frontend -->
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-2xl shadow-indigo-500/10 space-y-6">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                <i class="fa-solid fa-code"></i>
+              </div>
+              <h3 class="font-bold text-white text-lg">Frontend</h3>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">React / Next.js</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">TypeScript</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">Tailwind CSS</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">Vite / Webpack</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">Redux Toolkit</span>
+            </div>
           </div>
-          <h3 class="text-lg font-bold text-white">Frontend Development</h3>
-          <p class="text-sm text-slate-400">Building responsive, accessible, and performant user interfaces.</p>
-          <div class="flex flex-wrap gap-2 pt-2">
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">React / Next.js</span>
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">TypeScript</span>
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">Tailwind CSS</span>
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">Vite</span>
+
+          <!-- Backend -->
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-2xl shadow-indigo-500/10 space-y-6">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <i class="fa-solid fa-server"></i>
+              </div>
+              <h3 class="font-bold text-white text-lg">Backend</h3>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">Node.js / Express</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">Go (Golang)</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">GraphQL / REST</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">Microservices</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">WebSockets</span>
+            </div>
           </div>
-        </div>
-        <!-- Skill Card 2 -->
-        <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-xl space-y-4 hover:border-indigo-500/50 transition-colors">
-          <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-xl">
-            <i class="fa-solid fa-server"></i>
+
+          <!-- Database & Cloud -->
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-2xl shadow-indigo-500/10 space-y-6">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                <i class="fa-solid fa-database"></i>
+              </div>
+              <h3 class="font-bold text-white text-lg">Data & Cloud</h3>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">PostgreSQL</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">Redis / Caching</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">AWS (S3, ECS, Lambda)</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">Docker & K8s</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">MongoDB</span>
+            </div>
           </div>
-          <h3 class="text-lg font-bold text-white">Backend Engineering</h3>
-          <p class="text-sm text-slate-400">Designing resilient REST & GraphQL APIs and microservices.</p>
-          <div class="flex flex-wrap gap-2 pt-2">
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">Node.js / Express</span>
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">Python / FastAPI</span>
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">Go</span>
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">GraphQL</span>
-          </div>
-        </div>
-        <!-- Skill Card 3 -->
-        <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-xl space-y-4 hover:border-indigo-500/50 transition-colors">
-          <div class="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 text-xl">
-            <i class="fa-solid fa-database"></i>
-          </div>
-          <h3 class="text-lg font-bold text-white">Databases & Storage</h3>
-          <p class="text-sm text-slate-400">Optimizing relational data stores and high-throughput caching.</p>
-          <div class="flex flex-wrap gap-2 pt-2">
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">PostgreSQL</span>
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">MongoDB</span>
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">Redis</span>
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">Prisma</span>
-          </div>
-        </div>
-        <!-- Skill Card 4 -->
-        <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-xl space-y-4 hover:border-indigo-500/50 transition-colors">
-          <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl">
-            <i class="fa-solid fa-cloud"></i>
-          </div>
-          <h3 class="text-lg font-bold text-white">DevOps & Cloud</h3>
-          <p class="text-sm text-slate-400">Automating deployments, CI/CD pipelines, and cloud infrastructure.</p>
-          <div class="flex flex-wrap gap-2 pt-2">
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">AWS / GCP</span>
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">Docker</span>
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">Kubernetes</span>
-            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/50">GitHub Actions</span>
+
+          <!-- Architecture & Tools -->
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-2xl shadow-indigo-500/10 space-y-6">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+              </div>
+              <h3 class="font-bold text-white text-lg">Engineering</h3>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">Clean Architecture</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">TDD / Jest / Vitest</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">CI/CD Pipelines</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">Git / GitHub Actions</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono">System Design</span>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Projects Section -->
-    <section id="projects" class="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      <div class="text-center max-w-3xl mx-auto space-y-4 mb-16">
-        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
-          Featured Work
+    <section id="projects" class="py-28 px-6 border-t border-slate-900">
+      <div class="max-w-7xl mx-auto space-y-16">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div class="max-w-2xl space-y-4">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-mono uppercase tracking-wider">
+              Featured Work
+            </div>
+            <h2 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+              Production Projects
+            </h2>
+          </div>
+          <p class="text-slate-400 max-w-md text-sm">
+            Selected applications and distributed systems built for scale, performance, and exceptional user experience.
+          </p>
         </div>
-        <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Recent Projects & Systems</h2>
-        <p class="text-slate-400 text-base">Selected engineering solutions engineered for enterprise scale and performance.</p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <!-- Project 1 -->
-        <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl flex flex-col group hover:border-indigo-500/50 transition-all">
-          <div class="h-48 bg-slate-800/80 border-b border-slate-800 relative overflow-hidden flex items-center justify-center text-slate-600">
-            <i class="fa-solid fa-chart-line text-5xl text-slate-700 group-hover:scale-110 transition-transform duration-300"></i>
-          </div>
-          <div class="p-6 flex-grow flex flex-col justify-between space-y-4">
-            <div class="space-y-3">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <!-- Project 1 -->
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl shadow-indigo-500/10 flex flex-col justify-between group hover:border-indigo-500/50 transition-all">
+            <div class="p-8 space-y-6">
               <div class="flex items-center justify-between">
-                <h3 class="text-xl font-bold text-white">CloudPulse APM</h3>
-                <span class="px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-semibold border border-indigo-500/20">SaaS</span>
+                <div class="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-xl">
+                  <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <div class="flex items-center gap-3">
+                  <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-white transition-colors" aria-label="GitHub Repository">
+                    <i class="fa-brands fa-github text-lg"></i>
+                  </a>
+                  <a href="https://example.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-white transition-colors" aria-label="Live Demo">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-lg"></i>
+                  </a>
+                </div>
               </div>
-              <p class="text-sm text-slate-400">Real-time application performance monitoring platform handling over 100k requests/min with sub-millisecond query indexing.</p>
+
+              <div class="space-y-2">
+                <h3 class="text-xl font-bold text-white group-hover:text-indigo-400 transition-colors">Nexus Analytics Engine</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                  Real-time data streaming dashboard handling over 50,000 events per second with sub-millisecond query latencies.
+                </p>
+              </div>
+
+              <div class="flex flex-wrap gap-2 pt-2">
+                <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono">React</span>
+                <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono">TypeScript</span>
+                <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono">Go</span>
+                <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono">WebSockets</span>
+              </div>
             </div>
-            <div class="space-y-4 pt-4 border-t border-slate-800/80">
-              <div class="flex flex-wrap gap-1.5">
-                <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">React</span>
-                <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">Node.js</span>
-                <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">TimescaleDB</span>
-              </div>
-              <div class="flex items-center gap-4 text-sm font-semibold">
-                <a href="#" class="text-indigo-400 hover:text-indigo-300 flex items-center gap-1">Live Demo <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i></a>
-                <a href="#" class="text-slate-400 hover:text-white flex items-center gap-1">GitHub <i class="fa-brands fa-github text-xs"></i></a>
-              </div>
+            <div class="px-8 py-4 bg-slate-950/40 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 font-mono">
+              <span>Enterprise Scale</span>
+              <span class="text-indigo-400">Active Production</span>
             </div>
           </div>
-        </div>
-        <!-- Project 2 -->
-        <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl flex flex-col group hover:border-indigo-500/50 transition-all">
-          <div class="h-48 bg-slate-800/80 border-b border-slate-800 relative overflow-hidden flex items-center justify-center text-slate-600">
-            <i class="fa-solid fa-shield-halved text-5xl text-slate-700 group-hover:scale-110 transition-transform duration-300"></i>
-          </div>
-          <div class="p-6 flex-grow flex flex-col justify-between space-y-4">
-            <div class="space-y-3">
+
+          <!-- Project 2 -->
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl shadow-indigo-500/10 flex flex-col justify-between group hover:border-purple-500/50 transition-all">
+            <div class="p-8 space-y-6">
               <div class="flex items-center justify-between">
-                <h3 class="text-xl font-bold text-white">AuthGuard Enterprise</h3>
-                <span class="px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 text-xs font-semibold border border-purple-500/20">Security</span>
+                <div class="w-12 h-12 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 text-xl">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                </div>
+                <div class="flex items-center gap-3">
+                  <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-white transition-colors" aria-label="GitHub Repository">
+                    <i class="fa-brands fa-github text-lg"></i>
+                  </a>
+                  <a href="https://example.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-white transition-colors" aria-label="Live Demo">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-lg"></i>
+                  </a>
+                </div>
               </div>
-              <p class="text-sm text-slate-400">Zero-trust identity management and authorization gateway featuring multi-factor authentication, RBAC, and OIDC compliance.</p>
+
+              <div class="space-y-2">
+                <h3 class="text-xl font-bold text-white group-hover:text-purple-400 transition-colors">Aegis Cloud Gateway</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                  Distributed API gateway with zero-trust authentication, rate-limiting, and automated SSL certificate provisioning.
+                </p>
+              </div>
+
+              <div class="flex flex-wrap gap-2 pt-2">
+                <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono">Node.js</span>
+                <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono">Redis</span>
+                <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono">Docker</span>
+                <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono">AWS ECS</span>
+              </div>
             </div>
-            <div class="space-y-4 pt-4 border-t border-slate-800/80">
-              <div class="flex flex-wrap gap-1.5">
-                <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">Go</span>
-                <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">Redis</span>
-                <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">Docker</span>
-              </div>
-              <div class="flex items-center gap-4 text-sm font-semibold">
-                <a href="#" class="text-indigo-400 hover:text-indigo-300 flex items-center gap-1">Live Demo <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i></a>
-                <a href="#" class="text-slate-400 hover:text-white flex items-center gap-1">GitHub <i class="fa-brands fa-github text-xs"></i></a>
-              </div>
+            <div class="px-8 py-4 bg-slate-950/40 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 font-mono">
+              <span>Security First</span>
+              <span class="text-purple-400">Open Source</span>
             </div>
           </div>
-        </div>
-        <!-- Project 3 -->
-        <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl flex flex-col group hover:border-indigo-500/50 transition-all">
-          <div class="h-48 bg-slate-800/80 border-b border-slate-800 relative overflow-hidden flex items-center justify-center text-slate-600">
-            <i class="fa-solid fa-cubes text-5xl text-slate-700 group-hover:scale-110 transition-transform duration-300"></i>
-          </div>
-          <div class="p-6 flex-grow flex flex-col justify-between space-y-4">
-            <div class="space-y-3">
+
+          <!-- Project 3 -->
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl shadow-indigo-500/10 flex flex-col justify-between group hover:border-pink-500/50 transition-all">
+            <div class="p-8 space-y-6">
               <div class="flex items-center justify-between">
-                <h3 class="text-xl font-bold text-white">OmniStore DB</h3>
-                <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">Distributed</span>
+                <div class="w-12 h-12 rounded-xl bg-pink-600/20 border border-pink-500/30 flex items-center justify-center text-pink-400 text-xl">
+                  <i class="fa-solid fa-terminal"></i>
+                </div>
+                <div class="flex items-center gap-3">
+                  <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-white transition-colors" aria-label="GitHub Repository">
+                    <i class="fa-brands fa-github text-lg"></i>
+                  </a>
+                  <a href="https://example.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-white transition-colors" aria-label="Live Demo">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-lg"></i>
+                  </a>
+                </div>
               </div>
-              <p class="text-sm text-slate-400">Distributed document key-value storage engine engineered with consensus replication and consistent hashing algorithms.</p>
+
+              <div class="space-y-2">
+                <h3 class="text-xl font-bold text-white group-hover:text-pink-400 transition-colors">Vortex UI Design System</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                  Accessible, highly customizable component library with comprehensive documentation and built-in Tailwind support.
+                </p>
+              </div>
+
+              <div class="flex flex-wrap gap-2 pt-2">
+                <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono">React</span>
+                <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono">Tailwind CSS</span>
+                <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono">Storybook</span>
+                <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono">Radix UI</span>
+              </div>
             </div>
-            <div class="space-y-4 pt-4 border-t border-slate-800/80">
-              <div class="flex flex-wrap gap-1.5">
-                <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">Rust</span>
-                <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">gRPC</span>
-                <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">RAFT</span>
-              </div>
-              <div class="flex items-center gap-4 text-sm font-semibold">
-                <a href="#" class="text-indigo-400 hover:text-indigo-300 flex items-center gap-1">Live Demo <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i></a>
-                <a href="#" class="text-slate-400 hover:text-white flex items-center gap-1">GitHub <i class="fa-brands fa-github text-xs"></i></a>
-              </div>
+            <div class="px-8 py-4 bg-slate-950/40 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 font-mono">
+              <span>Design System</span>
+              <span class="text-pink-400">v1.8.4</span>
             </div>
           </div>
         </div>
@@ -305,60 +415,57 @@
     </section>
 
     <!-- Experience Timeline -->
-    <section id="experience" class="py-24 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
-      <div class="text-center max-w-3xl mx-auto space-y-4 mb-16">
-        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
-          Career Path
-        </div>
-        <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Professional Experience</h2>
-        <p class="text-slate-400 text-base">A timeline of leadership and engineering impact across premier tech organizations.</p>
-      </div>
-      <div class="space-y-8 relative before:absolute before:inset-0 before:left-7 before:w-0.5 before:bg-slate-800">
-        <!-- Item 1 -->
-        <div class="relative flex items-start gap-6 group">
-          <div class="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-indigo-400 text-xl font-bold z-10 shrink-0 shadow-xl group-hover:border-indigo-500 transition-colors">
-            <i class="fa-solid fa-briefcase"></i>
+    <section id="experience" class="py-28 px-6 border-t border-slate-900">
+      <div class="max-w-7xl mx-auto space-y-16">
+        <div class="max-w-3xl space-y-4">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-mono uppercase tracking-wider">
+            Career Journey
           </div>
-          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-xl flex-grow space-y-3">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-              <h3 class="text-lg font-bold text-white">Principal Software Engineer</h3>
-              <span class="text-xs font-semibold text-indigo-400 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 w-fit">2022 - Present</span>
+          <h2 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+            Professional Experience
+          </h2>
+        </div>
+
+        <div class="space-y-8 max-w-4xl">
+          <!-- Item 1 -->
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-8 shadow-2xl shadow-indigo-500/10 space-y-4 relative">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 class="text-xl font-bold text-white">Principal Software Engineer</h3>
+                <p class="text-indigo-400 font-medium">Vanguard Systems Inc.</p>
+              </div>
+              <span class="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-mono self-start">2022 - Present</span>
             </div>
-            <div class="text-sm font-medium text-slate-300">Apex Cloud Systems • San Francisco, CA</div>
-            <p class="text-sm text-slate-400 leading-relaxed">
-              Lead cloud architecture initiatives across core distributed services. Reduced infrastructure operating expenditure by 34% through containerization and serverless orchestration migration. Mentored 15+ engineers.
+            <p class="text-slate-400 text-sm leading-relaxed">
+              Leading architectural decisions across core cloud services. Spearheaded migration from monolithic services to event-driven microservices, reducing cloud infrastructure expenditure by 35% while doubling peak throughput capacity.
             </p>
           </div>
-        </div>
-        <!-- Item 2 -->
-        <div class="relative flex items-start gap-6 group">
-          <div class="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-indigo-400 text-xl font-bold z-10 shrink-0 shadow-xl group-hover:border-indigo-500 transition-colors">
-            <i class="fa-solid fa-laptop-code"></i>
-          </div>
-          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-xl flex-grow space-y-3">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-              <h3 class="text-lg font-bold text-white">Senior Full Stack Engineer</h3>
-              <span class="text-xs font-semibold text-indigo-400 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 w-fit">2019 - 2022</span>
+
+          <!-- Item 2 -->
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-8 shadow-2xl shadow-indigo-500/10 space-y-4 relative">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 class="text-xl font-bold text-white">Senior Full-Stack Engineer</h3>
+                <p class="text-purple-400 font-medium">Hyperion Digital Labs</p>
+              </div>
+              <span class="px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-mono self-start">2019 - 2022</span>
             </div>
-            <div class="text-sm font-medium text-slate-300">Vortex Technologies • Seattle, WA</div>
-            <p class="text-sm text-slate-400 leading-relaxed">
-              Spearheaded frontend re-architecture using React and TypeScript, boosting core web vitals performance scores by 45%. Designed high-throughput microservices handling real-time data ingestion pipelines.
+            <p class="text-slate-400 text-sm leading-relaxed">
+              Engineered high-concurrency web applications using React, TypeScript, and Node.js. Mentored engineering teams in clean code practices, automated testing, and CI/CD pipeline optimization.
             </p>
           </div>
-        </div>
-        <!-- Item 3 -->
-        <div class="relative flex items-start gap-6 group">
-          <div class="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-indigo-400 text-xl font-bold z-10 shrink-0 shadow-xl group-hover:border-indigo-500 transition-colors">
-            <i class="fa-solid fa-code"></i>
-          </div>
-          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-xl flex-grow space-y-3">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-              <h3 class="text-lg font-bold text-white">Software Engineer</h3>
-              <span class="text-xs font-semibold text-indigo-400 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 w-fit">2016 - 2019</span>
+
+          <!-- Item 3 -->
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-8 shadow-2xl shadow-indigo-500/10 space-y-4 relative">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 class="text-xl font-bold text-white">Software Engineer</h3>
+                <p class="text-pink-400 font-medium">Apex Interactive</p>
+              </div>
+              <span class="px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-400 text-xs font-mono self-start">2016 - 2019</span>
             </div>
-            <div class="text-sm font-medium text-slate-300">Nexus Digital • Austin, TX</div>
-            <p class="text-sm text-slate-400 leading-relaxed">
-              Developed and maintained RESTful APIs and modern responsive web apps. Implemented automated end-to-end testing protocols that lowered production bug incidents by 60%.
+            <p class="text-slate-400 text-sm leading-relaxed">
+              Developed responsive client-facing web portals and RESTful backend APIs. Collaborated closely with UI/UX designers to deliver pixel-perfect, accessible interactive interfaces.
             </p>
           </div>
         </div>
@@ -366,63 +473,72 @@
     </section>
 
     <!-- Contact Section -->
-    <section id="contact" class="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden">
-        <div class="absolute -right-20 -bottom-20 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 relative z-10">
-          <div class="lg:col-span-5 space-y-6">
-            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
-              Get in Touch
-            </div>
-            <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Let's build something extraordinary together.</h2>
-            <p class="text-slate-400 text-base leading-relaxed">
-              Have an exciting project in mind, an architectural consulting inquiry, or a senior engineering role? Drop me a message and I'll respond within 24 hours.
-            </p>
-            <div class="space-y-4 pt-4">
-              <div class="flex items-center gap-4 text-slate-300">
-                <div class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700/50 flex items-center justify-center text-indigo-400 text-lg">
-                  <i class="fa-solid fa-envelope"></i>
-                </div>
-                <div>
-                  <div class="text-xs text-slate-400">Direct Email</div>
-                  <div class="text-sm font-semibold text-white">alex.morgan.dev@example.com</div>
-                </div>
+    <section id="contact" class="py-28 px-6 border-t border-slate-900">
+      <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        <div class="lg:col-span-5 space-y-6">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-mono uppercase tracking-wider">
+            Get in Touch
+          </div>
+          <h2 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+            Let's build something exceptional together.
+          </h2>
+          <p class="text-slate-400 leading-relaxed">
+            Whether you have a project inquiry, a technical consulting request, or want to discuss engineering leadership roles, my inbox is always open.
+          </p>
+
+          <div class="space-y-4 pt-4">
+            <div class="flex items-center gap-4 text-slate-300">
+              <div class="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-indigo-400">
+                <i class="fa-solid fa-envelope"></i>
               </div>
-              <div class="flex items-center gap-4 text-slate-300">
-                <div class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700/50 flex items-center justify-center text-indigo-400 text-lg">
-                  <i class="fa-solid fa-location-dot"></i>
-                </div>
-                <div>
-                  <div class="text-xs text-slate-400">Location</div>
-                  <div class="text-sm font-semibold text-white">San Francisco, CA (Remote Available)</div>
-                </div>
+              <div>
+                <div class="text-xs text-slate-400 font-mono">Email Direct</div>
+                <div class="font-medium text-white">alex.morgan@example.com</div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-4 text-slate-300">
+              <div class="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-purple-400">
+                <i class="fa-solid fa-location-dot"></i>
+              </div>
+              <div>
+                <div class="text-xs text-slate-400 font-mono">Location</div>
+                <div class="font-medium text-white">San Francisco, CA (Remote Friendly)</div>
               </div>
             </div>
           </div>
-          <div class="lg:col-span-7">
+        </div>
+
+        <div class="lg:col-span-7">
+          <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-indigo-500/10">
             <form id="contact-form" class="space-y-6">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div class="space-y-2">
-                  <label for="name" class="block text-sm font-medium text-slate-300">Your Name</label>
-                  <input type="text" id="name" required class="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Jane Doe">
+                  <label for="name" class="block text-xs font-mono text-slate-300 uppercase tracking-wider">Your Name</label>
+                  <input type="text" id="name" required class="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-sm" placeholder="John Doe">
                 </div>
                 <div class="space-y-2">
-                  <label for="email" class="block text-sm font-medium text-slate-300">Email Address</label>
-                  <input type="email" id="email" required class="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="jane@example.com">
+                  <label for="email" class="block text-xs font-mono text-slate-300 uppercase tracking-wider">Your Email</label>
+                  <input type="email" id="email" required class="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-sm" placeholder="john@example.com">
                 </div>
               </div>
+
               <div class="space-y-2">
-                <label for="subject" class="block text-sm font-medium text-slate-300">Subject</label>
-                <input type="text" id="subject" required class="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Project Inquiry / Consulting">
+                <label for="subject" class="block text-xs font-mono text-slate-300 uppercase tracking-wider">Subject</label>
+                <input type="text" id="subject" required class="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-sm" placeholder="Project Inquiry / Consulting">
               </div>
+
               <div class="space-y-2">
-                <label for="message" class="block text-sm font-medium text-slate-300">Message</label>
-                <textarea id="message" rows="5" required class="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors resize-none" placeholder="Tell me about your project scope, timeline, and goals..."></textarea>
+                <label for="message" class="block text-xs font-mono text-slate-300 uppercase tracking-wider">Message</label>
+                <textarea id="message" rows="5" required class="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-sm resize-none" placeholder="Tell me about your project requirements..."></textarea>
               </div>
-              <button type="submit" class="w-full py-4 px-6 text-base font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20 active:scale-[0.99] flex items-center justify-center gap-2">
-                Send Message <i class="fa-solid fa-paper-plane text-sm"></i>
+
+              <button type="submit" class="w-full py-4 rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-3">
+                <span>Send Message</span>
+                <i class="fa-solid fa-paper-plane text-sm"></i>
               </button>
-              <div id="form-success" class="hidden p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium text-center">
+
+              <div id="form-success" class="hidden p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm text-center font-medium">
                 Thank you! Your message has been sent successfully. I will get back to you shortly.
               </div>
             </form>
@@ -433,19 +549,73 @@
   </main>
 
   <!-- Footer -->
-  <footer class="border-t border-slate-800/80 bg-slate-950 py-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-      <div class="flex items-center gap-2 text-slate-400 text-sm font-medium">
-        <i class="fa-solid fa-terminal text-indigo-500"></i> © <span id="current-year"></span> Alex Morgan. All rights reserved.
+  <footer class="border-t border-slate-900 bg-slate-950 py-12 px-6 relative z-10">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-mono text-sm">&lt;AM&gt;</span>
+        <span class="font-bold text-white text-lg">Alex Morgan</span>
       </div>
-      <div class="flex items-center gap-6 text-slate-400 text-lg">
-        <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-400 transition-colors"><i class="fa-brands fa-github"></i></a>
-        <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-400 transition-colors"><i class="fa-brands fa-linkedin"></i></a>
-        <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-400 transition-colors"><i class="fa-brands fa-twitter"></i></a>
+
+      <div class="text-sm text-slate-400">
+        &copy; <span id="current-year"></span> Alex Morgan. All rights reserved. Built with clean architecture.
+      </div>
+
+      <div class="flex items-center gap-4">
+        <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:border-slate-700 transition-colors" aria-label="GitHub">
+          <i class="fa-brands fa-github"></i>
+        </a>
+        <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:border-slate-700 transition-colors" aria-label="LinkedIn">
+          <i class="fa-brands fa-linkedin-in"></i>
+        </a>
+        <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:border-slate-700 transition-colors" aria-label="Twitter">
+          <i class="fa-brands fa-x-twitter"></i>
+        </a>
       </div>
     </div>
   </footer>
 
-  <script src="script.js"></script>
+  <!-- Client-side Interaction Script -->
+  <script>
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+
+    mobileMenuBtn.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+    });
+
+    mobileMenu.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        mobileMenu.classList.add('hidden');
+      });
+    });
+
+    const contactForm = document.getElementById('contact-form');
+    const formSuccess = document.getElementById('form-success');
+
+    contactForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const formData = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        subject: document.getElementById('subject').value,
+        message: document.getElementById('message').value,
+        timestamp: new Date().toISOString()
+      };
+
+      const existingSubmissions = JSON.parse(localStorage.getItem('portfolio_messages') || '[]');
+      existingSubmissions.push(formData);
+      localStorage.setItem('portfolio_messages', JSON.stringify(existingSubmissions));
+
+      contactForm.reset();
+      formSuccess.classList.remove('hidden');
+
+      setTimeout(() => {
+        formSuccess.classList.add('hidden');
+      }, 6000);
+    });
+
+    document.getElementById('current-year').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>

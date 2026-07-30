@@ -16,4 +16,5 @@ export * from "./execution/index.js";
 export * from "./deploy/index.js";
 export * from "./memory/memory-engine.js";
 export * from "./dependency/dependency-graph.js";
+export * from "./git/git-engine.js";
 

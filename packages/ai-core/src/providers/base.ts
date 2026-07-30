@@ -9,6 +9,10 @@ export interface ChatOptions {
   maxTokens?: number;
   agentType?: "planner" | "architect" | "coder" | "reviewer" | "healer";
   complexity?: number;
+  image?: {
+    mimeType: string;
+    data: string;
+  };
 }
 
 export interface AIProvider {

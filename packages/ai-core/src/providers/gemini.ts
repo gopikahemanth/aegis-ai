@@ -45,12 +45,22 @@ export class GeminiProvider implements AIProvider {
       });
 
       try {
+        const contentParts: any[] = [prompt];
+        if (options?.image) {
+          contentParts.push({
+            inlineData: {
+              mimeType: options.image.mimeType,
+              data: options.image.data
+            }
+          });
+        }
+
         const response = await Promise.race([
           this.client.models.generateContent({
             model:
               options?.model ??
               Models.gemini.default,
-            contents: prompt,
+            contents: contentParts,
           }),
           timeoutPromise,
         ]);

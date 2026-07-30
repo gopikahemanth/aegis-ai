@@ -66,10 +66,12 @@ export class TeamCoordinator {
     if (
       lowerName.includes("auth") ||
       lowerName.includes("login") ||
+      lowerName.includes("secure") ||
       lowerName.includes("security") ||
       lowerName.includes("credentials") ||
       lowerName.includes("finance") ||
-      lowerName.includes("money")
+      lowerName.includes("money") ||
+      lowerName.includes("banking")
     ) {
       team.push({
         role: "Security Lead",

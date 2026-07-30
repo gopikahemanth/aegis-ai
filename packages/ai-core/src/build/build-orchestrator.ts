@@ -4,6 +4,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { BuildRunner } from "./build-runner.js";
 import { SandboxVerifier } from "./sandbox-verifier.js";
+import { SecurityGuard } from "../utils/security.js";
 
 const execute = promisify(exec);
 
@@ -40,8 +41,10 @@ export class BuildOrchestrator {
         if (pkg.scripts && pkg.scripts.lint) {
           console.log("Running lint verification...");
           try {
-            await execute("pnpm lint", {
-              cwd: projectPath,
+            const sanitizedCmd = SecurityGuard.sanitizeCommand("pnpm lint");
+            const validatedPath = SecurityGuard.validateSafePath("./generated/project", projectPath);
+            await execute(sanitizedCmd, {
+              cwd: validatedPath,
             });
             console.log("✓ Linting passed.");
           } catch (error: any) {

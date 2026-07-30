@@ -5,6 +5,7 @@ import type { ProjectSpecification } from "./architect/specification.js";
 import { PRGeneratorAgent } from "./agents/pr-generator-agent.js";
 import { DistributedRuntimeEngine } from "./agent/distributed-runtime.js";
 import { AuditTrailEngine } from "./utils/audit-trail.js";
+import { SecurityGuard } from "./utils/security.js";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -99,6 +100,28 @@ export async function runPlatformValidationTests() {
   assert(logs.length > 0, "Audit logs must store and retrieve event records");
   assert(logs.some(l => l.agentRole === "QA Auditor"), "Audit logs must contain QA Auditor signature");
   console.log("    ✓ AuditTrailEngine tests passed.");
+
+  // 7. Test Security Guard Sandboxing and Sanitizations
+  console.log("  • Testing SecurityGuard...");
+  const sanitized = SecurityGuard.sanitizeCommand("pnpm lint; cat /etc/passwd");
+  assert(sanitized === "pnpm lint cat /etc/passwd", "SecurityGuard must strip command metacharacters");
+  
+  let violationThrown = false;
+  try {
+    SecurityGuard.sanitizeCommand("rm -rf /");
+  } catch (err: any) {
+    violationThrown = err.message.includes("Security Violation");
+  }
+  assert(violationThrown, "SecurityGuard must throw exception on non-whitelisted command prefix");
+
+  let traversalThrown = false;
+  try {
+    SecurityGuard.validateSafePath("./generated/project", "./generated/project/../../../etc");
+  } catch (err: any) {
+    traversalThrown = err.message.includes("Security Violation");
+  }
+  assert(traversalThrown, "SecurityGuard must block parent folder path traversals");
+  console.log("    ✓ SecurityGuard tests passed.");
 
   console.log("\n✅ ALL PLATFORM VALIDATION TESTS PASSED SUCCESSFULLY!\n");
 }

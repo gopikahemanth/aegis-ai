@@ -7,6 +7,8 @@ export interface ChatOptions {
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  agentType?: "planner" | "architect" | "coder" | "reviewer" | "healer";
+  complexity?: number;
 }
 
 export interface AIProvider {

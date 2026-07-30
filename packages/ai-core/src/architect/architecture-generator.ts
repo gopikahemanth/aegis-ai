@@ -26,6 +26,6 @@ export class ArchitectureGenerator {
           2,
         ),
       },
-    ]);
+    ], { agentType: "architect" });
   }
 }

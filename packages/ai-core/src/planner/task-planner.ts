@@ -34,7 +34,7 @@ export class TaskPlanner {
             2,
           ),
         },
-      ]);
+      ], { agentType: "planner" });
 
     console.log("========== RAW RESPONSE ==========");
     console.log(response);

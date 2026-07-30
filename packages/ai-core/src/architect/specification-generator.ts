@@ -23,7 +23,7 @@ export class SpecificationGenerator {
           role: "user",
           content: request,
         },
-      ]);
+      ], { agentType: "architect" });
 
 
     const startIdx = response.indexOf("{");

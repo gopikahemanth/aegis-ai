@@ -21,6 +21,25 @@ export class FailoverProvider implements AIProvider {
   ): Promise<string> {
     let lastError: Error | null = null;
 
+    let targetedClassification: "strong" | "balanced" | "fast" | "default" = "default";
+    if (options?.agentType) {
+      const type = options.agentType;
+      const complexity = options.complexity ?? 0;
+      if (type === "planner" || type === "architect" || type === "healer") {
+        targetedClassification = "strong";
+      } else if (type === "reviewer") {
+        targetedClassification = "balanced";
+      } else if (type === "coder") {
+        if (complexity >= 7) {
+          targetedClassification = "strong";
+        } else if (complexity >= 4) {
+          targetedClassification = "balanced";
+        } else {
+          targetedClassification = "fast";
+        }
+      }
+    }
+
     for (const provider of this.providers) {
       let attempts = 0;
       let delay = this.initialDelayMs;
@@ -28,14 +47,36 @@ export class FailoverProvider implements AIProvider {
       while (attempts < this.maxRetries) {
         try {
           let activeOptions = options;
-          if (options?.model) {
-            const requestedModel = options.model;
-            let isCompatible = false;
-            const providerName = provider.name as keyof typeof Models;
+          const providerName = provider.name as keyof typeof Models;
 
-            if (providerName in Models && Models[providerName].default === requestedModel) {
-              isCompatible = true;
-            } else {
+          if (!options?.model && providerName in Models) {
+            const resolvedModel = Models[providerName][targetedClassification] || Models[providerName].default;
+            console.log(
+              `[FailoverProvider] Proactively routed agent "${options?.agentType || "default"}" (complexity: ${options?.complexity ?? "N/A"}) to model "${resolvedModel}" on provider "${provider.name}"`
+            );
+            activeOptions = {
+              ...options,
+              model: resolvedModel
+            };
+          }
+
+          if (activeOptions?.model) {
+            const requestedModel = activeOptions.model;
+            let isCompatible = false;
+
+            if (providerName in Models) {
+              const pConfig = Models[providerName];
+              if (
+                pConfig.default === requestedModel ||
+                pConfig.strong === requestedModel ||
+                pConfig.balanced === requestedModel ||
+                pConfig.fast === requestedModel
+              ) {
+                isCompatible = true;
+              }
+            }
+
+            if (!isCompatible) {
               if (provider.name === "gemini" && requestedModel.toLowerCase().includes("gemini")) {
                 isCompatible = true;
               } else if (provider.name === "groq" && (requestedModel.toLowerCase().includes("llama") || requestedModel.toLowerCase().includes("mixtral"))) {
@@ -54,7 +95,7 @@ export class FailoverProvider implements AIProvider {
                 `[FailoverProvider] Overriding model "${requestedModel}" to default "${Models[providerName].default}" for provider "${provider.name}"`
               );
               activeOptions = {
-                ...options,
+                ...activeOptions,
                 model: Models[providerName].default
               };
             }

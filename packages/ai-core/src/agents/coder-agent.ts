@@ -52,6 +52,10 @@ ${existingContext}
 const response =
   await this.generator.generate(
     prompt,
+    {
+      agentType: "coder",
+      complexity: task.estimatedComplexity,
+    },
   );
 
 const files =

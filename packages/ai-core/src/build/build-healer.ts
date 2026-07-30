@@ -19,6 +19,6 @@ export class BuildHealer {
         role: "system",
         content: this.promptManager.getRepairPrompt(request, buildError, projectSummary),
       },
-    ]);
+    ], { agentType: "healer" });
   }
 }

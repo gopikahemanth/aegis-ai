@@ -26,6 +26,6 @@ export class AIReviewer {
         role: "user",
         content: prompt,
       },
-    ]);
+    ], { agentType: "reviewer" });
   }
 }

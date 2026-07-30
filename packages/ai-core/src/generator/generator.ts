@@ -1,4 +1,4 @@
-import type { AIProvider } from "../providers/base.js";
+import type { AIProvider, ChatOptions } from "../providers/base.js";
 import { PromptManager } from "../prompts/prompt-manager.js";
 
 export class Generator {
@@ -8,7 +8,7 @@ export class Generator {
     private readonly provider: AIProvider,
   ) {}
 
-  async generate(prompt: string) {
+  async generate(prompt: string, options?: ChatOptions) {
     return this.provider.chat([
       {
         role: "system",
@@ -18,6 +18,6 @@ export class Generator {
         role: "user",
         content: prompt,
       },
-    ]);
+    ], options);
   }
 }

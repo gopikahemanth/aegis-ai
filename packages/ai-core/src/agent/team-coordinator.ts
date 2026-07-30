@@ -1,4 +1,7 @@
 import type { ProjectSpecification } from "../architect/specification.js";
+import { existsSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 export interface AgentSpecialist {
   role: string;
@@ -7,7 +10,7 @@ export interface AgentSpecialist {
 }
 
 export class TeamCoordinator {
-  coordinate(specification: ProjectSpecification): AgentSpecialist[] {
+  async coordinate(specification: ProjectSpecification): Promise<AgentSpecialist[]> {
     const team: AgentSpecialist[] = [
       {
         role: "CEO Agent",
@@ -78,6 +81,37 @@ export class TeamCoordinator {
         description: "Audits for dependency vulnerabilities, checks parameter bounds, and configures authorization tokens",
         enlisted: true
       });
+    }
+
+    // Load any custom specialists registered dynamically via extensions (Pillar 5)
+    const pluginsDir = join(process.cwd(), ".aegis", "plugins");
+    if (existsSync(pluginsDir)) {
+      try {
+        const entries = readdirSync(pluginsDir);
+        for (const entry of entries) {
+          if (entry.endsWith(".js") || entry.endsWith(".mjs")) {
+            const fullPath = resolve(pluginsDir, entry);
+            const moduleUrl = pathToFileURL(fullPath).toString();
+            const pluginModule = await import(moduleUrl);
+            const plugin = pluginModule.default || pluginModule;
+            
+            if (plugin && Array.isArray(plugin.specialistAgents)) {
+              for (const agent of plugin.specialistAgents) {
+                if (agent.role && agent.description) {
+                  team.push({
+                    role: agent.role,
+                    description: agent.description,
+                    enlisted: agent.enlisted !== undefined ? agent.enlisted : true
+                  });
+                  console.log(`[Coordinator] Enlisted marketplace agent specialist [${agent.role}] via extension: ${plugin.name || entry}`);
+                }
+              }
+            }
+          }
+        }
+      } catch (err: any) {
+        console.warn(`[Coordinator] Warning: Failed to load specialist extensions: ${err.message}`);
+      }
     }
 
     return team;

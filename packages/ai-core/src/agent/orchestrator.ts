@@ -180,7 +180,7 @@ export class Orchestrator {
     });
 
     const coordinator = new TeamCoordinator();
-    const activeTeam = coordinator.coordinate(specification);
+    const activeTeam = await coordinator.coordinate(specification);
     console.log("\n[Coordinator] Coordinating Dynamic AI Specialist Team for this project:");
     console.table(activeTeam.map(member => ({ Role: member.role, Description: member.description })));
 
@@ -340,7 +340,7 @@ export class Orchestrator {
     });
 
     const coordinator = new TeamCoordinator();
-    const activeTeam = coordinator.coordinate(specification);
+    const activeTeam = await coordinator.coordinate(specification);
     console.log("\n[Coordinator] Coordinating Dynamic AI Specialist Team for this project:");
     console.table(activeTeam.map(member => ({ Role: member.role, Description: member.description })));
 

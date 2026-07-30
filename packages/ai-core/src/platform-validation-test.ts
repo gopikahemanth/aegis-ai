@@ -27,7 +27,7 @@ export async function runPlatformValidationTests() {
     frontend: "react"
   };
   
-  const staticTeam = coordinator.coordinate(staticSpec);
+  const staticTeam = await coordinator.coordinate(staticSpec);
   assert(staticTeam.some(m => m.role === "Frontend Lead"), "Static spec must enlist Frontend Lead");
   assert(!staticTeam.some(m => m.role === "Backend Lead"), "Static spec must not enlist Backend Lead");
 
@@ -40,10 +40,11 @@ export async function runPlatformValidationTests() {
     database: "postgresql"
   };
 
-  const dbTeam = coordinator.coordinate(secureDbSpec);
+  const dbTeam = await coordinator.coordinate(secureDbSpec);
   assert(dbTeam.some(m => m.role === "Backend Lead"), "Backend spec must enlist Backend Lead");
   assert(dbTeam.some(m => m.role === "Database Lead"), "DB spec must enlist Database Lead");
   assert(dbTeam.some(m => m.role === "Security Lead"), "Secure database ledger spec must enlist Security Lead");
+  assert(dbTeam.some(m => m.role === "Localization Lead"), "Plugin extension specialist must enlist Localization Lead");
   console.log("    ✓ TeamCoordinator tests passed.");
 
   // 2. Test DevOps Configurations Generation

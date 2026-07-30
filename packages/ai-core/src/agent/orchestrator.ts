@@ -10,6 +10,7 @@ import {
   VisualReviewerAgent,
   HeuristicsLearningAgent,
   ResearchAssistantAgent,
+  PRGeneratorAgent,
 } from "../agents/index.js";
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
@@ -75,6 +76,8 @@ export class Orchestrator {
 
   private readonly researchAssistantAgent: ResearchAssistantAgent;
 
+  private readonly prGeneratorAgent: PRGeneratorAgent;
+
   private readonly executionLoop = new ExecutionLoop();
 
   private readonly repairCoordinator: RepairCoordinator;
@@ -102,6 +105,9 @@ export class Orchestrator {
 
     this.researchAssistantAgent =
       new ResearchAssistantAgent(provider);
+
+    this.prGeneratorAgent =
+      new PRGeneratorAgent(provider);
 
     this.repairCoordinator =
       new RepairCoordinator(provider);
@@ -631,9 +637,10 @@ export class Orchestrator {
     // Commit changes and create PR report template
     try {
       gitEngine.commitChanges(outputDirectory, request);
-      gitEngine.generatePullRequestTemplate(outputDirectory, request, files.length + deployFiles.length);
+      console.log("[Lifecycle] Running PR Generator & Regression Auditor Agent...");
+      await this.prGeneratorAgent.execute(outputDirectory, request);
     } catch (gitErr: any) {
-      console.warn(`[GitEngine] Warning: Git commit operations failed: ${gitErr.message}`);
+      console.warn(`[GitEngine] Warning: Git commit and PR audit operations failed: ${gitErr.message}`);
     }
 
     this.execution.complete();

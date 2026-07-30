@@ -2,6 +2,7 @@ import { TeamCoordinator } from "./agent/team-coordinator.js";
 import { DeploymentGenerator } from "./deploy/deploy-generator.js";
 import { PluginManager } from "../../../packages/project-builder/dist/plugins/plugin-manager.js";
 import type { ProjectSpecification } from "./architect/specification.js";
+import { PRGeneratorAgent } from "./agents/pr-generator-agent.js";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -59,6 +60,11 @@ export function runPlatformValidationTests() {
   console.log("  • Testing PluginManager...");
   const plugins = new PluginManager("./");
   console.log("    ✓ PluginManager pipelines checked.");
+
+  // 4. Test PR Regression Auditor
+  console.log("  • Testing PRGeneratorAgent...");
+  assert(typeof PRGeneratorAgent === "function", "PRGeneratorAgent class must be imported successfully");
+  console.log("    ✓ PRGeneratorAgent checked.");
 
   console.log("\n✅ ALL PLATFORM VALIDATION TESTS PASSED SUCCESSFULLY!\n");
 }

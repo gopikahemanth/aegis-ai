@@ -19,4 +19,5 @@ export * from "./memory/memory-engine.js";
 export * from "./memory/knowledge-graph.js";
 export * from "./dependency/dependency-graph.js";
 export * from "./git/git-engine.js";
+export * from "./utils/audit-trail.js";
 

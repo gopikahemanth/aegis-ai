@@ -6,6 +6,7 @@ import { analyticsCommand } from "./commands/analytics.js";
 import { auditCommand } from "./commands/audit.js";
 import { benchmarkCommand } from "./commands/benchmark.js";
 import { queryCommand } from "./commands/query.js";
+import { auditTrailCommand } from "./commands/audit-trail.js";
 
 export async function runCLI() {
   const command = process.argv[2];
@@ -22,6 +23,9 @@ export async function runCLI() {
 
     case "audit":
       return auditCommand();
+
+    case "audit-trail":
+      return auditTrailCommand();
 
     case "benchmark":
       return benchmarkCommand();

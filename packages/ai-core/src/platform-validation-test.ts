@@ -4,6 +4,7 @@ import { PluginManager } from "../../../packages/project-builder/dist/plugins/pl
 import type { ProjectSpecification } from "./architect/specification.js";
 import { PRGeneratorAgent } from "./agents/pr-generator-agent.js";
 import { DistributedRuntimeEngine } from "./agent/distributed-runtime.js";
+import { AuditTrailEngine } from "./utils/audit-trail.js";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -84,6 +85,19 @@ export async function runPlatformValidationTests() {
   assert(workerExecuted, "Registered worker callback must execute");
   assert(finishedJob !== undefined && finishedJob.status === "completed", "Job status must compile as completed");
   console.log("    ✓ DistributedRuntimeEngine tests passed.");
+
+  // 6. Test Enterprise Compliance Audit Trail
+  console.log("  • Testing AuditTrailEngine...");
+  const audit = new AuditTrailEngine("./generated/project");
+  audit.logEvent({
+    agentRole: "QA Auditor",
+    action: "Run automated capabilities verification checks",
+    status: "SUCCESS"
+  });
+  const logs = audit.getLogs();
+  assert(logs.length > 0, "Audit logs must store and retrieve event records");
+  assert(logs.some(l => l.agentRole === "QA Auditor"), "Audit logs must contain QA Auditor signature");
+  console.log("    ✓ AuditTrailEngine tests passed.");
 
   console.log("\n✅ ALL PLATFORM VALIDATION TESTS PASSED SUCCESSFULLY!\n");
 }

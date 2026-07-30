@@ -22,6 +22,7 @@ import { DependencyGraphEngine } from "../dependency/dependency-graph.js";
 import { GitIntegrationEngine } from "../git/git-engine.js";
 import { MetricsTracker } from "../providers/metrics-tracker.js";
 import { TeamCoordinator } from "./team-coordinator.js";
+import { AuditTrailEngine } from "../utils/audit-trail.js";
 import {
   ArchitecturePlanner,
 } from "../architect/index.js";
@@ -140,6 +141,13 @@ export class Orchestrator {
   ) {
     this.memory.add(request);
 
+    const auditTrail = new AuditTrailEngine(outputDirectory);
+    auditTrail.logEvent({
+      agentRole: "CEO Agent",
+      action: `Initiated project generation path for prompt: "${request}"`,
+      status: "SUCCESS"
+    });
+
     this.execution.enter(
       ExecutionPhase.Requirements,
     );
@@ -164,6 +172,12 @@ export class Orchestrator {
         request,
         imagePayload,
       );
+
+    auditTrail.logEvent({
+      agentRole: "Architect",
+      action: `Completed requirements mapping. Framework: ${specification.type}, Database: ${specification.database || "None"}`,
+      status: "SUCCESS"
+    });
 
     const coordinator = new TeamCoordinator();
     const activeTeam = coordinator.coordinate(specification);
@@ -248,6 +262,13 @@ export class Orchestrator {
     memoryEngine.initDefaults("project", request);
     MetricsTracker.getInstance().reset();
 
+    const auditTrail = new AuditTrailEngine(outputDirectory);
+    auditTrail.logEvent({
+      agentRole: "CEO Agent",
+      action: `Initiated application implementation for request: "${request}"`,
+      status: "SUCCESS"
+    });
+
     // Run AI Research Assistant (Phase 14)
     console.log("[Research] Running AI Research Assistant to retrieve optimal coding patterns...");
     try {
@@ -311,6 +332,12 @@ export class Orchestrator {
         guidancePrompt,
         imagePayload,
       );
+
+    auditTrail.logEvent({
+      agentRole: "Architect",
+      action: `Completed requirements mapping. Framework: ${specification.type}, Database: ${specification.database || "None"}`,
+      status: "SUCCESS"
+    });
 
     const coordinator = new TeamCoordinator();
     const activeTeam = coordinator.coordinate(specification);

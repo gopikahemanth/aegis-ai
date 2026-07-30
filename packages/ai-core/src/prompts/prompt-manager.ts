@@ -116,6 +116,8 @@ CRITICAL STANDARDS:
 - Never write "// TODO", "// Implement later", or other placeholder comments.
 - Always provide the full, working implementation for all logic, functions, imports, and exports.
 - Do not abbreviate code or omit sections using comments.
+- When using 'react-router-dom', declare and render <BrowserRouter> exactly once (preferably in App.tsx), never nest another <BrowserRouter> wrapper in main.tsx or other child layout files.
+- Ensure all style tags or Tailwind class tags have complete declarations.
 
 Output Rules:
 1. Return ONLY files or patches.

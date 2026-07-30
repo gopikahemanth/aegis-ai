@@ -20,6 +20,7 @@ import { PatchEngine } from "../healing/patch-engine.js";
 import { DependencyGraphEngine } from "../dependency/dependency-graph.js";
 import { GitIntegrationEngine } from "../git/git-engine.js";
 import { MetricsTracker } from "../providers/metrics-tracker.js";
+import { TeamCoordinator } from "./team-coordinator.js";
 import {
   ArchitecturePlanner,
 } from "../architect/index.js";
@@ -157,6 +158,11 @@ export class Orchestrator {
         request,
         imagePayload,
       );
+
+    const coordinator = new TeamCoordinator();
+    const activeTeam = coordinator.coordinate(specification);
+    console.log("\n[Coordinator] Coordinating Dynamic AI Specialist Team for this project:");
+    console.table(activeTeam.map(member => ({ Role: member.role, Description: member.description })));
 
     this.execution.enter(
       ExecutionPhase.Planning,
@@ -299,6 +305,11 @@ export class Orchestrator {
         guidancePrompt,
         imagePayload,
       );
+
+    const coordinator = new TeamCoordinator();
+    const activeTeam = coordinator.coordinate(specification);
+    console.log("\n[Coordinator] Coordinating Dynamic AI Specialist Team for this project:");
+    console.table(activeTeam.map(member => ({ Role: member.role, Description: member.description })));
 
     const tasks =
       await this.plannerAgent.execute(

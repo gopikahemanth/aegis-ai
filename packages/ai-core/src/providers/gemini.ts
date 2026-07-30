@@ -3,6 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { env } from "../utils/env.js";
 import { ProviderError } from "./provider-error.js";
 import { Models } from "./models.js";
+import { MetricsTracker } from "./metrics-tracker.js";
 import type {
   AIProvider,
   ChatMessage,
@@ -65,6 +66,13 @@ export class GeminiProvider implements AIProvider {
           timeoutPromise,
         ]);
         if (timeoutId) clearTimeout(timeoutId);
+
+        if (response.usageMetadata) {
+          const prompt = response.usageMetadata.promptTokenCount || 0;
+          const completion = response.usageMetadata.candidatesTokenCount || 0;
+          MetricsTracker.getInstance().logUsage(prompt, completion);
+        }
+
         return response.text ?? "";
       } catch (error) {
         if (timeoutId) clearTimeout(timeoutId);

@@ -17,6 +17,7 @@ import { join } from "node:path";
 import { PatchEngine } from "../healing/patch-engine.js";
 import { DependencyGraphEngine } from "../dependency/dependency-graph.js";
 import { GitIntegrationEngine } from "../git/git-engine.js";
+import { MetricsTracker } from "../providers/metrics-tracker.js";
 import {
   ArchitecturePlanner,
 } from "../architect/index.js";
@@ -205,6 +206,7 @@ export class Orchestrator {
   ) {
     const memoryEngine = new ProjectMemoryEngine(outputDirectory);
     memoryEngine.initDefaults("project", request);
+    MetricsTracker.getInstance().reset();
 
     const existingArch = memoryEngine.loadArchitecture();
     const existingMem = memoryEngine.loadMemory();
@@ -513,6 +515,11 @@ export class Orchestrator {
           errors: build.success ? [] : [build.stderr || "Unknown build error"],
         });
         metrics.telemetry.sandboxRuns += 1;
+
+        const tracked = MetricsTracker.getInstance().getMetrics();
+        metrics.telemetry.totalTokensUsed = (metrics.telemetry.totalTokensUsed || 0) + tracked.totalTokens;
+        metrics.telemetry.estimatedCostUsd = (metrics.telemetry.estimatedCostUsd || 0) + tracked.estimatedCostUsd;
+
         memoryEngine.saveMetrics(metrics);
       }
 

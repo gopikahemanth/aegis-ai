@@ -1,6 +1,7 @@
 import { ProviderError } from "./provider-error.js";
 import type { AIProvider, ChatMessage, ChatOptions } from "./base.js";
 import { env } from "../utils/env.js";
+import { MetricsTracker } from "./metrics-tracker.js";
 
 export class OpenRouterProvider implements AIProvider {
   public readonly name = "openrouter";
@@ -53,6 +54,13 @@ export class OpenRouterProvider implements AIProvider {
 
       const data = (await response.json()) as any;
       clearTimeout(timeoutId);
+
+      if (data.usage) {
+        const prompt = data.usage.prompt_tokens || 0;
+        const completion = data.usage.completion_tokens || 0;
+        MetricsTracker.getInstance().logUsage(prompt, completion);
+      }
+
       return data.choices?.[0]?.message?.content ?? "";
     } catch (error: any) {
       throw new ProviderError(

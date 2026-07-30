@@ -1,5 +1,5 @@
 {
-  "framework": "html",
+  "framework": "react-vite",
   "language": "TypeScript",
   "packageManager": "npm",
   "folderStructure": {
@@ -20,7 +20,7 @@
     "camelCase for utility files, hooks, types",
     "Use Tailwind CSS responsive style rules"
   ],
-  "styling": "vanilla-css",
+  "styling": "tailwind",
   "additionalRules": [
     "Preserve type assertions in React TSX components",
     "Do not generate stubs or incomplete code blocks"

@@ -3,6 +3,7 @@ import Groq from "groq-sdk";
 import { env } from "../utils/env.js";
 import { ProviderError } from "./provider-error.js";
 import { Models } from "./models.js";
+import { MetricsTracker } from "./metrics-tracker.js";
 
 import type {
   AIProvider,
@@ -40,6 +41,12 @@ async chat(
           options?.maxTokens ?? 4096,
         messages,
       });
+
+    if (response.usage) {
+      const prompt = response.usage.prompt_tokens || 0;
+      const completion = response.usage.completion_tokens || 0;
+      MetricsTracker.getInstance().logUsage(prompt, completion);
+    }
 
     return (
       response.choices[0]?.message?.content ?? ""

@@ -3,5 +3,269 @@
     "path": "script.js",
     "imports": [],
     "importedBy": []
+  },
+  "src/App.tsx": {
+    "path": "src/App.tsx",
+    "imports": [
+      "src/components/Layout.tsx",
+      "src/components/HeroSection.tsx",
+      "src/components/AboutSection.tsx",
+      "src/components/SkillsSection.tsx",
+      "src/components/ExperienceTimeline.tsx",
+      "src/components/ProjectGrid.tsx",
+      "src/components/ContactForm.tsx",
+      "src/components/ProjectDetailModal.tsx",
+      "src/types/index.ts",
+      "src/services/projectService.ts",
+      "src/services/analyticsService.ts",
+      "src/components/Button.tsx",
+      "src/components/Card.tsx"
+    ],
+    "importedBy": [
+      "src/main.tsx"
+    ]
+  },
+  "src/components/AboutSection.tsx": {
+    "path": "src/components/AboutSection.tsx",
+    "imports": [
+      "src/components/Card.tsx"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/Button.tsx": {
+    "path": "src/components/Button.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx",
+      "src/components/ContactForm.tsx",
+      "src/components/HeroSection.tsx",
+      "src/components/Navbar.tsx",
+      "src/components/ProjectDetailModal.tsx"
+    ]
+  },
+  "src/components/Card.tsx": {
+    "path": "src/components/Card.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx",
+      "src/components/AboutSection.tsx",
+      "src/components/ContactForm.tsx",
+      "src/components/ExperienceTimeline.tsx",
+      "src/components/ProjectCard.tsx",
+      "src/components/SkillsSection.tsx"
+    ]
+  },
+  "src/components/ContactForm.tsx": {
+    "path": "src/components/ContactForm.tsx",
+    "imports": [
+      "src/components/Button.tsx",
+      "src/components/Card.tsx",
+      "src/hooks/useFormValidation.ts",
+      "src/components/Toast.tsx"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/ExperienceTimeline.tsx": {
+    "path": "src/components/ExperienceTimeline.tsx",
+    "imports": [
+      "src/components/Card.tsx"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/Footer.tsx": {
+    "path": "src/components/Footer.tsx",
+    "imports": [
+      "src/components/SocialLinks.tsx"
+    ],
+    "importedBy": [
+      "src/components/Layout.tsx"
+    ]
+  },
+  "src/components/HeroSection.tsx": {
+    "path": "src/components/HeroSection.tsx",
+    "imports": [
+      "src/components/Button.tsx",
+      "src/components/SocialLinks.tsx"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/Layout.tsx": {
+    "path": "src/components/Layout.tsx",
+    "imports": [
+      "src/components/Navbar.tsx",
+      "src/components/Footer.tsx"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/Modal.tsx": {
+    "path": "src/components/Modal.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/components/ProjectDetailModal.tsx"
+    ]
+  },
+  "src/components/Navbar.tsx": {
+    "path": "src/components/Navbar.tsx",
+    "imports": [
+      "src/components/Button.tsx",
+      "src/components/ThemeToggle.tsx"
+    ],
+    "importedBy": [
+      "src/components/Layout.tsx"
+    ]
+  },
+  "src/components/ProjectCard.tsx": {
+    "path": "src/components/ProjectCard.tsx",
+    "imports": [
+      "src/types/index.ts",
+      "src/components/Card.tsx"
+    ],
+    "importedBy": [
+      "src/components/ProjectGrid.tsx"
+    ]
+  },
+  "src/components/ProjectDetailModal.tsx": {
+    "path": "src/components/ProjectDetailModal.tsx",
+    "imports": [
+      "src/types/index.ts",
+      "src/components/Modal.tsx",
+      "src/components/Button.tsx"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/ProjectFilter.tsx": {
+    "path": "src/components/ProjectFilter.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/components/ProjectGrid.tsx"
+    ]
+  },
+  "src/components/ProjectGrid.tsx": {
+    "path": "src/components/ProjectGrid.tsx",
+    "imports": [
+      "src/types/index.ts",
+      "src/components/ProjectCard.tsx",
+      "src/components/ProjectFilter.tsx"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/SkillsSection.tsx": {
+    "path": "src/components/SkillsSection.tsx",
+    "imports": [
+      "src/components/Card.tsx"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/SocialLinks.tsx": {
+    "path": "src/components/SocialLinks.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/components/Footer.tsx",
+      "src/components/HeroSection.tsx"
+    ]
+  },
+  "src/components/ThemeToggle.tsx": {
+    "path": "src/components/ThemeToggle.tsx",
+    "imports": [
+      "src/hooks/useTheme.ts"
+    ],
+    "importedBy": [
+      "src/components/Navbar.tsx"
+    ]
+  },
+  "src/components/Toast.tsx": {
+    "path": "src/components/Toast.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/components/ContactForm.tsx"
+    ]
+  },
+  "src/hooks/useFormValidation.ts": {
+    "path": "src/hooks/useFormValidation.ts",
+    "imports": [],
+    "importedBy": [
+      "src/components/ContactForm.tsx"
+    ]
+  },
+  "src/hooks/useIntersectionObserver.ts": {
+    "path": "src/hooks/useIntersectionObserver.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/hooks/useLocalStorage.ts": {
+    "path": "src/hooks/useLocalStorage.ts",
+    "imports": [],
+    "importedBy": [
+      "src/hooks/useTheme.ts"
+    ]
+  },
+  "src/hooks/useMediaQuery.ts": {
+    "path": "src/hooks/useMediaQuery.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/hooks/useTheme.ts": {
+    "path": "src/hooks/useTheme.ts",
+    "imports": [
+      "src/hooks/useLocalStorage.ts"
+    ],
+    "importedBy": [
+      "src/components/ThemeToggle.tsx"
+    ]
+  },
+  "src/main.tsx": {
+    "path": "src/main.tsx",
+    "imports": [
+      "src/App.tsx"
+    ],
+    "importedBy": []
+  },
+  "src/services/analyticsService.ts": {
+    "path": "src/services/analyticsService.ts",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/services/projectService.ts": {
+    "path": "src/services/projectService.ts",
+    "imports": [
+      "src/types/index.ts"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/services/storageService.ts": {
+    "path": "src/services/storageService.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/types/index.ts": {
+    "path": "src/types/index.ts",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx",
+      "src/components/ProjectCard.tsx",
+      "src/components/ProjectDetailModal.tsx",
+      "src/components/ProjectGrid.tsx",
+      "src/services/projectService.ts"
+    ]
   }
 }

@@ -9,3 +9,4 @@ export * from "./provider-error.js";
 export * from "./failover.js";
 export * from "./ollama.js";
 export * from "./openrouter.js";
+export * from "./metrics-tracker.js";

@@ -13,8 +13,8 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
   useEffect(() => {
     try {
       localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-      console.error(`Error setting localStorage key "${key}":`, error);
+    } catch {
+      // Storage fallback
     }
   }, [key, value]);
 

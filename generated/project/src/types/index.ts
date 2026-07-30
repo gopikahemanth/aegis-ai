@@ -1,45 +1,65 @@
-export interface Project {
+export type MissionStatus = 'Active' | 'En Route' | 'Orbiting' | 'Completed' | 'Critical' | 'Standby';
+
+export interface Subsystem {
+  name: string;
+  status: 'Optimal' | 'Warning' | 'Critical';
+  value: string;
+}
+
+export interface Mission {
   id: string;
-  title: string;
-  tagline: string;
+  name: string;
+  codeName: string;
+  destination: string;
+  status: MissionStatus;
+  launchDate: string;
+  progress: number;
+  crewCount: number;
+  distanceFromEarth: string;
+  speed: string;
   description: string;
-  fullDescription: string;
-  category: 'Full Stack' | 'Frontend' | 'Backend' | 'Mobile' | 'AI / ML';
-  technologies: string[];
-  imageUrl: string;
-  githubUrl: string;
-  liveUrl: string;
-  featured: boolean;
-  metrics: {
-    label: string;
-    value: string;
-  }[];
-  challenges: string[];
-  solutions: string[];
+  subsystems: Subsystem[];
 }
 
-export interface Experience {
+export interface TelemetryData {
+  hullTemp: number;
+  radiationShield: number;
+  warpCoreOutput: number;
+  oxygenLevels: number;
+  ionEngineThrust: number;
+  solarFlux: number;
+  fuelReserves: number;
+}
+
+export interface LogEntry {
   id: string;
-  role: string;
-  company: string;
-  location: string;
-  period: string;
-  description: string[];
-  technologies: string[];
-}
-
-export interface SkillCategory {
-  name: string;
-  skills: {
-    name: string;
-    level: number;
-    icon?: string;
-  }[];
-}
-
-export interface ContactMessage {
-  name: string;
-  email: string;
-  subject: string;
+  timestamp: string;
+  system: 'PROPULSION' | 'LIFE_SUPPORT' | 'SHIELDING' | 'NAVIGATION' | 'QUANTUM_CORE' | 'MISSION_CONTROL';
+  level: 'SUCCESS' | 'WARNING' | 'CRITICAL' | 'INFO';
   message: string;
+}
+
+export interface CelestialObject {
+  id: string;
+  name: string;
+  type: 'Exoplanet' | 'Nebula' | 'Black Hole' | 'Star System';
+  distanceLightYears: number;
+  discoveredYear: number;
+  description: string;
+  coordinates: {
+    ra: string;
+    dec: string;
+  };
+  temperature: string;
+  dangerIndex: 'Safe' | 'Moderate' | 'Extreme';
+  atmosphericComposition?: string[];
+  x: number;
+  y: number;
+}
+
+export interface CelestialWeather {
+  solarWindSpeed: string;
+  geomagneticIndex: string;
+  flareActivity: string;
+  cosmicRayFlux: string;
 }

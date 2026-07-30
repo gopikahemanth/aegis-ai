@@ -1,17 +1,17 @@
 {
   "buildHistory": [
     {
-      "timestamp": "2026-07-30T09:15:14.872Z",
+      "timestamp": "2026-07-30T09:22:28.319Z",
       "success": false,
       "durationMs": 3000,
       "errors": [
-        "Visual layout review failed with the following layout issues:\n[Visual Issue] in 'body': The page is completely blank, indicating a rendering failure, missing content, or white text on a white background. (severity: high)\n\nPlease fix the css files, html files, or container spacing to align with standard styling guidelines."
+        "Sandbox Runtime & Browser Verification Failure:\nLive Browser verification failed: Captured 1 browser console errors:\nFailed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of \"text/html\". Strict MIME type checking is enforced for module scripts per HTML spec."
       ]
     }
   ],
   "telemetry": {
-    "totalTokensUsed": 251712,
-    "estimatedCostUsd": 0.028512,
+    "totalTokensUsed": 363775,
+    "estimatedCostUsd": 0.038872,
     "healingAttempts": 0,
     "sandboxRuns": 1
   }

@@ -8,6 +8,7 @@ import {
   CoderAgent,
   ReviewerAgent,
 } from "../agents/index.js";
+import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
 import { Parser } from "../generator/parser.js";
 import {
@@ -192,222 +193,284 @@ async generateApplication(
   request: string,
   outputDirectory: string,
 ) {
+  const memoryEngine = new ProjectMemoryEngine(outputDirectory);
+  memoryEngine.initDefaults("project", request);
 
+  const existingArch = memoryEngine.loadArchitecture();
+  const existingMem = memoryEngine.loadMemory();
 
-this.execution.enter(
-  ExecutionPhase.Requirements,
-);
+  if (existingMem && existingMem.projectName) {
+    console.log(`[Memory] Loaded existing project memory checkpoints for "${existingMem.projectName}".`);
+  }
 
-const {
-  specification,
-  architecturePlan,
-} =
-  await this.architectAgent.execute(
-    request,
+  this.execution.enter(
+    ExecutionPhase.Requirements,
   );
 
-const tasks =
-  await this.plannerAgent.execute(
+  const guidancePrompt = request + (existingArch ? `\n(Guideline: Follow the existing framework "${existingArch.framework}", styled with "${existingArch.styling}", using naming rules: ${existingArch.namingConventions.join(", ")})` : "");
+
+  const {
     specification,
-  );
-await this.executionLoop.execute(
-  {
-    request,
-    outputDirectory,
-    coder: this.coderAgent,
-  },
-  tasks,
-  async (task) => {
-    console.log(
-      `Executing: ${task.title}`,
+    architecturePlan,
+  } =
+    await this.architectAgent.execute(
+      guidancePrompt,
     );
 
-    return {
-      taskId: task.id,
-      success: true,
-      message: "Completed",
-    };
-  },
-);
+  const tasks =
+    await this.plannerAgent.execute(
+      specification,
+    );
+  await this.executionLoop.execute(
+    {
+      request,
+      outputDirectory,
+      coder: this.coderAgent,
+    },
+    tasks,
+    async (task) => {
+      console.log(
+        `Executing: ${task.title}`,
+      );
+
+      return {
+        taskId: task.id,
+        success: true,
+        message: "Completed",
+      };
+    },
+  );
 
   this.execution.enter(
-  ExecutionPhase.Architecture,
-);
+    ExecutionPhase.Architecture,
+  );
 
-const architecture =
-  this.architect.plan(specification);
+  const architecture =
+    this.architect.plan(specification);
 
   this.execution.enter(
-  ExecutionPhase.Planning,
-);
+    ExecutionPhase.Planning,
+  );
 
 
   const framework =
-  this.selector.select(architecture);
+    this.selector.select(architecture);
 
-console.log("Framework:", framework);
+  console.log("Framework:", framework);
 
- this.execution.enter(
-  ExecutionPhase.Implementation,
-);
-const existingFiles: string[] = [];
-let response = "";
-
-let parsedFiles: GeneratedFile[] = [];
-    let parallelTiers: Task[][];
-    try {
-      parallelTiers = this.scheduler.scheduleParallelTiers(tasks) as Task[][];
-      console.log(`[Orchestrator] DAG parallel scheduling successful. Grouped ${tasks.length} tasks into ${parallelTiers.length} execution tiers.`);
-    } catch (error: any) {
-      console.warn(`[Orchestrator] Warning: Parallel scheduling failed (${error.message}). Falling back to sequential execution.`);
-      parallelTiers = tasks.map(t => [t]);
-    }
-
-    console.log("Starting implementation loop...");
-    for (let i = 0; i < parallelTiers.length; i++) {
-      const tier = parallelTiers[i];
-      console.log(`\nRunning execution tier ${i + 1}/${parallelTiers.length} with ${tier.length} parallel tasks...`);
-
-      const promises = tier.map(async (task) => {
-        console.log(`[Task: ${task.title}] Calling CoderAgent...`);
-        let result: { response: string; files: GeneratedFile[] } = { response: "", files: [] };
-        try {
-          result = await this.coderAgent.execute(
-            task,
-            architecture,
-            architecturePlan,
-            request,
-            outputDirectory,
-            existingFiles,
-          );
-        } catch (coderError: any) {
-          console.warn(`[Orchestrator] CoderAgent failed for task "${task.title}": ${coderError.message}`);
-          console.log(`[Orchestrator] Launching inline Coder self-healing loop...`);
-          let repairAttempts = 0;
-          let success = false;
-          let lastError = coderError;
-
-          while (repairAttempts < 3 && !success) {
-            repairAttempts++;
-            console.log(`[Self-Healing] Inline Coder repair attempt ${repairAttempts}/3...`);
-            try {
-              const repairResponse = await this.repairCoordinator.repair(
-                request,
-                lastError.message,
-                response + `\nAttempted output for task "${task.title}":\n` + (lastError.stack || lastError.message)
-              );
-
-              const repairedFiles = this.parser.parse(repairResponse);
-              if (repairedFiles.length > 0) {
-                result = {
-                  response: repairResponse,
-                  files: repairedFiles
-                };
-                success = true;
-                console.log(`[Self-Healing] ✓ Coder repair succeeded! Resolved placeholders.`);
-              } else {
-                throw new Error("No file changes parsed from repair response.");
-              }
-            } catch (repairErr: any) {
-              lastError = repairErr;
-              console.error(`[Self-Healing] Inline repair attempt ${repairAttempts} failed:`, repairErr.message);
-            }
-          }
-
-          if (!success) {
-            throw coderError;
-          }
-        }
-        return result;
-      });
-
-      const tierResults = await Promise.all(promises);
-
-      for (let j = 0; j < tier.length; j++) {
-        const task = tier[j];
-        const result = tierResults[j];
-        console.log(`[Task: ${task.title}] CoderAgent finished.`);
-
-        response += result.response + "\n";
-        parsedFiles.push(...result.files);
-        existingFiles.push(...result.files.map(file => file.path));
-      }
-    }
-this.execution.enter(
-  ExecutionPhase.Review,
-);
-const mergedFiles =
-  await this.reviewerAgent.execute(
-    request,
-    response,
-    parsedFiles,
+  this.execution.enter(
+    ExecutionPhase.Implementation,
   );
-this.execution.enter(
-  ExecutionPhase.Validation,
-);
-const files =
-  this.validate(
-    framework,
-    mergedFiles,
-  );
-this.write(
-  files,
-  outputDirectory,
-);
-let build =
-  await this.buildOrchestrator.verify(
-    outputDirectory,
-  );
+  const existingFiles: string[] = [];
+  let response = "";
 
-if (!build.success) {
-  let attempts = 0;
-  const maxRepairAttempts = 3;
+  let parsedFiles: GeneratedFile[] = [];
+  let parallelTiers: Task[][];
+  try {
+    parallelTiers = this.scheduler.scheduleParallelTiers(tasks) as Task[][];
+    console.log(`[Orchestrator] DAG parallel scheduling successful. Grouped ${tasks.length} tasks into ${parallelTiers.length} execution tiers.`);
+  } catch (error: any) {
+    console.warn(`[Orchestrator] Warning: Parallel scheduling failed (${error.message}). Falling back to sequential execution.`);
+    parallelTiers = tasks.map(t => [t]);
+  }
 
-  while (!build.success && attempts < maxRepairAttempts) {
-    attempts++;
-    console.log();
-    console.log(`[Self-Healing] Attempting automatic repair ${attempts}/${maxRepairAttempts}...`);
+  console.log("Starting implementation loop...");
+  for (let i = 0; i < parallelTiers.length; i++) {
+    const tier = parallelTiers[i];
+    console.log(`\nRunning execution tier ${i + 1}/${parallelTiers.length} with ${tier.length} parallel tasks...`);
 
-    try {
-      const repairResponse =
-        await this.repairCoordinator.repair(
+    const promises = tier.map(async (task) => {
+      console.log(`[Task: ${task.title}] Calling CoderAgent...`);
+      let result: { response: string; files: GeneratedFile[] } = { response: "", files: [] };
+      try {
+        result = await this.coderAgent.execute(
+          task,
+          architecture,
+          architecturePlan,
           request,
-          build.stderr,
-          response,
+          outputDirectory,
+          existingFiles,
         );
+      } catch (coderError: any) {
+        console.warn(`[Orchestrator] CoderAgent failed for task "${task.title}": ${coderError.message}`);
+        console.log(`[Orchestrator] Launching inline Coder self-healing loop...`);
+        let repairAttempts = 0;
+        let success = false;
+        let lastError = coderError;
 
-      const repairedFiles = this.parser.parse(repairResponse);
-      if (repairedFiles.length > 0) {
-        console.log(`[Self-Healing] Parsed ${repairedFiles.length} corrected files. Writing to disk...`);
-        const validatedRepairedFiles = this.validate(framework, repairedFiles);
-        this.write(validatedRepairedFiles, outputDirectory);
+        while (repairAttempts < 3 && !success) {
+          repairAttempts++;
+          console.log(`[Self-Healing] Inline Coder repair attempt ${repairAttempts}/3...`);
+          try {
+            const repairResponse = await this.repairCoordinator.repair(
+              request,
+              lastError.message,
+              response + `\nAttempted output for task "${task.title}":\n` + (lastError.stack || lastError.message)
+            );
 
-        build = await this.buildOrchestrator.verify(outputDirectory);
-        if (build.success) {
-          console.log("[Self-Healing] ✓ Build succeeded after automatic repair!");
-          break;
+            const repairedFiles = this.parser.parse(repairResponse);
+            if (repairedFiles.length > 0) {
+              result = {
+                response: repairResponse,
+                files: repairedFiles
+              };
+              success = true;
+              console.log(`[Self-Healing] ✓ Coder repair succeeded! Resolved placeholders.`);
+            } else {
+              throw new Error("No file changes parsed from repair response.");
+            }
+          } catch (repairErr: any) {
+            lastError = repairErr;
+            console.error(`[Self-Healing] Inline repair attempt ${repairAttempts} failed:`, repairErr.message);
+          }
         }
-      } else {
-        console.warn("[Self-Healing] No file changes were parsed from the repair response.");
-        break;
+
+        if (!success) {
+          throw coderError;
+        }
       }
-    } catch (error: any) {
-      console.error(`[Self-Healing] Error occurred during repair attempt ${attempts}:`, error.message);
-      break;
+      return result;
+    });
+
+    const tierResults = await Promise.all(promises);
+
+    for (let j = 0; j < tier.length; j++) {
+      const task = tier[j];
+      const result = tierResults[j];
+      console.log(`[Task: ${task.title}] CoderAgent finished.`);
+
+      response += result.response + "\n";
+      parsedFiles.push(...result.files);
+      existingFiles.push(...result.files.map(file => file.path));
     }
   }
-}
+  this.execution.enter(
+    ExecutionPhase.Review,
+  );
+  const mergedFiles =
+    await this.reviewerAgent.execute(
+      request,
+      response,
+      parsedFiles,
+    );
+  this.execution.enter(
+    ExecutionPhase.Validation,
+  );
+  const files =
+    this.validate(
+      framework,
+      mergedFiles,
+    );
+  this.write(
+    files,
+    outputDirectory,
+  );
+  let build =
+    await this.buildOrchestrator.verify(
+      outputDirectory,
+    );
 
-if (!build.success) {
-  console.log();
-  console.log("❌ Self-Healing: Build is still failing after maximum repair attempts.");
-}
+  if (!build.success) {
+    let attempts = 0;
+    const maxRepairAttempts = 3;
 
-console.log("Generating deployment configurations...");
-const deployFiles = this.deployGenerator.generate(specification);
-this.write(deployFiles, outputDirectory);
+    while (!build.success && attempts < maxRepairAttempts) {
+      attempts++;
+      console.log();
+      console.log(`[Self-Healing] Attempting automatic repair ${attempts}/${maxRepairAttempts}...`);
 
-this.execution.complete();
+      try {
+        const repairResponse =
+          await this.repairCoordinator.repair(
+            request,
+            build.stderr,
+            response,
+          );
+
+        const repairedFiles = this.parser.parse(repairResponse);
+        if (repairedFiles.length > 0) {
+          console.log(`[Self-Healing] Parsed ${repairedFiles.length} corrected files. Writing to disk...`);
+          const validatedRepairedFiles = this.validate(framework, repairedFiles);
+          this.write(validatedRepairedFiles, outputDirectory);
+
+          build = await this.buildOrchestrator.verify(outputDirectory);
+          if (build.success) {
+            console.log("[Self-Healing] ✓ Build succeeded after automatic repair!");
+            break;
+          }
+        } else {
+          console.warn("[Self-Healing] No file changes were parsed from the repair response.");
+          break;
+        }
+      } catch (error: any) {
+        console.error(`[Self-Healing] Error occurred during repair attempt ${attempts}:`, error.message);
+        break;
+      }
+    }
+  }
+
+  if (!build.success) {
+    console.log();
+    console.log("❌ Self-Healing: Build is still failing after maximum repair attempts.");
+  }
+
+  console.log("Generating deployment configurations...");
+  const deployFiles = this.deployGenerator.generate(specification);
+  this.write(deployFiles, outputDirectory);
+
+  // Save files, tasks, and metrics post-build
+  try {
+    const memory = memoryEngine.loadMemory();
+    if (memory) {
+      memory.createdFiles = [
+        ...new Set([
+          ...memory.createdFiles,
+          ...files.map(f => f.path),
+          ...deployFiles.map(f => f.path),
+        ]),
+      ];
+      memory.tasks = tasks.map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        completed: true,
+        stage: String(t.stage || ""),
+        priority: t.priority || 1,
+        dependencies: t.dependencies || [],
+        estimatedComplexity: t.estimatedComplexity || 1,
+      }));
+      memory.history.push({
+        timestamp: new Date().toISOString(),
+        request,
+        stage: "ExecutionComplete",
+      });
+      memoryEngine.saveMemory(memory);
+    }
+
+    const arch = memoryEngine.loadArchitecture();
+    if (arch) {
+      arch.framework = framework;
+      arch.styling = framework === "html" ? "vanilla-css" : "tailwind";
+      memoryEngine.saveArchitecture(arch);
+    }
+
+    const metrics = memoryEngine.loadMetrics();
+    if (metrics) {
+      metrics.buildHistory.push({
+        timestamp: new Date().toISOString(),
+        success: build.success,
+        durationMs: 3000,
+        errors: build.success ? [] : [build.stderr || "Unknown build error"],
+      });
+      metrics.telemetry.sandboxRuns += 1;
+      memoryEngine.saveMetrics(metrics);
+    }
+    console.log("[Memory] Saved execution context, architecture patterns, and metrics to .aegis/ successfully.");
+  } catch (memSaveErr: any) {
+    console.warn(`[Memory] Warning: Failed to save persistent memory: ${memSaveErr.message}`);
+  }
+
+  this.execution.complete();
   return {
     filesCreated: files.length + deployFiles.length,
   };

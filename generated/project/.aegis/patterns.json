@@ -1,0 +1,20 @@
+{
+  "reusablePatterns": [
+    {
+      "name": "LocalStorageStateHook",
+      "description": "Persists React state changes to local storage key-value pairs",
+      "files": [
+        "src/hooks/useLocalStorage.ts"
+      ],
+      "sampleCode": "import { useState, useEffect } from 'react';\nexport function useLocalStorage<T>(key: string, initialValue: T) {\n  const [value, setValue] = useState<T>(() => {\n    const stored = localStorage.getItem(key);\n    return stored ? JSON.parse(stored) : initialValue;\n  });\n  useEffect(() => {\n    localStorage.setItem(key, JSON.stringify(value));\n  }, [key, value]);\n  return [value, setValue] as const;\n}"
+    },
+    {
+      "name": "TailwindGlassmorphism",
+      "description": "Responsive translucent card container utilizing blur, border dividers, and gradient overlays",
+      "files": [
+        "src/components/Layout.tsx"
+      ],
+      "sampleCode": "className=\"bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-2xl shadow-indigo-500/10\""
+    }
+  ]
+}

@@ -23,12 +23,16 @@ export class ExecutionEngine {
 
   async execute(request: string) {
     const projectPath = "./generated/project";
-    if (existsSync(projectPath)) {
-  rmSync(projectPath, {
-    recursive: true,
-    force: true,
-  });
-}
+    try {
+      if (existsSync(projectPath)) {
+        rmSync(projectPath, {
+          recursive: true,
+          force: true,
+        });
+      }
+    } catch (rmError: any) {
+      console.warn(`[ExecutionEngine] Warning: Could not clean path "${projectPath}" (${rmError.message}). Proceeding in incremental mode.`);
+    }
     console.log("Analyzing request...");
 
     const result =

@@ -14,3 +14,5 @@ export * from "./orchestrator/index.js";
 export * from "./agents/index.js";
 export * from "./execution/index.js";
 export * from "./deploy/index.js";
+export * from "./memory/memory-engine.js";
+

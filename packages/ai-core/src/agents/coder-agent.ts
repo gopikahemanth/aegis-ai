@@ -1,5 +1,4 @@
 import { BaseAgent } from "./base-agent.js";
-
 import { PromptBuilderEngine } from "../prompts/index.js";
 import { Generator } from "../generator/generator.js";
 import { Parser } from "../generator/parser.js";
@@ -8,6 +7,7 @@ import type { SystemArchitecture } from "../architect/index.js";
 import type { PlanStep } from "../agent/planner.js";
 import type { Task } from "../planner/task.js";
 import { StubDetector } from "../generator/stub-detector.js";
+import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 
 export class CoderAgent extends BaseAgent {
   readonly name = "Coder Agent";
@@ -24,21 +24,37 @@ export class CoderAgent extends BaseAgent {
     new Parser();
     private readonly context =
   new ExecutionContext();
- async execute(
-  task: Task,
-  architecture: SystemArchitecture,
-  architecturePlan: string,
-  request: string,
-  outputDirectory: string,
-  existingFiles: string[] = [],
-){
-  const existingContext =
-  existingFiles.length === 0
-    ? "No existing files."
-    : existingFiles.join("\n");
+  async execute(
+    task: Task,
+    architecture: SystemArchitecture,
+    architecturePlan: string,
+    request: string,
+    outputDirectory: string,
+    existingFiles: string[] = [],
+  ) {
+    const memoryEngine = new ProjectMemoryEngine(outputDirectory);
+    const existingArch = memoryEngine.loadArchitecture();
+    const existingPatterns = memoryEngine.loadPatterns();
+
+    let patternContext = "";
+    if (existingPatterns && existingPatterns.reusablePatterns.length > 0) {
+      patternContext = "\nReusable code patterns and styling layouts from project library:\n" +
+        existingPatterns.reusablePatterns.map(p => `Pattern "${p.name}" (${p.description}):\n${p.sampleCode}`).join("\n\n");
+    }
+
+    let archContext = "";
+    if (existingArch) {
+      archContext = `\nDesign Conventions & Coding Rules:\n- Styling framework: ${existingArch.styling}\n` +
+        existingArch.namingConventions.map(rule => `- ${rule}`).join("\n");
+    }
+
+    const existingContext =
+      existingFiles.length === 0
+        ? "No existing files."
+        : existingFiles.join("\n");
     const prompt =
-    this.promptEngine.build(
-  [task],
+      this.promptEngine.build(
+        [task],
         architecture,
         architecturePlan,
         `${request}
@@ -46,17 +62,19 @@ export class CoderAgent extends BaseAgent {
 Existing project files:
 
 ${existingContext}
+${archContext}
+${patternContext}
 `,
         outputDirectory,
       );
-const response =
-  await this.generator.generate(
-    prompt,
-    {
-      agentType: "coder",
-      complexity: task.estimatedComplexity,
-    },
-  );
+    const response =
+      await this.generator.generate(
+        prompt,
+        {
+          agentType: "coder",
+          complexity: task.estimatedComplexity,
+        },
+      );
 
 const files =
   this.parser.parse(

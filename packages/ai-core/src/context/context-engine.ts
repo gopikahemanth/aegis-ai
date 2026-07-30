@@ -19,6 +19,7 @@ export class ContextEngine {
   build(
     request: string,
     projectPath: string,
+    taskContext: string = "",
   ) {
     const files =
       this.scanner.scan(projectPath);
@@ -30,6 +31,8 @@ export class ContextEngine {
       this.selector.select(
         request,
         indexed,
+        projectPath,
+        taskContext,
       );
 
     const selectedFiles =
@@ -41,32 +44,35 @@ export class ContextEngine {
     );
   }
   buildWithPriorityFiles(
-  request: string,
-  projectPath: string,
-  priorityFiles: string[],
-) {
-  const files =
-    this.scanner.scan(projectPath);
+    request: string,
+    projectPath: string,
+    priorityFiles: string[],
+    taskContext: string = "",
+  ) {
+    const files =
+      this.scanner.scan(projectPath);
 
-  const indexed =
-    this.index.build(files);
+    const indexed =
+      this.index.build(files);
 
-  const selected =
-    this.selector.select(
-      request,
-      indexed,
+    const selected =
+      this.selector.select(
+        request,
+        indexed,
+        projectPath,
+        taskContext,
+      );
+
+    const mergedFiles = [
+      ...new Set([
+        ...selected.map(file => file.path),
+        ...priorityFiles,
+      ]),
+    ];
+
+    return this.context.build(
+      projectPath,
+      mergedFiles,
     );
-
-  const mergedFiles = [
-    ...new Set([
-      ...selected.map(file => file.path),
-      ...priorityFiles,
-    ]),
-  ];
-
-  return this.context.build(
-    projectPath,
-    mergedFiles,
-  );
-}
+  }
 }

@@ -4,37 +4,26 @@ export class useSettings {
   constructor() {
     this.storageService = new StorageService();
     this.defaultSettings = {
-      defaultDuration: 300, // 5 minutes in seconds
-      soundEnabled: true,
-      theme: 'dark'
+      hours: 0,
+      minutes: 5,
+      seconds: 0,
+      soundEnabled: true
     };
-    this.settings = this.load();
-    this.listeners = [];
   }
 
-  load() {
+  getSettings() {
     const saved = this.storageService.loadSettings();
     return saved ? { ...this.defaultSettings, ...saved } : this.defaultSettings;
   }
 
-  update(newSettings) {
-    this.settings = { ...this.settings, ...newSettings };
-    this.storageService.saveSettings(this.settings);
-    this.notifyListeners();
+  saveSettings(settings) {
+    return this.storageService.saveSettings(settings);
   }
 
-  getSettings() {
-    return { ...this.settings };
-  }
-
-  subscribe(listener) {
-    this.listeners.push(listener);
-    return () => {
-      this.listeners = this.listeners.filter(l => l !== listener);
-    };
-  }
-
-  notifyListeners() {
-    this.listeners.forEach(listener => listener(this.getSettings()));
+  convertToSeconds(settings) {
+    const h = parseInt(settings.hours, 10) || 0;
+    const m = parseInt(settings.minutes, 10) || 0;
+    const s = parseInt(settings.seconds, 10) || 0;
+    return (h * 3600) + (m * 60) + s;
   }
 }

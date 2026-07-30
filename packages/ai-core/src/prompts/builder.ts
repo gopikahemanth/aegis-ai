@@ -36,11 +36,14 @@ build(
   this.sections.architecturePlan(
     architecturePlan,
   );
- const fullContext =
-  this.contextEngine.build(
-    request,
-    projectPath,
-  );;
+    const activeTask = plan && plan.length > 0 ? plan[0] : null;
+    const taskContext = activeTask ? `${activeTask.title} ${(activeTask as any).description || ""}` : "";
+    const fullContext =
+      this.contextEngine.build(
+        request,
+        projectPath,
+        taskContext,
+      );
     const framework =
   this.frameworkFactory.get(
     this.detectFramework(spec),

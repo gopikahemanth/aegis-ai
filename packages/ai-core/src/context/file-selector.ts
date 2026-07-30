@@ -1,3 +1,5 @@
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
 import type {
   CodebaseEntry,
 } from "./codebase-index.js";
@@ -6,17 +8,44 @@ export class FileSelector {
   select(
     request: string,
     files: CodebaseEntry[],
+    projectPath: string,
+    taskContext: string = "",
   ) {
-    const text =
-      request.toLowerCase();
+    const combinedQuery = `${request} ${taskContext}`.toLowerCase();
+    
+    // Stopwords filter list
+    const stopwords = new Set([
+      "a", "an", "the", "and", "or", "but", "if", "then", "else", "to", "for", 
+      "in", "on", "at", "by", "with", "from", "of", "about", "as", "is", "are", 
+      "was", "were", "be", "been", "have", "has", "had", "do", "does", "did",
+      "build", "create", "simple", "page", "timer"
+    ]);
 
-    const ranked = files.map((file) => ({
-      file,
-      score: this.score(
-        text,
+    const keywords = combinedQuery
+      .split(/[^a-zA-Z0-9]/)
+      .map(k => k.trim())
+      .filter(k => k.length > 1 && !stopwords.has(k));
+
+    if (keywords.length === 0) {
+      keywords.push(...combinedQuery.split(/\s+/).filter(k => k.length > 1));
+    }
+
+    const ranked = files.map((file) => {
+      const fullPath = join(projectPath, file.path);
+      let content = "";
+      if (existsSync(fullPath)) {
+        try {
+          content = readFileSync(fullPath, "utf8").toLowerCase();
+        } catch (e) {
+          // ignore read errors
+        }
+      }
+
+      return {
         file,
-      ),
-    }));
+        score: this.scoreKeywords(keywords, file.path.toLowerCase(), content, file.type),
+      };
+    });
 
     return ranked
       .filter((item) => item.score > 0)
@@ -28,141 +57,36 @@ export class FileSelector {
       .map((item) => item.file);
   }
 
-  private score(
-    request: string,
-    file: CodebaseEntry,
-  ) {
+  private scoreKeywords(
+    keywords: string[],
+    path: string,
+    content: string,
+    type: string
+  ): number {
     let score = 0;
-    const path =
-  file.path.toLowerCase();
+    
+    const parts = path.split("/");
+    const filename = parts[parts.length - 1];
 
-if (
-  request.includes("build") ||
-  request.includes("error")
-) {
-  if (path.endsWith("package.json"))
-    score += 50;
+    for (const keyword of keywords) {
+      if (filename.includes(keyword)) {
+        score += 35;
+      }
+      
+      if (path.includes(keyword)) {
+        score += 15;
+      }
 
-  if (path.endsWith("tsconfig.json"))
-    score += 40;
-
-  if (path.includes("vite.config"))
-    score += 40;
-
-  if (path.includes("next.config"))
-    score += 40;
-
-  if (path.includes("tailwind.config"))
-    score += 40;
-}
-    switch (file.type) {
-      case "component":
-        if (
-          request.includes("component")
-        )
-          score += 5;
-
-        if (
-          request.includes("navbar")
-        )
-          score += 10;
-
-        if (
-          request.includes("button")
-        )
-          score += 10;
-
-        if (
-          request.includes("card")
-        )
-          score += 10;
-
-        break;
-
-      case "page":
-        if (
-          request.includes("page")
-        )
-          score += 5;
-
-        if (
-          request.includes("dashboard")
-        )
-          score += 15;
-
-        if (
-          request.includes("login")
-        )
-          score += 15;
-
-        break;
-
-      case "service":
-        if (
-          request.includes("api")
-        )
-          score += 10;
-
-        if (
-          request.includes("service")
-        )
-          score += 10;
-
-        break;
-
-      case "hook":
-        if (
-          request.includes("hook")
-        )
-          score += 10;
-
-        break;
-
-      case "style":
-        if (
-          request.includes("css")
-        )
-          score += 5;
-
-        if (
-          request.includes("theme")
-        )
-          score += 10;
-
-        if (
-          request.includes("style")
-        )
-          score += 5;
-
-        break;
-       case "config":
-  if (
-    request.includes("build")
-  )
-    score += 20;
-
-  if (
-    request.includes("error")
-  )
-    score += 20;
-
-  if (
-    request.includes("dependency")
-  )
-    score += 20;
-
-  if (
-    request.includes("package")
-  )
-    score += 25;
-
-  if (
-    request.includes("config")
-  )
-    score += 15;
-
-  break;
-
+      if (content.length > 0) {
+        let count = 0;
+        let pos = content.indexOf(keyword);
+        while (pos !== -1) {
+          count++;
+          if (count >= 5) break;
+          pos = content.indexOf(keyword, pos + keyword.length);
+        }
+        score += count * 2.5;
+      }
     }
 
     return score;

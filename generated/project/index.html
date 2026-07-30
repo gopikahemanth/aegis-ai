@@ -3,14 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aegis HTML App</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Aegis Countdown Timer</title>
+  <link rel="stylesheet" href="src/styles/style.css" />
 </head>
 <body>
+  <div id="app" class="app-container">
+    <header class="app-header">
+      <nav class="nav-bar">
+        <button class="nav-btn active" data-target="timer-view">Timer</button>
+        <button class="nav-btn" data-target="settings-view">Settings</button>
+      </nav>
+    </header>
 
-  <div id="app"></div>
+    <main class="app-main">
+      <section id="timer-view" class="view active">
+        <div class="timer-card">
+          <div id="notification-alert" class="notification-alert hidden"></div>
+          
+          <div class="countdown-display" id="countdown-display">
+            <div class="time-segment">
+              <span id="hours" class="time-value">00</span>
+              <span class="time-label">Hours</span>
+            </div>
+            <span class="time-separator">:</span>
+            <div class="time-segment">
+              <span id="minutes" class="time-value">05</span>
+              <span class="time-label">Minutes</span>
+            </div>
+            <span class="time-separator">:</span>
+            <div class="time-segment">
+              <span id="seconds" class="time-value">00</span>
+              <span class="time-label">Seconds</span>
+            </div>
+          </div>
 
-  <script src="script.js"></script>
+          <div class="timer-controls">
+            <button id="start-btn" class="btn btn-primary">Start</button>
+            <button id="pause-btn" class="btn btn-secondary" disabled>Pause</button>
+            <button id="reset-btn" class="btn btn-danger">Reset</button>
+          </div>
+        </div>
+      </section>
 
+      <section id="settings-view" class="view">
+        <div class="settings-card">
+          <h2>Timer Settings</h2>
+          <form id="settings-form" class="settings-form">
+            <div class="form-group">
+              <label for="input-hours">Hours</label>
+              <input type="number" id="input-hours" min="0" max="99" value="0" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label for="input-minutes">Minutes</label>
+              <input type="number" id="input-minutes" min="0" max="59" value="5" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label for="input-seconds">Seconds</label>
+              <input type="number" id="input-seconds" min="0" max="59" value="0" class="form-input" />
+            </div>
+            <div class="form-group checkbox-group">
+              <label>
+                <input type="checkbox" id="input-sound" checked /> Enable Sound Alert
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="src/script.js"></script>
 </body>
 </html>

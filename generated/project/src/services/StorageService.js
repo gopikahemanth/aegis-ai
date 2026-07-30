@@ -9,7 +9,7 @@ export class StorageService {
       localStorage.setItem(this.storageKey, serialized);
       return true;
     } catch (error) {
-      console.error('Failed to save settings to storage', error);
+      console.error('Failed to save settings to localStorage', error);
       return false;
     }
   }
@@ -17,10 +17,12 @@ export class StorageService {
   loadSettings() {
     try {
       const serialized = localStorage.getItem(this.storageKey);
-      if (!serialized) return null;
+      if (!serialized) {
+        return null;
+      }
       return JSON.parse(serialized);
     } catch (error) {
-      console.error('Failed to load settings from storage', error);
+      console.error('Failed to load settings from localStorage', error);
       return null;
     }
   }

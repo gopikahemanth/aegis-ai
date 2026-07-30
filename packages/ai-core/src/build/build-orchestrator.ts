@@ -3,12 +3,15 @@ import { join } from "node:path";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { BuildRunner } from "./build-runner.js";
+import { SandboxVerifier } from "./sandbox-verifier.js";
 
 const execute = promisify(exec);
 
 export class BuildOrchestrator {
   private readonly runner =
     new BuildRunner();
+
+  private readonly sandboxVerifier = new SandboxVerifier();
 
   async verify(
     projectPath: string,
@@ -54,6 +57,18 @@ export class BuildOrchestrator {
         // Ignored: corrupt package.json or other file access issues
       }
     }
+
+    // Run Sandbox & Visual verification
+    const sandboxResult = await this.sandboxVerifier.verify(projectPath);
+    if (!sandboxResult.success) {
+      console.log("✗ Sandbox runtime verification failed.");
+      return {
+        success: false,
+        stdout: sandboxResult.logs ?? "",
+        stderr: `Sandbox Runtime & Browser Verification Failure:\n${sandboxResult.message}`,
+      };
+    }
+    console.log("✓ Sandbox runtime verification passed.");
 
     return result;
   }

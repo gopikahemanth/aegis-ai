@@ -114,12 +114,19 @@ export class FailoverProvider implements AIProvider {
           );
 
           if (error instanceof ProviderError && error.retryAfter !== undefined) {
-            const waitTime = error.retryAfter * 1000;
-            console.log(
-              `[FailoverProvider] Respecting retry-after. Waiting ${error.retryAfter}s...`
-            );
-            await new Promise((resolve) => setTimeout(resolve, waitTime));
-            continue;
+            if (error.retryAfter <= 15) {
+              const waitTime = error.retryAfter * 1000;
+              console.log(
+                `[FailoverProvider] Respecting retry-after. Waiting ${error.retryAfter}s...`
+              );
+              await new Promise((resolve) => setTimeout(resolve, waitTime));
+              continue;
+            } else {
+              console.log(
+                `[FailoverProvider] Retry-after duration too long (${error.retryAfter}s). Bypassing retry to fallback immediately.`
+              );
+              break;
+            }
           }
 
           if (attempts < this.maxRetries) {

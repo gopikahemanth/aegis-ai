@@ -22,9 +22,9 @@ export const Models = {
 
   gemini: {
     default: "gemini-3.5-flash-lite",
-    strong: "gemini-2.5-pro",
+    strong: "gemini-3.5-flash-lite",
     fast: "gemini-3.5-flash-lite",
-    balanced: "gemini-2.5-flash",
+    balanced: "gemini-3.5-flash-lite",
   },
 
   ollama: {
@@ -35,9 +35,9 @@ export const Models = {
   },
 
   openrouter: {
-    default: "deepseek/deepseek-chat",
-    strong: "deepseek/deepseek-reasoner",
-    fast: "google/gemini-2.5-flash-lite:free",
-    balanced: "deepseek/deepseek-chat",
+    default: "openrouter/free",
+    strong: "openrouter/free",
+    fast: "openrouter/free",
+    balanced: "openrouter/free",
   },
 } as const;

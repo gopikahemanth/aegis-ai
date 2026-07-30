@@ -1,0 +1,208 @@
+import { createServer, Server, get } from "node:http";
+import { readFileSync, statSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { spawn } from "node:child_process";
+
+export interface SandboxResult {
+  success: boolean;
+  message: string;
+  screenshotPath?: string;
+  logs?: string;
+}
+
+export class SandboxVerifier {
+  private startStaticServer(projectPath: string, port: number): Server {
+    const server = createServer((req, res) => {
+      let filePath = join(projectPath, req.url === "/" ? "index.html" : req.url || "");
+      if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
+        filePath = join(projectPath, "index.html");
+      }
+
+      if (!existsSync(filePath)) {
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not Found");
+        return;
+      }
+
+      try {
+        const content = readFileSync(filePath);
+        let contentType = "text/html";
+        if (filePath.endsWith(".js")) contentType = "application/javascript";
+        if (filePath.endsWith(".css")) contentType = "text/css";
+        if (filePath.endsWith(".json")) contentType = "application/json";
+        if (filePath.endsWith(".png")) contentType = "image/png";
+        if (filePath.endsWith(".jpg") || filePath.endsWith(".jpeg")) contentType = "image/jpeg";
+        if (filePath.endsWith(".svg")) contentType = "image/svg+xml";
+
+        res.writeHead(200, { "Content-Type": contentType });
+        res.end(content);
+      } catch (e: any) {
+        res.writeHead(500, { "Content-Type": "text/plain" });
+        res.end(`Error: ${e.message}`);
+      }
+    });
+
+    server.listen(port);
+    return server;
+  }
+
+  private async pollUrl(url: string, timeoutMs: number): Promise<boolean> {
+    const start = Date.now();
+    return new Promise((resolve) => {
+      const check = () => {
+        if (Date.now() - start > timeoutMs) {
+          resolve(false);
+          return;
+        }
+
+        const req = get(url, (res) => {
+          if (res.statusCode === 200) {
+            resolve(true);
+          } else {
+            setTimeout(check, 500);
+          }
+        });
+
+        req.on("error", () => {
+          setTimeout(check, 500);
+        });
+      };
+      check();
+    });
+  }
+
+  async verify(projectPath: string): Promise<SandboxResult> {
+    console.log("[Sandbox] Starting sandbox runtime verification...");
+    const packageJsonPath = join(projectPath, "package.json");
+    let childProcess: any = null;
+    let staticServer: Server | null = null;
+    let port = 3000;
+    let targetUrl = `http://localhost:${port}`;
+    let isNext = false;
+    let logs = "";
+
+    if (existsSync(packageJsonPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+        if (pkg.scripts && pkg.scripts.dev) {
+          isNext = !!(pkg.dependencies && pkg.dependencies.next);
+          port = isNext ? 3000 : 5173;
+          targetUrl = `http://localhost:${port}`;
+
+          console.log(`[Sandbox] Spawning dev server via 'pnpm dev' on port ${port}...`);
+          childProcess = spawn("pnpm", ["dev", "--port", String(port)], {
+            cwd: projectPath,
+            shell: true,
+          });
+
+          childProcess.stdout.on("data", (data: any) => {
+            logs += data.toString();
+          });
+
+          childProcess.stderr.on("data", (data: any) => {
+            logs += data.toString();
+          });
+        }
+      } catch (e: any) {
+        console.warn(`[Sandbox] Failed to parse package.json: ${e.message}`);
+      }
+    }
+
+    if (!childProcess) {
+      console.log(`[Sandbox] Starting built-in static file server on port ${port}...`);
+      staticServer = this.startStaticServer(projectPath, port);
+    }
+
+    // Wait for the server to bind and respond
+    const serverReady = await this.pollUrl(targetUrl, 10000);
+
+    if (!serverReady) {
+      if (childProcess) childProcess.kill();
+      if (staticServer) staticServer.close();
+      return {
+        success: false,
+        message: `Dev server failed to respond at ${targetUrl} within 10 seconds.`,
+        logs,
+      };
+    }
+
+    console.log(`[Sandbox] Server is alive at ${targetUrl}. Running live browser review...`);
+
+    let puppeteer: any = null;
+    try {
+      const pkg = "puppeteer";
+      puppeteer = await import(pkg);
+    } catch (err) {
+      // Graceful fallback
+    }
+
+    if (!puppeteer) {
+      console.log("[Sandbox] Puppeteer is not installed in the workspace. Skipping visual checks.");
+      if (childProcess) childProcess.kill();
+      if (staticServer) staticServer.close();
+      return {
+        success: true,
+        message: "Sandbox HTTP connection verified successfully (skipped visual checks).",
+        logs,
+      };
+    }
+
+    let browser: any = null;
+    try {
+      console.log("[Sandbox] Launching headless browser...");
+      browser = await puppeteer.default.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
+
+      const page = await browser.newPage();
+      const consoleErrors: string[] = [];
+
+      page.on("console", (msg: any) => {
+        if (msg.type() === "error") {
+          consoleErrors.push(msg.text());
+        }
+      });
+
+      page.on("pageerror", (err: any) => {
+        consoleErrors.push(err.message);
+      });
+
+      await page.goto(targetUrl, { waitUntil: "networkidle2" });
+
+      const screenshotPath = join(projectPath, "screenshot.png");
+      await page.screenshot({ path: screenshotPath });
+      console.log(`[Sandbox] Visual screenshot captured: ${screenshotPath}`);
+
+      if (consoleErrors.length > 0) {
+        throw new Error(`Captured ${consoleErrors.length} browser console errors:\n${consoleErrors.join("\n")}`);
+      }
+
+      await browser.close();
+      if (childProcess) childProcess.kill();
+      if (staticServer) staticServer.close();
+
+      return {
+        success: true,
+        message: "Sandbox execution, browser console validation, and layout visual checks passed.",
+        screenshotPath,
+        logs,
+      };
+    } catch (browserError: any) {
+      console.error("[Sandbox] Browser verification failed:", browserError.message);
+      if (browser) {
+        try {
+          await browser.close();
+        } catch (e) {}
+      }
+      if (childProcess) childProcess.kill();
+      if (staticServer) staticServer.close();
+
+      return {
+        success: false,
+        message: `Live Browser verification failed: ${browserError.message}`,
+        logs,
+      };
+    }
+  }
+}

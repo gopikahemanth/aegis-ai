@@ -1,7 +1,7 @@
 {
-  "name": "aegis-html-app",
+  "name": "simple-countdown-timer",
   "private": true,
-  "version": "0.0.1",
+  "version": "1.0.0",
   "scripts": {
     "build": "echo Build successful"
   }

@@ -57,7 +57,7 @@ Do not explain anything.`;
   public getPlannerPrompt(): string {
     return `${this.getBaseSystemPrompt("Planner Agent")}
 
-Break the project into execution tasks.
+Break the project into execution tasks. Be extremely concise. Generate a maximum of 5 high-level tasks to cover the entire implementation scope. Keep task descriptions short to prevent output truncation.
 Each task MUST contain:
 - id: number (unique)
 - title: string

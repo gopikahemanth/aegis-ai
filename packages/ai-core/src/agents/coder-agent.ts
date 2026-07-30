@@ -8,6 +8,11 @@ import type { PlanStep } from "../agent/planner.js";
 import type { Task } from "../planner/task.js";
 import { StubDetector } from "../generator/stub-detector.js";
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
+import { ProjectScanner } from "../context/project-scanner.js";
+import { FileSelector } from "../context/file-selector.js";
+import { readFileSync, existsSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { CodebaseIndex } from "../context/codebase-index.js";
 
 export class CoderAgent extends BaseAgent {
   readonly name = "Coder Agent";
@@ -48,10 +53,28 @@ export class CoderAgent extends BaseAgent {
         existingArch.namingConventions.map(rule => `- ${rule}`).join("\n");
     }
 
-    const existingContext =
-      existingFiles.length === 0
-        ? "No existing files."
-        : existingFiles.join("\n");
+    // Scan project files and run Context Manager intelligent file selector
+    const scanner = new ProjectScanner();
+    const allFiles = scanner.scan(outputDirectory).filter(f => !f.startsWith(".aegis/") && f !== "screenshot.png" && f !== "pull-request.md");
+    
+    const codebaseEntries = new CodebaseIndex().build(allFiles);
+
+    const selector = new FileSelector();
+    const selectedEntries = selector.select(request, codebaseEntries, outputDirectory, `${task.title} ${task.description}`);
+
+    const relevantFilesContent = selectedEntries.map(entry => {
+      const fullPath = join(outputDirectory, entry.path);
+      if (existsSync(fullPath)) {
+        try {
+          const code = readFileSync(fullPath, "utf8");
+          return `=== FILE: ${entry.path} ===\n${code}\n`;
+        } catch (e) {
+          return `=== FILE: ${entry.path} ===\n(Unable to read file content)\n`;
+        }
+      }
+      return "";
+    }).filter(Boolean).join("\n");
+
     const prompt =
       this.promptEngine.build(
         [task],
@@ -59,9 +82,11 @@ export class CoderAgent extends BaseAgent {
         architecturePlan,
         `${request}
 
-Existing project files:
+Existing relevant files content:
+${relevantFilesContent}
 
-${existingContext}
+All existing project files (manifest list):
+${allFiles.join("\n")}
 ${archContext}
 ${patternContext}
 `,

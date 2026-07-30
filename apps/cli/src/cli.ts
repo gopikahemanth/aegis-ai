@@ -3,6 +3,7 @@ import { versionCommand } from "./commands/version.js";
 import { createCommand } from "./commands/create.js";
 import { editCommand } from "./commands/edit.js";
 import { analyticsCommand } from "./commands/analytics.js";
+import { auditCommand } from "./commands/audit.js";
 
 export async function runCLI() {
   const command = process.argv[2];
@@ -16,6 +17,9 @@ export async function runCLI() {
 
     case "analytics":
       return analyticsCommand();
+
+    case "audit":
+      return auditCommand();
 
     case "version":
       return versionCommand();

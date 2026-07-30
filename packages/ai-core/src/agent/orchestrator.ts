@@ -9,6 +9,7 @@ import {
   ReviewerAgent,
   VisualReviewerAgent,
   HeuristicsLearningAgent,
+  ResearchAssistantAgent,
 } from "../agents/index.js";
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
@@ -71,6 +72,8 @@ export class Orchestrator {
 
   private readonly heuristicsLearningAgent: HeuristicsLearningAgent;
 
+  private readonly researchAssistantAgent: ResearchAssistantAgent;
+
   private readonly executionLoop = new ExecutionLoop();
 
   private readonly repairCoordinator: RepairCoordinator;
@@ -95,6 +98,9 @@ export class Orchestrator {
 
     this.heuristicsLearningAgent =
       new HeuristicsLearningAgent(provider);
+
+    this.researchAssistantAgent =
+      new ResearchAssistantAgent(provider);
 
     this.repairCoordinator =
       new RepairCoordinator(provider);
@@ -229,6 +235,26 @@ export class Orchestrator {
     const memoryEngine = new ProjectMemoryEngine(outputDirectory);
     memoryEngine.initDefaults("project", request);
     MetricsTracker.getInstance().reset();
+
+    // Run AI Research Assistant (Phase 14)
+    console.log("[Research] Running AI Research Assistant to retrieve optimal coding patterns...");
+    try {
+      const researched = await this.researchAssistantAgent.execute(request);
+      if (researched && researched.length > 0) {
+        const existingPatterns = memoryEngine.loadPatterns();
+        if (existingPatterns) {
+          for (const pattern of researched) {
+            if (!existingPatterns.reusablePatterns.some(p => p.name === pattern.name)) {
+              existingPatterns.reusablePatterns.push(pattern);
+              console.log(`[Research] ✓ Retrieved and indexed custom pattern: "${pattern.name}"`);
+            }
+          }
+          memoryEngine.savePatterns(existingPatterns);
+        }
+      }
+    } catch (resErr: any) {
+      console.warn(`[Research] Warning: Research Assistant failed: ${resErr.message}`);
+    }
 
     const existingArch = memoryEngine.loadArchitecture();
     const existingMem = memoryEngine.loadMemory();

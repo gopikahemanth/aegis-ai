@@ -1,5 +1,6 @@
 export * from "./agent/orchestrator.js";
 export * from "./agent/planner.js";
+export * from "./agent/distributed-runtime.js";
 export * from "./agent/fixer.js";
 export * from "./generator/generator.js";
 export * from "./generator/parser.js";

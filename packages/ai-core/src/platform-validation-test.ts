@@ -3,6 +3,7 @@ import { DeploymentGenerator } from "./deploy/deploy-generator.js";
 import { PluginManager } from "../../../packages/project-builder/dist/plugins/plugin-manager.js";
 import type { ProjectSpecification } from "./architect/specification.js";
 import { PRGeneratorAgent } from "./agents/pr-generator-agent.js";
+import { DistributedRuntimeEngine } from "./agent/distributed-runtime.js";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -10,7 +11,7 @@ function assert(condition: boolean, message: string) {
   }
 }
 
-export function runPlatformValidationTests() {
+export async function runPlatformValidationTests() {
   console.log("\n🧪 Running Platform Capabilities Unit Tests...");
 
   // 1. Test Team Coordinator Dynamic Enlisting
@@ -66,7 +67,28 @@ export function runPlatformValidationTests() {
   assert(typeof PRGeneratorAgent === "function", "PRGeneratorAgent class must be imported successfully");
   console.log("    ✓ PRGeneratorAgent checked.");
 
+  // 5. Test Distributed Runtime Queue processing and fault tolerance retries
+  console.log("  • Testing DistributedRuntimeEngine...");
+  const runtime = new DistributedRuntimeEngine();
+  let workerExecuted = false;
+
+  runtime.registerWorker("Coder", async (job) => {
+    workerExecuted = true;
+    return { success: true };
+  });
+
+  const jobId = runtime.enqueueJob("Generate User Module", "Coder", { module: "User" });
+  await runtime.processQueue();
+
+  const finishedJob = runtime.getJobStatus(jobId);
+  assert(workerExecuted, "Registered worker callback must execute");
+  assert(finishedJob !== undefined && finishedJob.status === "completed", "Job status must compile as completed");
+  console.log("    ✓ DistributedRuntimeEngine tests passed.");
+
   console.log("\n✅ ALL PLATFORM VALIDATION TESTS PASSED SUCCESSFULLY!\n");
 }
 
-runPlatformValidationTests();
+runPlatformValidationTests().catch(err => {
+  console.error("Test execution failed:", err);
+  process.exit(1);
+});

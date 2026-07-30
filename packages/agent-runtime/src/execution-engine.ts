@@ -21,7 +21,7 @@ export class ExecutionEngine {
   private readonly pipeline =
     new ExecutionPipeline(this.provider);
 
-  async execute(request: string) {
+  async execute(request: string, imagePath?: string) {
     const projectPath = "./generated/project";
     try {
       if (existsSync(projectPath)) {
@@ -39,6 +39,7 @@ export class ExecutionEngine {
       await this.orchestrator.generateProject(
         request,
         projectPath,
+        imagePath,
       );
 
     console.log(result);
@@ -60,6 +61,7 @@ const generated =
   await this.orchestrator.generateApplication(
     request,
     projectPath,
+    imagePath,
   );
 
 console.log(generated);

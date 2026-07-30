@@ -19,6 +19,7 @@ export class ArchitectAgent extends BaseAgent {
 
   async execute(
     request: string,
+    image?: { mimeType: string; data: string }
   ): Promise<{
     specification: ProjectSpecification;
     architecturePlan: string;
@@ -26,6 +27,7 @@ export class ArchitectAgent extends BaseAgent {
     const specification =
       await this.specificationGenerator.generate(
         request,
+        image,
       );
 
     const architecturePlan =

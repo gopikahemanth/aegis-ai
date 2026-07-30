@@ -2,7 +2,16 @@ import { ExecutionEngine } from "@aegis/agent-runtime";
 import { ProviderError } from "@aegis/ai-core";
 
 export async function createCommand() {
-  const prompt = process.argv.slice(3).join(" ");
+  const args = process.argv.slice(3);
+  let imagePath: string | undefined;
+
+  const imageIdx = args.indexOf("--image");
+  if (imageIdx !== -1 && args[imageIdx + 1]) {
+    imagePath = args[imageIdx + 1];
+    args.splice(imageIdx, 2);
+  }
+
+  const prompt = args.join(" ");
 
   if (!prompt) {
     console.log("Please provide a prompt.");
@@ -14,7 +23,7 @@ export async function createCommand() {
   console.log("Generating project...");
 
   try {
-    const success = await engine.execute(prompt);
+    const success = await engine.execute(prompt, imagePath);
 
     if (success) {
       console.log("🎉 Project generated successfully.");

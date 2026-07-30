@@ -36,6 +36,7 @@ export class CoderAgent extends BaseAgent {
     request: string,
     outputDirectory: string,
     existingFiles: string[] = [],
+    image?: { mimeType: string; data: string },
   ) {
     const memoryEngine = new ProjectMemoryEngine(outputDirectory);
     const existingArch = memoryEngine.loadArchitecture();
@@ -99,6 +100,7 @@ ${patternContext}
         {
           agentType: "coder",
           complexity: task.estimatedComplexity,
+          image,
         },
       );
 

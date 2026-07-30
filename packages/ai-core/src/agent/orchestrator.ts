@@ -123,6 +123,7 @@ export class Orchestrator {
   async generateProject(
     request: string,
     outputDirectory: string,
+    imagePath?: string,
   ) {
     this.memory.add(request);
 
@@ -130,11 +131,25 @@ export class Orchestrator {
       ExecutionPhase.Requirements,
     );
 
+    let imagePayload: { mimeType: string; data: string } | undefined;
+    if (imagePath && existsSync(imagePath)) {
+      try {
+        const buffer = readFileSync(imagePath);
+        const base64 = buffer.toString("base64");
+        const ext = imagePath.split(".").pop()?.toLowerCase();
+        const mimeType = ext === "png" ? "image/png" : "image/jpeg";
+        imagePayload = { mimeType, data: base64 };
+      } catch (err: any) {
+        console.warn(`[Orchestrator] Warning: Could not read image path "${imagePath}": ${err.message}`);
+      }
+    }
+
     const {
       specification,
     } =
       await this.architectAgent.execute(
         request,
+        imagePayload,
       );
 
     this.execution.enter(
@@ -209,6 +224,7 @@ export class Orchestrator {
   async generateApplication(
     request: string,
     outputDirectory: string,
+    imagePath?: string,
   ) {
     const memoryEngine = new ProjectMemoryEngine(outputDirectory);
     memoryEngine.initDefaults("project", request);
@@ -234,6 +250,19 @@ export class Orchestrator {
       ExecutionPhase.Requirements,
     );
 
+    let imagePayload: { mimeType: string; data: string } | undefined;
+    if (imagePath && existsSync(imagePath)) {
+      try {
+        const buffer = readFileSync(imagePath);
+        const base64 = buffer.toString("base64");
+        const ext = imagePath.split(".").pop()?.toLowerCase();
+        const mimeType = ext === "png" ? "image/png" : "image/jpeg";
+        imagePayload = { mimeType, data: base64 };
+      } catch (err: any) {
+        console.warn(`[Orchestrator] Warning: Could not read image path "${imagePath}": ${err.message}`);
+      }
+    }
+
     const guidancePrompt = request + (existingArch ? `\n(Guideline: Follow the existing framework "${existingArch.framework}", styled with "${existingArch.styling}", using naming rules: ${existingArch.namingConventions.join(", ")})` : "");
 
     const {
@@ -242,6 +271,7 @@ export class Orchestrator {
     } =
       await this.architectAgent.execute(
         guidancePrompt,
+        imagePayload,
       );
 
     const tasks =
@@ -317,6 +347,7 @@ export class Orchestrator {
             request,
             outputDirectory,
             existingFiles,
+            imagePayload,
           );
         } catch (coderError: any) {
           console.warn(`[Orchestrator] CoderAgent failed for task "${task.title}": ${coderError.message}`);

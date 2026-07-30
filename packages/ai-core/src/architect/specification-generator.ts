@@ -11,6 +11,7 @@ export class SpecificationGenerator {
 
   async generate(
     request: string,
+    image?: { mimeType: string; data: string }
   ): Promise<ProjectSpecification> {
 
     const response =
@@ -23,7 +24,7 @@ export class SpecificationGenerator {
           role: "user",
           content: request,
         },
-      ], { agentType: "architect" });
+      ], { agentType: "architect", image });
 
 
     const startIdx = response.indexOf("{");

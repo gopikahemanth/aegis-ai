@@ -118,17 +118,23 @@ CRITICAL STANDARDS:
 - Do not abbreviate code or omit sections using comments.
 
 Output Rules:
-1. Return ONLY files.
+1. Return ONLY files or patches.
 2. Never explain.
 3. Never use markdown.
 4. Never use triple backticks (\`\`\`).
-5. Every file MUST begin exactly like this:
-
+5. For NEW files, output full file contents starting with:
 ===FILE: relative/path===
 
-Example:
-===FILE: src/App.tsx===
-...`;
+6. For MODIFIED existing files, you can output search-and-replace patch blocks to save time and token usage:
+===PATCH: relative/path===
+<<<<<<< SEARCH
+[old code search block]
+=======
+[new replacement block]
+>>>>>>> REPLACE
+
+You can output multiple SEARCH/REPLACE blocks under one ===PATCH=== header.
+`;
   }
 
   public getReviewPrompt(request: string, issues: string, project: string): string {

@@ -15,4 +15,5 @@ export * from "./agents/index.js";
 export * from "./execution/index.js";
 export * from "./deploy/index.js";
 export * from "./memory/memory-engine.js";
+export * from "./dependency/dependency-graph.js";
 

@@ -11,6 +11,10 @@ import {
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
 import { Parser } from "../generator/parser.js";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { PatchEngine } from "../healing/patch-engine.js";
+import { DependencyGraphEngine } from "../dependency/dependency-graph.js";
 import {
   ArchitecturePlanner,
 } from "../architect/index.js";
@@ -333,6 +337,7 @@ async generateApplication(
     });
 
     const tierResults = await Promise.all(promises);
+    const patchEngine = new PatchEngine();
 
     for (let j = 0; j < tier.length; j++) {
       const task = tier[j];
@@ -340,8 +345,35 @@ async generateApplication(
       console.log(`[Task: ${task.title}] CoderAgent finished.`);
 
       response += result.response + "\n";
-      parsedFiles.push(...result.files);
-      existingFiles.push(...result.files.map(file => file.path));
+      
+      // Apply new files and search/replace patches directly to disk
+      patchEngine.apply(result.response, outputDirectory);
+
+      // Extract all file paths matching ===FILE: or ===PATCH: in the coder response
+      const filesMatched = [
+        ...result.response.matchAll(/===FILE:\s*(.*?)===/g)
+      ].map(m => m[1].trim());
+
+      const patchesMatched = [
+        ...result.response.matchAll(/===PATCH:\s*(.*?)===/g)
+      ].map(m => m[1].trim());
+
+      const allFilesTouched = [...new Set([...filesMatched, ...patchesMatched])];
+
+      // Load updated contents of all files touched in this task to compile final review files
+      for (const filePath of allFilesTouched) {
+        const fullPath = join(outputDirectory, filePath);
+        if (existsSync(fullPath)) {
+          const content = readFileSync(fullPath, "utf8");
+          // Remove existing entry for the file if present in parsedFiles, then push the updated content
+          parsedFiles = parsedFiles.filter(f => f.path !== filePath);
+          parsedFiles.push({ path: filePath, content });
+          
+          if (!existingFiles.includes(filePath)) {
+            existingFiles.push(filePath);
+          }
+        }
+      }
     }
   }
   this.execution.enter(
@@ -465,6 +497,15 @@ async generateApplication(
       metrics.telemetry.sandboxRuns += 1;
       memoryEngine.saveMetrics(metrics);
     }
+    // Build and save code dependency graph post-build
+    try {
+      const graphEngine = new DependencyGraphEngine();
+      graphEngine.build(outputDirectory);
+      graphEngine.save(outputDirectory);
+    } catch (graphErr: any) {
+      console.warn(`[DependencyGraph] Warning: Failed to build dependency graph: ${graphErr.message}`);
+    }
+
     console.log("[Memory] Saved execution context, architecture patterns, and metrics to .aegis/ successfully.");
   } catch (memSaveErr: any) {
     console.warn(`[Memory] Warning: Failed to save persistent memory: ${memSaveErr.message}`);

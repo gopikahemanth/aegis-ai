@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type {
   CodebaseEntry,
 } from "./codebase-index.js";
+import { DependencyGraphEngine } from "../dependency/dependency-graph.js";
 
 export class FileSelector {
   select(
@@ -47,7 +48,7 @@ export class FileSelector {
       };
     });
 
-    return ranked
+    const selectedFiles = ranked
       .filter((item) => item.score > 0)
       .sort(
         (a, b) =>
@@ -55,6 +56,43 @@ export class FileSelector {
       )
       .slice(0, 5)
       .map((item) => item.file);
+
+    // Expand selection using dependency graph if available
+    try {
+      const graphEngine = new DependencyGraphEngine();
+      const graph = graphEngine.load(projectPath);
+      if (graph) {
+        const expandedFiles = new Set(selectedFiles.map(f => f.path));
+
+        for (const file of selectedFiles) {
+          const node = graph[file.path];
+          if (node) {
+            // Include up to 2 direct imports & dependents to prevent context overflow
+            const relations = [...node.imports.slice(0, 2), ...node.importedBy.slice(0, 2)];
+            for (const relPath of relations) {
+              expandedFiles.add(relPath);
+            }
+          }
+        }
+
+        // Map relative paths back to CodebaseEntry objects
+        const expandedEntries = [...expandedFiles].map(path => {
+          const found = files.find(f => f.path === path);
+          if (found) return found;
+          return {
+            path,
+            type: path.endsWith(".ts") || path.endsWith(".tsx") ? "code" : "asset",
+            size: 0
+          };
+        });
+
+        return expandedEntries.slice(0, 8); // cap total context files to 8
+      }
+    } catch (graphError: any) {
+      // ignore graph loading errors gracefully
+    }
+
+    return selectedFiles;
   }
 
   private scoreKeywords(

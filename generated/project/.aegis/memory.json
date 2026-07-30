@@ -1,42 +1,28 @@
 {
   "projectName": "project",
-  "lastRequest": "Build a gorgeous dark-themed personal finance and money tracking dashboard using React, featuring interactive budget metrics, expense categorization charts, savings trackers, custom transaction tables, modern Outfit typography, glowing cards, and clean styling rules",
+  "lastRequest": "Build a modern, dark-themed study tracker and Pomodoro dashboard using React. It should feature an interactive Pomodoro timer with customizable focus/break intervals, a daily study habits checklist, session logging categorized by subject (e.g., Coding, Math, Design) with a history table, real-time study statistics (like total focus hours and weekly progress bars), a glassmorphism theme, smooth transition animations, and responsive layouts styled with Tailwind CSS.",
   "createdFiles": [
-    "src/main.tsx",
-    "src/vite-env.d.ts",
-    "src/hooks/useFinancialMetrics.ts",
-    "src/components/AddTransactionModal.tsx",
-    "src/pages/DashboardOverview.tsx",
-    "src/pages/PortfolioManagement.tsx",
-    "src/pages/TransactionHistory.tsx",
-    "src/components/RecentTransactionsTable.tsx",
-    "index.html",
-    "src/index.css",
-    "src/types/finance.ts",
-    "src/utils/formatters.ts",
-    "src/hooks/useLocalStorageState.ts",
-    "src/services/StoragePersistenceService.ts",
-    "src/components/SidebarNavigation.tsx",
-    "src/components/TopbarHeader.tsx",
-    "src/components/MetricCard.tsx",
-    "src/components/NetWorthChart.tsx",
-    "src/components/AssetDistributionChart.tsx",
-    "src/components/PortfolioPerformanceCard.tsx",
-    "src/components/RiskGaugeWidget.tsx",
-    "src/components/NotificationDropdown.tsx",
-    "src/pages/AnalyticsAndReports.tsx",
-    "src/pages/AssetAllocation.tsx",
-    "src/pages/RiskAssessment.tsx",
-    "src/pages/SettingsAndPreferences.tsx",
+    "src/components/SessionLog.tsx",
+    "src/types.ts",
+    "src/utils/sound.ts",
+    "src/hooks/useLocalStorage.ts",
+    "src/hooks/usePomodoroTimer.ts",
+    "src/components/Navbar.tsx",
+    "src/components/DashboardSummary.tsx",
+    "src/components/PomodoroTimer.tsx",
+    "src/components/HabitTracker.tsx",
+    "src/components/SettingsView.tsx",
     "src/App.tsx",
+    "src/components/AnalyticsCharts.tsx",
+    "src/components/TaskManager.tsx",
     "Dockerfile",
     ".dockerignore"
   ],
   "tasks": [
     {
       "id": 1,
-      "title": "Project Setup & Design System Configuration",
-      "description": "Initialize React Vite TypeScript project with Tailwind CSS, Lucide icons, Chart.js/Recharts, and configure the gorgeous dark mode theme palette.",
+      "title": "Project Setup and Core Types",
+      "description": "Initialize React Vite TypeScript application with Tailwind CSS, define core domain models (Pomodoro sessions, tasks, study logs), and set up local storage repository layer.",
       "completed": true,
       "stage": "Architecture",
       "priority": 1,
@@ -45,48 +31,54 @@
     },
     {
       "id": 2,
-      "title": "Core Layout & Navigation",
-      "description": "Implement responsive dark layout with sidebar navigation, top header with profile/notifications, and container grid system.",
+      "title": "Pomodoro Timer Engine",
+      "description": "Implement robust countdown timer hook with web workers/state management for work, short break, and long break cycles, audio notifications, and session persistence.",
       "completed": true,
       "stage": "Implementation",
       "priority": 2,
       "dependencies": [
         1
       ],
-      "estimatedComplexity": 2
+      "estimatedComplexity": 3
     },
     {
       "id": 3,
-      "title": "Financial Metrics & Analytics Dashboard",
-      "description": "Build main dashboard view with KPI summary cards, interactive revenue/expense charts, and recent transaction feeds.",
+      "title": "Task Management Module",
+      "description": "Build task creation, editing, deletion, prioritization, and completion tracking linked directly to Pomodoro timer sessions.",
       "completed": true,
       "stage": "Implementation",
       "priority": 3,
       "dependencies": [
+        1,
         2
       ],
-      "estimatedComplexity": 3
+      "estimatedComplexity": 2
     },
     {
       "id": 4,
-      "title": "Advanced Finance Modules",
-      "description": "Implement detailed views for portfolio assets, expense breakdown categories, and interactive financial data tables with filtering and sorting.",
+      "title": "Analytics Dashboard and Charts",
+      "description": "Create statistics view aggregating study time, completed sessions, and daily streaks using clean data visualization components.",
       "completed": true,
       "stage": "Implementation",
       "priority": 4,
       "dependencies": [
+        1,
+        2,
         3
       ],
       "estimatedComplexity": 3
     },
     {
       "id": 5,
-      "title": "Polish & Production Readiness",
-      "description": "Perform comprehensive code review, UI state persistence, micro-animations, accessibility checks, and final build validation.",
+      "title": "UI Integration and Validation",
+      "description": "Assemble dashboard layout with responsive Tailwind design, test edge cases, ensure state synchronization, and verify production build.",
       "completed": true,
       "stage": "Validation",
       "priority": 5,
       "dependencies": [
+        1,
+        2,
+        3,
         4
       ],
       "estimatedComplexity": 2
@@ -94,13 +86,13 @@
   ],
   "history": [
     {
-      "timestamp": "2026-07-30T09:35:36.191Z",
-      "request": "Build a gorgeous dark-themed personal finance and money tracking dashboard using React, featuring interactive budget metrics, expense categorization charts, savings trackers, custom transaction tables, modern Outfit typography, glowing cards, and clean styling rules",
+      "timestamp": "2026-07-30T11:43:08.383Z",
+      "request": "Build a modern, dark-themed study tracker and Pomodoro dashboard using React. It should feature an interactive Pomodoro timer with customizable focus/break intervals, a daily study habits checklist, session logging categorized by subject (e.g., Coding, Math, Design) with a history table, real-time study statistics (like total focus hours and weekly progress bars), a glassmorphism theme, smooth transition animations, and responsive layouts styled with Tailwind CSS.",
       "stage": "Initialization"
     },
     {
-      "timestamp": "2026-07-30T09:40:43.561Z",
-      "request": "Build a gorgeous dark-themed personal finance and money tracking dashboard using React, featuring interactive budget metrics, expense categorization charts, savings trackers, custom transaction tables, modern Outfit typography, glowing cards, and clean styling rules",
+      "timestamp": "2026-07-30T11:46:47.657Z",
+      "request": "Build a modern, dark-themed study tracker and Pomodoro dashboard using React. It should feature an interactive Pomodoro timer with customizable focus/break intervals, a daily study habits checklist, session logging categorized by subject (e.g., Coding, Math, Design) with a history table, real-time study statistics (like total focus hours and weekly progress bars), a glassmorphism theme, smooth transition animations, and responsive layouts styled with Tailwind CSS.",
       "stage": "ExecutionComplete"
     }
   ]

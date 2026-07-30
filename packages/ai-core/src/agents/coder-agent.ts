@@ -49,8 +49,9 @@ export class CoderAgent extends BaseAgent {
 
     let archContext = "";
     if (existingArch) {
-      archContext = `\nDesign Conventions & Coding Rules:\n- Styling framework: ${existingArch.styling}\n` +
-        existingArch.namingConventions.map(rule => `- ${rule}`).join("\n");
+      const conventions = existingArch.namingConventions.map(rule => `- ${rule}`).join("\n");
+      const additional = (existingArch.additionalRules || []).map(rule => `- [LEARNED RULE] ${rule}`).join("\n");
+      archContext = `\nDesign Conventions & Coding Rules:\n- Styling framework: ${existingArch.styling}\n${conventions}\n${additional}`;
     }
 
     // Scan project files and run Context Manager intelligent file selector

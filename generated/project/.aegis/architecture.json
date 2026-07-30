@@ -23,6 +23,7 @@
   "styling": "vanilla-css",
   "additionalRules": [
     "Preserve type assertions in React TSX components",
-    "Do not generate stubs or incomplete code blocks"
+    "Do not generate stubs or incomplete code blocks",
+    "Always ensure all state setters used in interval callbacks or asynchronous effects reference the functional updater form or include all necessary dependencies to prevent stale closures and infinite re-renders."
   ]
 }

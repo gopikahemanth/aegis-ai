@@ -9,3 +9,4 @@ export * from "./templates.js";
 export * from "./frameworks/index.js";
 export * from "./project-creator.js";
 export * from "./dependency-resolver.js";
+export * from "./plugins/plugin-manager.js";

@@ -7,126 +7,108 @@
   "src/App.tsx": {
     "path": "src/App.tsx",
     "imports": [
-      "src/components/SidebarNavigation.tsx",
-      "src/components/TopbarHeader.tsx",
-      "src/components/AddTransactionModal.tsx",
-      "src/pages/DashboardOverview.tsx",
-      "src/pages/PortfolioManagement.tsx",
-      "src/pages/AnalyticsAndReports.tsx",
-      "src/pages/TransactionHistory.tsx",
-      "src/pages/AssetAllocation.tsx",
-      "src/pages/RiskAssessment.tsx",
-      "src/pages/SettingsAndPreferences.tsx",
-      "src/services/StoragePersistenceService.ts",
-      "src/types/finance.ts"
+      "src/components/Navbar.tsx",
+      "src/components/DashboardSummary.tsx",
+      "src/components/PomodoroTimer.tsx",
+      "src/components/TaskManager.tsx",
+      "src/components/HabitTracker.tsx",
+      "src/components/SessionLog.tsx",
+      "src/components/AnalyticsCharts.tsx",
+      "src/components/SettingsView.tsx",
+      "src/hooks/useLocalStorage.ts",
+      "src/hooks/usePomodoroTimer.ts",
+      "src/types.ts"
     ],
     "importedBy": [
       "src/main.tsx"
     ]
   },
-  "src/components/AddTransactionModal.tsx": {
-    "path": "src/components/AddTransactionModal.tsx",
+  "src/components/AnalyticsCharts.tsx": {
+    "path": "src/components/AnalyticsCharts.tsx",
     "imports": [
-      "src/types/finance.ts"
+      "src/types.ts"
     ],
     "importedBy": [
       "src/App.tsx"
     ]
   },
-  "src/components/AssetDistributionChart.tsx": {
-    "path": "src/components/AssetDistributionChart.tsx",
+  "src/components/DashboardSummary.tsx": {
+    "path": "src/components/DashboardSummary.tsx",
     "imports": [
-      "src/types/finance.ts",
-      "src/utils/formatters.ts"
-    ],
-    "importedBy": [
-      "src/pages/DashboardOverview.tsx"
-    ]
-  },
-  "src/components/MetricCard.tsx": {
-    "path": "src/components/MetricCard.tsx",
-    "imports": [
-      "src/utils/formatters.ts"
-    ],
-    "importedBy": [
-      "src/pages/DashboardOverview.tsx"
-    ]
-  },
-  "src/components/NetWorthChart.tsx": {
-    "path": "src/components/NetWorthChart.tsx",
-    "imports": [
-      "src/types/finance.ts",
-      "src/utils/formatters.ts"
-    ],
-    "importedBy": [
-      "src/pages/DashboardOverview.tsx"
-    ]
-  },
-  "src/components/NotificationDropdown.tsx": {
-    "path": "src/components/NotificationDropdown.tsx",
-    "imports": [
-      "src/types/finance.ts",
-      "src/services/StoragePersistenceService.ts"
-    ],
-    "importedBy": [
-      "src/components/TopbarHeader.tsx"
-    ]
-  },
-  "src/components/PortfolioPerformanceCard.tsx": {
-    "path": "src/components/PortfolioPerformanceCard.tsx",
-    "imports": [
-      "src/types/finance.ts",
-      "src/utils/formatters.ts"
-    ],
-    "importedBy": [
-      "src/pages/DashboardOverview.tsx"
-    ]
-  },
-  "src/components/RecentTransactionsTable.tsx": {
-    "path": "src/components/RecentTransactionsTable.tsx",
-    "imports": [
-      "src/types/finance.ts",
-      "src/utils/formatters.ts"
-    ],
-    "importedBy": [
-      "src/pages/DashboardOverview.tsx"
-    ]
-  },
-  "src/components/RiskGaugeWidget.tsx": {
-    "path": "src/components/RiskGaugeWidget.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/pages/DashboardOverview.tsx"
-    ]
-  },
-  "src/components/SidebarNavigation.tsx": {
-    "path": "src/components/SidebarNavigation.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/components/TopbarHeader.tsx": {
-    "path": "src/components/TopbarHeader.tsx",
-    "imports": [
-      "src/types/finance.ts",
-      "src/components/NotificationDropdown.tsx"
+      "src/types.ts"
     ],
     "importedBy": [
       "src/App.tsx"
     ]
   },
-  "src/hooks/useFinancialMetrics.ts": {
-    "path": "src/hooks/useFinancialMetrics.ts",
+  "src/components/HabitTracker.tsx": {
+    "path": "src/components/HabitTracker.tsx",
     "imports": [
-      "src/types/finance.ts"
+      "src/types.ts"
     ],
-    "importedBy": []
+    "importedBy": [
+      "src/App.tsx"
+    ]
   },
-  "src/hooks/useLocalStorageState.ts": {
-    "path": "src/hooks/useLocalStorageState.ts",
+  "src/components/Navbar.tsx": {
+    "path": "src/components/Navbar.tsx",
     "imports": [],
-    "importedBy": []
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/PomodoroTimer.tsx": {
+    "path": "src/components/PomodoroTimer.tsx",
+    "imports": [
+      "src/types.ts"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/SessionLog.tsx": {
+    "path": "src/components/SessionLog.tsx",
+    "imports": [
+      "src/types.ts"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/SettingsView.tsx": {
+    "path": "src/components/SettingsView.tsx",
+    "imports": [
+      "src/types.ts"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/TaskManager.tsx": {
+    "path": "src/components/TaskManager.tsx",
+    "imports": [
+      "src/types.ts"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/hooks/useLocalStorage.ts": {
+    "path": "src/hooks/useLocalStorage.ts",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/hooks/usePomodoroTimer.ts": {
+    "path": "src/hooks/usePomodoroTimer.ts",
+    "imports": [
+      "src/types.ts",
+      "src/utils/sound.ts"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
   },
   "src/main.tsx": {
     "path": "src/main.tsx",
@@ -135,132 +117,26 @@
     ],
     "importedBy": []
   },
-  "src/pages/AnalyticsAndReports.tsx": {
-    "path": "src/pages/AnalyticsAndReports.tsx",
-    "imports": [
-      "src/types/finance.ts",
-      "src/utils/formatters.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/pages/AssetAllocation.tsx": {
-    "path": "src/pages/AssetAllocation.tsx",
-    "imports": [
-      "src/types/finance.ts",
-      "src/utils/formatters.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/pages/DashboardOverview.tsx": {
-    "path": "src/pages/DashboardOverview.tsx",
-    "imports": [
-      "src/types/finance.ts",
-      "src/components/MetricCard.tsx",
-      "src/components/NetWorthChart.tsx",
-      "src/components/AssetDistributionChart.tsx",
-      "src/components/RecentTransactionsTable.tsx",
-      "src/components/PortfolioPerformanceCard.tsx",
-      "src/components/RiskGaugeWidget.tsx",
-      "src/utils/formatters.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/pages/PortfolioManagement.tsx": {
-    "path": "src/pages/PortfolioManagement.tsx",
-    "imports": [
-      "src/types/finance.ts",
-      "src/utils/formatters.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/pages/RiskAssessment.tsx": {
-    "path": "src/pages/RiskAssessment.tsx",
-    "imports": [
-      "src/services/StoragePersistenceService.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/pages/SettingsAndPreferences.tsx": {
-    "path": "src/pages/SettingsAndPreferences.tsx",
-    "imports": [
-      "src/types/finance.ts",
-      "src/services/StoragePersistenceService.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/pages/TransactionHistory.tsx": {
-    "path": "src/pages/TransactionHistory.tsx",
-    "imports": [
-      "src/types/finance.ts",
-      "src/utils/formatters.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/services/StoragePersistenceService.ts": {
-    "path": "src/services/StoragePersistenceService.ts",
-    "imports": [
-      "src/types/finance.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx",
-      "src/components/NotificationDropdown.tsx",
-      "src/pages/RiskAssessment.tsx",
-      "src/pages/SettingsAndPreferences.tsx"
-    ]
-  },
-  "src/types/finance.ts": {
-    "path": "src/types/finance.ts",
+  "src/types.ts": {
+    "path": "src/types.ts",
     "imports": [],
     "importedBy": [
       "src/App.tsx",
-      "src/components/AddTransactionModal.tsx",
-      "src/components/AssetDistributionChart.tsx",
-      "src/components/NetWorthChart.tsx",
-      "src/components/NotificationDropdown.tsx",
-      "src/components/PortfolioPerformanceCard.tsx",
-      "src/components/RecentTransactionsTable.tsx",
-      "src/components/TopbarHeader.tsx",
-      "src/hooks/useFinancialMetrics.ts",
-      "src/pages/AnalyticsAndReports.tsx",
-      "src/pages/AssetAllocation.tsx",
-      "src/pages/DashboardOverview.tsx",
-      "src/pages/PortfolioManagement.tsx",
-      "src/pages/SettingsAndPreferences.tsx",
-      "src/pages/TransactionHistory.tsx",
-      "src/services/StoragePersistenceService.ts",
-      "src/utils/formatters.ts"
+      "src/components/AnalyticsCharts.tsx",
+      "src/components/DashboardSummary.tsx",
+      "src/components/HabitTracker.tsx",
+      "src/components/PomodoroTimer.tsx",
+      "src/components/SessionLog.tsx",
+      "src/components/SettingsView.tsx",
+      "src/components/TaskManager.tsx",
+      "src/hooks/usePomodoroTimer.ts"
     ]
   },
-  "src/utils/formatters.ts": {
-    "path": "src/utils/formatters.ts",
-    "imports": [
-      "src/types/finance.ts"
-    ],
+  "src/utils/sound.ts": {
+    "path": "src/utils/sound.ts",
+    "imports": [],
     "importedBy": [
-      "src/components/AssetDistributionChart.tsx",
-      "src/components/MetricCard.tsx",
-      "src/components/NetWorthChart.tsx",
-      "src/components/PortfolioPerformanceCard.tsx",
-      "src/components/RecentTransactionsTable.tsx",
-      "src/pages/AnalyticsAndReports.tsx",
-      "src/pages/AssetAllocation.tsx",
-      "src/pages/DashboardOverview.tsx",
-      "src/pages/PortfolioManagement.tsx",
-      "src/pages/TransactionHistory.tsx"
+      "src/hooks/usePomodoroTimer.ts"
     ]
   },
   "src/vite-env.d.ts": {

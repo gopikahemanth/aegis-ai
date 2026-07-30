@@ -4,4 +4,5 @@ export * from "./planner-agent.js";
 export * from "./coder-agent.js";
 export * from "./reviewer-agent.js";
 export * from "./visual-reviewer-agent.js";
+export * from "./heuristics-learner-agent.js";
 

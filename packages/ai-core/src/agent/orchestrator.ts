@@ -8,6 +8,7 @@ import {
   CoderAgent,
   ReviewerAgent,
   VisualReviewerAgent,
+  HeuristicsLearningAgent,
 } from "../agents/index.js";
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
@@ -68,6 +69,8 @@ export class Orchestrator {
 
   private readonly visualReviewerAgent: VisualReviewerAgent;
 
+  private readonly heuristicsLearningAgent: HeuristicsLearningAgent;
+
   private readonly executionLoop = new ExecutionLoop();
 
   private readonly repairCoordinator: RepairCoordinator;
@@ -89,6 +92,9 @@ export class Orchestrator {
 
     this.visualReviewerAgent =
       new VisualReviewerAgent(provider);
+
+    this.heuristicsLearningAgent =
+      new HeuristicsLearningAgent(provider);
 
     this.repairCoordinator =
       new RepairCoordinator(provider);
@@ -503,6 +509,23 @@ export class Orchestrator {
       if (arch) {
         arch.framework = framework;
         arch.styling = framework === "html" ? "vanilla-css" : "tailwind";
+        
+        // Post-build Learning Loop analysis
+        if (!build.success) {
+          const errorsToLearn = [build.stderr || "Unknown build error"];
+          console.log("[LearningLoop] Running heuristics error parser...");
+          try {
+            const ruleLearned = await this.heuristicsLearningAgent.execute(request, errorsToLearn);
+            arch.additionalRules ??= [];
+            if (ruleLearned && !arch.additionalRules.includes(ruleLearned)) {
+              arch.additionalRules.push(ruleLearned);
+              console.log(`[LearningLoop] ✓ Successfully indexed new lesson rules: "${ruleLearned}"`);
+            }
+          } catch (learnErr: any) {
+            console.warn(`[LearningLoop] Warning: Could not index learned heuristics: ${learnErr.message}`);
+          }
+        }
+        
         memoryEngine.saveArchitecture(arch);
       }
 

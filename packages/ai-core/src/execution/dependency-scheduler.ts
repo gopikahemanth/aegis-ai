@@ -49,4 +49,51 @@ export class DependencyScheduler {
 
     return scheduled;
   }
+
+  scheduleParallelTiers(
+    tasks: ExecutionTask[],
+  ): ExecutionTask[][] {
+    const tiers: ExecutionTask[][] = [];
+    const completed = new Set<number>();
+
+    while (
+      completed.size < tasks.length
+    ) {
+      const ready =
+        tasks.filter(
+          (task) =>
+            !completed.has(task.id) &&
+            (
+              task.dependencies ??
+              []
+            ).every(
+              (dependency) =>
+                completed.has(
+                  dependency,
+                ),
+            ),
+        );
+
+      if (
+        ready.length === 0
+      ) {
+        throw new Error(
+          "Circular task dependency detected.",
+        );
+      }
+
+      ready.sort(
+        (a, b) =>
+          (a.priority ?? 999) -
+          (b.priority ?? 999),
+      );
+
+      tiers.push(ready);
+      for (const task of ready) {
+        completed.add(task.id);
+      }
+    }
+
+    return tiers;
+  }
 }

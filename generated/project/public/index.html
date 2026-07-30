@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Precision Countdown Timer</title>
+  <link rel="stylesheet" href="../src/styles/main.css">
+</head>
+<body>
+  <div id="app" class="app-container">
+    <header class="app-header">
+      <h1>Aegis Countdown</h1>
+      <nav class="app-nav">
+        <button id="nav-timer" class="nav-btn active" data-target="timer-view">Timer</button>
+        <button id="nav-settings" class="nav-btn" data-target="settings-view">Settings</button>
+      </nav>
+    </header>
+
+    <main class="app-main">
+      <div id="notification-root"></div>
+
+      <section id="timer-view" class="view active">
+        <div class="timer-card">
+          <div id="timer-display-root"></div>
+          <div id="countdown-form-root"></div>
+        </div>
+      </section>
+
+      <section id="settings-view" class="view">
+        <div class="settings-card">
+          <h2>Preferences</h2>
+          <div id="settings-form-root"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>&copy; 2025 Aegis Engineering. All rights reserved.</p>
+    </footer>
+  </div>
+
+  <script type="module" src="../src/index.js"></script>
+</body>
+</html>

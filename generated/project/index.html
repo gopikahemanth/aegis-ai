@@ -1,117 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aegis Countdown Timer</title>
-    <link rel="stylesheet" href="src/styles/main.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aegis HTML App</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <div id="app" class="app-container">
-        <header class="app-header">
-            <h1 id="app-title">Precision Countdown</h1>
-            <nav class="app-nav">
-                <button class="nav-btn active" data-target="timer-view">Timer</button>
-                <button class="nav-btn" data-target="presets-view">Presets</button>
-                <button class="nav-btn" data-target="settings-view">Settings</button>
-            </nav>
-        </header>
 
-        <main class="app-main">
-            <!-- Timer View -->
-            <section id="timer-view" class="view active">
-                <div class="timer-card">
-                    <div class="timer-display-container">
-                        <svg class="progress-ring" width="280" height="280">
-                            <circle class="progress-ring-bg" cx="140" cy="140" r="120" />
-                            <circle id="progress-ring-indicator" class="progress-ring-indicator" cx="140" cy="140" r="120" />
-                        </svg>
-                        <div class="time-readout">
-                            <span id="hours-display">00</span>:<span id="minutes-display">05</span>:<span id="seconds-display">00</span>
-                        </div>
-                    </div>
-                    
-                    <div id="event-title-display" class="event-title-display">Time until event</div>
+  <div id="app"></div>
 
-                    <div class="timer-controls">
-                        <button id="start-btn" class="btn btn-primary">Start</button>
-                        <button id="pause-btn" class="btn btn-secondary" disabled>Pause</button>
-                        <button id="reset-btn" class="btn btn-danger">Reset</button>
-                    </div>
+  <script src="script.js"></script>
 
-                    <div class="quick-adjust">
-                        <button class="btn-adjust" data-seconds="60">+1m</button>
-                        <button class="btn-adjust" data-seconds="300">+5m</button>
-                        <button class="btn-adjust" data-seconds="900">+15m</button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Presets View -->
-            <section id="presets-view" class="view">
-                <div class="presets-container">
-                    <h2>Quick Presets</h2>
-                    <div id="presets-grid" class="presets-grid">
-                        <!-- Populated by JS -->
-                    </div>
-                    <div class="custom-preset-form">
-                        <h3>Add Custom Preset</h3>
-                        <div class="form-group">
-                            <label for="preset-name">Name</label>
-                            <input type="text" id="preset-name" placeholder="Pomodoro, Meeting, etc.">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="preset-hours">Hours</label>
-                                <input type="number" id="preset-hours" min="0" max="23" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label for="preset-minutes">Minutes</label>
-                                <input type="number" id="preset-minutes" min="0" max="59" value="25">
-                            </div>
-                            <div class="form-group">
-                                <label for="preset-seconds">Seconds</label>
-                                <input type="number" id="preset-seconds" min="0" max="59" value="0">
-                            </div>
-                        </div>
-                        <button id="save-preset-btn" class="btn btn-primary">Save Preset</button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Settings View -->
-            <section id="settings-view" class="view">
-                <div class="settings-container">
-                    <h2>Timer Settings</h2>
-                    <div class="setting-item">
-                        <label for="setting-target-name">Event Title</label>
-                        <input type="text" id="setting-target-name" value="Countdown Event">
-                    </div>
-                    <div class="setting-item">
-                        <label for="setting-sound">Alarm Sound</label>
-                        <select id="setting-sound">
-                            <option value="bell">Classic Bell</option>
-                            <option value="digital">Digital Beep</option>
-                            <option value="chime">Soft Chime</option>
-                        </select>
-                    </div>
-                    <div class="setting-item checkbox-item">
-                        <label for="setting-notifications">Enable Browser Notifications</label>
-                        <input type="checkbox" id="setting-notifications">
-                    </div>
-                    <div class="setting-item checkbox-item">
-                        <label for="setting-dark-mode">Dark Theme</label>
-                        <input type="checkbox" id="setting-dark-mode">
-                    </div>
-                    <button id="save-settings-btn" class="btn btn-primary">Save Settings</button>
-                </div>
-            </section>
-        </main>
-
-        <footer class="app-footer">
-            <p>&copy; Aegis Systems. Production-Ready Software.</p>
-        </footer>
-    </div>
-    <script type="module" src="src/app.js"></script>
 </body>
 </html>

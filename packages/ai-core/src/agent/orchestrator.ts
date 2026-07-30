@@ -26,9 +26,13 @@ import {
   RepairCoordinator,
 } from "../build/index.js";
 import { DeploymentGenerator } from "../deploy/index.js";
+import { DependencyScheduler } from "../execution/dependency-scheduler.js";
+import type { Task } from "../planner/task.js";
 
 export class Orchestrator {
 
+
+  private readonly scheduler = new DependencyScheduler();
 
   private readonly buildOrchestrator = new BuildOrchestrator();
 
@@ -250,75 +254,85 @@ const existingFiles: string[] = [];
 let response = "";
 
 let parsedFiles: GeneratedFile[] = [];
-console.log("Starting implementation loop...");
-for (const task of tasks) {
-  console.log("Current task:", task.title);
-
-  console.log("Calling CoderAgent...");
-
-    let result: { response: string; files: GeneratedFile[] } = { response: "", files: [] };
+    let parallelTiers: Task[][];
     try {
-      result = await this.coderAgent.execute(
-        task,
-        architecture,
-        architecturePlan,
-        request,
-        outputDirectory,
-        existingFiles,
-      );
-    } catch (coderError: any) {
-      console.warn(`[Orchestrator] CoderAgent failed: ${coderError.message}`);
-      console.log(`[Orchestrator] Launching inline Coder self-healing loop...`);
-      let repairAttempts = 0;
-      let success = false;
-      let lastError = coderError;
-
-      while (repairAttempts < 3 && !success) {
-        repairAttempts++;
-        console.log(`[Self-Healing] Inline Coder repair attempt ${repairAttempts}/3...`);
-        try {
-          const repairResponse = await this.repairCoordinator.repair(
-            request,
-            lastError.message,
-            response + `\nAttempted output for task "${task.title}":\n` + (lastError.stack || lastError.message)
-          );
-
-          const repairedFiles = this.parser.parse(repairResponse);
-          if (repairedFiles.length > 0) {
-            result = {
-              response: repairResponse,
-              files: repairedFiles
-            };
-            success = true;
-            console.log(`[Self-Healing] ✓ Coder repair succeeded! Resolved placeholders.`);
-          } else {
-            throw new Error("No file changes parsed from repair response.");
-          }
-        } catch (repairErr: any) {
-          lastError = repairErr;
-          console.error(`[Self-Healing] Inline repair attempt ${repairAttempts} failed:`, repairErr.message);
-        }
-      }
-
-      if (!success) {
-        throw coderError;
-      }
+      parallelTiers = this.scheduler.scheduleParallelTiers(tasks) as Task[][];
+      console.log(`[Orchestrator] DAG parallel scheduling successful. Grouped ${tasks.length} tasks into ${parallelTiers.length} execution tiers.`);
+    } catch (error: any) {
+      console.warn(`[Orchestrator] Warning: Parallel scheduling failed (${error.message}). Falling back to sequential execution.`);
+      parallelTiers = tasks.map(t => [t]);
     }
 
-  console.log("CoderAgent finished.");
+    console.log("Starting implementation loop...");
+    for (let i = 0; i < parallelTiers.length; i++) {
+      const tier = parallelTiers[i];
+      console.log(`\nRunning execution tier ${i + 1}/${parallelTiers.length} with ${tier.length} parallel tasks...`);
 
-  response +=
-    result.response + "\n";
+      const promises = tier.map(async (task) => {
+        console.log(`[Task: ${task.title}] Calling CoderAgent...`);
+        let result: { response: string; files: GeneratedFile[] } = { response: "", files: [] };
+        try {
+          result = await this.coderAgent.execute(
+            task,
+            architecture,
+            architecturePlan,
+            request,
+            outputDirectory,
+            existingFiles,
+          );
+        } catch (coderError: any) {
+          console.warn(`[Orchestrator] CoderAgent failed for task "${task.title}": ${coderError.message}`);
+          console.log(`[Orchestrator] Launching inline Coder self-healing loop...`);
+          let repairAttempts = 0;
+          let success = false;
+          let lastError = coderError;
 
-  parsedFiles.push(
-    ...result.files,
-  );
-  existingFiles.push(
-  ...result.files.map(
-    (file) => file.path,
-  ),
-);
-}
+          while (repairAttempts < 3 && !success) {
+            repairAttempts++;
+            console.log(`[Self-Healing] Inline Coder repair attempt ${repairAttempts}/3...`);
+            try {
+              const repairResponse = await this.repairCoordinator.repair(
+                request,
+                lastError.message,
+                response + `\nAttempted output for task "${task.title}":\n` + (lastError.stack || lastError.message)
+              );
+
+              const repairedFiles = this.parser.parse(repairResponse);
+              if (repairedFiles.length > 0) {
+                result = {
+                  response: repairResponse,
+                  files: repairedFiles
+                };
+                success = true;
+                console.log(`[Self-Healing] ✓ Coder repair succeeded! Resolved placeholders.`);
+              } else {
+                throw new Error("No file changes parsed from repair response.");
+              }
+            } catch (repairErr: any) {
+              lastError = repairErr;
+              console.error(`[Self-Healing] Inline repair attempt ${repairAttempts} failed:`, repairErr.message);
+            }
+          }
+
+          if (!success) {
+            throw coderError;
+          }
+        }
+        return result;
+      });
+
+      const tierResults = await Promise.all(promises);
+
+      for (let j = 0; j < tier.length; j++) {
+        const task = tier[j];
+        const result = tierResults[j];
+        console.log(`[Task: ${task.title}] CoderAgent finished.`);
+
+        response += result.response + "\n";
+        parsedFiles.push(...result.files);
+        existingFiles.push(...result.files.map(file => file.path));
+      }
+    }
 this.execution.enter(
   ExecutionPhase.Review,
 );

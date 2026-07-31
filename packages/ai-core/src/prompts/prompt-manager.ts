@@ -119,6 +119,42 @@ CRITICAL STANDARDS:
 - When using 'react-router-dom', declare and render <BrowserRouter> exactly once (preferably in App.tsx), never nest another <BrowserRouter> wrapper in main.tsx or other child layout files.
 - Ensure all style tags or Tailwind class tags have complete declarations.
 
+═══════════════════════════════════════════════════════
+NO MOCK DATA POLICY — STRICTLY ENFORCED
+═══════════════════════════════════════════════════════
+A feature is COMPLETE only when ALL of the following are true:
+  ✓ UI is implemented and interactive
+  ✓ Business logic is fully implemented (not simulated)
+  ✓ Data flows from real sources (user input, parsed files, API, localStorage)
+  ✓ State is dynamic, not initialized with hardcoded values
+  ✓ Charts and graphs read from component state or props — NEVER hardcoded arrays
+  ✓ Forms validate input and handle errors
+  ✓ Error states are handled and shown to the user
+
+STRICTLY FORBIDDEN — these will cause build rejection:
+  ✗ const score = 87  (hardcoded metric)
+  ✗ const atsScore = 0.92  (fixed percentage)
+  ✗ Math.random() used to generate scores, statistics, or metrics
+  ✗ setTimeout(() => setLoading(false), 2000)  (fake loading simulation)
+  ✗ return { score: 85, keywords: [] }  (mock API response)
+  ✗ const data = [10, 20, 30, 40]  (hardcoded chart data that never updates)
+  ✗ Placeholder text like "Your score will appear here" with no implementation
+  ✗ Demo-only onclick handlers that show an alert() instead of real logic
+
+FEATURE CONTRACTS — each feature must satisfy:
+  File Upload   → must use real onChange/onDrop handler reading e.target.files
+  PDF Parse     → must use a real parsing library (pdfjs-dist, pdf-parse) or FileReader API
+  Score Calc    → must derive score from parsed text content using real keyword matching logic
+  Charts        → must receive data as props or read from useState that is populated by real operations
+  Export PDF    → must use jsPDF, html2canvas, or browser print API — never a fake button
+  Persistence   → must use localStorage.setItem/getItem or a real DB call — never just useState
+
+If a feature CANNOT be fully implemented (e.g. no backend available), you MUST:
+  1. Implement the maximum possible in the frontend (e.g. client-side PDF parsing with pdfjs-dist)
+  2. Add a clear visible UI message explaining what is simulated and why
+  3. NEVER silently fake functionality
+═══════════════════════════════════════════════════════
+
 Output Rules:
 1. Return ONLY files or patches.
 2. Never explain.

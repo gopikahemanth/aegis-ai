@@ -6,6 +6,11 @@ import { PRGeneratorAgent } from "./agents/pr-generator-agent.js";
 import { DistributedRuntimeEngine } from "./agent/distributed-runtime.js";
 import { AuditTrailEngine } from "./utils/audit-trail.js";
 import { SecurityGuard } from "./utils/security.js";
+import { StubDetector } from "./generator/stub-detector.js";
+import { FeatureContractValidator } from "./validation/feature-contract-validator.js";
+import { RealityCheckerAgent } from "./agents/reality-checker-agent.js";
+import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { join } from "node:path";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -122,6 +127,63 @@ export async function runPlatformValidationTests() {
   }
   assert(traversalThrown, "SecurityGuard must block parent folder path traversals");
   console.log("    ✓ SecurityGuard tests passed.");
+
+  // 8. Test StubDetector mock-data pattern detection
+  console.log("  • Testing StubDetector mock-data patterns...");
+  const stubDetector = new StubDetector();
+
+  const cleanCode = `
+function calculateAtsScore(resumeText: string, keywords: string[]): number {
+  const lowerText = resumeText.toLowerCase();
+  const matched = keywords.filter(kw => lowerText.includes(kw.toLowerCase()));
+  return Math.round((matched.length / keywords.length) * 100);
+}
+`;
+  const cleanFindings = stubDetector.detect(cleanCode);
+  assert(cleanFindings.length === 0, "Clean real implementation must produce zero stub findings");
+
+  const hardcodedScore = `const atsScore = 87;`;
+  const hardcodedFindings = stubDetector.detect(hardcodedScore);
+  assert(hardcodedFindings.length > 0, "StubDetector must flag hardcoded atsScore variable");
+
+  const todoCode = `// TODO implement this later`;
+  const todoFindings = stubDetector.detect(todoCode);
+  assert(todoFindings.length > 0, "StubDetector must flag TODO comment");
+
+  const randomScore = `const score = Math.random() * 100; // score metric`;
+  const randomFindings = stubDetector.detect(randomScore);
+  assert(randomFindings.length > 0, "StubDetector must flag Math.random() metric generation");
+  console.log("    ✓ StubDetector mock-data pattern tests passed.");
+
+  // 9. Test FeatureContractValidator and RealityCheckerAgent
+  console.log("  • Testing FeatureContractValidator & RealityCheckerAgent...");
+  const tmpDir = join(process.cwd(), ".reality-checker-test-tmp");
+  const srcDir = join(tmpDir, "src");
+  mkdirSync(srcDir, { recursive: true });
+
+  // Write a file that triggers the ATS Score contract but uses a hardcoded score
+  writeFileSync(join(srcDir, "Scanner.tsx"), [
+    `// ATS Score Calculator`,
+    `const atsScore = 92;`,
+    `export function Scanner() {`,
+    `  return <div>{atsScore}% ATS Score</div>;`,
+    `}`,
+  ].join("\n"), "utf8");
+
+  const validator = new FeatureContractValidator();
+  const violations = validator.validate(tmpDir);
+  const hasAtsViolation = violations.some(v => v.feature === "ATS Score Calculation");
+  assert(hasAtsViolation, "FeatureContractValidator must detect hardcoded ATS score violation");
+
+  const checker = new RealityCheckerAgent();
+  const checkResult = checker.audit(tmpDir);
+  assert(!checkResult.passed, "RealityCheckerAgent must return passed=false for project with mock ATS score");
+  assert(checkResult.violationCount > 0, "RealityCheckerAgent must report at least 1 violation");
+  assert(checkResult.report.includes("Reality Checker"), "Violation report must include Reality Checker header");
+
+  // Clean up temp directory
+  rmSync(tmpDir, { recursive: true, force: true });
+  console.log("    ✓ FeatureContractValidator & RealityCheckerAgent tests passed.");
 
   console.log("\n✅ ALL PLATFORM VALIDATION TESTS PASSED SUCCESSFULLY!\n");
 }

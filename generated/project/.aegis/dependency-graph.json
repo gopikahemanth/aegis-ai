@@ -1,157 +1,117 @@
 {
-  "postcss.config.js": {
-    "path": "postcss.config.js",
+  "script.js": {
+    "path": "script.js",
     "imports": [],
     "importedBy": []
   },
   "src/App.tsx": {
     "path": "src/App.tsx",
     "imports": [
-      "src/components/Navbar.tsx",
-      "src/components/DashboardSummary.tsx",
-      "src/components/PomodoroTimer.tsx",
-      "src/components/TaskManager.tsx",
-      "src/components/HabitTracker.tsx",
-      "src/components/SessionLog.tsx",
-      "src/components/AnalyticsCharts.tsx",
-      "src/components/SettingsView.tsx",
-      "src/hooks/useLocalStorage.ts",
-      "src/hooks/usePomodoroTimer.ts",
-      "src/types.ts"
-    ],
-    "importedBy": [
-      "src/main.tsx"
-    ]
-  },
-  "src/components/AnalyticsCharts.tsx": {
-    "path": "src/components/AnalyticsCharts.tsx",
-    "imports": [
-      "src/types.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/components/DashboardSummary.tsx": {
-    "path": "src/components/DashboardSummary.tsx",
-    "imports": [
-      "src/types.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/components/HabitTracker.tsx": {
-    "path": "src/components/HabitTracker.tsx",
-    "imports": [
-      "src/types.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/components/Navbar.tsx": {
-    "path": "src/components/Navbar.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/components/PomodoroTimer.tsx": {
-    "path": "src/components/PomodoroTimer.tsx",
-    "imports": [
-      "src/types.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/components/SessionLog.tsx": {
-    "path": "src/components/SessionLog.tsx",
-    "imports": [
-      "src/types.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/components/SettingsView.tsx": {
-    "path": "src/components/SettingsView.tsx",
-    "imports": [
-      "src/types.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/components/TaskManager.tsx": {
-    "path": "src/components/TaskManager.tsx",
-    "imports": [
-      "src/types.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/hooks/useLocalStorage.ts": {
-    "path": "src/hooks/useLocalStorage.ts",
-    "imports": [],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/hooks/usePomodoroTimer.ts": {
-    "path": "src/hooks/usePomodoroTimer.ts",
-    "imports": [
-      "src/types.ts",
-      "src/utils/sound.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/main.tsx": {
-    "path": "src/main.tsx",
-    "imports": [
-      "src/App.tsx"
+      "src/components/Navigation.tsx",
+      "src/components/HeroSection.tsx",
+      "src/components/MetricsDashboard.tsx",
+      "src/components/FeatureMatrix.tsx",
+      "src/components/CodePreviewTerminal.tsx",
+      "src/components/ArchitectureShowcase.tsx",
+      "src/components/CallToAction.tsx",
+      "src/components/Footer.tsx",
+      "src/components/Modal.tsx",
+      "src/components/DocumentationViewer.tsx",
+      "src/components/InteractivePlayground.tsx",
+      "src/components/EnterprisePage.tsx",
+      "src/hooks/useAegisMetrics.ts"
     ],
     "importedBy": []
   },
-  "src/types.ts": {
-    "path": "src/types.ts",
+  "src/components/ArchitectureShowcase.tsx": {
+    "path": "src/components/ArchitectureShowcase.tsx",
     "imports": [],
     "importedBy": [
-      "src/App.tsx",
-      "src/components/AnalyticsCharts.tsx",
-      "src/components/DashboardSummary.tsx",
-      "src/components/HabitTracker.tsx",
-      "src/components/PomodoroTimer.tsx",
-      "src/components/SessionLog.tsx",
-      "src/components/SettingsView.tsx",
-      "src/components/TaskManager.tsx",
-      "src/hooks/usePomodoroTimer.ts"
+      "src/App.tsx"
     ]
   },
-  "src/utils/sound.ts": {
-    "path": "src/utils/sound.ts",
+  "src/components/CallToAction.tsx": {
+    "path": "src/components/CallToAction.tsx",
     "imports": [],
     "importedBy": [
-      "src/hooks/usePomodoroTimer.ts"
+      "src/App.tsx"
     ]
   },
-  "src/vite-env.d.ts": {
-    "path": "src/vite-env.d.ts",
+  "src/components/CodePreviewTerminal.tsx": {
+    "path": "src/components/CodePreviewTerminal.tsx",
     "imports": [],
-    "importedBy": []
+    "importedBy": [
+      "src/App.tsx"
+    ]
   },
-  "tailwind.config.js": {
-    "path": "tailwind.config.js",
+  "src/components/DocumentationViewer.tsx": {
+    "path": "src/components/DocumentationViewer.tsx",
     "imports": [],
-    "importedBy": []
+    "importedBy": [
+      "src/App.tsx"
+    ]
   },
-  "vite.config.ts": {
-    "path": "vite.config.ts",
+  "src/components/EnterprisePage.tsx": {
+    "path": "src/components/EnterprisePage.tsx",
     "imports": [],
-    "importedBy": []
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/FeatureMatrix.tsx": {
+    "path": "src/components/FeatureMatrix.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/Footer.tsx": {
+    "path": "src/components/Footer.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/HeroSection.tsx": {
+    "path": "src/components/HeroSection.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/InteractivePlayground.tsx": {
+    "path": "src/components/InteractivePlayground.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/MetricsDashboard.tsx": {
+    "path": "src/components/MetricsDashboard.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/Modal.tsx": {
+    "path": "src/components/Modal.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/Navigation.tsx": {
+    "path": "src/components/Navigation.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/hooks/useAegisMetrics.ts": {
+    "path": "src/hooks/useAegisMetrics.ts",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
   }
 }

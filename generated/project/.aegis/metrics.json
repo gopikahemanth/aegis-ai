@@ -1,17 +1,17 @@
 {
   "buildHistory": [
     {
-      "timestamp": "2026-07-30T11:46:49.037Z",
+      "timestamp": "2026-07-30T18:38:32.525Z",
       "success": false,
       "durationMs": 3000,
       "errors": [
-        "Build failed"
+        "Visual layout review failed with the following layout issues:\n[Visual Issue] in 'navbar navigation links ('Features', 'Architecture', 'Live Demo', 'Telemetry', 'Enterprise')': The 'Features' link is overlapping slightly with the brand logo/title text in the header. (severity: medium)\n\nPlease fix the css files, html files, or container spacing to align with standard styling guidelines."
       ]
     }
   ],
   "telemetry": {
-    "totalTokensUsed": 289469,
-    "estimatedCostUsd": 0.037001,
+    "totalTokensUsed": 335882,
+    "estimatedCostUsd": 0.039106,
     "healingAttempts": 0,
     "sandboxRuns": 1
   }

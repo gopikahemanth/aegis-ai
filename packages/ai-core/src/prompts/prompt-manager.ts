@@ -193,6 +193,89 @@ FEATURE-BASED FOLDER STRUCTURE (do not use flat src/components/):
   src/config/              ← constants and environment config
 
 ═══════════════════════════════════════════════════════
+PERFORMANCE STANDARDS
+═══════════════════════════════════════════════════════
+  ✓ Lazy-load every page/route with React.lazy() + Suspense
+    Example: const DashboardPage = React.lazy(() => import('./features/dashboard/DashboardPage'));
+  ✓ Code-split heavy libraries (charts, PDF parsers, rich editors) with dynamic import()
+    Example: const { default: jsPDF } = await import('jspdf');
+  ✓ Memoize expensive computations with useMemo() — never recompute on every render
+  ✓ Memoize stable callbacks passed to child components with useCallback()
+  ✓ Virtualize long lists (> 50 items) with react-window or react-virtual — never render all rows
+  ✓ Images: use width/height attributes, loading="lazy", and appropriate format (WebP where possible)
+  ✓ Avoid prop drilling deeper than 2 levels — use Context or a state store instead
+  ✓ Never put expensive operations (sorts, filters, regex) inside render without memoization
+
+FORBIDDEN PERFORMANCE PATTERNS:
+  ✗ import HeavyLib from 'heavy-lib' at the top of a page component (blocks initial render)
+  ✗ .filter().map().sort() chains inside JSX without useMemo
+  ✗ Rendering 100+ list items without virtualization
+  ✗ Creating new object/array literals inside JSX props (causes unnecessary re-renders)
+  ✗ useEffect with missing dependencies that causes infinite loops
+═══════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════
+SECURITY STANDARDS
+═══════════════════════════════════════════════════════
+  ✓ Sanitize ALL user-supplied text before rendering as HTML
+    Use DOMPurify.sanitize() — never use dangerouslySetInnerHTML with raw user input
+  ✓ Never store secrets (API keys, tokens) in source code or localStorage
+    Use import.meta.env.VITE_* (Vite) or process.env (Node) — document in .env.example
+  ✓ Validate and sanitize ALL form inputs before processing or sending
+    Use allowlists (e.g. only allow .pdf/.docx file types), not blocklists
+  ✓ File uploads: validate MIME type AND file extension — reject unexpected types
+  ✓ Escape user content in dynamic strings used in URLs, SQL, or shell commands
+  ✓ Use HTTPS URLs for all external API calls — never plain http://
+  ✓ Authentication tokens: store in memory or httpOnly cookies — never localStorage
+  ✓ Rate-limit any form submission or API call that could be abused
+  ✓ When using fetch(): always check response.ok before reading body
+  ✓ Add Content-Security-Policy meta tag for SPA projects
+
+FORBIDDEN SECURITY PATTERNS:
+  ✗ dangerouslySetInnerHTML={{ __html: userInput }} without DOMPurify
+  ✗ const API_KEY = "sk-..." hardcoded in source
+  ✗ localStorage.setItem('auth_token', token) for sensitive session data
+  ✗ Accepting any file type in upload handlers without validation
+  ✗ eval() or new Function() with user-supplied strings
+  ✗ Trusting user-supplied IDs without server-side ownership verification
+═══════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════
+VISUAL QA CHECKLIST (self-verify before finalizing)
+═══════════════════════════════════════════════════════
+Before writing the final output, mentally verify each page against these:
+
+  Layout:
+    ✓ No content overflows its container horizontally
+    ✓ No text truncated without ellipsis or scroll
+    ✓ All grid/flex children align on the same baseline or edge
+    ✓ Sidebar, navbar, and footer do not overlap content area
+
+  Responsive (mobile-first):
+    ✓ sm: (640px) — single column, stacked layout, readable text
+    ✓ md: (768px) — 2-column where appropriate
+    ✓ lg: (1024px) — full desktop layout
+    ✓ No fixed pixel widths wider than 100vw on any element
+
+  Typography:
+    ✓ Heading hierarchy: h1 > h2 > h3 — never skip levels
+    ✓ Body text minimum 14px (text-sm) — never text-xs for paragraph content
+    ✓ Line height sufficient for readability (leading-relaxed for body)
+    ✓ Max line length ~80ch for paragraph text (max-w-prose or max-w-2xl)
+
+  Interaction:
+    ✓ Every clickable element has a visible cursor-pointer
+    ✓ Hover state is visually distinct from default state
+    ✓ Focus-visible outline is visible and has enough contrast
+    ✓ Disabled elements are visually muted (opacity-40 or similar)
+
+  Color & Contrast:
+    ✓ Text on background meets WCAG AA (4.5:1 for normal text, 3:1 for large text)
+    ✓ Brand color buttons have sufficient contrast with white/dark text
+    ✓ Error states use red, warnings use amber — never just color alone (add icon/text)
+═══════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════
 NO MOCK DATA POLICY — STRICTLY ENFORCED
 ═══════════════════════════════════════════════════════
 A feature is COMPLETE only when ALL of the following are true:

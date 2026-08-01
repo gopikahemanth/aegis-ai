@@ -57,6 +57,9 @@ export class DefinitionOfDone {
       this.checkDocumentation(projectDirectory),
       this.checkNoConsoleLogs(allSource),
       this.checkTypeScriptStrictness(allSource),
+      this.checkSecurity(allSource),
+      this.checkPerformance(allSource),
+      this.checkLazyLoading(allSource),
     ];
 
     // If we have a list of inferred features, verify each is addressed
@@ -100,6 +103,7 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
       "responsive-layouts",
       "accessibility",
       "documentation",
+      "security",
     ]);
     return required.has(criterionId);
   }
@@ -254,6 +258,83 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
       detail: anyCount > 0
         ? `Found ${anyCount} use(s) of 'any' type — use 'unknown' with type guards instead`
         : "No 'any' types found",
+    };
+  }
+
+  private checkSecurity(source: string): DodCriterion {
+    const violations: string[] = [];
+
+    // Hardcoded API keys / secrets
+    if (/['"`]sk-[a-zA-Z0-9]{20,}['"`]|['"`]AKIA[A-Z0-9]{16}['"`]|API_KEY\s*=\s*['"`][^'"\n]{8,}/i.test(source)) {
+      violations.push("Possible hardcoded secret/API key detected — move to .env");
+    }
+
+    // XSS: dangerouslySetInnerHTML with raw variable (not sanitized)
+    if (/dangerouslySetInnerHTML=\{\{\s*__html:\s*(?!DOMPurify)/i.test(source)) {
+      violations.push("dangerouslySetInnerHTML used without DOMPurify sanitization — XSS risk");
+    }
+
+    // eval with dynamic input
+    if (/\beval\s*\(|new\s+Function\s*\(/i.test(source)) {
+      violations.push("eval() or new Function() detected — potential code injection");
+    }
+
+    // Plain http:// API calls
+    if (/fetch\s*\(\s*['"]http:\/\//i.test(source)) {
+      violations.push("Insecure http:// fetch call found — use https://");
+    }
+
+    return {
+      id: "security",
+      name: "Security (XSS / Secrets / Injection)",
+      passed: violations.length === 0,
+      detail: violations.length > 0
+        ? violations.join("; ")
+        : "No common security violations detected",
+    };
+  }
+
+  private checkPerformance(source: string): DodCriterion {
+    const issues: string[] = [];
+
+    // Long list render without virtualization
+    const hasBigList = /\.map\s*\(/i.test(source);
+    const hasVirtualization = /react-window|react-virtual|FixedSizeList|VirtualList|useVirtual/i.test(source);
+    const hasExplicitLargeData = /\.length\s*[>]=?\s*[5-9]\d|\b[1-9]\d{2,}\s*items/i.test(source);
+    if (hasBigList && hasExplicitLargeData && !hasVirtualization) {
+      issues.push("Large list detected without virtualization — use react-window for 50+ items");
+    }
+
+    // Inline expensive ops in JSX without memoization
+    if (/return\s*\([^)]*\.filter\(|return\s*\([^)]*\.sort\(/i.test(source)) {
+      const hasMemo = /useMemo|useCallback/i.test(source);
+      if (!hasMemo) {
+        issues.push("filter()/sort() called inside JSX render without useMemo — memoize the result");
+      }
+    }
+
+    return {
+      id: "performance",
+      name: "Performance (Memoization / Virtualization)",
+      passed: issues.length === 0,
+      detail: issues.length > 0
+        ? issues.join("; ")
+        : "No obvious performance anti-patterns detected",
+    };
+  }
+
+  private checkLazyLoading(source: string): DodCriterion {
+    // Only flag if there are multiple routes/pages but no lazy loading
+    const hasRoutes = /Route\s+path=|createBrowserRouter|useRoutes/i.test(source);
+    const hasLazyLoad = /React\.lazy\s*\(|lazy\s*\(\s*\(\s*\)\s*=>/i.test(source);
+    const hasSuspense = /Suspense/i.test(source);
+    return {
+      id: "lazy-loading",
+      name: "Lazy Loading (Routes)",
+      passed: !hasRoutes || (hasLazyLoad && hasSuspense),
+      detail: hasRoutes && (!hasLazyLoad || !hasSuspense)
+        ? "Multi-page app detected but routes are not lazy-loaded — wrap with React.lazy() + Suspense"
+        : "Route lazy loading satisfied",
     };
   }
 

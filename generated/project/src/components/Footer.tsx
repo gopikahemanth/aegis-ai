@@ -1,23 +1,20 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { ShieldCheck } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-slate-950 border-t border-slate-900 py-12">
-      <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-cyan-500 flex items-center justify-center text-slate-950 font-bold">
-            <i className="fa-solid fa-shield-halved"></i>
-          </div>
-          <span className="text-lg font-bold tracking-tight text-white font-mono">AEGIS<span className="text-cyan-400">.AI</span></span>
+    <footer className="border-t border-slate-800/80 bg-slate-950/80 py-8 mt-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+        <div className="flex items-center space-x-2">
+          <ShieldCheck className="w-4 h-4 text-indigo-400" />
+          <span>© {new Date().getFullYear()} ATS ScanPro. Client-side secure resume optimization.</span>
         </div>
-        <div className="text-sm text-slate-500 text-center md:text-left">
-          &copy; 2026 Aegis AI Systems Inc. All rights reserved. Autonomous Neural Security.
-        </div>
-        <div className="flex items-center gap-6 text-slate-400 text-sm">
-          <Link to="/docs" className="hover:text-cyan-400 transition-colors">Privacy Policy</Link>
-          <Link to="/docs" className="hover:text-cyan-400 transition-colors">Terms of Service</Link>
-          <Link to="/docs" className="hover:text-cyan-400 transition-colors">Security Audit</Link>
+        <div className="flex items-center space-x-6">
+          <span>Privacy Guaranteed</span>
+          <span>•</span>
+          <span>PDF & DOCX Parsers Active</span>
+          <span>•</span>
+          <span>Recharts Analytics</span>
         </div>
       </div>
     </footer>

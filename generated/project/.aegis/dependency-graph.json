@@ -1,117 +1,178 @@
 {
-  "script.js": {
-    "path": "script.js",
+  "postcss.config.js": {
+    "path": "postcss.config.js",
     "imports": [],
     "importedBy": []
   },
   "src/App.tsx": {
     "path": "src/App.tsx",
     "imports": [
-      "src/components/Navigation.tsx",
-      "src/components/HeroSection.tsx",
-      "src/components/MetricsDashboard.tsx",
-      "src/components/FeatureMatrix.tsx",
-      "src/components/CodePreviewTerminal.tsx",
-      "src/components/ArchitectureShowcase.tsx",
-      "src/components/CallToAction.tsx",
-      "src/components/Footer.tsx",
-      "src/components/Modal.tsx",
-      "src/components/DocumentationViewer.tsx",
-      "src/components/InteractivePlayground.tsx",
-      "src/components/EnterprisePage.tsx",
-      "src/hooks/useAegisMetrics.ts"
+      "src/components/Layout.tsx",
+      "src/pages/LandingPage.tsx",
+      "src/pages/DashboardPage.tsx",
+      "src/pages/HistoryPage.tsx",
+      "src/pages/AboutPage.tsx"
     ],
-    "importedBy": []
-  },
-  "src/components/ArchitectureShowcase.tsx": {
-    "path": "src/components/ArchitectureShowcase.tsx",
-    "imports": [],
     "importedBy": [
-      "src/App.tsx"
+      "src/main.tsx"
     ]
   },
-  "src/components/CallToAction.tsx": {
-    "path": "src/components/CallToAction.tsx",
-    "imports": [],
+  "src/components/ATSScoreChart.tsx": {
+    "path": "src/components/ATSScoreChart.tsx",
+    "imports": [
+      "src/types/index.ts"
+    ],
     "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/components/CodePreviewTerminal.tsx": {
-    "path": "src/components/CodePreviewTerminal.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/components/DocumentationViewer.tsx": {
-    "path": "src/components/DocumentationViewer.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/components/EnterprisePage.tsx": {
-    "path": "src/components/EnterprisePage.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/components/FeatureMatrix.tsx": {
-    "path": "src/components/FeatureMatrix.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/App.tsx"
+      "src/pages/DashboardPage.tsx"
     ]
   },
   "src/components/Footer.tsx": {
     "path": "src/components/Footer.tsx",
     "imports": [],
     "importedBy": [
+      "src/components/Layout.tsx"
+    ]
+  },
+  "src/components/ImprovementSuggestions.tsx": {
+    "path": "src/components/ImprovementSuggestions.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/pages/DashboardPage.tsx"
+    ]
+  },
+  "src/components/JobDescriptionInput.tsx": {
+    "path": "src/components/JobDescriptionInput.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/pages/LandingPage.tsx"
+    ]
+  },
+  "src/components/KeywordMatchList.tsx": {
+    "path": "src/components/KeywordMatchList.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/pages/DashboardPage.tsx"
+    ]
+  },
+  "src/components/Layout.tsx": {
+    "path": "src/components/Layout.tsx",
+    "imports": [
+      "src/components/Navbar.tsx",
+      "src/components/Footer.tsx"
+    ],
+    "importedBy": [
       "src/App.tsx"
     ]
   },
-  "src/components/HeroSection.tsx": {
-    "path": "src/components/HeroSection.tsx",
+  "src/components/Navbar.tsx": {
+    "path": "src/components/Navbar.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/components/Layout.tsx"
+    ]
+  },
+  "src/components/ResumeDropzone.tsx": {
+    "path": "src/components/ResumeDropzone.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/pages/LandingPage.tsx"
+    ]
+  },
+  "src/components/ScoreCard.tsx": {
+    "path": "src/components/ScoreCard.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/pages/DashboardPage.tsx"
+    ]
+  },
+  "src/hooks/useLocalStorage.ts": {
+    "path": "src/hooks/useLocalStorage.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/main.tsx": {
+    "path": "src/main.tsx",
+    "imports": [
+      "src/App.tsx"
+    ],
+    "importedBy": []
+  },
+  "src/pages/AboutPage.tsx": {
+    "path": "src/pages/AboutPage.tsx",
     "imports": [],
     "importedBy": [
       "src/App.tsx"
     ]
   },
-  "src/components/InteractivePlayground.tsx": {
-    "path": "src/components/InteractivePlayground.tsx",
-    "imports": [],
+  "src/pages/DashboardPage.tsx": {
+    "path": "src/pages/DashboardPage.tsx",
+    "imports": [
+      "src/components/ScoreCard.tsx",
+      "src/components/ATSScoreChart.tsx",
+      "src/components/KeywordMatchList.tsx",
+      "src/components/ImprovementSuggestions.tsx",
+      "src/types/index.ts",
+      "src/services/atsAnalysisService.ts"
+    ],
     "importedBy": [
       "src/App.tsx"
     ]
   },
-  "src/components/MetricsDashboard.tsx": {
-    "path": "src/components/MetricsDashboard.tsx",
-    "imports": [],
+  "src/pages/HistoryPage.tsx": {
+    "path": "src/pages/HistoryPage.tsx",
+    "imports": [
+      "src/types/index.ts",
+      "src/services/atsAnalysisService.ts"
+    ],
     "importedBy": [
       "src/App.tsx"
     ]
   },
-  "src/components/Modal.tsx": {
-    "path": "src/components/Modal.tsx",
-    "imports": [],
+  "src/pages/LandingPage.tsx": {
+    "path": "src/pages/LandingPage.tsx",
+    "imports": [
+      "src/components/ResumeDropzone.tsx",
+      "src/components/JobDescriptionInput.tsx",
+      "src/services/atsAnalysisService.ts"
+    ],
     "importedBy": [
       "src/App.tsx"
     ]
   },
-  "src/components/Navigation.tsx": {
-    "path": "src/components/Navigation.tsx",
-    "imports": [],
+  "src/services/atsAnalysisService.ts": {
+    "path": "src/services/atsAnalysisService.ts",
+    "imports": [
+      "src/types/index.ts"
+    ],
     "importedBy": [
-      "src/App.tsx"
+      "src/pages/DashboardPage.tsx",
+      "src/pages/HistoryPage.tsx",
+      "src/pages/LandingPage.tsx"
     ]
   },
-  "src/hooks/useAegisMetrics.ts": {
-    "path": "src/hooks/useAegisMetrics.ts",
+  "src/types/index.ts": {
+    "path": "src/types/index.ts",
     "imports": [],
     "importedBy": [
-      "src/App.tsx"
+      "src/components/ATSScoreChart.tsx",
+      "src/pages/DashboardPage.tsx",
+      "src/pages/HistoryPage.tsx",
+      "src/services/atsAnalysisService.ts"
     ]
+  },
+  "src/vite-env.d.ts": {
+    "path": "src/vite-env.d.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "tailwind.config.js": {
+    "path": "tailwind.config.js",
+    "imports": [],
+    "importedBy": []
+  },
+  "vite.config.ts": {
+    "path": "vite.config.ts",
+    "imports": [],
+    "importedBy": []
   }
 }

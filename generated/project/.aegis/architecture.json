@@ -1,5 +1,5 @@
 {
-  "framework": "html",
+  "framework": "react-vite",
   "language": "TypeScript",
   "packageManager": "npm",
   "folderStructure": {
@@ -20,10 +20,10 @@
     "camelCase for utility files, hooks, types",
     "Use Tailwind CSS responsive style rules"
   ],
-  "styling": "vanilla-css",
+  "styling": "tailwind",
   "additionalRules": [
     "Preserve type assertions in React TSX components",
     "Do not generate stubs or incomplete code blocks",
-    "Ensure adequate responsive spacing and flexbox gap separation between brand logos and navigation links in header components to prevent visual overlap across viewports."
+    "Ensure all required document parsing libraries such as pdfjs-dist and mammoth are properly configured with correct worker paths and fallback text extraction handlers to prevent build and runtime failures during real file processing."
   ]
 }

@@ -11,6 +11,7 @@ import {
   HeuristicsLearningAgent,
   ResearchAssistantAgent,
   PRGeneratorAgent,
+  DocsGeneratorAgent,
 } from "../agents/index.js";
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
@@ -41,6 +42,9 @@ import {
 import { DeploymentGenerator } from "../deploy/index.js";
 import { DependencyScheduler } from "../execution/dependency-scheduler.js";
 import type { Task } from "../planner/task.js";
+import { PromptInferenceEngine } from "../prompts/prompt-inference-engine.js";
+import { DesignSystemGenerator } from "../design/design-system-generator.js";
+import { DefinitionOfDone } from "../validation/definition-of-done.js";
 
 export class Orchestrator {
   private readonly scheduler = new DependencyScheduler();
@@ -79,6 +83,14 @@ export class Orchestrator {
 
   private readonly prGeneratorAgent: PRGeneratorAgent;
 
+  private readonly docsGeneratorAgent: DocsGeneratorAgent;
+
+  private readonly promptInferenceEngine: PromptInferenceEngine;
+
+  private readonly designSystemGenerator = new DesignSystemGenerator();
+
+  private readonly definitionOfDone = new DefinitionOfDone();
+
   private readonly executionLoop = new ExecutionLoop();
 
   private readonly repairCoordinator: RepairCoordinator;
@@ -109,6 +121,12 @@ export class Orchestrator {
 
     this.prGeneratorAgent =
       new PRGeneratorAgent(provider);
+
+    this.docsGeneratorAgent =
+      new DocsGeneratorAgent(provider);
+
+    this.promptInferenceEngine =
+      new PromptInferenceEngine(provider);
 
     this.repairCoordinator =
       new RepairCoordinator(provider);
@@ -269,6 +287,30 @@ export class Orchestrator {
       status: "SUCCESS"
     });
 
+    // ─── Step 0: Prompt Inference ────────────────────────────────────────────
+    // Expand the brief user prompt into a full feature specification before
+    // any agent sees it. Eliminates features the user forgot to ask for.
+    console.log("[Inference] Expanding prompt into full feature specification...");
+    let enrichedRequest = request;
+    let inferredFeatureNames: string[] = [];
+    try {
+      const expanded = await this.promptInferenceEngine.expand(request);
+      enrichedRequest = this.promptInferenceEngine.buildEnrichedRequest(expanded);
+      inferredFeatureNames = expanded.inferredFeatures.map(f => f.name);
+      if (expanded.inferredFeatures.length > 0) {
+        console.log(`[Inference] ✓ Inferred ${expanded.inferredFeatures.length} features: ${inferredFeatureNames.join(", ")}`);
+      } else {
+        console.log("[Inference] Using original prompt (inference returned no features).");
+      }
+      auditTrail.logEvent({
+        agentRole: "Inference Engine",
+        action: `Expanded prompt. Inferred features: ${inferredFeatureNames.join(", ") || "none"}`,
+        status: "SUCCESS"
+      });
+    } catch (infErr: any) {
+      console.warn(`[Inference] Warning: Prompt expansion failed: ${infErr.message}`);
+    }
+
     // Run AI Research Assistant (Phase 14)
     console.log("[Research] Running AI Research Assistant to retrieve optimal coding patterns...");
     try {
@@ -322,7 +364,7 @@ export class Orchestrator {
       }
     }
 
-    const guidancePrompt = request + (existingArch ? `\n(Guideline: Follow the existing framework "${existingArch.framework}", styled with "${existingArch.styling}", using naming rules: ${existingArch.namingConventions.join(", ")})` : "");
+    const guidancePrompt = enrichedRequest + (existingArch ? `\n(Guideline: Follow the existing framework "${existingArch.framework}", styled with "${existingArch.styling}", using naming rules: ${existingArch.namingConventions.join(", ")})` : "");
 
     const {
       specification,
@@ -338,6 +380,25 @@ export class Orchestrator {
       action: `Completed requirements mapping. Framework: ${specification.type}, Database: ${specification.database || "None"}`,
       status: "SUCCESS"
     });
+
+    // ─── Design System ───────────────────────────────────────────────────────
+    console.log("[DesignSystem] Generating design tokens and base components...");
+    try {
+      const dsFiles = this.designSystemGenerator.generate(specification);
+      const dsContext = this.designSystemGenerator.buildCoderContext(specification);
+      // Derive framework from specification — framework variable is declared later
+      const dsFramework = specification.frontend?.toLowerCase().includes("react") ? "react-vite" : "html";
+      // Write design system files before any coder task runs
+      this.write(
+        this.validator.validate(dsFramework, dsFiles),
+        outputDirectory,
+      );
+      // Append design system context to the enriched request so CoderAgent uses it
+      enrichedRequest = enrichedRequest + "\n\n" + dsContext;
+      console.log(`[DesignSystem] ✓ Wrote ${dsFiles.length} design system files.`);
+    } catch (dsErr: any) {
+      console.warn(`[DesignSystem] Warning: Design system generation failed: ${dsErr.message}`);
+    }
 
     const coordinator = new TeamCoordinator();
     const activeTeam = await coordinator.coordinate(specification);
@@ -668,6 +729,49 @@ export class Orchestrator {
       await this.prGeneratorAgent.execute(outputDirectory, request);
     } catch (gitErr: any) {
       console.warn(`[GitEngine] Warning: Git commit and PR audit operations failed: ${gitErr.message}`);
+    }
+
+    // ─── Documentation ───────────────────────────────────────────────────────
+    if (build.success) {
+      console.log("[Lifecycle] Generating project documentation (README, ARCHITECTURE, .env.example)...");
+      try {
+        const docFiles = await this.docsGeneratorAgent.generate(
+          specification,
+          request,
+          files.map(f => f.path),
+          outputDirectory,
+        );
+        this.write(
+          this.validator.validate(framework ?? "html", docFiles),
+          outputDirectory,
+        );
+        console.log("[Lifecycle] ✓ Documentation generated.");
+      } catch (docErr: any) {
+        console.warn(`[Lifecycle] Warning: Documentation generation failed: ${docErr.message}`);
+      }
+    }
+
+    // ─── Definition of Done ──────────────────────────────────────────────────
+    console.log("[DoD] Running Definition of Done validation...");
+    try {
+      const dodResult = this.definitionOfDone.validate(outputDirectory, inferredFeatureNames);
+      console.log(`[DoD] ${dodResult.summary}`);
+      if (!dodResult.passed) {
+        console.warn(`[DoD] ${dodResult.blockers.length} required criterion/criteria not met — project may be incomplete.`);
+        auditTrail.logEvent({
+          agentRole: "Definition of Done Validator",
+          action: `DoD FAILED (score: ${dodResult.score}/100). Blockers: ${dodResult.blockers.map(b => b.name).join(", ")}`,
+          status: "FAILURE"
+        });
+      } else {
+        auditTrail.logEvent({
+          agentRole: "Definition of Done Validator",
+          action: `DoD PASSED (score: ${dodResult.score}/100). All criteria satisfied.`,
+          status: "SUCCESS"
+        });
+      }
+    } catch (dodErr: any) {
+      console.warn(`[DoD] Warning: Definition of Done check failed: ${dodErr.message}`);
     }
 
     this.execution.complete();

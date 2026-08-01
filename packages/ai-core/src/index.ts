@@ -21,4 +21,7 @@ export * from "./dependency/dependency-graph.js";
 export * from "./git/git-engine.js";
 export * from "./utils/audit-trail.js";
 export * from "./utils/security.js";
+export * from "./prompts/prompt-inference-engine.js";
+export * from "./design/design-system-generator.js";
+export * from "./validation/definition-of-done.js";
 

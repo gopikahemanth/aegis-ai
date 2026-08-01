@@ -43,12 +43,32 @@ Never output markdown backticks (like \`\`\`json) or extra text, just the raw JS
 Given a project specification, create a high-level architecture plan.
 Return ONLY plain text.
 
+USE FEATURE-BASED FOLDER ARCHITECTURE (not flat component folders):
+
+src/
+  app/          ← routing, global providers, App entry
+  features/     ← one subfolder per feature (e.g. features/upload/, features/scanner/)
+    <feature>/
+      components/   ← UI components for this feature only
+      hooks/        ← hooks used only by this feature
+      services/     ← business logic and API calls for this feature
+      types/        ← TypeScript types for this feature
+  shared/       ← reusable across all features
+    components/   ← design-system, primitives (Button, Input, Card, Skeleton, EmptyState)
+    hooks/        ← global hooks
+    utils/        ← pure utility functions
+  entities/     ← data models and TypeScript interfaces
+  services/     ← cross-cutting services (api client, auth, localStorage)
+  config/       ← environment constants
+  assets/
+  styles/
+
 Include:
-- Pages
-- Components
-- Hooks
-- Services
-- Routes
+- Feature list (each feature = one folder in features/)
+- Pages and routing
+- Shared components needed
+- Services and hooks per feature
+- Data models
 
 Do not generate code.
 Do not explain anything.`;
@@ -118,6 +138,59 @@ CRITICAL STANDARDS:
 - Do not abbreviate code or omit sections using comments.
 - When using 'react-router-dom', declare and render <BrowserRouter> exactly once (preferably in App.tsx), never nest another <BrowserRouter> wrapper in main.tsx or other child layout files.
 - Ensure all style tags or Tailwind class tags have complete declarations.
+
+═══════════════════════════════════════════════════════
+PROFESSIONAL UI STANDARDS — STRICTLY ENFORCED
+═══════════════════════════════════════════════════════
+Design inspiration: Linear, Vercel, Stripe Dashboard, Raycast, GitHub
+Spacing system: 8px grid — all margin/padding must be a multiple of 4 or 8
+Typography: maximum 4 font sizes per view (xs, sm, base, lg, xl, 2xl)
+Border radius: pick ONE value and use it consistently across the entire app
+Color palette: 1 brand color + semantic (success/warning/error) + neutrals only
+
+FORBIDDEN UI PATTERNS (AI-looking UI — will be rejected):
+  ✗ Different border-radius values on different components
+  ✗ Excessive glassmorphism (more than 1 blur panel per page)
+  ✗ Random gradients that don't match the brand color
+  ✗ Buttons taller than 56px or wider than the content area
+  ✗ More than 4 different font sizes in a single view
+  ✗ spacing that breaks the 8px grid (e.g., mt-5, pt-7, gap-3 mixed randomly)
+  ✗ Generic grey card layouts on every single page
+  ✗ Missing hover state on any clickable element
+  ✗ outline-none on focusable elements without a focus-visible replacement
+  ✗ Icon-only buttons without aria-label attribute
+  ✗ Hard delete without a confirmation dialog
+  ✗ Spinners as the only loading indication for content areas
+
+REQUIRED UI PATTERNS (every project must have these):
+  ✓ Every button has hover + focus-visible ring styles
+  ✓ Every icon-only button has aria-label
+  ✓ Skeleton loaders for content areas that fetch data
+  ✓ EmptyState component with a descriptive message and CTA when lists are empty
+  ✓ Error message shown inline (not just alert()) with a recovery action
+  ✓ Confirmation dialog (or at minimum a disabled state + second click) before destructive actions
+  ✓ Responsive at sm: md: lg: breakpoints — no layout breaks on mobile
+  ✓ All form inputs have visible labels or aria-label
+  ✓ Accessible color contrast (text on background)
+═══════════════════════════════════════════════════════
+
+PRODUCTION CODE STANDARDS:
+  ✓ Zero bare console.log() — remove all debug logging
+  ✓ Zero TypeScript 'any' — use 'unknown' with type guards
+  ✓ All environment-specific values in import.meta.env variables
+  ✓ React: wrap page components in error boundaries
+  ✓ All async operations: loading state → success state → error state handled in UI
+  ✓ Input validation before any form submission or API call
+  ✓ Accessible: aria-label on interactive elements, role attributes where needed
+
+FEATURE-BASED FOLDER STRUCTURE (do not use flat src/components/):
+  src/features/<feature-name>/components/
+  src/features/<feature-name>/hooks/
+  src/features/<feature-name>/services/
+  src/shared/components/   ← reusable design system primitives
+  src/entities/            ← shared TypeScript types/interfaces
+  src/services/            ← cross-cutting services
+  src/config/              ← constants and environment config
 
 ═══════════════════════════════════════════════════════
 NO MOCK DATA POLICY — STRICTLY ENFORCED

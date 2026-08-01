@@ -1,25 +1,23 @@
 {
-  "projectName": "aegis-html-landing",
-  "lastRequest": "Landing website for Aegis AI",
+  "projectName": "project",
+  "lastRequest": "Build a fully working ATS Resume Scanner web application. REQUIREMENTS: (1) Real PDF and DOCX resume upload using react-dropzone - the file handler must use FileReader or pdfjs-dist to extract text from the uploaded file. (2) Real ATS score calculation: extract keywords from the resume text, count matches against the job description, and compute a percentage - the score MUST change based on what is uploaded. (3) Real job description text area where the user pastes a job posting. (4) Keyword matching: show which keywords from the job description are found vs missing in the resume. (5) Score breakdown chart using Recharts reading from real computed state - categories: Keywords, Skills, Experience, Education, Formatting. (6) Recommendations list derived from the actual analysis. (7) Scan history saved to localStorage - each entry stores filename, score, date. (8) Export analysis as PDF using jsPDF or window.print. STRICTLY FORBIDDEN: hardcoded scores, Math.random() metrics, setTimeout fake loading, static chart arrays. Use React with Vite, Tailwind CSS, dark theme.",
   "createdFiles": [
-    "index.html",
-    "style.css",
-    "script.js",
-    "package.json",
-    ".aegis/memory.json",
-    "src/hooks/useAegisMetrics.ts",
-    "src/components/HeroSection.tsx",
-    "src/components/MetricsDashboard.tsx",
-    "src/components/CodePreviewTerminal.tsx",
-    "src/components/Navigation.tsx",
-    "src/components/FeatureMatrix.tsx",
-    "src/components/ArchitectureShowcase.tsx",
-    "src/components/CallToAction.tsx",
+    "src/hooks/useLocalStorage.ts",
+    "src/services/atsAnalysisService.ts",
+    "src/components/ResumeDropzone.tsx",
+    "src/components/JobDescriptionInput.tsx",
+    "src/components/ATSScoreChart.tsx",
+    "src/pages/LandingPage.tsx",
+    "src/pages/DashboardPage.tsx",
+    "src/pages/HistoryPage.tsx",
+    "src/types/index.ts",
+    "src/components/Navbar.tsx",
     "src/components/Footer.tsx",
-    "src/components/Modal.tsx",
-    "src/components/DocumentationViewer.tsx",
-    "src/components/InteractivePlayground.tsx",
-    "src/components/EnterprisePage.tsx",
+    "src/components/Layout.tsx",
+    "src/components/ScoreCard.tsx",
+    "src/components/KeywordMatchList.tsx",
+    "src/components/ImprovementSuggestions.tsx",
+    "src/pages/AboutPage.tsx",
     "src/App.tsx",
     "Dockerfile",
     ".dockerignore",
@@ -30,8 +28,8 @@
   "tasks": [
     {
       "id": 1,
-      "title": "Project Scaffolding & Configuration",
-      "description": "Initialize Vite React TypeScript project, configure Tailwind CSS, Lucide icons, and establish clean folder structure.",
+      "title": "Project Setup and Domain Architecture",
+      "description": "Initialize React TypeScript project with Tailwind CSS, configure project structure, and define core TypeScript interfaces for resume parsing and ATS scoring models.",
       "completed": true,
       "stage": "Architecture",
       "priority": 1,
@@ -40,8 +38,8 @@
     },
     {
       "id": 2,
-      "title": "Core UI Components & Layout",
-      "description": "Develop reusable production-grade atomic components (Navbar, Footer, Buttons, Cards, Terminal Simulator) with responsive design.",
+      "title": "Document Parsing Engine",
+      "description": "Implement client-side document processing for PDF and DOCX files using robust text extraction libraries without server dependencies.",
       "completed": true,
       "stage": "Implementation",
       "priority": 2,
@@ -52,55 +50,50 @@
     },
     {
       "id": 3,
-      "title": "Landing Page Sections Implementation",
-      "description": "Implement Hero, Features, Architecture, Autonomous Workflow, and Call-to-Action sections with rich interactive states.",
+      "title": "ATS Scoring and Keyword Analysis Algorithm",
+      "description": "Build heuristic matching engine to evaluate resume text against job descriptions, calculating keyword density, formatting score, and section completeness.",
       "completed": true,
       "stage": "Implementation",
       "priority": 3,
       "dependencies": [
         2
       ],
-      "estimatedComplexity": 4
+      "estimatedComplexity": 5
     },
     {
       "id": 4,
-      "title": "Interactive Terminal & Metrics Simulation",
-      "description": "Build interactive live code generation terminal simulation and performance metrics dashboard widgets.",
+      "title": "Interactive Dashboard and UI Components",
+      "description": "Develop responsive Tailwind CSS dashboard featuring drag-and-drop file upload, real-time score visualization, keyword gap analysis, and optimization suggestions.",
       "completed": true,
       "stage": "Implementation",
       "priority": 4,
       "dependencies": [
         3
       ],
-      "estimatedComplexity": 3
+      "estimatedComplexity": 4
     },
     {
       "id": 5,
-      "title": "Production Polish & Validation",
-      "description": "Optimize bundle size, add accessibility attributes, ensure cross-browser responsiveness, and perform final quality validation.",
+      "title": "Testing, Optimization and Validation",
+      "description": "Perform end-to-end testing, optimize text extraction performance, ensure WCAG accessibility compliance, and validate ATS scoring accuracy.",
       "completed": true,
       "stage": "Validation",
       "priority": 5,
       "dependencies": [
         4
       ],
-      "estimatedComplexity": 2
+      "estimatedComplexity": 3
     }
   ],
   "history": [
     {
-      "timestamp": "2026-07-30T18:35:39.143Z",
-      "request": "Landing website for Aegis AI",
+      "timestamp": "2026-07-31T08:18:48.797Z",
+      "request": "Build a fully working ATS Resume Scanner web application. REQUIREMENTS: (1) Real PDF and DOCX resume upload using react-dropzone - the file handler must use FileReader or pdfjs-dist to extract text from the uploaded file. (2) Real ATS score calculation: extract keywords from the resume text, count matches against the job description, and compute a percentage - the score MUST change based on what is uploaded. (3) Real job description text area where the user pastes a job posting. (4) Keyword matching: show which keywords from the job description are found vs missing in the resume. (5) Score breakdown chart using Recharts reading from real computed state - categories: Keywords, Skills, Experience, Education, Formatting. (6) Recommendations list derived from the actual analysis. (7) Scan history saved to localStorage - each entry stores filename, score, date. (8) Export analysis as PDF using jsPDF or window.print. STRICTLY FORBIDDEN: hardcoded scores, Math.random() metrics, setTimeout fake loading, static chart arrays. Use React with Vite, Tailwind CSS, dark theme.",
       "stage": "Initialization"
     },
     {
-      "timestamp": "2026-07-30T18:42:00.000Z",
-      "request": "Landing website for Aegis AI",
-      "stage": "Complete Implementation"
-    },
-    {
-      "timestamp": "2026-07-30T18:38:31.793Z",
-      "request": "Landing website for Aegis AI",
+      "timestamp": "2026-07-31T08:20:42.611Z",
+      "request": "Build a fully working ATS Resume Scanner web application. REQUIREMENTS: (1) Real PDF and DOCX resume upload using react-dropzone - the file handler must use FileReader or pdfjs-dist to extract text from the uploaded file. (2) Real ATS score calculation: extract keywords from the resume text, count matches against the job description, and compute a percentage - the score MUST change based on what is uploaded. (3) Real job description text area where the user pastes a job posting. (4) Keyword matching: show which keywords from the job description are found vs missing in the resume. (5) Score breakdown chart using Recharts reading from real computed state - categories: Keywords, Skills, Experience, Education, Formatting. (6) Recommendations list derived from the actual analysis. (7) Scan history saved to localStorage - each entry stores filename, score, date. (8) Export analysis as PDF using jsPDF or window.print. STRICTLY FORBIDDEN: hardcoded scores, Math.random() metrics, setTimeout fake loading, static chart arrays. Use React with Vite, Tailwind CSS, dark theme.",
       "stage": "ExecutionComplete"
     }
   ]

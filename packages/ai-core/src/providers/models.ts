@@ -35,9 +35,9 @@ export const Models = {
   },
 
   openrouter: {
-    default: "openrouter/free",
-    strong: "openrouter/free",
-    fast: "openrouter/free",
-    balanced: "openrouter/free",
+    default: "deepseek/deepseek-chat",
+    strong: "deepseek/deepseek-chat",
+    fast: "deepseek/deepseek-chat",
+    balanced: "deepseek/deepseek-chat",
   },
 } as const;

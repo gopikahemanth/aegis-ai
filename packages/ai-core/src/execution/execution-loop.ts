@@ -26,19 +26,39 @@ private readonly dispatcher =
   private readonly scheduler =
   new DependencyScheduler();
   constructor() {
-this.dispatcher.register(
-  ExecutionStage.Requirements,
-  new RequirementsRunner(),
-);
- this.dispatcher.register(
-  ExecutionStage.Architecture,
-  new ArchitectureRunner(),
-);
-this.dispatcher.register(
-  ExecutionStage.Implementation,
-  new ImplementationRunner(),
-);
-}
+    this.dispatcher.register(
+      ExecutionStage.Requirements,
+      new RequirementsRunner(),
+    );
+    this.dispatcher.register(
+      ExecutionStage.Architecture,
+      new ArchitectureRunner(),
+    );
+    this.dispatcher.register(
+      ExecutionStage.DataModeling,
+      new ImplementationRunner(),
+    );
+    this.dispatcher.register(
+      ExecutionStage.ApiDesign,
+      new ImplementationRunner(),
+    );
+    this.dispatcher.register(
+      ExecutionStage.Database,
+      new ImplementationRunner(),
+    );
+    this.dispatcher.register(
+      ExecutionStage.Backend,
+      new ImplementationRunner(),
+    );
+    this.dispatcher.register(
+      ExecutionStage.Frontend,
+      new ImplementationRunner(),
+    );
+    this.dispatcher.register(
+      ExecutionStage.Implementation,
+      new ImplementationRunner(),
+    );
+  }
   async execute(
     context: TaskContext,
     tasks: ExecutionTask[],

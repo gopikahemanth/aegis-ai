@@ -7,6 +7,10 @@
   "engines": {
     "node": ">=24.0.0"
   },
+  "onlyBuiltDependencies": [
+    "puppeteer",
+    "esbuild"
+  ],
 "scripts": {
   "build": "turbo build",
   "dev": "turbo dev",

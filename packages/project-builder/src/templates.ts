@@ -28,6 +28,13 @@ export class TemplateLibrary {
               vite: "^7.0.0",
               typescript: "^5.8.3",
               "@vitejs/plugin-react": "^5.0.0"
+            },
+            pnpm: {
+              onlyBuiltDependencies: [
+                "esbuild",
+                "@prisma/client",
+                "prisma"
+              ]
             }
           }, null, 2)
         },

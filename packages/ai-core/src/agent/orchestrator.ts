@@ -19,6 +19,7 @@ import { FileWriter } from "../writer/writer.js";
 import { Parser } from "../generator/parser.js";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { DependencyResolver, DependencyInstaller } from "@aegis/project-builder";
 import { PatchEngine } from "../healing/patch-engine.js";
 import { DependencyGraphEngine } from "../dependency/dependency-graph.js";
 import { GitIntegrationEngine } from "../git/git-engine.js";
@@ -96,6 +97,10 @@ export class Orchestrator {
   private readonly definitionOfDone = new DefinitionOfDone();
 
   private readonly executionLoop = new ExecutionLoop();
+
+  private readonly dependencyResolver = new DependencyResolver();
+
+  private readonly installer = new DependencyInstaller();
 
   private readonly repairCoordinator: RepairCoordinator;
 
@@ -695,6 +700,23 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         attempts++;
         console.log();
         console.log(`[Self-Healing] Attempting automatic repair ${attempts}/${maxRepairAttempts}...`);
+
+        // Check for missing packages first
+        const packages = this.dependencyResolver.resolve(build.stderr || "");
+        if (packages.length > 0) {
+          console.log(`[DependencyResolver] Installing missing packages: ${packages.join(", ")}`);
+          try {
+            const pm = (specification.packageManager || "pnpm") as "npm" | "pnpm" | "yarn";
+            await this.installer.installPackages(pm, outputDirectory, packages);
+            build = await this.runVerification(request, framework, outputDirectory);
+            if (build.success) {
+              console.log("[DependencyResolver] ✓ Build succeeded after package installation!");
+              break;
+            }
+          } catch (instErr: any) {
+            console.warn(`[DependencyResolver] Warning: Failed to install packages: ${instErr.message}`);
+          }
+        }
 
         try {
           const repairResponse =

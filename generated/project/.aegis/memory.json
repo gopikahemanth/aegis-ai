@@ -1,24 +1,25 @@
 {
   "projectName": "project",
-  "lastRequest": "Build a fully working ATS Resume Scanner web application. REQUIREMENTS: (1) Real PDF and DOCX resume upload using react-dropzone - the file handler must use FileReader or pdfjs-dist to extract text from the uploaded file. (2) Real ATS score calculation: extract keywords from the resume text, count matches against the job description, and compute a percentage - the score MUST change based on what is uploaded. (3) Real job description text area where the user pastes a job posting. (4) Keyword matching: show which keywords from the job description are found vs missing in the resume. (5) Score breakdown chart using Recharts reading from real computed state - categories: Keywords, Skills, Experience, Education, Formatting. (6) Recommendations list derived from the actual analysis. (7) Scan history saved to localStorage - each entry stores filename, score, date. (8) Export analysis as PDF using jsPDF or window.print. STRICTLY FORBIDDEN: hardcoded scores, Math.random() metrics, setTimeout fake loading, static chart arrays. Use React with Vite, Tailwind CSS, dark theme.",
+  "lastRequest": "Role: You are a Senior Creative Frontend Engineer building an Awwwards-quality single-page scrollytelling showcase.\n\nObjective: Build a production-ready, single-page showcase for Cinematic Transformer Sequence. Core mechanic: a scroll-driven image-sequence (frame images) used as the background, with a HUD-style overlay whose content transitions strictly based on scroll progress. The sequence is the hero: a mechanical truck transforming into a humanoid robot across 204 frames. The background environment evolves with the transformation. The experience\n\nmust feel cinematic, aggressive, minimal, and dark.",
   "createdFiles": [
-    "src/hooks/useLocalStorage.ts",
-    "src/services/atsAnalysisService.ts",
-    "src/components/ResumeDropzone.tsx",
-    "src/components/JobDescriptionInput.tsx",
-    "src/components/ATSScoreChart.tsx",
-    "src/pages/LandingPage.tsx",
-    "src/pages/DashboardPage.tsx",
-    "src/pages/HistoryPage.tsx",
-    "src/types/index.ts",
-    "src/components/Navbar.tsx",
-    "src/components/Footer.tsx",
-    "src/components/Layout.tsx",
-    "src/components/ScoreCard.tsx",
-    "src/components/KeywordMatchList.tsx",
-    "src/components/ImprovementSuggestions.tsx",
-    "src/pages/AboutPage.tsx",
+    "src/hooks/useCinematicScroll.ts",
+    "src/components/CanvasBackground.tsx",
+    "src/components/HUDOverlay.tsx",
     "src/App.tsx",
+    "style.css",
+    "index.html",
+    "src/main.tsx",
+    "src/design-system/tokens.ts",
+    "src/design-system/components/Button.tsx",
+    "src/design-system/components/EmptyState.tsx",
+    "src/design-system/components/Skeleton.tsx",
+    "src/design-system/index.ts",
+    "src/components/Navigation.tsx",
+    "src/components/BlueprintModal.tsx",
+    "src/components/CockpitModal.tsx",
+    "src/components/CustomizerModal.tsx",
+    "src/services/audioManager.ts",
+    "src/types/mecha.ts",
     "Dockerfile",
     ".dockerignore",
     ".github/workflows/ci-cd.yml",
@@ -28,42 +29,42 @@
   "tasks": [
     {
       "id": 1,
-      "title": "Project Setup and Domain Architecture",
-      "description": "Initialize React TypeScript project with Tailwind CSS, configure project structure, and define core TypeScript interfaces for resume parsing and ATS scoring models.",
+      "title": "Project Setup and Architecture",
+      "description": "Initialize React, Vite, TypeScript, and Tailwind CSS. Setup clean project structure, constants, state management models, and audio/animation utility wrappers.",
       "completed": true,
       "stage": "Architecture",
       "priority": 1,
       "dependencies": [],
-      "estimatedComplexity": 2
+      "estimatedComplexity": 3
     },
     {
       "id": 2,
-      "title": "Document Parsing Engine",
-      "description": "Implement client-side document processing for PDF and DOCX files using robust text extraction libraries without server dependencies.",
+      "title": "Core Components and UI Layout",
+      "description": "Develop modular UI components for mecha specification panels, HUD overlays, control decks, and responsive typography layouts.",
       "completed": true,
       "stage": "Implementation",
       "priority": 2,
       "dependencies": [
         1
       ],
-      "estimatedComplexity": 3
+      "estimatedComplexity": 5
     },
     {
       "id": 3,
-      "title": "ATS Scoring and Keyword Analysis Algorithm",
-      "description": "Build heuristic matching engine to evaluate resume text against job descriptions, calculating keyword density, formatting score, and section completeness.",
+      "title": "Scrollytelling and Transformation Engine",
+      "description": "Implement high-performance scroll-driven animation logic, part-by-part mecha assembly/disassembly sequencing, and camera/canvas transformations.",
       "completed": true,
       "stage": "Implementation",
       "priority": 3,
       "dependencies": [
         2
       ],
-      "estimatedComplexity": 5
+      "estimatedComplexity": 8
     },
     {
       "id": 4,
-      "title": "Interactive Dashboard and UI Components",
-      "description": "Develop responsive Tailwind CSS dashboard featuring drag-and-drop file upload, real-time score visualization, keyword gap analysis, and optimization suggestions.",
+      "title": "Audio FX and Interactive Polish",
+      "description": "Integrate synthesized or asset-based mechanical sound effects synced to scroll milestones, particle effects, and responsive touch/mouse controls.",
       "completed": true,
       "stage": "Implementation",
       "priority": 4,
@@ -74,8 +75,8 @@
     },
     {
       "id": 5,
-      "title": "Testing, Optimization and Validation",
-      "description": "Perform end-to-end testing, optimize text extraction performance, ensure WCAG accessibility compliance, and validate ATS scoring accuracy.",
+      "title": "Validation and Performance Optimization",
+      "description": "Perform rigorous cross-browser testing, bundle size optimization, frame-rate profiling during scroll transformations, and accessibility checks.",
       "completed": true,
       "stage": "Validation",
       "priority": 5,
@@ -87,13 +88,13 @@
   ],
   "history": [
     {
-      "timestamp": "2026-07-31T08:18:48.797Z",
-      "request": "Build a fully working ATS Resume Scanner web application. REQUIREMENTS: (1) Real PDF and DOCX resume upload using react-dropzone - the file handler must use FileReader or pdfjs-dist to extract text from the uploaded file. (2) Real ATS score calculation: extract keywords from the resume text, count matches against the job description, and compute a percentage - the score MUST change based on what is uploaded. (3) Real job description text area where the user pastes a job posting. (4) Keyword matching: show which keywords from the job description are found vs missing in the resume. (5) Score breakdown chart using Recharts reading from real computed state - categories: Keywords, Skills, Experience, Education, Formatting. (6) Recommendations list derived from the actual analysis. (7) Scan history saved to localStorage - each entry stores filename, score, date. (8) Export analysis as PDF using jsPDF or window.print. STRICTLY FORBIDDEN: hardcoded scores, Math.random() metrics, setTimeout fake loading, static chart arrays. Use React with Vite, Tailwind CSS, dark theme.",
+      "timestamp": "2026-08-01T10:07:23.453Z",
+      "request": "Role: You are a Senior Creative Frontend Engineer building an Awwwards-quality single-page scrollytelling showcase.\n\nObjective: Build a production-ready, single-page showcase for Cinematic Transformer Sequence. Core mechanic: a scroll-driven image-sequence (frame images) used as the background, with a HUD-style overlay whose content transitions strictly based on scroll progress. The sequence is the hero: a mechanical truck transforming into a humanoid robot across 204 frames. The background environment evolves with the transformation. The experience\n\nmust feel cinematic, aggressive, minimal, and dark.",
       "stage": "Initialization"
     },
     {
-      "timestamp": "2026-07-31T08:20:42.611Z",
-      "request": "Build a fully working ATS Resume Scanner web application. REQUIREMENTS: (1) Real PDF and DOCX resume upload using react-dropzone - the file handler must use FileReader or pdfjs-dist to extract text from the uploaded file. (2) Real ATS score calculation: extract keywords from the resume text, count matches against the job description, and compute a percentage - the score MUST change based on what is uploaded. (3) Real job description text area where the user pastes a job posting. (4) Keyword matching: show which keywords from the job description are found vs missing in the resume. (5) Score breakdown chart using Recharts reading from real computed state - categories: Keywords, Skills, Experience, Education, Formatting. (6) Recommendations list derived from the actual analysis. (7) Scan history saved to localStorage - each entry stores filename, score, date. (8) Export analysis as PDF using jsPDF or window.print. STRICTLY FORBIDDEN: hardcoded scores, Math.random() metrics, setTimeout fake loading, static chart arrays. Use React with Vite, Tailwind CSS, dark theme.",
+      "timestamp": "2026-08-01T10:09:57.791Z",
+      "request": "Role: You are a Senior Creative Frontend Engineer building an Awwwards-quality single-page scrollytelling showcase.\n\nObjective: Build a production-ready, single-page showcase for Cinematic Transformer Sequence. Core mechanic: a scroll-driven image-sequence (frame images) used as the background, with a HUD-style overlay whose content transitions strictly based on scroll progress. The sequence is the hero: a mechanical truck transforming into a humanoid robot across 204 frames. The background environment evolves with the transformation. The experience\n\nmust feel cinematic, aggressive, minimal, and dark.",
       "stage": "ExecutionComplete"
     }
   ]

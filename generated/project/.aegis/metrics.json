@@ -1,17 +1,17 @@
 {
   "buildHistory": [
     {
-      "timestamp": "2026-07-31T08:20:43.947Z",
+      "timestamp": "2026-08-01T10:09:58.810Z",
       "success": false,
       "durationMs": 3000,
       "errors": [
-        "Build failed"
+        "Sandbox Runtime & Browser Verification Failure:\nLive Browser verification failed: Captured 1 browser console errors:\nFailed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of \"text/html\". Strict MIME type checking is enforced for module scripts per HTML spec."
       ]
     }
   ],
   "telemetry": {
-    "totalTokensUsed": 256324,
-    "estimatedCostUsd": 0.02794,
+    "totalTokensUsed": 313808,
+    "estimatedCostUsd": 0.033938,
     "healingAttempts": 0,
     "sandboxRuns": 1
   }

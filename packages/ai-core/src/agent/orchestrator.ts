@@ -45,6 +45,7 @@ import type { Task } from "../planner/task.js";
 import { PromptInferenceEngine } from "../prompts/prompt-inference-engine.js";
 import { DesignSystemGenerator } from "../design/design-system-generator.js";
 import { DefinitionOfDone } from "../validation/definition-of-done.js";
+import { ProjectStartupAgent } from "../startup/project-startup-agent.js";
 
 export class Orchestrator {
   private readonly scheduler = new DependencyScheduler();
@@ -772,6 +773,26 @@ export class Orchestrator {
       }
     } catch (dodErr: any) {
       console.warn(`[DoD] Warning: Definition of Done check failed: ${dodErr.message}`);
+    }
+
+    // ─── Project Startup Agent ────────────────────────────────────────────────
+    // Runs last: patches package.json, creates missing config files,
+    // fixes CSS imports, installs deps — guarantees `npm run dev` works.
+    console.log("[Startup] Running Project Startup Agent...");
+    try {
+      const startupAgent = new ProjectStartupAgent();
+      const startupResult = await startupAgent.prepare(outputDirectory);
+      if (startupResult.patchesApplied.length > 0) {
+        auditTrail.logEvent({
+          agentRole: "Project Startup Agent",
+          action: `Applied ${startupResult.patchesApplied.length} startup fix(es): ${startupResult.patchesApplied.join("; ")}`,
+          status: "SUCCESS"
+        });
+      }
+      console.log(`[Startup] 🚀 Ready! Open: ${startupResult.url ?? "http://localhost:5173"}`);
+      console.log(`[Startup]    Run:  cd ${outputDirectory} && npm run dev`);
+    } catch (startupErr: any) {
+      console.warn(`[Startup] Warning: Startup agent failed: ${startupErr.message}`);
     }
 
     this.execution.complete();

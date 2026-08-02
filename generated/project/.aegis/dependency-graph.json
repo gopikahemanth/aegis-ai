@@ -1,94 +1,105 @@
 {
-  "postcss.config.js": {
-    "path": "postcss.config.js",
+  "script.js": {
+    "path": "script.js",
     "imports": [],
     "importedBy": []
   },
   "src/App.tsx": {
     "path": "src/App.tsx",
     "imports": [
-      "src/components/Layout.tsx",
-      "src/pages/LandingPage.tsx",
-      "src/pages/DashboardPage.tsx",
-      "src/pages/HistoryPage.tsx",
-      "src/pages/AboutPage.tsx"
+      "src/hooks/useCinematicScroll.ts",
+      "src/components/Navigation.tsx",
+      "src/components/CanvasBackground.tsx",
+      "src/components/HUDOverlay.tsx",
+      "src/components/BlueprintModal.tsx",
+      "src/components/CockpitModal.tsx",
+      "src/components/CustomizerModal.tsx",
+      "src/types/mecha.ts",
+      "src/services/audioManager.ts"
     ],
     "importedBy": [
       "src/main.tsx"
     ]
   },
-  "src/components/ATSScoreChart.tsx": {
-    "path": "src/components/ATSScoreChart.tsx",
+  "src/components/BlueprintModal.tsx": {
+    "path": "src/components/BlueprintModal.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/CanvasBackground.tsx": {
+    "path": "src/components/CanvasBackground.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/CockpitModal.tsx": {
+    "path": "src/components/CockpitModal.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/components/CustomizerModal.tsx": {
+    "path": "src/components/CustomizerModal.tsx",
     "imports": [
-      "src/types/index.ts"
-    ],
-    "importedBy": [
-      "src/pages/DashboardPage.tsx"
-    ]
-  },
-  "src/components/Footer.tsx": {
-    "path": "src/components/Footer.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/components/Layout.tsx"
-    ]
-  },
-  "src/components/ImprovementSuggestions.tsx": {
-    "path": "src/components/ImprovementSuggestions.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/pages/DashboardPage.tsx"
-    ]
-  },
-  "src/components/JobDescriptionInput.tsx": {
-    "path": "src/components/JobDescriptionInput.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/pages/LandingPage.tsx"
-    ]
-  },
-  "src/components/KeywordMatchList.tsx": {
-    "path": "src/components/KeywordMatchList.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/pages/DashboardPage.tsx"
-    ]
-  },
-  "src/components/Layout.tsx": {
-    "path": "src/components/Layout.tsx",
-    "imports": [
-      "src/components/Navbar.tsx",
-      "src/components/Footer.tsx"
+      "src/types/mecha.ts"
     ],
     "importedBy": [
       "src/App.tsx"
     ]
   },
-  "src/components/Navbar.tsx": {
-    "path": "src/components/Navbar.tsx",
-    "imports": [],
+  "src/components/HUDOverlay.tsx": {
+    "path": "src/components/HUDOverlay.tsx",
+    "imports": [
+      "src/types/mecha.ts"
+    ],
     "importedBy": [
-      "src/components/Layout.tsx"
+      "src/App.tsx"
     ]
   },
-  "src/components/ResumeDropzone.tsx": {
-    "path": "src/components/ResumeDropzone.tsx",
+  "src/components/Navigation.tsx": {
+    "path": "src/components/Navigation.tsx",
     "imports": [],
     "importedBy": [
-      "src/pages/LandingPage.tsx"
+      "src/App.tsx"
     ]
   },
-  "src/components/ScoreCard.tsx": {
-    "path": "src/components/ScoreCard.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/pages/DashboardPage.tsx"
-    ]
-  },
-  "src/hooks/useLocalStorage.ts": {
-    "path": "src/hooks/useLocalStorage.ts",
+  "src/design-system/components/Button.tsx": {
+    "path": "src/design-system/components/Button.tsx",
     "imports": [],
     "importedBy": []
+  },
+  "src/design-system/components/EmptyState.tsx": {
+    "path": "src/design-system/components/EmptyState.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/components/Skeleton.tsx": {
+    "path": "src/design-system/components/Skeleton.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/index.ts": {
+    "path": "src/design-system/index.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/tokens.ts": {
+    "path": "src/design-system/tokens.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/hooks/useCinematicScroll.ts": {
+    "path": "src/hooks/useCinematicScroll.ts",
+    "imports": [
+      "src/services/audioManager.ts"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
   },
   "src/main.tsx": {
     "path": "src/main.tsx",
@@ -97,82 +108,21 @@
     ],
     "importedBy": []
   },
-  "src/pages/AboutPage.tsx": {
-    "path": "src/pages/AboutPage.tsx",
+  "src/services/audioManager.ts": {
+    "path": "src/services/audioManager.ts",
     "imports": [],
     "importedBy": [
-      "src/App.tsx"
+      "src/App.tsx",
+      "src/hooks/useCinematicScroll.ts"
     ]
   },
-  "src/pages/DashboardPage.tsx": {
-    "path": "src/pages/DashboardPage.tsx",
-    "imports": [
-      "src/components/ScoreCard.tsx",
-      "src/components/ATSScoreChart.tsx",
-      "src/components/KeywordMatchList.tsx",
-      "src/components/ImprovementSuggestions.tsx",
-      "src/types/index.ts",
-      "src/services/atsAnalysisService.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/pages/HistoryPage.tsx": {
-    "path": "src/pages/HistoryPage.tsx",
-    "imports": [
-      "src/types/index.ts",
-      "src/services/atsAnalysisService.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/pages/LandingPage.tsx": {
-    "path": "src/pages/LandingPage.tsx",
-    "imports": [
-      "src/components/ResumeDropzone.tsx",
-      "src/components/JobDescriptionInput.tsx",
-      "src/services/atsAnalysisService.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/services/atsAnalysisService.ts": {
-    "path": "src/services/atsAnalysisService.ts",
-    "imports": [
-      "src/types/index.ts"
-    ],
-    "importedBy": [
-      "src/pages/DashboardPage.tsx",
-      "src/pages/HistoryPage.tsx",
-      "src/pages/LandingPage.tsx"
-    ]
-  },
-  "src/types/index.ts": {
-    "path": "src/types/index.ts",
+  "src/types/mecha.ts": {
+    "path": "src/types/mecha.ts",
     "imports": [],
     "importedBy": [
-      "src/components/ATSScoreChart.tsx",
-      "src/pages/DashboardPage.tsx",
-      "src/pages/HistoryPage.tsx",
-      "src/services/atsAnalysisService.ts"
+      "src/App.tsx",
+      "src/components/CustomizerModal.tsx",
+      "src/components/HUDOverlay.tsx"
     ]
-  },
-  "src/vite-env.d.ts": {
-    "path": "src/vite-env.d.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "tailwind.config.js": {
-    "path": "tailwind.config.js",
-    "imports": [],
-    "importedBy": []
-  },
-  "vite.config.ts": {
-    "path": "vite.config.ts",
-    "imports": [],
-    "importedBy": []
   }
 }

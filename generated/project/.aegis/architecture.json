@@ -1,5 +1,5 @@
 {
-  "framework": "react-vite",
+  "framework": "html",
   "language": "TypeScript",
   "packageManager": "npm",
   "folderStructure": {
@@ -20,10 +20,10 @@
     "camelCase for utility files, hooks, types",
     "Use Tailwind CSS responsive style rules"
   ],
-  "styling": "tailwind",
+  "styling": "vanilla-css",
   "additionalRules": [
     "Preserve type assertions in React TSX components",
     "Do not generate stubs or incomplete code blocks",
-    "Ensure all required document parsing libraries such as pdfjs-dist and mammoth are properly configured with correct worker paths and fallback text extraction handlers to prevent build and runtime failures during real file processing."
+    "Ensure all local script and module imports use correct relative paths so that the bundler resolves them to actual JavaScript files instead of falling back to serving the index.html fallback."
   ]
 }

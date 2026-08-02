@@ -24,4 +24,5 @@ export * from "./utils/security.js";
 export * from "./prompts/prompt-inference-engine.js";
 export * from "./design/design-system-generator.js";
 export * from "./validation/definition-of-done.js";
+export * from "./startup/project-startup-agent.js";
 

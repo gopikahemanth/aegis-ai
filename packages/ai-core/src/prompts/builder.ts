@@ -2,6 +2,7 @@ import { PromptSections } from "./sections.js";
 import { PromptTemplates } from "./templates.js";
 import { ContextEngine } from "../context/context-engine.js";
 import { FrameworkPromptFactory } from "./frameworks/factory.js";
+import { WorkspaceIntelligenceEngine } from "@aegis/workspace";
 
 import type { ProjectSpecification } from "../architect/specification.js";
 
@@ -44,6 +45,23 @@ build(
         projectPath,
         taskContext,
       );
+
+    let workspaceSummary = "";
+    try {
+      const intelEngine = new WorkspaceIntelligenceEngine();
+      const index = intelEngine.scan(projectPath);
+      workspaceSummary = `
+═══════════════════════════════════════════════════════
+WORKSPACE INTELLIGENCE INDEX (CURRENT PROJECT STATE)
+═══════════════════════════════════════════════════════
+${intelEngine.formatAsMarkdown(index)}
+`;
+    } catch (e: any) {
+      console.warn(`[WorkspaceIntelligence] Warning: Scanning failed: ${e.message}`);
+    }
+
+    const mergedContext = `${fullContext}\n${workspaceSummary}`;
+
     const framework =
   this.frameworkFactory.get(
     this.detectFramework(spec),
@@ -58,7 +76,7 @@ return this.templates.projectGeneration(
   execution,
   architecture,
   architectureDetails,
-  fullContext,
+  mergedContext,
   framework,
   user,
   rules,

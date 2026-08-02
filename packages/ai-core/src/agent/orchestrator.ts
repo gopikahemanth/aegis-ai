@@ -527,26 +527,6 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         specification,
       );
 
-    await this.executionLoop.execute(
-      {
-        request,
-        outputDirectory,
-        coder: this.coderAgent,
-      },
-      tasks,
-      async (task) => {
-        console.log(
-          `Executing: ${task.title}`,
-        );
-
-        return {
-          taskId: task.id,
-          success: true,
-          message: "Completed",
-        };
-      },
-    );
-
     this.execution.enter(
       ExecutionPhase.Architecture,
     );

@@ -183,19 +183,25 @@ export class ErrorRootCauseMapper {
     // The component name is typically the JSX element name in the error context
     // TS2322 with IntrinsicAttributes usually happens on the opening tag line
     // We try to find a file matching the component name pattern
-    const propMatch = message.match(/type 'IntrinsicAttributes & (.+)'/) ??
-                      message.match(/type '{ (.+) }'.*'IntrinsicAttributes'/);
+    const propMatch = message.match(/type 'IntrinsicAttributes & (.+?)'/) ??
+                      message.match(/type '{ (.+?) }'.*'IntrinsicAttributes'/);
 
     if (!propMatch) return null;
 
+    const rawName = propMatch[1].trim(); // e.g. "RegisterPageProps" or "LoginPage"
+    const componentName = rawName.replace(/Props$/, "").toLowerCase(); // e.g. "registerpage" or "loginpage"
+
     // Look in project files for a component file whose name could match
-    // This is heuristic — the component is often named after the file
     const candidates = projectFiles.filter(f =>
       f.endsWith(".tsx") && !f.includes("App.tsx")
     );
 
-    // Return null and let the repair prompt handle it with the hint
-    return candidates.length > 0 ? candidates[0] : null;
+    const match = candidates.find(f => {
+      const baseName = f.split("/").pop()?.replace(/\.tsx$/, "").toLowerCase() ?? "";
+      return baseName.includes(componentName) || componentName.includes(baseName);
+    });
+
+    return match || (candidates.length > 0 ? candidates[0] : null);
   }
 
   private buildSummary(errors: ClassifiedError[]): string {

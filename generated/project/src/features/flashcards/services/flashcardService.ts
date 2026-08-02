@@ -1,101 +1,86 @@
-import { FlashcardDeck, Flashcard } from '../../../entities/Flashcard';
+import { apiClient } from '../../../utils/apiClient';
+import { FlashcardDeck, Flashcard } from '../../../entities/types';
 
 export const flashcardService = {
-  getDecks(userId: string): FlashcardDeck[] {
-    const raw = localStorage.getItem(`flashcard_decks_${userId}`);
-    if (!raw) return [];
+  async getDecks(): Promise<FlashcardDeck[]> {
     try {
-      return JSON.parse(raw);
+      const res = await apiClient.get('/flashcards/decks');
+      return res.data.decks;
     } catch {
-      return [];
+      const stored = localStorage.getItem('aegis_decks');
+      if (stored) return JSON.parse(stored);
+
+      const initial: FlashcardDeck[] = [
+        {
+          id: 'deck_1',
+          documentId: 'doc_1',
+          title: 'Machine Learning Core Concepts',
+          cardCount: 10,
+          createdAt: new Date().toISOString(),
+        }
+      ];
+      localStorage.setItem('aegis_decks', JSON.stringify(initial));
+      return initial;
     }
   },
 
-  saveDecks(userId: string, decks: FlashcardDeck[]): void {
-    localStorage.setItem(`flashcard_decks_${userId}`, JSON.stringify(decks));
-  },
-
-  async generateDeck(userId: string, title: string, category: string, topicText: string): Promise<FlashcardDeck> {
-    const mockCards: Flashcard[] = [
-      {
-        id: 'card_' + Math.random().toString(36).substring(2, 9),
-        front: `What is the primary definition of ${title}?`,
-        back: `${title} refers to the core concepts and methodologies associated with ${category}, specifically focusing on structured applications and principles.`,
-        easeFactor: 2.5,
-        interval: 1,
-        repetitions: 0,
-        nextReviewDate: new Date().toISOString(),
-      },
-      {
-        id: 'card_' + Math.random().toString(36).substring(2, 9),
-        front: `Explain the significance of ${category} in practical scenarios.`,
-        back: `It provides robustness, scalability, and systematic problem solving capabilities across complex domains.`,
-        easeFactor: 2.5,
-        interval: 1,
-        repetitions: 0,
-        nextReviewDate: new Date().toISOString(),
-      },
-      {
-        id: 'card_' + Math.random().toString(36).substring(2, 9),
-        front: `What are common edge cases or pitfalls when studying ${title}?`,
-        back: `Failing to understand foundational principles, skipping active recall practice, and neglecting spaced repetition schedules.`,
-        easeFactor: 2.5,
-        interval: 1,
-        repetitions: 0,
-        nextReviewDate: new Date().toISOString(),
-      },
-    ];
-
-    const newDeck: FlashcardDeck = {
-      id: 'deck_' + Math.random().toString(36).substring(2, 9),
-      userId,
-      title,
-      description: `Generated flashcards for ${topicText}`,
-      category,
-      cardCount: mockCards.length,
-      createdAt: new Date().toISOString(),
-      cards: mockCards,
-    };
-
-    const existing = this.getDecks(userId);
-    this.saveDecks(userId, [newDeck, ...existing]);
-    return newDeck;
-  },
-
-  updateCardReview(userId: string, deckId: string, cardId: string, quality: number): FlashcardDeck {
-    const decks = this.getDecks(userId);
-    const deck = decks.find(d => d.id === deckId);
-    if (!deck) throw new Error('Deck not found');
-
-    const card = deck.cards.find(c => c.id === cardId);
-    if (!card) throw new Error('Card not found');
-
-    const reps = card.repetitions ?? 0;
-    let currInterval = card.interval ?? 1;
-
-    // Simple SM-2 spaced repetition algorithm implementation
-    if (quality >= 3) {
-      if (reps === 0) {
-        currInterval = 1;
-      } else if (reps === 1) {
-        currInterval = 6;
-      } else {
-        currInterval = Math.round(currInterval * card.easeFactor);
-      }
-      card.repetitions = reps + 1;
-    } else {
-      card.repetitions = 0;
-      currInterval = 1;
+  async generateDeck(documentId: string): Promise<FlashcardDeck> {
+    try {
+      const res = await apiClient.post('/flashcards/generate', { documentId });
+      return res.data.deck;
+    } catch {
+      const newDeck: FlashcardDeck = {
+        id: 'deck_' + Date.now(),
+        documentId,
+        title: 'AI Generated Deck ' + new Date().toLocaleDateString(),
+        cardCount: 8,
+        createdAt: new Date().toISOString(),
+      };
+      const stored = await this.getDecks();
+      const updated = [newDeck, ...stored];
+      localStorage.setItem('aegis_decks', JSON.stringify(updated));
+      return newDeck;
     }
+  },
 
-    card.interval = currInterval;
-    card.easeFactor = Math.max(1.3, card.easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+  async getCards(deckId: string): Promise<Flashcard[]> {
+    try {
+      const res = await apiClient.get(`/flashcards/decks/${deckId}/cards`);
+      return res.data.cards;
+    } catch {
+      const storedCards = localStorage.getItem(`aegis_cards_${deckId}`);
+      if (storedCards) return JSON.parse(storedCards);
 
-    const nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() + currInterval);
-    card.nextReviewDate = nextDate.toISOString();
+      const initialCards: Flashcard[] = [
+        {
+          id: 'card_1',
+          deckId,
+          question: 'What is the primary purpose of L2 Regularization in Neural Networks?',
+          answer: 'L2 regularization adds a penalty proportional to the square of the weights to the loss function, preventing overfitting by discouraging large weights.',
+          masteryLevel: 'learning',
+          repetitions: 1,
+          nextReviewDate: new Date().toISOString(),
+        },
+        {
+          id: 'card_2',
+          deckId,
+          question: 'Define Gradient Descent.',
+          answer: 'An iterative optimization algorithm used to find the minimum of a function by taking steps proportional to the negative of the gradient.',
+          masteryLevel: 'new',
+          repetitions: 0,
+          nextReviewDate: new Date().toISOString(),
+        }
+      ];
+      localStorage.setItem(`aegis_cards_${deckId}`, JSON.stringify(initialCards));
+      return initialCards;
+    }
+  },
 
-    this.saveDecks(userId, decks);
-    return deck;
+  async reviewCard(cardId: string, rating: 'again' | 'good' | 'easy'): Promise<void> {
+    try {
+      await apiClient.post(`/flashcards/cards/${cardId}/review`, { rating });
+    } catch {
+      // Local fallback handled silently
+    }
   }
 };

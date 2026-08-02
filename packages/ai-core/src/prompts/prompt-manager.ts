@@ -21,20 +21,38 @@ Fundamental Rules:
   public getSpecificationPrompt(): string {
     return `${this.getBaseSystemPrompt("Requirements / Specification Agent")}
 
-Analyze the user's request.
-Return ONLY valid JSON matching this schema:
+Analyze the user's request and produce a complete Project Definition Document.
+Return ONLY valid JSON matching this schema exactly — no extra text, no markdown:
+
 {
   "name": string,
-  "type": "website" | "saas" | "api" | "extension" | "cli" | "app" | "other",
+  "type": "website" | "saas" | "app" | "api" | "cli" | "extension" | "frontend" | "backend" | "fullstack" | "other",
   "frontend": string | null,
   "backend": string | null,
   "database": string | null,
   "language": "TypeScript" | "JavaScript" | "Python" | "Go" | "Rust" | "C#" | "other",
   "styling": string | null,
-  "packageManager": "npm" | "yarn" | "pnpm"
+  "packageManager": "npm" | "yarn" | "pnpm",
+
+  "features": string[],
+  "inferredLibraries": string[],
+  "userFlows": string[],
+  "dataModels": string[],
+  "featureDescriptions": { [featureName: string]: string },
+  "auth": string | null,
+  "deployment": string | null
 }
 
-Never output markdown backticks (like \`\`\`json) or extra text, just the raw JSON.`;
+Rules for each field:
+- "features": Every meaningful feature the user described (e.g. ["upload", "parsing", "scoring", "history", "export", "auth"]). Each entry becomes a folder under src/features/.
+- "inferredLibraries": npm packages the project will need. Infer from the feature set even if not explicitly mentioned (e.g. PDF upload → "pdfjs-dist", charts → "recharts", auth → "jsonwebtoken"). Be exhaustive.
+- "userFlows": Top-level user journeys as kebab-case strings (e.g. ["upload-resume", "scan-keywords", "view-history", "export-pdf"]).
+- "dataModels": Core TypeScript entity names (e.g. ["User", "ScanResult", "JobDescription"]).
+- "featureDescriptions": One sentence per feature describing what it does and what files it needs.
+- "auth": Authentication strategy inferred from the request (e.g. "JWT", "OAuth2", "session", "none").
+- "deployment": Deployment target inferred from the request (e.g. "vercel", "docker", "railway", "none").
+
+Never output markdown backticks or extra text. Return only the raw JSON object.`;
   }
 
   public getArchitecturePrompt(): string {

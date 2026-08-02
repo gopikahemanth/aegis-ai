@@ -1,11 +1,27 @@
 export const tokens = {
-  borderRadius: 'rounded-xl',
-  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-  spacing: {
-    xs: '4px',
-    sm: '8px',
-    md: '16px',
-    lg: '24px',
-    xl: '32px',
+  colors: {
+    brand: {
+      50: '#eef2ff',
+      100: '#e0e7ff',
+      500: '#6366f1',
+      600: '#4f46e5',
+      700: '#4338ca',
+    },
+    neutral: {
+      950: '#020617',
+      900: '#0f172a',
+      800: '#1e293b',
+      700: '#334155',
+      400: '#94a3b8',
+      200: '#e2e8f0',
+      50: '#f8fafc',
+    },
+    semantic: {
+      success: '#10b981',
+      warning: '#f59e0b',
+      error: '#ef4444',
+      info: '#3b82f6',
+    },
   },
+  borderRadius: '0.50rem', // rounded-lg
 };

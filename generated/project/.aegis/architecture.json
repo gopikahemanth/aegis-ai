@@ -24,6 +24,6 @@
   "additionalRules": [
     "Preserve type assertions in React TSX components",
     "Do not generate stubs or incomplete code blocks",
-    "Ensure all required backend and frontend dependencies, environment variables, and Prisma schema configurations are fully defined and installed prior to compilation."
+    "Ensure all database schema changes, Prisma client generation, and environment variables are properly synchronized and configured before running build scripts in production."
   ]
 }

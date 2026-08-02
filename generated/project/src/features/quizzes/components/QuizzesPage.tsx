@@ -1,41 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, EmptyState, Skeleton } from '../../../design-system';
-import { flashcardService } from '../services/flashcardService';
-import { FlashcardDeck } from '../../../entities/types';
+import { quizService } from '../services/quizService';
+import { Quiz } from '../../../entities/types';
 import { formatDate } from '../../../utils/formatDate';
 
-export const FlashcardsPage: React.FC = () => {
+export const QuizzesPage: React.FC = () => {
   const navigate = useNavigate();
-  const [decks, setDecks] = useState<FlashcardDeck[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDecks = async () => {
+  const fetchQuizzes = async () => {
     try {
       setLoading(true);
-      const data = await flashcardService.getDecks();
-      setDecks(data);
+      const data = await quizService.getQuizzes();
+      setQuizzes(data);
     } catch {
-      setError('Failed to load flashcard decks.');
+      setError('Failed to load quizzes.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDecks();
+    fetchQuizzes();
   }, []);
 
-  const handleGenerateDeck = async () => {
+  const handleGenerateQuiz = async () => {
     setGenerating(true);
     setError(null);
     try {
-      const newDeck = await flashcardService.generateDeck('doc_1');
-      setDecks(prev => [newDeck, ...prev]);
+      const newQuiz = await quizService.generateQuiz('doc_1');
+      setQuizzes(prev => [newQuiz, ...prev]);
     } catch {
-      setError('Failed to generate flashcards.');
+      setError('Failed to generate AI quiz.');
     } finally {
       setGenerating(false);
     }
@@ -45,11 +45,11 @@ export const FlashcardsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Spaced Repetition Flashcards</h1>
-          <p className="text-sm text-slate-400 mt-1">Review active flashcard decks for long-term knowledge retention.</p>
+          <h1 className="text-2xl font-bold text-slate-100">AI Practice Quizzes</h1>
+          <p className="text-sm text-slate-400 mt-1">Test your mastery with dynamically generated multiple choice exams.</p>
         </div>
-        <Button onClick={handleGenerateDeck} loading={generating}>
-          {generating ? 'AI Generating Decks...' : 'Generate New Deck'}
+        <Button onClick={handleGenerateQuiz} loading={generating}>
+          {generating ? 'AI Generating Exam...' : 'Generate New Quiz'}
         </Button>
       </div>
 
@@ -64,32 +64,32 @@ export const FlashcardsPage: React.FC = () => {
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
         </div>
-      ) : decks.length === 0 ? (
+      ) : quizzes.length === 0 ? (
         <EmptyState
-          title="No flashcard decks found"
-          description="Generate your first set of flashcards from your uploaded study notes."
+          title="No quizzes available"
+          description="Generate your first practice test based on uploaded study notes."
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {decks.map((deck) => (
+          {quizzes.map((quiz) => (
             <div
-              key={deck.id}
-              onClick={() => navigate(`/app/flashcards/${deck.id}`)}
+              key={quiz.id}
+              onClick={() => navigate(`/app/quizzes/${quiz.id}`)}
               className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-xl p-5 hover:border-indigo-500/50 transition-all cursor-pointer flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="text-base font-semibold text-slate-100 line-clamp-1">{deck.title}</h3>
-                  <span className="text-xs px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded-full font-mono">
-                    {deck.cardCount} cards
+                  <h3 className="text-base font-semibold text-slate-100 line-clamp-1">{quiz.title}</h3>
+                  <span className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded-full font-mono">
+                    {quiz.score !== undefined ? `${quiz.score}%` : 'Pending'}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 line-clamp-2 mb-4">Optimized spaced repetition queue for maximum retention.</p>
+                <p className="text-xs text-slate-400 line-clamp-2 mb-4">{quiz.totalQuestions} multiple choice questions with detailed explanations.</p>
               </div>
 
               <div className="flex items-center justify-between pt-4 border-t border-slate-800/80 text-xs text-slate-500">
-                <span className="text-emerald-400 font-medium">Ready to Review</span>
-                <span>{formatDate(deck.createdAt)}</span>
+                <span>{quiz.completedAt ? 'Completed' : 'Not Started'}</span>
+                <span>{formatDate(quiz.createdAt)}</span>
               </div>
             </div>
           ))}

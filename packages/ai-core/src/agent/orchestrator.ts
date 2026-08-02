@@ -184,19 +184,50 @@ export class Orchestrator {
       }
     }
 
+    // ── Step 0: Prompt Inference — expand brief prompt into full feature spec ──
+    console.log("[Inference] Expanding prompt into full feature specification...");
+    let enrichedRequest = request;
+    let inferredLibraries: string[] = [];
+    let inferredFeatureNames: string[] = [];
+    try {
+      const expanded = await this.promptInferenceEngine.expand(request);
+      enrichedRequest = expanded.enrichedPrompt;
+      inferredLibraries = expanded.inferredLibraries;
+      inferredFeatureNames = expanded.inferredFeatures.map(f => f.name);
+      console.log(`[Inference] Inferred ${expanded.inferredFeatures.length} features: ${inferredFeatureNames.join(", ")}`);
+      console.log(`[Inference] Inferred libraries: ${inferredLibraries.join(", ")}`);
+      auditTrail.logEvent({
+        agentRole: "Inference Engine",
+        action: `Expanded prompt. Features: [${inferredFeatureNames.join(", ")}] Libraries: [${inferredLibraries.join(", ")}]`,
+        status: "SUCCESS"
+      });
+    } catch (err: any) {
+      console.warn(`[Inference] Prompt expansion failed, using raw prompt: ${err.message}`);
+    }
+
     const {
       specification,
     } =
       await this.architectAgent.execute(
-        request,
+        enrichedRequest,
         imagePayload,
       );
 
+    // ── Merge inferred fields into the spec ──────────────────────────────────
+    if (inferredFeatureNames.length > 0 && !specification.features?.length) {
+      specification.features = inferredFeatureNames;
+    }
+    if (inferredLibraries.length > 0 && !specification.inferredLibraries?.length) {
+      specification.inferredLibraries = inferredLibraries;
+    }
+
     auditTrail.logEvent({
       agentRole: "Architect",
-      action: `Completed requirements mapping. Framework: ${specification.type}, Database: ${specification.database || "None"}`,
+      action: `Completed requirements mapping. Framework: ${specification.type}, Database: ${specification.database || "None"}, Features: [${(specification.features ?? []).join(", ")}]`,
       status: "SUCCESS"
     });
+
+
 
     const coordinator = new TeamCoordinator();
     const activeTeam = await coordinator.coordinate(specification);

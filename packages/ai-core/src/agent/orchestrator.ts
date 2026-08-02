@@ -49,6 +49,35 @@ import { DesignSystemGenerator } from "../design/design-system-generator.js";
 import { DefinitionOfDone } from "../validation/definition-of-done.js";
 import { ProjectStartupAgent } from "../startup/project-startup-agent.js";
 
+const VALID_DEPENDENCIES_WHITELIST = new Set([
+  "express",
+  "@prisma/client",
+  "prisma",
+  "cors",
+  "dotenv",
+  "jsonwebtoken",
+  "bcrypt",
+  "bcryptjs",
+  "zod",
+  "react",
+  "react-dom",
+  "react-router-dom",
+  "zustand",
+  "axios",
+  "lucide-react",
+  "recharts",
+  "tailwindcss",
+  "clsx",
+  "tailwind-merge",
+  "canvas-confetti",
+  "framer-motion",
+  "lucide",
+  "chart.js",
+  "react-chartjs-2",
+  "uuid",
+  "@types/uuid"
+]);
+
 export class Orchestrator {
   private readonly scheduler = new DependencyScheduler();
 
@@ -454,13 +483,14 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         imagePayload,
       );
 
-    // Merge specification inferred libraries into package.json
+    // Merge specification inferred libraries into package.json (filtered by whitelist)
     const pkgPath = join(outputDirectory, "package.json");
     if (existsSync(pkgPath)) {
       try {
         const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
         pkg.dependencies = pkg.dependencies || {};
-        const libs = specification.inferredLibraries || [];
+        const rawLibs = specification.inferredLibraries || [];
+        const libs = rawLibs.filter(lib => VALID_DEPENDENCIES_WHITELIST.has(lib));
         const commonTypesNeeded = ["express", "cors", "canvas-confetti", "bcryptjs", "jsonwebtoken", "react", "react-dom"];
         
         for (const lib of libs) {
@@ -477,7 +507,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         }
         
         writeFileSync(pkgPath, JSON.stringify(pkg, null, 2), "utf8");
-        console.log(`[Orchestrator] Integrated ${libs.length} inferred libraries into package.json.`);
+        console.log(`[Orchestrator] Integrated ${libs.length} valid inferred libraries into package.json.`);
       } catch (err: any) {
         console.warn(`[Orchestrator] Warning: Failed to integrate inferred libraries to package.json: ${err.message}`);
       }
@@ -721,7 +751,8 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       try {
         const pkg = JSON.parse(readFileSync(finalPkgPath, "utf8"));
         pkg.dependencies = pkg.dependencies || {};
-        const libs = specification.inferredLibraries || [];
+        const rawLibs = specification.inferredLibraries || [];
+        const libs = rawLibs.filter(lib => VALID_DEPENDENCIES_WHITELIST.has(lib));
         const commonTypesNeeded = ["express", "cors", "canvas-confetti", "bcryptjs", "jsonwebtoken", "react", "react-dom"];
         
         for (const lib of libs) {
@@ -738,7 +769,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         }
         
         writeFileSync(finalPkgPath, JSON.stringify(pkg, null, 2), "utf8");
-        console.log(`[Orchestrator] Re-integrated ${libs.length} inferred libraries into final package.json.`);
+        console.log(`[Orchestrator] Re-integrated ${libs.length} valid inferred libraries into final package.json.`);
       } catch (err: any) {
         console.warn(`[Orchestrator] Warning: Failed to re-integrate inferred libraries to final package.json: ${err.message}`);
       }

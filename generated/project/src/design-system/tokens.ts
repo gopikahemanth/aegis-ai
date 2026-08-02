@@ -1,19 +1,11 @@
 export const tokens = {
-  colors: {
-    brand: '#2563eb',
-    background: '#020617',
-    surface: '#0f172a',
-    border: '#1e293b',
-    textPrimary: '#f8fafc',
-    textSecondary: '#94a3b8',
-    success: '#10b981',
-    warning: '#f59e0b',
-    error: '#ef4444',
-  },
+  borderRadius: 'rounded-xl',
+  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
   spacing: {
-    gridUnit: 8,
-  },
-  borderRadius: {
-    DEFAULT: '1rem',
+    xs: '4px',
+    sm: '8px',
+    md: '16px',
+    lg: '24px',
+    xl: '32px',
   },
 };

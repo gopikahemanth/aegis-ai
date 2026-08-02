@@ -1,5 +1,5 @@
 {
-  "framework": "html",
+  "framework": "react-vite",
   "language": "TypeScript",
   "packageManager": "npm",
   "folderStructure": {
@@ -20,10 +20,10 @@
     "camelCase for utility files, hooks, types",
     "Use Tailwind CSS responsive style rules"
   ],
-  "styling": "vanilla-css",
+  "styling": "tailwind",
   "additionalRules": [
     "Preserve type assertions in React TSX components",
     "Do not generate stubs or incomplete code blocks",
-    "Ensure all local script and module imports use correct relative paths so that the bundler resolves them to actual JavaScript files instead of falling back to serving the index.html fallback."
+    "Ensure all required backend and frontend dependencies, environment variables, and Prisma schema configurations are fully defined and installed prior to compilation."
   ]
 }

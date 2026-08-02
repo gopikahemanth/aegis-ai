@@ -4,9 +4,24 @@ services:
   app:
     build: .
     ports:
-      - "80:80"
+      - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=
+      - DATABASE_URL=postgresql://aegis:aegis_secure_password@db:5432/app_db
     restart: always
+    depends_on:
+      - db
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: aegis
+      POSTGRES_PASSWORD: aegis_secure_password
+      POSTGRES_DB: app_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
+volumes:
+  pgdata:

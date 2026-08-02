@@ -8,22 +8,14 @@ import { DependencyResolver } from "@aegis/project-builder";
 import type { PipelineResult } from "./pipeline-result.js";
 
 export class ExecutionPipeline {
-private readonly installer = new DependencyInstaller();
-
-private readonly builder = new BuildRunner();
-
-private readonly analyzer = new ErrorAnalyzer();
-
-private readonly dependencyResolver =
-  new DependencyResolver();
-
-private readonly healer: SelfHealer;
-
+  private readonly installer = new DependencyInstaller();
+  private readonly builder = new BuildRunner();
+  private readonly analyzer = new ErrorAnalyzer();
+  private readonly dependencyResolver = new DependencyResolver();
+  private readonly healer: SelfHealer;
   private readonly maxRetries = 3;
 
-  constructor(
-    provider: AIProvider,
-  ) {
+  constructor(provider: AIProvider) {
     this.healer = new SelfHealer(provider);
   }
 
@@ -33,74 +25,46 @@ private readonly healer: SelfHealer;
   ): Promise<PipelineResult> {
 
     console.log("Installing dependencies...");
-
-    const install = await this.installer.install(
-      "pnpm",
-      projectPath,
-    );
-
-    console.log(install.exitCode);
+    const install = await this.installer.install("pnpm", projectPath);
+    console.log(`[Install] Exit code: ${install.exitCode}`);
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      console.log(`\nBuild attempt ${attempt}/${this.maxRetries}`);
 
-      console.log(
-        `Build attempt ${attempt}/${this.maxRetries}`
-      );
-
-      const build = await this.builder.build(
-        "pnpm",
-        projectPath,
-      );
+      const build = await this.builder.build("pnpm", projectPath);
 
       if (build.success) {
-
         console.log("✅ Build succeeded.");
-
-        return {
-          success: true,
-          attempts: attempt,
-        };
+        return { success: true, attempts: attempt };
       }
 
-      console.log("❌ Build failed.");
+      console.log(`❌ Build failed.`);
 
-      const error = this.analyzer.analyze(
-  build.stderr,
-  build.stdout,
-);
+      const error = this.analyzer.analyze(build.stderr, build.stdout);
 
-console.log(error);
+      // ── Try dependency resolution first (fast path) ──────────────────────
+      const packages = this.dependencyResolver.resolve(error.details);
+      if (packages.length > 0) {
+        console.log(`[DependencyResolver] Installing missing packages: ${packages.join(", ")}`);
+        await this.installer.installPackages("pnpm", projectPath, packages);
+        continue; // Retry build after install
+      }
 
-const packages =
-  this.dependencyResolver.resolve(
-    error.details,
-  );
+      // ── Model escalation ─────────────────────────────────────────────────
+      // Attempt 1: fast model (gemini-flash-lite or equivalent)
+      // Attempt 2: balanced model
+      // Attempt 3: strongest model available
+      const escalationLevel = attempt === 1 ? "fast" : attempt === 2 ? "balanced" : "strong";
+      console.log(`[Repair] Attempt ${attempt} — escalation level: ${escalationLevel}`);
 
-if (packages.length > 0) {
-  console.log(
-  "Installing missing packages:",
-  packages,
-);
-
-await this.installer.installPackages(
-  "pnpm",
-  projectPath,
-  packages,
-);
-
-continue;
-}
-
-await this.healer.heal(
-  request,
-  error,
-  projectPath,
-);
+      await this.healer.heal(
+        request,
+        error,
+        projectPath,
+        escalationLevel,   // passed through to provider options
+      );
     }
 
-    return {
-      success: false,
-      attempts: this.maxRetries,
-    };
+    return { success: false, attempts: this.maxRetries };
   }
 }

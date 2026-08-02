@@ -1,129 +1,183 @@
-import { useState } from 'react';
-import { useCinematicScroll } from './hooks/useCinematicScroll';
-import { Navigation } from './components/Navigation';
-import { CanvasBackground } from './components/CanvasBackground';
-import { HUDOverlay } from './components/HUDOverlay';
-import { BlueprintModal } from './components/BlueprintModal';
-import { CockpitModal } from './components/CockpitModal';
-import { CustomizerModal } from './components/CustomizerModal';
-import { Chapter, CustomizationState } from './types/mecha';
-import { audioManager } from './services/audioManager';
+import React, { useState } from 'react';
+import { useAuth } from './features/auth/hooks/useAuth';
+import { Layout } from './components/Layout';
+import { DashboardOverview } from './features/dashboard/components/DashboardOverview';
+import { useDashboardStats } from './features/dashboard/hooks/useDashboardStats';
+import { studyPlanService } from './features/study-plans/services/studyPlanService';
+import { StudyPlanList } from './features/study-plans/components/StudyPlanList';
+import { StudyPlanDetail } from './features/study-plans/components/StudyPlanDetail';
+import { StudyPlan } from './entities/StudyPlan';
+import { flashcardService } from './features/flashcards/services/flashcardService';
+import { FlashcardDeckList } from './features/flashcards/components/FlashcardDeckList';
+import { FlashcardReview } from './features/flashcards/components/FlashcardReview';
+import { FlashcardDeck } from './entities/Flashcard';
+import { quizService } from './features/quiz-generator/services/quizService';
+import { QuizList } from './features/quiz-generator/components/QuizList';
+import { QuizSession } from './features/quiz-generator/components/QuizSession';
+import { Quiz } from './entities/Quiz';
+import { AiChatInterface } from './features/ai-chat/components/AiChatInterface';
+import { SettingsView } from './features/settings/components/SettingsView';
+import { LoginPage } from './features/auth/components/LoginPage';
+import { RegisterPage } from './features/auth/components/RegisterPage';
+import { User } from './entities/User';
 
-const CHAPTERS: Chapter[] = [
-  {
-    id: 0,
-    title: 'PHASE 01: HEAVY HAULER',
-    subtitle: 'Autonomous Class-IV chassis locked in transit configuration.',
-    description: 'Heavy duty cargo mode optimized for high-speed cross-terrain deployment and secure transport of core reactor payloads.',
-    telemetry: { coreTemp: '42.4°C', hydraulicPressure: '3400 PSI', servoVoltage: '24V', stabilityIndex: '99.8%', reactorStatus: 'STABLE', ammoCapacity: '0%' },
-    activeRange: [0.0, 0.25],
-    keyFeatures: ['Reinforced Titanium Chassis', 'All-Terrain Pneumatic Treads', 'High-Capacity Cargo Bay'],
-  },
-  {
-    id: 1,
-    title: 'PHASE 02: KINETIC DEPLOYMENT',
-    subtitle: 'Initiating hydraulic decoupling and sub-frame rotation.',
-    description: 'Sensors detect combat proximity. Actuators disengage cargo locks, initiating structural unfolding and rapid center-of-gravity shift.',
-    telemetry: { coreTemp: '68.9°C', hydraulicPressure: '5800 PSI', servoVoltage: '48V', stabilityIndex: '84.2%', reactorStatus: 'ELEVATED', ammoCapacity: '40%' },
-    activeRange: [0.25, 0.55],
-    keyFeatures: ['Hydraulic Decoupling', 'Sub-Frame Articulation', 'Dynamic Gyro Balance'],
-  },
-  {
-    id: 2,
-    title: 'PHASE 03: BIPEDAL RECONFIGURATION',
-    subtitle: 'Spine alignment active. Gyroscopic stabilization engaged.',
-    description: 'Spine locking into vertical bipedal orientation. Limb actuators calibrate trajectory vectors for immediate tactical engagement.',
-    telemetry: { coreTemp: '89.1°C', hydraulicPressure: '8200 PSI', servoVoltage: '72V', stabilityIndex: '92.5%', reactorStatus: 'OPTIMAL', ammoCapacity: '80%' },
-    activeRange: [0.55, 0.85],
-    keyFeatures: ['Vertical Spine Lock', 'Bipedal Balance Matrix', 'Target Acquisition Radar'],
-  },
-  {
-    id: 3,
-    title: 'PHASE 04: APEX PREDATOR',
-    subtitle: 'Combat matrix online. Full humanoid articulation achieved.',
-    description: 'Maximum combat capability reached. Integrated plasma weaponry and pulse shielding fully operational for front-line dominance.',
-    telemetry: { coreTemp: '104.5°C', hydraulicPressure: '12000 PSI', servoVoltage: '120V', stabilityIndex: '100.0%', reactorStatus: 'PEAK', ammoCapacity: '100%' },
-    activeRange: [0.85, 1.0],
-    keyFeatures: ['Plasma Cannon Array', 'Active Energy Shields', 'Neural Pilot Link'],
-  },
-];
+export default function App() {
+  const { user, isAuthenticated, login, register, logout, updateProfile } = useAuth();
+  const [currentPath, setCurrentPath] = useState<string>('/app/dashboard');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
-export function App() {
-  const { scrollProgress, currentFrame, isLoaded, loadingProgress, images } = useCinematicScroll({
-    totalFrames: 204,
-  });
+  // Dashboard stats
+  const { stats, refresh: refreshStats } = useDashboardStats(user?.id);
 
-  const [activeChapterIndex, setActiveChapterIndex] = useState(0);
-  const [audioMuted, setAudioMuted] = useState(true);
-  const [isBlueprintOpen, setIsBlueprintOpen] = useState(false);
-  const [isCockpitOpen, setIsCockpitOpen] = useState(false);
-  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
-  const [customization, setCustomization] = useState<CustomizationState>({
-    primaryColor: '#2563eb',
-    accentColor: '#38bdf8',
-    visorGlow: '#ef4444',
-    armorCoating: 'matte',
-    weaponryLoadout: 'standard',
-  });
+  // Study Plan navigation state
+  const [selectedPlan, setSelectedPlan] = useState<StudyPlan | null>(null);
+  const [studyPlans, setStudyPlans] = useState<StudyPlan[]>(() => user ? studyPlanService.getPlans(user.id) : []);
 
-  // Update active chapter based on scroll progress
-  if (scrollProgress < 0.25 && activeChapterIndex !== 0) setActiveChapterIndex(0);
-  else if (scrollProgress >= 0.25 && scrollProgress < 0.55 && activeChapterIndex !== 1) setActiveChapterIndex(1);
-  else if (scrollProgress >= 0.55 && scrollProgress < 0.85 && activeChapterIndex !== 2) setActiveChapterIndex(2);
-  else if (scrollProgress >= 0.85 && activeChapterIndex !== 3) setActiveChapterIndex(3);
+  // Flashcards state
+  const [selectedDeck, setSelectedDeck] = useState<FlashcardDeck | null>(null);
+  const [decks, setDecks] = useState<FlashcardDeck[]>(() => user ? flashcardService.getDecks(user.id) : []);
 
-  const handleToggleAudio = () => {
-    const active = audioManager.toggleMute();
-    setAudioMuted(!active);
+  // Quizzes state
+  const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
+  const [quizzes, setQuizzes] = useState<Quiz[]>(() => user ? quizService.getQuizzes(user.id) : []);
+
+  const handleLoginSubmit = async (emailStr: string, passStr: string): Promise<void> => {
+    await login(emailStr, passStr);
   };
 
-  if (!isLoaded) {
+  const handleRegisterSubmit = async (emailStr: string, passStr: string, nameStr: string): Promise<void> => {
+    await register(emailStr, passStr, nameStr);
+  };
+
+  if (!isAuthenticated || !user) {
+    if (authMode === 'login') {
+      return (
+        <LoginPage
+          onLogin={handleLoginSubmit}
+          onSwitchToRegister={() => setAuthMode('register')}
+        />
+      );
+    }
     return (
-      <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 text-slate-100 font-mono">
-        <div className="w-16 h-16 rounded-2xl bg-blue-600/20 border border-blue-500/50 flex items-center justify-center mb-6 animate-pulse">
-          <span className="text-xl font-bold text-blue-400">A</span>
-        </div>
-        <h1 className="text-xl font-bold mb-2 tracking-widest">INITIALIZING CINEMATIC SEQUENCE</h1>
-        <p className="text-xs text-slate-500 mb-6">Generating high-fidelity 204-frame vector assets...</p>
-        <div className="w-64 h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-          <div 
-            className="h-full bg-blue-500 transition-all duration-75"
-            style={{ width: `${loadingProgress}%` }}
-          />
-        </div>
-        <div className="text-xs font-mono text-blue-400 mt-3">{loadingProgress}%</div>
-      </div>
+      <RegisterPage
+        onRegister={handleRegisterSubmit}
+        onSwitchToLogin={() => setAuthMode('login')}
+      />
     );
   }
 
+  const renderContent = () => {
+    if (currentPath === '/app/dashboard') {
+      return (
+        <DashboardOverview
+          user={user}
+          stats={stats}
+          onNavigate={path => {
+            setCurrentPath(path);
+            setSelectedPlan(null);
+            setSelectedDeck(null);
+            setSelectedQuiz(null);
+          }}
+        />
+      );
+    }
+    if (currentPath === '/app/study-plans') {
+      if (selectedPlan) {
+        return (
+          <StudyPlanDetail
+            plan={selectedPlan}
+            onBack={() => setSelectedPlan(null)}
+            onToggleMilestone={(planId, msId, completed) => {
+              const updated = studyPlanService.updatePlanMilestone(user.id, planId, msId, completed);
+              setSelectedPlan({ ...updated });
+              setStudyPlans(studyPlanService.getPlans(user.id));
+              refreshStats();
+            }}
+          />
+        );
+      }
+      return (
+        <StudyPlanList
+          plans={studyPlans}
+          onGeneratePlan={async (topic, goal, difficulty, days) => {
+            await studyPlanService.generatePlan(user.id, topic, goal, difficulty, days);
+            setStudyPlans(studyPlanService.getPlans(user.id));
+            refreshStats();
+          }}
+          onSelectPlan={plan => setSelectedPlan(plan)}
+        />
+      );
+    }
+    if (currentPath === '/app/flashcards') {
+      if (selectedDeck) {
+        return (
+          <FlashcardReview
+            deck={selectedDeck}
+            onBack={() => setSelectedDeck(null)}
+            onRateCard={(deckId, cardId, quality) => {
+              flashcardService.updateCardReview(user.id, deckId, cardId, quality);
+              setDecks(flashcardService.getDecks(user.id));
+            }}
+          />
+        );
+      }
+      return (
+        <FlashcardDeckList
+          decks={decks}
+          onGenerateDeck={async (title, category, topicText) => {
+            await flashcardService.generateDeck(user.id, title, category, topicText);
+            setDecks(flashcardService.getDecks(user.id));
+            refreshStats();
+          }}
+          onStartReview={deck => setSelectedDeck(deck)}
+        />
+      );
+    }
+    if (currentPath === '/app/quizzes') {
+      if (selectedQuiz) {
+        return (
+          <QuizSession
+            quiz={selectedQuiz}
+            onBack={() => setSelectedQuiz(null)}
+            onSubmitAttempt={async (quizId, answers) => {
+              return quizService.submitAttempt(user.id, quizId, answers);
+            }}
+          />
+        );
+      }
+      return (
+        <QuizList
+          quizzes={quizzes}
+          onGenerateQuiz={async (title, topic, difficulty) => {
+            await quizService.generateQuiz(user.id, title, topic, difficulty);
+            setQuizzes(quizService.getQuizzes(user.id));
+          }}
+          onStartQuiz={quiz => setSelectedQuiz(quiz)}
+        />
+      );
+    }
+    if (currentPath === '/app/ai-chat') {
+      return <AiChatInterface userId={user.id} />;
+    }
+    if (currentPath === '/app/settings') {
+      return <SettingsView user={user} onUpdateProfile={(userId: string, data: Partial<User>) => updateProfile(userId, data)} />;
+    }
+    return <DashboardOverview user={user} stats={stats} onNavigate={setCurrentPath} />;
+  };
+
   return (
-    <div className="relative min-h-[400vh] bg-slate-950 text-slate-100 selection:bg-blue-600 selection:text-white">
-      {/* Navigation Header */}
-      <Navigation
-        onOpenBlueprint={() => setIsBlueprintOpen(true)}
-        onOpenCockpit={() => setIsCockpitOpen(true)}
-        onOpenCustomizer={() => setIsCustomizerOpen(true)}
-        audioMuted={audioMuted}
-        onToggleAudio={handleToggleAudio}
-      />
-
-      {/* Background Frame Sequence Canvas */}
-      <CanvasBackground images={images} currentFrame={currentFrame} isLoaded={isLoaded} />
-
-      {/* HUD Overlay strictly bound to scroll progress */}
-      <HUDOverlay progress={scrollProgress} chapters={CHAPTERS} activeChapterIndex={activeChapterIndex} />
-
-      {/* Modals */}
-      <BlueprintModal isOpen={isBlueprintOpen} onClose={() => setIsBlueprintOpen(false)} />
-      <CockpitModal isOpen={isCockpitOpen} onClose={() => setIsCockpitOpen(false)} />
-      <CustomizerModal
-        isOpen={isCustomizerOpen}
-        onClose={() => setIsCustomizerOpen(false)}
-        customization={customization}
-        onChange={setCustomization}
-      />
-    </div>
+    <Layout
+      user={user}
+      currentPath={currentPath}
+      onNavigate={path => {
+        setCurrentPath(path);
+        setSelectedPlan(null);
+        setSelectedDeck(null);
+        setSelectedQuiz(null);
+      }}
+      onLogout={logout}
+    >
+      {renderContent()}
+    </Layout>
   );
 }
-
-export default App;

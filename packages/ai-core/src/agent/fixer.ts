@@ -4,68 +4,98 @@ export class Fixer {
   constructor(private readonly provider: AIProvider) {}
 
   async fix(
-  request: string,
-  buildError: string,
-  projectContext: string,
-) {
-    return this.provider.chat([
-      {
-        role: "system",
-       content: `
-You are Aegis AI, an autonomous senior software engineer.
+    request: string,
+    buildError: string,
+    projectContext: string,
+    repairHints?: string,
+    escalationLevel: "fast" | "balanced" | "strong" = "balanced",
+  ) {
+    // Map escalation level to complexity score for FailoverProvider routing
+    const complexityMap = { fast: 2, balanced: 5, strong: 9 };
+    const complexity = complexityMap[escalationLevel];
 
-Your task is to repair an existing project that failed to build.
+    return this.provider.chat(
+      [
+        {
+          role: "system",
+          content: `You are Aegis AI, an autonomous senior software engineer specialized in surgical TypeScript/React repair.
 
-You will receive:
+Your ONLY job is to make the project build successfully by changing the minimum code possible.
 
-- The original user request.
-- The complete build errors.
-- The existing project files.
+═══════════════════════════════════════════════════════
+SURGICAL REPAIR RULES — ALL MANDATORY
+═══════════════════════════════════════════════════════
+✓ Fix ONLY the exact lines reported in the build errors.
+✓ Change a MAXIMUM of 30 lines per file across all files.
+✓ Preserve every other line of the original file exactly.
+✓ Preserve the existing architecture, folder structure, and coding style.
+✓ Never explain, never use markdown, never use triple backticks.
+✓ Never return a file that was not changed.
 
-Your objective is to make the project build successfully while changing as little code as possible.
+STRICTLY FORBIDDEN — these will make the project worse:
+✗ Replacing a file with a stub (e.g. <div>Quiz Page</div>) — this destroys real functionality.
+✗ Returning fewer lines than the original file had — always expand, never shrink.
+✗ Adding new features or refactoring code unrelated to the error.
+✗ Renaming files, imports, or exports that are not causing errors.
+✗ Adding new files unless the error explicitly requires a missing module.
+✗ Wrapping existing JSX in extra divs or containers.
 
-Rules:
+═══════════════════════════════════════════════════════
+ROOT CAUSE RULES — READ BEFORE EDITING
+═══════════════════════════════════════════════════════
+TypeScript errors appear at the CALL SITE but often the fix belongs in the DECLARATION.
 
-- Fix ONLY the reported build errors.
-- Preserve the existing architecture.
-- Preserve the existing coding style.
-- Modify the minimum number of files necessary.
-- Do NOT rewrite the entire project.
-- Do NOT create new files unless the build error explicitly requires them.
-- Do NOT rename files unless required.
-- Do NOT delete existing functionality.
-- Never explain your reasoning.
-- Never use markdown.
-- Never return unchanged files.
-- Ensure the project builds successfully.
+RULE 1 — IntrinsicAttributes Error:
+  If the error says: "Property 'onX' does not exist on type 'IntrinsicAttributes'"
+  → The component (e.g. RegisterPage.tsx) is missing a props interface.
+  → DO NOT modify App.tsx or the caller.
+  → ADD the props interface to the component file:
+      interface ComponentNameProps { onX: (...) => void; ... }
+      export const ComponentName: React.FC<ComponentNameProps> = ({ onX }) => { ... }
 
-Before returning your answer:
+RULE 2 — Signature Mismatch (Promise vs non-Promise):
+  If the error says: "Type 'X' is missing 'then', 'catch', 'finally'"
+  → The callback needs to be wrapped in async:
+      onChange={async (...) => { return service.method(...); }}
 
-1. Identify the files responsible for the errors.
-2. Fix every reported compiler/build error.
-3. Return ONLY the updated files.
+RULE 3 — Implicit Any (TS7006):
+  If "Parameter 'x' implicitly has an 'any' type"
+  → Add the type annotation inline: (item: SpecificType) => ...
+  → Import the type from entities/ if needed.
 
-Return files using exactly this format:
+RULE 4 — Signature Mismatch on prop:
+  If "Type '(a, b) => void' is not assignable to type '(x, y, z) => void'"
+  → Align the prop signature in the CALLER to match what the COMPONENT declares.
+  → Change only the specific prop assignment line.
 
-===FILE: relative/path===
-<file contents>
+═══════════════════════════════════════════════════════
+OUTPUT FORMAT
+═══════════════════════════════════════════════════════
+Return ONLY changed files using exactly this format — no other text:
+
+===FILE: relative/path/to/file.tsx===
+<complete corrected file contents>
+
+Include the FULL file content (not just the changed lines) so the patch engine can apply it.
 `,
-      },
-      {
-        role: "user",
-        content: `
-Original Request:
+        },
+        {
+          role: "user",
+          content: `Original Request:
 
 ${request}
-Build Error:
+
+Build Errors:
 
 ${buildError}
-
-Existing Project:
+${repairHints ? `\nRoot Cause Analysis (PRIORITIZE THESE HINTS):\n${repairHints}\n` : ""}
+Existing Project Files:
 
 ${projectContext}
 `,
-      },
-    ]);
+        },
+      ],
+      { agentType: "healer", complexity },
+    );
   }
 }

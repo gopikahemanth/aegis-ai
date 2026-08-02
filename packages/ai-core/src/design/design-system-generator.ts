@@ -207,7 +207,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
   loading?: boolean;
   icon?: React.ReactNode;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
@@ -257,7 +257,7 @@ export const Button: React.FC<ButtonProps> = ({
         </svg>
       )}
       {!loading && icon && <span aria-hidden="true">{icon}</span>}
-      <span>{children}</span>
+      {children && <span>{children}</span>}
     </button>
   );
 };

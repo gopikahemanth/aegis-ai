@@ -715,6 +715,35 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       outputDirectory,
     );
 
+    // Merge specification inferred libraries into package.json (ensuring they aren't overwritten by reviewer files write)
+    const finalPkgPath = join(outputDirectory, "package.json");
+    if (existsSync(finalPkgPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(finalPkgPath, "utf8"));
+        pkg.dependencies = pkg.dependencies || {};
+        const libs = specification.inferredLibraries || [];
+        const commonTypesNeeded = ["express", "cors", "canvas-confetti", "bcryptjs", "jsonwebtoken", "react", "react-dom"];
+        
+        for (const lib of libs) {
+          if (!pkg.dependencies[lib] && !pkg.devDependencies?.[lib]) {
+            pkg.dependencies[lib] = "latest";
+          }
+          if (commonTypesNeeded.includes(lib)) {
+            const typesLib = `@types/${lib}`;
+            pkg.devDependencies = pkg.devDependencies || {};
+            if (!pkg.devDependencies[typesLib] && !pkg.dependencies[typesLib]) {
+              pkg.devDependencies[typesLib] = "latest";
+            }
+          }
+        }
+        
+        writeFileSync(finalPkgPath, JSON.stringify(pkg, null, 2), "utf8");
+        console.log(`[Orchestrator] Re-integrated ${libs.length} inferred libraries into final package.json.`);
+      } catch (err: any) {
+        console.warn(`[Orchestrator] Warning: Failed to re-integrate inferred libraries to final package.json: ${err.message}`);
+      }
+    }
+
     // Initial package dependencies installation
     console.log("[Orchestrator] Installing all project dependencies...");
     try {

@@ -148,7 +148,8 @@ Do NOT generate:
 - eslint.config.js
 - .gitignore
 
-Generate ONLY application source code (e.g., src/App.tsx, src/components/*, src/hooks/*, public/*).
+Generate BOTH backend source code (e.g. server/index.ts, server/routes/*, prisma/schema.prisma) and frontend source code (e.g. src/App.tsx, src/components/*) to make the application fully functional.
+Do not restrict yourself to only frontend files.
 
 CRITICAL STANDARDS:
 - Never generate incomplete functions, classes, or code blocks.

@@ -69,7 +69,8 @@ export class SelfHealer {
     const originalLineCounts = this.captureLineCounts(projectPath, trueFilesToFix);
 
     // ── Step 4: Call Fixer with root cause hints + model escalation ─────────
-    console.log(`[Fixer] Using model tier: ${escalationLevel}`);
+    const primaryErrorClass = rootCause.errors[0]?.errorClass ?? "generic-ts-error";
+    console.log(`[Fixer] Using model tier: ${escalationLevel}, primary error class: ${primaryErrorClass}`);
     console.log("Calling Fixer...");
     const response = await this.fixer.fix(
       request,
@@ -77,6 +78,7 @@ export class SelfHealer {
       projectContext,
       repairHints,
       escalationLevel,
+      primaryErrorClass,
     );
     console.log("Fixer returned.");
 

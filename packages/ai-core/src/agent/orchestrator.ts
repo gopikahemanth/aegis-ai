@@ -870,11 +870,16 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
     // ─── Definition of Done ──────────────────────────────────────────────────
     console.log("[DoD] Running Definition of Done validation...");
+    let dodPassed = false;
     try {
-      const dodResult = this.definitionOfDone.validate(outputDirectory, inferredFeatureNames);
+      const dodResult = this.definitionOfDone.validate(outputDirectory, inferredFeatureNames, build.success);
       console.log(`[DoD] ${dodResult.summary}`);
+      dodPassed = dodResult.passed;
       if (!dodResult.passed) {
-        console.warn(`[DoD] ${dodResult.blockers.length} required criterion/criteria not met — project may be incomplete.`);
+        console.error(`[DoD] ❌ Definition of Done FAILED (score: ${dodResult.score}/100).`);
+        for (const blocker of dodResult.blockers) {
+          console.error(`  - ✗ [Blocker] ${blocker.name}: ${blocker.detail}`);
+        }
         auditTrail.logEvent({
           agentRole: "Definition of Done Validator",
           action: `DoD FAILED (score: ${dodResult.score}/100). Blockers: ${dodResult.blockers.map(b => b.name).join(", ")}`,
@@ -891,7 +896,13 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.warn(`[DoD] Warning: Definition of Done check failed: ${dodErr.message}`);
     }
 
-    // ─── Project Startup Agent ────────────────────────────────────────────────
+    // ─── Project Startup Agent & Completion Gate ──────────────────────────────
+    if (!build.success || !dodPassed) {
+      this.execution.complete();
+      console.error("\n❌ Project generation failed. Compilation build is failing or required DoD criteria are unmet.");
+      throw new Error("Project generation failed: required completeness criteria or builds are unresolved.");
+    }
+
     // Runs last: patches package.json, creates missing config files,
     // fixes CSS imports, installs deps — guarantees `npm run dev` works.
     console.log("[Startup] Running Project Startup Agent...");

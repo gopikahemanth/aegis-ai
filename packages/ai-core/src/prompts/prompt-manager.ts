@@ -96,12 +96,13 @@ Do not explain anything.`;
     return `${this.getBaseSystemPrompt("Planner Agent")}
 
 Break the project into execution tasks. Be extremely concise. Generate a maximum of 5 high-level tasks to cover the entire implementation scope. Keep task descriptions short to prevent output truncation.
+Tasks MUST follow a logical order: DataModeling/Database/Backend/APIs MUST be planned and executed BEFORE Frontend.
 Each task MUST contain:
 - id: number (unique)
 - title: string
 - description: string
 - completed: boolean
-- stage: "Requirements" | "Architecture" | "Implementation" | "Review" | "Validation" | "Healing"
+- stage: "Requirements" | "Planning" | "Architecture" | "DataModeling" | "ApiDesign" | "Database" | "Backend" | "Frontend" | "Review" | "Validation" | "Healing"
 - priority: number
 - dependencies: number[]
 - estimatedComplexity: number
@@ -110,10 +111,10 @@ Return ONLY a valid JSON array matching this schema:
 [
   {
     "id": 1,
-    "title": "Create authentication",
-    "description": "Implement authentication module",
+    "title": "Create Prisma Schema",
+    "description": "Define database models for the application entities",
     "completed": false,
-    "stage": "Implementation",
+    "stage": "Database",
     "priority": 1,
     "dependencies": [],
     "estimatedComplexity": 2
@@ -193,13 +194,19 @@ REQUIRED UI PATTERNS (every project must have these):
 ═══════════════════════════════════════════════════════
 
 PRODUCTION CODE STANDARDS:
-  ✓ Zero bare console.log() — remove all debug logging
-  ✓ Zero TypeScript 'any' — use 'unknown' with type guards
-  ✓ All environment-specific values in import.meta.env variables
-  ✓ React: wrap page components in error boundaries
-  ✓ All async operations: loading state → success state → error state handled in UI
-  ✓ Input validation before any form submission or API call
-  ✓ Accessible: aria-label on interactive elements, role attributes where needed
+  ✓ Zero hardcoded application/mock data. Never generate placeholder lists, tables, or item arrays representing user-created data (e.g. const courses = [...], const tasks = [...]).
+  ✓ Use hardcoded values ONLY for theme colors, static icons, configurations/constants, unit tests, or static menu items.
+  ✓ Real Data Flows: If the application needs data (e.g., studies, plans, chat logs, scores, history):
+    - Connect the frontend to the backend or local database schema using real api endpoints.
+    - Implement React Query (useQuery/useMutation) or native fetch hooks that call backend controllers.
+    - Ensure a proper persistence flow is modeled: database, backend APIs, frontend services/hooks.
+  ✓ Zero bare console.log() — remove all debug logging.
+  ✓ Zero TypeScript 'any' — use 'unknown' with type guards.
+  ✓ All environment-specific values in import.meta.env variables.
+  ✓ React: wrap page components in error boundaries.
+  ✓ All async operations: loading state (skeletons) → success state → error state (with inline retry) handled in UI.
+  ✓ Input validation before any form submission or API call.
+  ✓ Accessible: aria-label on interactive elements, role attributes where needed.
 
 FEATURE-BASED FOLDER STRUCTURE (do not use flat src/components/):
   src/features/<feature-name>/components/
@@ -394,8 +401,58 @@ Output Rules:
 2. Never explain.
 3. Never use markdown or triple backticks.
 4. Every file must begin exactly like this:
-===FILE: relative/path===
+5. ===FILE: relative/path===
 
 Modify only the files that need fixing. Do not recreate other files.`;
+  }
+
+  public getDataArchitecturePrompt(): string {
+    return `${this.getBaseSystemPrompt("Data Architecture / Schema Agent")}
+
+Analyze the requirements and design a robust, complete full-stack data architecture.
+Define the models, database schemas, REST APIs, and client-side hooks needed.
+Return ONLY valid JSON matching this schema exactly — no explanations, no markdown:
+
+{
+  "models": [
+    {
+      "name": "ModelName (e.g. User, ScanResult)",
+      "description": "Short explanation of purpose",
+      "persistence": "database" | "localStorage" | "sessionStorage" | "none",
+      "fields": [
+        {
+          "name": "fieldName",
+          "type": "string" | "number" | "boolean" | "DateTime" | "Json" | "customType",
+          "isId": true | false,
+          "isNullable": true | false,
+          "isUnique": true | false,
+          "relationTo": "TargetModelName | null",
+          "description": "Purpose of the field"
+        }
+      ]
+    }
+  ],
+  "databaseSchema": "Prisma schema model blocks or raw SQL DDL representing all the models and relations",
+  "apis": [
+    {
+      "path": "/api/v1/resource-path",
+      "method": "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
+      "description": "What this API route does",
+      "requestBodySchema": "Optional JSON schema/description of the body",
+      "responseBodySchema": "Optional JSON schema/description of the response"
+    }
+  ],
+  "hooks": [
+    {
+      "name": "useResourceData (react-query or fetch hook name)",
+      "type": "query" | "mutation",
+      "endpoint": "/api/v1/resource-path",
+      "params": "parameters required by hook (e.g. userId: string)",
+      "returns": "data returned by hook (e.g. ScanResult[])"
+    }
+  ]
+}
+
+Never output markdown backticks (like \`\`\`json) or extra text, just the raw JSON.`;
   }
 }

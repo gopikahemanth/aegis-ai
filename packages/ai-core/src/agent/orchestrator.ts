@@ -12,11 +12,12 @@ import {
   ResearchAssistantAgent,
   PRGeneratorAgent,
   DocsGeneratorAgent,
+  DataArchitectureAgent,
 } from "../agents/index.js";
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
 import { Parser } from "../generator/parser.js";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { PatchEngine } from "../healing/patch-engine.js";
 import { DependencyGraphEngine } from "../dependency/dependency-graph.js";
@@ -88,6 +89,8 @@ export class Orchestrator {
 
   private readonly promptInferenceEngine: PromptInferenceEngine;
 
+  private readonly dataArchitectureAgent: DataArchitectureAgent;
+
   private readonly designSystemGenerator = new DesignSystemGenerator();
 
   private readonly definitionOfDone = new DefinitionOfDone();
@@ -128,6 +131,9 @@ export class Orchestrator {
 
     this.promptInferenceEngine =
       new PromptInferenceEngine(provider);
+
+    this.dataArchitectureAgent =
+      new DataArchitectureAgent(provider);
 
     this.repairCoordinator =
       new RepairCoordinator(provider);
@@ -226,6 +232,42 @@ export class Orchestrator {
       action: `Completed requirements mapping. Framework: ${specification.type}, Database: ${specification.database || "None"}, Features: [${(specification.features ?? []).join(", ")}]`,
       status: "SUCCESS"
     });
+
+    // ─── Data Architecture Modeling ──────────────────────────────────────────
+    this.execution.enter(ExecutionPhase.DataModeling);
+    console.log("[DataArchitecture] Running Data Architecture Agent in project builder...");
+    try {
+      const dataArch = await this.dataArchitectureAgent.execute(enrichedRequest, specification);
+      
+      const aegisDir = join(outputDirectory, ".aegis");
+      if (!existsSync(aegisDir)) {
+        mkdirSync(aegisDir, { recursive: true });
+      }
+      writeFileSync(
+        join(aegisDir, "data-architecture.json"),
+        JSON.stringify(dataArch, null, 2),
+        "utf8"
+      );
+      console.log("[DataArchitecture] ✓ Saved data architecture definition in project builder.");
+
+      const dataContext = `
+═══════════════════════════════════════════════════════
+DATA ARCHITECTURE CONTRACTS (STRICTLY CONFORM TO THIS SCHEMA)
+═══════════════════════════════════════════════════════
+Database models & schemas:
+${dataArch.databaseSchema}
+
+Defined APIs:
+${dataArch.apis.map(api => `- ${api.method} ${api.path} (${api.description})`).join("\n")}
+
+Frontend React Hooks & Queries:
+${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.returns})`).join("\n")}
+═══════════════════════════════════════════════════════
+`;
+      enrichedRequest = enrichedRequest + "\n\n" + dataContext;
+    } catch (daErr: any) {
+      console.warn(`[DataArchitecture] Warning: Data architecture agent failed in project builder: ${daErr.message}`);
+    }
 
 
 
@@ -432,6 +474,49 @@ export class Orchestrator {
       console.warn(`[DesignSystem] Warning: Design system generation failed: ${dsErr.message}`);
     }
 
+    // ─── Data Architecture Modeling ──────────────────────────────────────────
+    this.execution.enter(ExecutionPhase.DataModeling);
+    console.log("[DataArchitecture] Running Data Architecture Agent...");
+    try {
+      const dataArch = await this.dataArchitectureAgent.execute(enrichedRequest, specification);
+      
+      // Save data architecture design
+      const aegisDir = join(outputDirectory, ".aegis");
+      if (!existsSync(aegisDir)) {
+        mkdirSync(aegisDir, { recursive: true });
+      }
+      writeFileSync(
+        join(aegisDir, "data-architecture.json"),
+        JSON.stringify(dataArch, null, 2),
+        "utf8"
+      );
+      console.log("[DataArchitecture] ✓ Saved data architecture definition.");
+
+      // Build data flow context to bind downstream frontend/backend tasks
+      const dataContext = `
+═══════════════════════════════════════════════════════
+DATA ARCHITECTURE CONTRACTS (STRICTLY CONFORM TO THIS SCHEMA)
+═══════════════════════════════════════════════════════
+Database models & schemas:
+${dataArch.databaseSchema}
+
+Defined APIs:
+${dataArch.apis.map(api => `- ${api.method} ${api.path} (${api.description})`).join("\n")}
+
+Frontend React Hooks & Queries:
+${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.returns})`).join("\n")}
+═══════════════════════════════════════════════════════
+`;
+      enrichedRequest = enrichedRequest + "\n\n" + dataContext;
+      auditTrail.logEvent({
+        agentRole: "Data Architecture Agent",
+        action: `Designed data flow models. Persisted models count: ${dataArch.models.length}, APIs: ${dataArch.apis.length}`,
+        status: "SUCCESS"
+      });
+    } catch (daErr: any) {
+      console.warn(`[DataArchitecture] Warning: Data architecture agent failed: ${daErr.message}`);
+    }
+
     const coordinator = new TeamCoordinator();
     const activeTeam = await coordinator.coordinate(specification);
     console.log("\n[Coordinator] Coordinating Dynamic AI Specialist Team for this project:");
@@ -507,7 +592,7 @@ export class Orchestrator {
             task,
             architecture,
             architecturePlan,
-            request,
+            enrichedRequest,
             outputDirectory,
             existingFiles,
             imagePayload,

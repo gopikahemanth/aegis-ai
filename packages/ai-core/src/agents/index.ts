@@ -9,4 +9,5 @@ export * from "./research-assistant-agent.js";
 export * from "./pr-generator-agent.js";
 export * from "./docs-generator-agent.js";
 export * from "./reality-checker-agent.js";
+export * from "./data-architecture-agent.js";
 

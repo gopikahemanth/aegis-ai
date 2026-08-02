@@ -1,4 +1,4 @@
-app = "personal-study-assistant"
+app = "flashcard-hub"
 primary_region = "bos"
 
 [http_service]

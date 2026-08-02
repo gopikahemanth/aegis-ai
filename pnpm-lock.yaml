@@ -101,6 +101,9 @@ importers:
 
   packages/ai-core:
     dependencies:
+      '@aegis/project-builder':
+        specifier: workspace:*
+        version: link:../project-builder
       '@aegis/workspace':
         specifier: workspace:*
         version: link:../workspace

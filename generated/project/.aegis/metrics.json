@@ -1,7 +1,7 @@
 {
   "buildHistory": [
     {
-      "timestamp": "2026-08-02T08:03:01.331Z",
+      "timestamp": "2026-08-02T08:14:37.134Z",
       "success": false,
       "durationMs": 3000,
       "errors": [
@@ -10,8 +10,8 @@
     }
   ],
   "telemetry": {
-    "totalTokensUsed": 239127,
-    "estimatedCostUsd": 0.02786,
+    "totalTokensUsed": 306585,
+    "estimatedCostUsd": 0.032963,
     "healingAttempts": 0,
     "sandboxRuns": 1
   }

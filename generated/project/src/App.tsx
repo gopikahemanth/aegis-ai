@@ -1,18 +1,17 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Skeleton } from './design-system';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Skeleton } from './design-system/index.js';
 
-const LoginPage = lazy(() => import('./features/authentication/components/LoginPage').then(m => ({ default: m.LoginPage })));
-const RegisterPage = lazy(() => import('./features/authentication/components/RegisterPage').then(m => ({ default: m.RegisterPage })));
-const DashboardPage = lazy(() => import('./features/study-plans/components/DashboardPage').then(m => ({ default: m.DashboardPage })));
-const DocumentManagerPage = lazy(() => import('./features/document-ingestion/components/DocumentManagerPage').then(m => ({ default: m.DocumentManagerPage })));
-const ChatPage = lazy(() => import('./features/rag-chat/components/ChatPage').then(m => ({ default: m.ChatPage })));
-const StudyHubPage = lazy(() => import('./features/flashcards-quizzes/components/StudyHubPage').then(m => ({ default: m.StudyHubPage })));
-const StudyPlanPage = lazy(() => import('./features/study-plans/components/StudyPlanPage').then(m => ({ default: m.StudyPlanPage })));
+const DashboardPage = lazy(() => import('./features/dashboard/components/DashboardPage.js'));
+const EditorPage = lazy(() => import('./features/editor/components/EditorPage.js'));
+const QuizPage = lazy(() => import('./features/quiz/components/QuizPage.js'));
 
 const PageLoader: React.FC = () => (
-  <div className="min-h-screen bg-slate-950 flex items-center justify-center p-8">
-    <Skeleton className="h-64 w-full max-w-xl rounded-md" />
+  <div className="min-h-screen bg-slate-950 p-6 md:p-10 flex items-center justify-center">
+    <div className="space-y-4 max-w-md w-full">
+      <Skeleton className="h-12 w-full rounded-md" />
+      <Skeleton className="h-64 w-full rounded-md" />
+    </div>
   </div>
 );
 
@@ -21,14 +20,10 @@ export const App: React.FC = () => {
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/documents" element={<DocumentManagerPage />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/study" element={<StudyHubPage />} />
-          <Route path="/study-plans" element={<StudyPlanPage />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/decks/new" element={<EditorPage />} />
+          <Route path="/decks/:id/edit" element={<EditorPage />} />
+          <Route path="/decks/:id/quiz" element={<QuizPage />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

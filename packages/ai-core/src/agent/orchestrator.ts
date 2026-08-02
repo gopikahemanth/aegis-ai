@@ -685,6 +685,21 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       files,
       outputDirectory,
     );
+
+    // Initial package dependencies installation
+    console.log("[Orchestrator] Installing all project dependencies...");
+    try {
+      const pm = (specification.packageManager || "pnpm") as "npm" | "pnpm" | "yarn";
+      console.log(`[Orchestrator] Running '${pm} install' in generated project at ${outputDirectory}...`);
+      const installResult = await this.installer.install(pm, outputDirectory);
+      console.log(`[Orchestrator] Initial install completed. Exit code: ${installResult.exitCode}`);
+      if (installResult.exitCode !== 0) {
+        console.warn(`[Orchestrator] Warning: initial install exit code was non-zero. stderr: ${installResult.stderr}`);
+      }
+    } catch (instErr: any) {
+      console.warn(`[Orchestrator] Warning: Initial package installation failed: ${instErr.message}`);
+    }
+
     let build =
       await this.runVerification(
         request,

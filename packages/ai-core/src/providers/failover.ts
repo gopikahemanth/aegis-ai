@@ -4,6 +4,7 @@ import type { AIProvider, ChatMessage, ChatOptions } from "./base.js";
 
 export class FailoverProvider implements AIProvider {
   public readonly name = "failover";
+  private readonly disabledProviders = new Set<string>();
 
   constructor(
     private readonly providers: AIProvider[],
@@ -41,6 +42,10 @@ export class FailoverProvider implements AIProvider {
     }
 
     for (const provider of this.providers) {
+      if (this.disabledProviders.has(provider.name)) {
+        continue;
+      }
+
       let attempts = 0;
       let delay = this.initialDelayMs;
 
@@ -140,8 +145,9 @@ export class FailoverProvider implements AIProvider {
       }
 
       console.warn(
-        `[FailoverProvider] Provider ${provider.name} exhausted all attempts. Falling back.`
+        `[FailoverProvider] Provider ${provider.name} exhausted all attempts. Disabling provider for this lifecycle, falling back.`
       );
+      this.disabledProviders.add(provider.name);
     }
 
     throw new Error(

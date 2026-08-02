@@ -4,35 +4,14 @@
     "imports": [],
     "importedBy": []
   },
-  "server/controllers/deckController.ts": {
-    "path": "server/controllers/deckController.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "server/controllers/quizController.ts": {
-    "path": "server/controllers/quizController.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "server/index.ts": {
-    "path": "server/index.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "server/routes/deckRoutes.ts": {
-    "path": "server/routes/deckRoutes.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "server/routes/quizRoutes.ts": {
-    "path": "server/routes/quizRoutes.ts",
-    "imports": [],
-    "importedBy": []
-  },
   "src/App.tsx": {
     "path": "src/App.tsx",
-    "imports": [],
-    "importedBy": []
+    "imports": [
+      "src/routes.tsx"
+    ],
+    "importedBy": [
+      "src/main.tsx"
+    ]
   },
   "src/design-system/components/Button.tsx": {
     "path": "src/design-system/components/Button.tsx",
@@ -52,77 +31,123 @@
   "src/design-system/index.ts": {
     "path": "src/design-system/index.ts",
     "imports": [],
-    "importedBy": []
+    "importedBy": [
+      "src/features/dashboard/components/DeckCard.tsx",
+      "src/features/dashboard/components/DeckGrid.tsx",
+      "src/features/dashboard/DashboardPage.tsx",
+      "src/features/deck-editor/DeckEditorPage.tsx",
+      "src/features/quiz-mode/QuizPage.tsx",
+      "src/routes.tsx"
+    ]
   },
   "src/design-system/tokens.ts": {
     "path": "src/design-system/tokens.ts",
     "imports": [],
     "importedBy": []
   },
-  "src/entities/deck.ts": {
-    "path": "src/entities/deck.ts",
+  "src/entities/flashcard.ts": {
+    "path": "src/entities/flashcard.ts",
     "imports": [],
-    "importedBy": []
+    "importedBy": [
+      "src/features/dashboard/components/DashboardMetrics.tsx",
+      "src/features/dashboard/components/DeckCard.tsx",
+      "src/features/dashboard/components/DeckGrid.tsx",
+      "src/features/dashboard/DashboardPage.tsx",
+      "src/features/deck-editor/DeckEditorPage.tsx",
+      "src/features/quiz-mode/QuizPage.tsx",
+      "src/services/apiClient.ts"
+    ]
   },
-  "src/features/dashboard/components/DashboardPage.tsx": {
-    "path": "src/features/dashboard/components/DashboardPage.tsx",
-    "imports": [],
-    "importedBy": []
+  "src/features/dashboard/components/DashboardMetrics.tsx": {
+    "path": "src/features/dashboard/components/DashboardMetrics.tsx",
+    "imports": [
+      "src/entities/flashcard.ts"
+    ],
+    "importedBy": [
+      "src/features/dashboard/DashboardPage.tsx"
+    ]
   },
   "src/features/dashboard/components/DeckCard.tsx": {
     "path": "src/features/dashboard/components/DeckCard.tsx",
-    "imports": [],
+    "imports": [
+      "src/entities/flashcard.ts",
+      "src/design-system/index.ts"
+    ],
+    "importedBy": [
+      "src/features/dashboard/components/DeckGrid.tsx"
+    ]
+  },
+  "src/features/dashboard/components/DeckGrid.tsx": {
+    "path": "src/features/dashboard/components/DeckGrid.tsx",
+    "imports": [
+      "src/entities/flashcard.ts",
+      "src/features/dashboard/components/DeckCard.tsx",
+      "src/design-system/index.ts"
+    ],
+    "importedBy": [
+      "src/features/dashboard/DashboardPage.tsx"
+    ]
+  },
+  "src/features/dashboard/DashboardPage.tsx": {
+    "path": "src/features/dashboard/DashboardPage.tsx",
+    "imports": [
+      "src/entities/flashcard.ts",
+      "src/services/apiClient.ts",
+      "src/features/dashboard/components/DashboardMetrics.tsx",
+      "src/features/dashboard/components/DeckGrid.tsx",
+      "src/design-system/index.ts"
+    ],
     "importedBy": []
   },
-  "src/features/dashboard/hooks/useDashboard.ts": {
-    "path": "src/features/dashboard/hooks/useDashboard.ts",
-    "imports": [],
+  "src/features/deck-editor/DeckEditorPage.tsx": {
+    "path": "src/features/deck-editor/DeckEditorPage.tsx",
+    "imports": [
+      "src/entities/flashcard.ts",
+      "src/services/apiClient.ts",
+      "src/design-system/index.ts"
+    ],
     "importedBy": []
   },
-  "src/features/dashboard/services/dashboardService.ts": {
-    "path": "src/features/dashboard/services/dashboardService.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "src/features/editor/components/EditorPage.tsx": {
-    "path": "src/features/editor/components/EditorPage.tsx",
-    "imports": [],
-    "importedBy": []
-  },
-  "src/features/editor/hooks/useDeckEditor.ts": {
-    "path": "src/features/editor/hooks/useDeckEditor.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "src/features/editor/services/editorService.ts": {
-    "path": "src/features/editor/services/editorService.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "src/features/quiz/components/QuizPage.tsx": {
-    "path": "src/features/quiz/components/QuizPage.tsx",
-    "imports": [],
-    "importedBy": []
-  },
-  "src/features/quiz/hooks/useQuizStore.ts": {
-    "path": "src/features/quiz/hooks/useQuizStore.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "src/features/quiz/services/quizService.ts": {
-    "path": "src/features/quiz/services/quizService.ts",
-    "imports": [],
+  "src/features/quiz-mode/QuizPage.tsx": {
+    "path": "src/features/quiz-mode/QuizPage.tsx",
+    "imports": [
+      "src/entities/flashcard.ts",
+      "src/services/apiClient.ts",
+      "src/design-system/index.ts"
+    ],
     "importedBy": []
   },
   "src/main.tsx": {
     "path": "src/main.tsx",
+    "imports": [
+      "src/App.tsx"
+    ],
+    "importedBy": []
+  },
+  "src/routes.tsx": {
+    "path": "src/routes.tsx",
+    "imports": [
+      "src/design-system/index.ts"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/server/index.ts": {
+    "path": "src/server/index.ts",
     "imports": [],
     "importedBy": []
   },
   "src/services/apiClient.ts": {
     "path": "src/services/apiClient.ts",
-    "imports": [],
-    "importedBy": []
+    "imports": [
+      "src/entities/flashcard.ts"
+    ],
+    "importedBy": [
+      "src/features/dashboard/DashboardPage.tsx",
+      "src/features/deck-editor/DeckEditorPage.tsx",
+      "src/features/quiz-mode/QuizPage.tsx"
+    ]
   },
   "src/vite-env.d.ts": {
     "path": "src/vite-env.d.ts",

@@ -2,32 +2,37 @@
   "projectName": "project",
   "lastRequest": "Build a modern AI-powered Personal Study Assistant that helps students study smarter. It should allow users to upload PDFs, DOCX, PPTs, images, and handwritten notes, chat with uploaded study materials, summarize chapters, explain concepts at different difficulty levels, generate quizzes and flashcards, create personalized study plans, track progress, solve doubts with AI, generate mock tests, analyze diagrams, provide interview preparation, support voice input and text-to-speech, maintain study history, and offer a beautiful responsive dashboard with dark/light mode. Use React, TypeScript, Tailwind CSS, Node.js, Express, PostgreSQL, Prisma, JWT authentication, vector search for document retrieval, AI provider abstraction (OpenAI, Gemini, Groq, Anthropic), Docker, REST API, testing, documentation, and a production-ready architecture.",
   "createdFiles": [
-    "src/design-system/tokens.ts",
-    "src/design-system/components/Skeleton.tsx",
-    "src/design-system/index.ts",
-    "src/entities/types.ts",
-    "src/config/env.ts",
-    "src/utils/cn.ts",
-    "src/utils/formatDate.ts",
-    "src/utils/apiClient.ts",
-    "src/hooks/useLocalStorage.ts",
-    "src/features/documents/services/documentService.ts",
-    "src/features/documents/components/DocumentsPage.tsx",
-    "src/features/documents/components/DocumentViewerPage.tsx",
-    "src/features/chat/components/ChatPage.tsx",
-    "src/features/dashboard/components/DashboardPage.tsx",
-    "src/features/flashcards/components/FlashcardsPage.tsx",
-    "src/features/flashcards/components/FlashcardReviewPage.tsx",
-    "src/features/flashcards/services/flashcardService.ts",
-    "src/features/quizzes/components/QuizzesPage.tsx",
-    "src/features/quizzes/components/QuizTakerPage.tsx",
-    "src/features/quizzes/services/quizService.ts",
-    "src/features/chat/services/chatService.ts",
-    "src/features/auth/components/LoginPage.tsx",
-    "src/features/auth/components/RegisterPage.tsx",
-    "src/features/auth/services/authService.ts",
-    "src/components/Layout.tsx",
+    "src/entities/index.ts",
+    "src/features/authentication/components/LoginPage.tsx",
+    "src/features/authentication/components/RegisterPage.tsx",
+    "src/features/document-ingestion/components/DocumentManagerPage.tsx",
+    "src/features/rag-chat/components/ChatPage.tsx",
+    "src/features/flashcards-quizzes/components/StudyHubPage.tsx",
+    "src/features/study-plans/components/StudyPlanPage.tsx",
+    "src/features/flashcards-quizzes/services/studyService.ts",
+    "src/features/authentication/hooks/useAuth.ts",
+    "src/features/authentication/services/authService.ts",
+    "src/shared/components/Navbar.tsx",
+    "src/shared/components/Sidebar.tsx",
+    "src/shared/components/Toast.tsx",
+    "src/shared/components/Card.tsx",
+    "src/shared/components/Input.tsx",
+    "src/shared/components/Modal.tsx",
     "src/App.tsx",
+    "src/features/study-plans/components/DashboardPage.tsx",
+    "src/features/rag-chat/services/chatService.ts",
+    "src/features/rag-chat/hooks/useChat.ts",
+    "src/features/document-ingestion/services/documentService.ts",
+    "src/features/document-ingestion/hooks/useDocumentUpload.ts",
+    "src/features/flashcards-quizzes/hooks/useFlashcards.ts",
+    "src/features/study-plans/services/planService.ts",
+    "src/features/study-plans/hooks/useStudyPlans.ts",
+    "src/features/voice-interaction/hooks/useSpeechRecognition.ts",
+    "src/features/voice-interaction/hooks/useTextToSpeech.ts",
+    "src/features/voice-interaction/components/VoiceAssistantModal.tsx",
+    "src/features/flashcards-quizzes/components/QuizModal.tsx",
+    "server/index.ts",
+    "prisma/schema.prisma",
     "Dockerfile",
     ".dockerignore",
     ".github/workflows/ci-cd.yml",
@@ -37,20 +42,20 @@
   "tasks": [
     {
       "id": 1,
-      "title": "Project Setup and Database Schema",
-      "description": "Initialize monorepo structure, TypeScript configs, Tailwind CSS, Express server with PostgreSQL connection, and complete database migrations for users, study materials, flashcards, and quizzes.",
+      "title": "Database Schema & Vector Setup",
+      "description": "Initialize Prisma configuration with PostgreSQL and pgvector extension, define User, Document, DocumentChunk, Flashcard, Quiz, StudyPlan, and StudyTask models.",
       "completed": true,
-      "stage": "Architecture",
+      "stage": "Database",
       "priority": 1,
       "dependencies": [],
       "estimatedComplexity": 3
     },
     {
       "id": 2,
-      "title": "Backend API and AI Integration Core",
-      "description": "Implement JWT authentication, repository pattern for data access, and secure service layers integrating LLM APIs for automated flashcard generation, quiz creation, and study summary synthesis.",
+      "title": "Backend Authentication & Document Ingestion API",
+      "description": "Implement JWT authentication middleware and multi-format document ingestion pipeline with multer, pdf-parse, mammoth, tesseract.js, chunking, and vector embedding generation.",
       "completed": true,
-      "stage": "Implementation",
+      "stage": "Backend",
       "priority": 2,
       "dependencies": [
         1
@@ -59,22 +64,22 @@
     },
     {
       "id": 3,
-      "title": "Frontend Core Architecture and Dashboard",
-      "description": "Build React Vite application with TypeScript, Tailwind CSS, state management, routing, layout shell, authentication flows, and interactive user dashboard for managing study materials.",
+      "title": "RAG Chat, Flashcards & Study Plan Engines",
+      "description": "Develop backend services for pgvector similarity search, RAG chat completion with LangChain, automated flashcard/quiz generation, and adaptive study plan scheduling.",
       "completed": true,
-      "stage": "Implementation",
+      "stage": "Backend",
       "priority": 3,
       "dependencies": [
         2
       ],
-      "estimatedComplexity": 4
+      "estimatedComplexity": 5
     },
     {
       "id": 4,
-      "title": "Interactive Study Tools Frontend",
-      "description": "Develop fully responsive frontend views for interactive flashcard practice sessions, AI-generated quiz execution with instant scoring, and AI chat assistant interface.",
+      "title": "Frontend Core Layout, Auth & Dashboard",
+      "description": "Build React and Tailwind CSS application layout, authentication views, interactive dashboard with Recharts analytics, and study plan progress tracking.",
       "completed": true,
-      "stage": "Implementation",
+      "stage": "Frontend",
       "priority": 4,
       "dependencies": [
         3
@@ -83,25 +88,25 @@
     },
     {
       "id": 5,
-      "title": "System Validation and Production Hardening",
-      "description": "Perform end-to-end integration testing, security auditing (CORS, rate-limiting, input sanitization), performance optimization, and containerized deployment configuration.",
+      "title": "Frontend RAG Chat, Flashcards & Voice Interaction",
+      "description": "Implement interactive RAG chat interface, flashcard study decks with framer-motion and canvas-confetti, quiz modules, and Web Speech API voice interaction components.",
       "completed": true,
-      "stage": "Validation",
+      "stage": "Frontend",
       "priority": 5,
       "dependencies": [
         4
       ],
-      "estimatedComplexity": 3
+      "estimatedComplexity": 4
     }
   ],
   "history": [
     {
-      "timestamp": "2026-08-02T04:06:25.564Z",
+      "timestamp": "2026-08-02T08:00:46.433Z",
       "request": "Build a modern AI-powered Personal Study Assistant that helps students study smarter. It should allow users to upload PDFs, DOCX, PPTs, images, and handwritten notes, chat with uploaded study materials, summarize chapters, explain concepts at different difficulty levels, generate quizzes and flashcards, create personalized study plans, track progress, solve doubts with AI, generate mock tests, analyze diagrams, provide interview preparation, support voice input and text-to-speech, maintain study history, and offer a beautiful responsive dashboard with dark/light mode. Use React, TypeScript, Tailwind CSS, Node.js, Express, PostgreSQL, Prisma, JWT authentication, vector search for document retrieval, AI provider abstraction (OpenAI, Gemini, Groq, Anthropic), Docker, REST API, testing, documentation, and a production-ready architecture.",
       "stage": "Initialization"
     },
     {
-      "timestamp": "2026-08-02T04:09:24.037Z",
+      "timestamp": "2026-08-02T08:03:00.262Z",
       "request": "Build a modern AI-powered Personal Study Assistant that helps students study smarter. It should allow users to upload PDFs, DOCX, PPTs, images, and handwritten notes, chat with uploaded study materials, summarize chapters, explain concepts at different difficulty levels, generate quizzes and flashcards, create personalized study plans, track progress, solve doubts with AI, generate mock tests, analyze diagrams, provide interview preparation, support voice input and text-to-speech, maintain study history, and offer a beautiful responsive dashboard with dark/light mode. Use React, TypeScript, Tailwind CSS, Node.js, Express, PostgreSQL, Prisma, JWT authentication, vector search for document retrieval, AI provider abstraction (OpenAI, Gemini, Groq, Anthropic), Docker, REST API, testing, documentation, and a production-ready architecture.",
       "stage": "ExecutionComplete"
     }

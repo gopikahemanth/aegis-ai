@@ -2,11 +2,27 @@ import React from 'react';
 
 interface SkeletonProps {
   className?: string;
+  lines?: number;
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({ className = '' }) => (
-  <div
-    className={`animate-pulse bg-slate-800/80 rounded-md ${className}`}
-    aria-hidden="true"
-  />
-);
+export const Skeleton: React.FC<SkeletonProps> = ({ className = '', lines = 1 }) => {
+  if (lines > 1) {
+    return (
+      <div className="space-y-2" role="status" aria-label="Loading">
+        {Array.from({ length: lines }).map((_, i) => (
+          <div
+            key={i}
+            className={`h-4 rounded-md bg-slate-800 animate-pulse ${i === lines - 1 ? 'w-3/4' : 'w-full'} ${className}`}
+          />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div
+      role="status"
+      aria-label="Loading"
+      className={`rounded-md bg-slate-800 animate-pulse ${className}`}
+    />
+  );
+};

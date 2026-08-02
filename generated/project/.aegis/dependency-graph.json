@@ -4,46 +4,28 @@
     "imports": [],
     "importedBy": []
   },
+  "server/index.ts": {
+    "path": "server/index.ts",
+    "imports": [],
+    "importedBy": []
+  },
   "src/App.tsx": {
     "path": "src/App.tsx",
     "imports": [
-      "src/components/Layout.tsx"
+      "src/design-system/index.ts"
     ],
     "importedBy": [
       "src/main.tsx"
     ]
   },
-  "src/components/Layout.tsx": {
-    "path": "src/components/Layout.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/config/env.ts": {
-    "path": "src/config/env.ts",
-    "imports": [],
-    "importedBy": [
-      "src/utils/apiClient.ts"
-    ]
-  },
   "src/design-system/components/Button.tsx": {
     "path": "src/design-system/components/Button.tsx",
-    "imports": [
-      "src/utils/cn.ts"
-    ],
+    "imports": [],
     "importedBy": []
   },
   "src/design-system/components/EmptyState.tsx": {
     "path": "src/design-system/components/EmptyState.tsx",
     "imports": [],
-    "importedBy": []
-  },
-  "src/design-system/components/Input.tsx": {
-    "path": "src/design-system/components/Input.tsx",
-    "imports": [
-      "src/utils/cn.ts"
-    ],
     "importedBy": []
   },
   "src/design-system/components/Skeleton.tsx": {
@@ -55,16 +37,18 @@
     "path": "src/design-system/index.ts",
     "imports": [],
     "importedBy": [
-      "src/features/auth/components/LoginPage.tsx",
-      "src/features/auth/components/RegisterPage.tsx",
-      "src/features/chat/components/ChatPage.tsx",
-      "src/features/dashboard/components/DashboardPage.tsx",
-      "src/features/documents/components/DocumentsPage.tsx",
-      "src/features/documents/components/DocumentViewerPage.tsx",
-      "src/features/flashcards/components/FlashcardReviewPage.tsx",
-      "src/features/flashcards/components/FlashcardsPage.tsx",
-      "src/features/quizzes/components/QuizTakerPage.tsx",
-      "src/features/quizzes/components/QuizzesPage.tsx"
+      "src/App.tsx",
+      "src/features/authentication/components/LoginPage.tsx",
+      "src/features/authentication/components/RegisterPage.tsx",
+      "src/features/document-ingestion/components/DocumentManagerPage.tsx",
+      "src/features/flashcards-quizzes/components/QuizModal.tsx",
+      "src/features/flashcards-quizzes/components/StudyHubPage.tsx",
+      "src/features/rag-chat/components/ChatPage.tsx",
+      "src/features/study-plans/components/DashboardPage.tsx",
+      "src/features/study-plans/components/StudyPlanPage.tsx",
+      "src/features/voice-interaction/components/VoiceAssistantModal.tsx",
+      "src/shared/components/Modal.tsx",
+      "src/shared/components/Navbar.tsx"
     ]
   },
   "src/design-system/tokens.ts": {
@@ -72,170 +56,233 @@
     "imports": [],
     "importedBy": []
   },
-  "src/entities/types.ts": {
-    "path": "src/entities/types.ts",
+  "src/entities/index.ts": {
+    "path": "src/entities/index.ts",
     "imports": [],
     "importedBy": [
-      "src/features/chat/components/ChatPage.tsx",
-      "src/features/chat/services/chatService.ts",
-      "src/features/documents/components/DocumentsPage.tsx",
-      "src/features/documents/components/DocumentViewerPage.tsx",
-      "src/features/documents/services/documentService.ts",
-      "src/features/flashcards/components/FlashcardReviewPage.tsx",
-      "src/features/flashcards/components/FlashcardsPage.tsx",
-      "src/features/flashcards/services/flashcardService.ts",
-      "src/features/quizzes/components/QuizTakerPage.tsx",
-      "src/features/quizzes/components/QuizzesPage.tsx",
-      "src/features/quizzes/services/quizService.ts"
+      "src/features/document-ingestion/hooks/useDocumentUpload.ts",
+      "src/features/document-ingestion/services/documentService.ts",
+      "src/features/flashcards-quizzes/components/QuizModal.tsx",
+      "src/features/flashcards-quizzes/components/StudyHubPage.tsx",
+      "src/features/flashcards-quizzes/hooks/useFlashcards.ts",
+      "src/features/flashcards-quizzes/services/studyService.ts",
+      "src/features/rag-chat/hooks/useChat.ts",
+      "src/features/rag-chat/services/chatService.ts",
+      "src/features/study-plans/hooks/useStudyPlans.ts",
+      "src/features/study-plans/services/planService.ts"
     ]
   },
-  "src/features/auth/components/LoginPage.tsx": {
-    "path": "src/features/auth/components/LoginPage.tsx",
+  "src/features/authentication/components/LoginPage.tsx": {
+    "path": "src/features/authentication/components/LoginPage.tsx",
     "imports": [
       "src/design-system/index.ts",
-      "src/features/auth/services/authService.ts"
+      "src/shared/components/Input.tsx",
+      "src/shared/components/Card.tsx",
+      "src/features/authentication/hooks/useAuth.ts"
     ],
     "importedBy": []
   },
-  "src/features/auth/components/RegisterPage.tsx": {
-    "path": "src/features/auth/components/RegisterPage.tsx",
+  "src/features/authentication/components/RegisterPage.tsx": {
+    "path": "src/features/authentication/components/RegisterPage.tsx",
     "imports": [
       "src/design-system/index.ts",
-      "src/features/auth/services/authService.ts"
+      "src/shared/components/Input.tsx",
+      "src/shared/components/Card.tsx",
+      "src/features/authentication/hooks/useAuth.ts"
     ],
     "importedBy": []
   },
-  "src/features/auth/services/authService.ts": {
-    "path": "src/features/auth/services/authService.ts",
+  "src/features/authentication/hooks/useAuth.ts": {
+    "path": "src/features/authentication/hooks/useAuth.ts",
     "imports": [
-      "src/utils/apiClient.ts"
+      "src/features/authentication/services/authService.ts"
     ],
     "importedBy": [
-      "src/features/auth/components/LoginPage.tsx",
-      "src/features/auth/components/RegisterPage.tsx"
+      "src/features/authentication/components/LoginPage.tsx",
+      "src/features/authentication/components/RegisterPage.tsx"
     ]
   },
-  "src/features/chat/components/ChatPage.tsx": {
-    "path": "src/features/chat/components/ChatPage.tsx",
-    "imports": [
-      "src/design-system/index.ts",
-      "src/features/chat/services/chatService.ts",
-      "src/entities/types.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/chat/services/chatService.ts": {
-    "path": "src/features/chat/services/chatService.ts",
-    "imports": [
-      "src/utils/apiClient.ts",
-      "src/entities/types.ts"
-    ],
-    "importedBy": [
-      "src/features/chat/components/ChatPage.tsx"
-    ]
-  },
-  "src/features/dashboard/components/DashboardPage.tsx": {
-    "path": "src/features/dashboard/components/DashboardPage.tsx",
-    "imports": [
-      "src/design-system/index.ts",
-      "src/utils/apiClient.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/documents/components/DocumentsPage.tsx": {
-    "path": "src/features/documents/components/DocumentsPage.tsx",
-    "imports": [
-      "src/design-system/index.ts",
-      "src/features/documents/services/documentService.ts",
-      "src/entities/types.ts",
-      "src/utils/formatDate.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/documents/components/DocumentViewerPage.tsx": {
-    "path": "src/features/documents/components/DocumentViewerPage.tsx",
-    "imports": [
-      "src/design-system/index.ts",
-      "src/features/documents/services/documentService.ts",
-      "src/entities/types.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/documents/services/documentService.ts": {
-    "path": "src/features/documents/services/documentService.ts",
-    "imports": [
-      "src/utils/apiClient.ts",
-      "src/entities/types.ts"
-    ],
-    "importedBy": [
-      "src/features/documents/components/DocumentsPage.tsx",
-      "src/features/documents/components/DocumentViewerPage.tsx"
-    ]
-  },
-  "src/features/flashcards/components/FlashcardReviewPage.tsx": {
-    "path": "src/features/flashcards/components/FlashcardReviewPage.tsx",
-    "imports": [
-      "src/design-system/index.ts",
-      "src/features/flashcards/services/flashcardService.ts",
-      "src/entities/types.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/flashcards/components/FlashcardsPage.tsx": {
-    "path": "src/features/flashcards/components/FlashcardsPage.tsx",
-    "imports": [
-      "src/design-system/index.ts",
-      "src/features/flashcards/services/flashcardService.ts",
-      "src/entities/types.ts",
-      "src/utils/formatDate.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/flashcards/services/flashcardService.ts": {
-    "path": "src/features/flashcards/services/flashcardService.ts",
-    "imports": [
-      "src/utils/apiClient.ts",
-      "src/entities/types.ts"
-    ],
-    "importedBy": [
-      "src/features/flashcards/components/FlashcardReviewPage.tsx",
-      "src/features/flashcards/components/FlashcardsPage.tsx"
-    ]
-  },
-  "src/features/quizzes/components/QuizTakerPage.tsx": {
-    "path": "src/features/quizzes/components/QuizTakerPage.tsx",
-    "imports": [
-      "src/design-system/index.ts",
-      "src/features/quizzes/services/quizService.ts",
-      "src/entities/types.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/quizzes/components/QuizzesPage.tsx": {
-    "path": "src/features/quizzes/components/QuizzesPage.tsx",
-    "imports": [
-      "src/design-system/index.ts",
-      "src/features/quizzes/services/quizService.ts",
-      "src/entities/types.ts",
-      "src/utils/formatDate.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/quizzes/services/quizService.ts": {
-    "path": "src/features/quizzes/services/quizService.ts",
-    "imports": [
-      "src/utils/apiClient.ts",
-      "src/entities/types.ts"
-    ],
-    "importedBy": [
-      "src/features/quizzes/components/QuizTakerPage.tsx",
-      "src/features/quizzes/components/QuizzesPage.tsx"
-    ]
-  },
-  "src/hooks/useLocalStorage.ts": {
-    "path": "src/hooks/useLocalStorage.ts",
+  "src/features/authentication/services/authService.ts": {
+    "path": "src/features/authentication/services/authService.ts",
     "imports": [],
+    "importedBy": [
+      "src/features/authentication/hooks/useAuth.ts",
+      "src/shared/components/Navbar.tsx"
+    ]
+  },
+  "src/features/document-ingestion/components/DocumentManagerPage.tsx": {
+    "path": "src/features/document-ingestion/components/DocumentManagerPage.tsx",
+    "imports": [
+      "src/shared/components/Navbar.tsx",
+      "src/shared/components/Sidebar.tsx",
+      "src/shared/components/Card.tsx",
+      "src/design-system/index.ts",
+      "src/features/document-ingestion/hooks/useDocumentUpload.ts",
+      "src/shared/components/Toast.tsx"
+    ],
     "importedBy": []
+  },
+  "src/features/document-ingestion/hooks/useDocumentUpload.ts": {
+    "path": "src/features/document-ingestion/hooks/useDocumentUpload.ts",
+    "imports": [
+      "src/entities/index.ts",
+      "src/features/document-ingestion/services/documentService.ts"
+    ],
+    "importedBy": [
+      "src/features/document-ingestion/components/DocumentManagerPage.tsx"
+    ]
+  },
+  "src/features/document-ingestion/services/documentService.ts": {
+    "path": "src/features/document-ingestion/services/documentService.ts",
+    "imports": [
+      "src/entities/index.ts"
+    ],
+    "importedBy": [
+      "src/features/document-ingestion/hooks/useDocumentUpload.ts"
+    ]
+  },
+  "src/features/flashcards-quizzes/components/QuizModal.tsx": {
+    "path": "src/features/flashcards-quizzes/components/QuizModal.tsx",
+    "imports": [
+      "src/shared/components/Modal.tsx",
+      "src/design-system/index.ts",
+      "src/entities/index.ts"
+    ],
+    "importedBy": [
+      "src/features/flashcards-quizzes/components/StudyHubPage.tsx"
+    ]
+  },
+  "src/features/flashcards-quizzes/components/StudyHubPage.tsx": {
+    "path": "src/features/flashcards-quizzes/components/StudyHubPage.tsx",
+    "imports": [
+      "src/shared/components/Navbar.tsx",
+      "src/shared/components/Sidebar.tsx",
+      "src/shared/components/Card.tsx",
+      "src/design-system/index.ts",
+      "src/features/flashcards-quizzes/hooks/useFlashcards.ts",
+      "src/features/flashcards-quizzes/components/QuizModal.tsx",
+      "src/features/voice-interaction/components/VoiceAssistantModal.tsx",
+      "src/entities/index.ts"
+    ],
+    "importedBy": []
+  },
+  "src/features/flashcards-quizzes/hooks/useFlashcards.ts": {
+    "path": "src/features/flashcards-quizzes/hooks/useFlashcards.ts",
+    "imports": [
+      "src/entities/index.ts",
+      "src/features/flashcards-quizzes/services/studyService.ts"
+    ],
+    "importedBy": [
+      "src/features/flashcards-quizzes/components/StudyHubPage.tsx"
+    ]
+  },
+  "src/features/flashcards-quizzes/services/studyService.ts": {
+    "path": "src/features/flashcards-quizzes/services/studyService.ts",
+    "imports": [
+      "src/entities/index.ts"
+    ],
+    "importedBy": [
+      "src/features/flashcards-quizzes/hooks/useFlashcards.ts"
+    ]
+  },
+  "src/features/rag-chat/components/ChatPage.tsx": {
+    "path": "src/features/rag-chat/components/ChatPage.tsx",
+    "imports": [
+      "src/shared/components/Navbar.tsx",
+      "src/shared/components/Sidebar.tsx",
+      "src/shared/components/Card.tsx",
+      "src/design-system/index.ts",
+      "src/shared/components/Input.tsx",
+      "src/features/rag-chat/hooks/useChat.ts"
+    ],
+    "importedBy": []
+  },
+  "src/features/rag-chat/hooks/useChat.ts": {
+    "path": "src/features/rag-chat/hooks/useChat.ts",
+    "imports": [
+      "src/entities/index.ts",
+      "src/features/rag-chat/services/chatService.ts"
+    ],
+    "importedBy": [
+      "src/features/rag-chat/components/ChatPage.tsx"
+    ]
+  },
+  "src/features/rag-chat/services/chatService.ts": {
+    "path": "src/features/rag-chat/services/chatService.ts",
+    "imports": [
+      "src/entities/index.ts"
+    ],
+    "importedBy": [
+      "src/features/rag-chat/hooks/useChat.ts"
+    ]
+  },
+  "src/features/study-plans/components/DashboardPage.tsx": {
+    "path": "src/features/study-plans/components/DashboardPage.tsx",
+    "imports": [
+      "src/shared/components/Navbar.tsx",
+      "src/shared/components/Sidebar.tsx",
+      "src/shared/components/Card.tsx",
+      "src/design-system/index.ts",
+      "src/features/study-plans/hooks/useStudyPlans.ts"
+    ],
+    "importedBy": []
+  },
+  "src/features/study-plans/components/StudyPlanPage.tsx": {
+    "path": "src/features/study-plans/components/StudyPlanPage.tsx",
+    "imports": [
+      "src/shared/components/Navbar.tsx",
+      "src/shared/components/Sidebar.tsx",
+      "src/shared/components/Card.tsx",
+      "src/design-system/index.ts",
+      "src/features/study-plans/hooks/useStudyPlans.ts"
+    ],
+    "importedBy": []
+  },
+  "src/features/study-plans/hooks/useStudyPlans.ts": {
+    "path": "src/features/study-plans/hooks/useStudyPlans.ts",
+    "imports": [
+      "src/entities/index.ts",
+      "src/features/study-plans/services/planService.ts"
+    ],
+    "importedBy": [
+      "src/features/study-plans/components/DashboardPage.tsx",
+      "src/features/study-plans/components/StudyPlanPage.tsx"
+    ]
+  },
+  "src/features/study-plans/services/planService.ts": {
+    "path": "src/features/study-plans/services/planService.ts",
+    "imports": [
+      "src/entities/index.ts"
+    ],
+    "importedBy": [
+      "src/features/study-plans/hooks/useStudyPlans.ts"
+    ]
+  },
+  "src/features/voice-interaction/components/VoiceAssistantModal.tsx": {
+    "path": "src/features/voice-interaction/components/VoiceAssistantModal.tsx",
+    "imports": [
+      "src/shared/components/Modal.tsx",
+      "src/design-system/index.ts",
+      "src/features/voice-interaction/hooks/useSpeechRecognition.ts",
+      "src/features/voice-interaction/hooks/useTextToSpeech.ts"
+    ],
+    "importedBy": [
+      "src/features/flashcards-quizzes/components/StudyHubPage.tsx"
+    ]
+  },
+  "src/features/voice-interaction/hooks/useSpeechRecognition.ts": {
+    "path": "src/features/voice-interaction/hooks/useSpeechRecognition.ts",
+    "imports": [],
+    "importedBy": [
+      "src/features/voice-interaction/components/VoiceAssistantModal.tsx"
+    ]
+  },
+  "src/features/voice-interaction/hooks/useTextToSpeech.ts": {
+    "path": "src/features/voice-interaction/hooks/useTextToSpeech.ts",
+    "imports": [],
+    "importedBy": [
+      "src/features/voice-interaction/components/VoiceAssistantModal.tsx"
+    ]
   },
   "src/main.tsx": {
     "path": "src/main.tsx",
@@ -244,35 +291,68 @@
     ],
     "importedBy": []
   },
-  "src/utils/apiClient.ts": {
-    "path": "src/utils/apiClient.ts",
+  "src/shared/components/Card.tsx": {
+    "path": "src/shared/components/Card.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/features/authentication/components/LoginPage.tsx",
+      "src/features/authentication/components/RegisterPage.tsx",
+      "src/features/document-ingestion/components/DocumentManagerPage.tsx",
+      "src/features/flashcards-quizzes/components/StudyHubPage.tsx",
+      "src/features/rag-chat/components/ChatPage.tsx",
+      "src/features/study-plans/components/DashboardPage.tsx",
+      "src/features/study-plans/components/StudyPlanPage.tsx"
+    ]
+  },
+  "src/shared/components/Input.tsx": {
+    "path": "src/shared/components/Input.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/features/authentication/components/LoginPage.tsx",
+      "src/features/authentication/components/RegisterPage.tsx",
+      "src/features/rag-chat/components/ChatPage.tsx"
+    ]
+  },
+  "src/shared/components/Modal.tsx": {
+    "path": "src/shared/components/Modal.tsx",
     "imports": [
-      "src/config/env.ts"
+      "src/design-system/index.ts"
     ],
     "importedBy": [
-      "src/features/auth/services/authService.ts",
-      "src/features/chat/services/chatService.ts",
-      "src/features/dashboard/components/DashboardPage.tsx",
-      "src/features/documents/services/documentService.ts",
-      "src/features/flashcards/services/flashcardService.ts",
-      "src/features/quizzes/services/quizService.ts"
+      "src/features/flashcards-quizzes/components/QuizModal.tsx",
+      "src/features/voice-interaction/components/VoiceAssistantModal.tsx"
     ]
   },
-  "src/utils/cn.ts": {
-    "path": "src/utils/cn.ts",
-    "imports": [],
+  "src/shared/components/Navbar.tsx": {
+    "path": "src/shared/components/Navbar.tsx",
+    "imports": [
+      "src/design-system/index.ts",
+      "src/features/authentication/services/authService.ts"
+    ],
     "importedBy": [
-      "src/design-system/components/Button.tsx",
-      "src/design-system/components/Input.tsx"
+      "src/features/document-ingestion/components/DocumentManagerPage.tsx",
+      "src/features/flashcards-quizzes/components/StudyHubPage.tsx",
+      "src/features/rag-chat/components/ChatPage.tsx",
+      "src/features/study-plans/components/DashboardPage.tsx",
+      "src/features/study-plans/components/StudyPlanPage.tsx"
     ]
   },
-  "src/utils/formatDate.ts": {
-    "path": "src/utils/formatDate.ts",
+  "src/shared/components/Sidebar.tsx": {
+    "path": "src/shared/components/Sidebar.tsx",
     "imports": [],
     "importedBy": [
-      "src/features/documents/components/DocumentsPage.tsx",
-      "src/features/flashcards/components/FlashcardsPage.tsx",
-      "src/features/quizzes/components/QuizzesPage.tsx"
+      "src/features/document-ingestion/components/DocumentManagerPage.tsx",
+      "src/features/flashcards-quizzes/components/StudyHubPage.tsx",
+      "src/features/rag-chat/components/ChatPage.tsx",
+      "src/features/study-plans/components/DashboardPage.tsx",
+      "src/features/study-plans/components/StudyPlanPage.tsx"
+    ]
+  },
+  "src/shared/components/Toast.tsx": {
+    "path": "src/shared/components/Toast.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/features/document-ingestion/components/DocumentManagerPage.tsx"
     ]
   },
   "src/vite-env.d.ts": {

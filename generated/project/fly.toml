@@ -1,4 +1,4 @@
-app = "ai-study-assistant"
+app = "personal-study-assistant"
 primary_region = "bos"
 
 [http_service]

@@ -75,7 +75,14 @@ const VALID_DEPENDENCIES_WHITELIST = new Set([
   "chart.js",
   "react-chartjs-2",
   "uuid",
-  "@types/uuid"
+  "@types/uuid",
+  "react-hot-toast",
+  "@types/react-hot-toast",
+  "@tanstack/react-query",
+  "@types/cors",
+  "@types/jsonwebtoken",
+  "@types/bcryptjs",
+  "@types/express"
 ]);
 
 export class Orchestrator {

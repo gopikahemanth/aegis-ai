@@ -689,7 +689,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     // Initial package dependencies installation
     console.log("[Orchestrator] Installing all project dependencies...");
     try {
-      const pm = (specification.packageManager || "pnpm") as "npm" | "pnpm" | "yarn";
+      const pm = "pnpm";
       console.log(`[Orchestrator] Running '${pm} install' in generated project at ${outputDirectory}...`);
       const installResult = await this.installer.install(pm, outputDirectory);
       console.log(`[Orchestrator] Initial install completed. Exit code: ${installResult.exitCode}`);
@@ -721,7 +721,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         if (packages.length > 0) {
           console.log(`[DependencyResolver] Installing missing packages: ${packages.join(", ")}`);
           try {
-            const pm = (specification.packageManager || "pnpm") as "npm" | "pnpm" | "yarn";
+            const pm = "pnpm";
             await this.installer.installPackages(pm, outputDirectory, packages);
             build = await this.runVerification(request, framework, outputDirectory);
             if (build.success) {

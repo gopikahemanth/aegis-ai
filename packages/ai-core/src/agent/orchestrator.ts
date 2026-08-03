@@ -21,6 +21,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { DependencyResolver, DependencyInstaller } from "@aegis/project-builder";
 import { PatchEngine } from "../healing/patch-engine.js";
+import { ErrorRootCauseMapper } from "../healing/error-root-cause-mapper.js";
 import { DependencyGraphEngine } from "../dependency/dependency-graph.js";
 import { GitIntegrationEngine } from "../git/git-engine.js";
 import { MetricsTracker } from "../providers/metrics-tracker.js";
@@ -859,10 +860,16 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         }
 
         try {
+          const mapper = new ErrorRootCauseMapper();
+          const rootCause = mapper.analyze(build.stderr || "", parsedFiles.map(f => f.path));
+          const errorPayload = rootCause.summary
+            ? `${build.stderr || ""}\n\n=== STRUCTURED ROOT CAUSE DIAGNOSIS ===\n${rootCause.summary}\nTarget files to repair: ${rootCause.filesToFix.join(", ")}`
+            : (build.stderr || "");
+
           const repairResponse =
             await this.repairCoordinator.repair(
               request,
-              build.stderr || "",
+              errorPayload,
               response,
             );
 

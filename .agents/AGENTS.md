@@ -84,3 +84,8 @@ import { PrismaClient } from '@prisma/client';
 export const prisma = new PrismaClient();
 ```
 All Express controllers and service modules MUST import `prisma` from this shared utility module (e.g. `import { prisma } from '../config/database';`) instead of creating `const prisma = new PrismaClient()` in multiple files.
+
+## Recharts Tooltip and Pie Label Type Safety
+When building Recharts analytics components (`<Tooltip />`, `<Pie />`, `<BarChart />`, `<LineChart />`):
+1. For `<Tooltip formatter={...} />`, always type the formatter callback parameter flexibly (e.g. `(value: any) => ...` or `(value: any) => [String(value ?? ''), 'Label']`). Do NOT type the parameter strictly as `(val: number)` because Recharts `ValueType` can be `undefined`.
+2. For custom `<Pie label={...} />` render functions, type the render props parameter flexibly as `(props: any) => ...` or destructure `{ name, percent }: any` to avoid `PieLabelRenderProps` custom property compilation errors.

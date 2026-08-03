@@ -54,7 +54,7 @@ export class FailoverProvider implements AIProvider {
       let attempts = 0;
       let delay = this.initialDelayMs;
 
-      while (attempts < this.maxRetries) {
+      while (true) {
         try {
           let activeOptions = options;
           const providerName = provider.name as keyof typeof Models;
@@ -123,15 +123,17 @@ export class FailoverProvider implements AIProvider {
             error.message
           );
 
+          const maxAllowed = (error instanceof ProviderError && error.retryAfter !== undefined) ? 6 : this.maxRetries;
+
           if (error instanceof ProviderError && error.retryAfter !== undefined) {
-            if (error.retryAfter <= 15) {
+            if (error.retryAfter <= 15 && attempts < maxAllowed) {
               const waitTime = error.retryAfter * 1000;
               console.log(
-                `[FailoverProvider] Respecting retry-after. Waiting ${error.retryAfter}s...`
+                `[FailoverProvider] Respecting retry-after. Waiting ${error.retryAfter}s (attempt ${attempts}/${maxAllowed})...`
               );
               await new Promise((resolve) => setTimeout(resolve, waitTime));
               continue;
-            } else {
+            } else if (error.retryAfter > 15) {
               console.log(
                 `[FailoverProvider] Retry-after duration too long (${error.retryAfter}s). Bypassing retry to fallback immediately.`
               );
@@ -139,12 +141,14 @@ export class FailoverProvider implements AIProvider {
             }
           }
 
-          if (attempts < this.maxRetries) {
+          if (attempts < maxAllowed) {
             console.log(
               `[FailoverProvider] Backing off for ${delay}ms...`
             );
             await new Promise((resolve) => setTimeout(resolve, delay));
             delay *= 2; // exponential backoff
+          } else {
+            break;
           }
         }
       }

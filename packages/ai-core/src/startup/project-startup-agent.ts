@@ -234,7 +234,7 @@ export class ProjectStartupAgent {
 
     const vitePath = join(dir, "vite.config.ts");
     if (!existsSync(vitePath)) {
-      writeFileSync(vitePath, `import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\n\nexport default defineConfig({\n  plugins: [react()],\n  server: { port: 5173, open: false },\n})\n`, "utf8");
+      writeFileSync(vitePath, `import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 5173,\n    open: false,\n    proxy: {\n      '/api': {\n        target: 'http://localhost:5000',\n        changeOrigin: true\n      }\n    }\n  },\n})\n`, "utf8");
       patches.push("Created vite.config.ts");
     }
 

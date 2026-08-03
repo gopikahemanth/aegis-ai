@@ -89,3 +89,24 @@ All Express controllers and service modules MUST import `prisma` from this share
 When building Recharts analytics components (`<Tooltip />`, `<Pie />`, `<BarChart />`, `<LineChart />`):
 1. For `<Tooltip formatter={...} />`, always type the formatter callback parameter flexibly (e.g. `(value: any) => ...` or `(value: any) => [String(value ?? ''), 'Label']`). Do NOT type the parameter strictly as `(val: number)` because Recharts `ValueType` can be `undefined`.
 2. For custom `<Pie label={...} />` render functions, type the render props parameter flexibly as `(props: any) => ...` or destructure `{ name, percent }: any` to avoid `PieLabelRenderProps` custom property compilation errors.
+
+## Vite Dev Server API Proxy Configuration
+When generating `vite.config.ts` for fullstack React/Express applications, always include `server.proxy` to proxy `/api` requests to the Express backend server (port `5000`):
+```typescript
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
+  },
+});
+```
+This prevents frontend `fetch('/api/...')` calls from receiving Vite's single-page app `index.html` (`<!doctype html>`) fallback instead of JSON API responses.

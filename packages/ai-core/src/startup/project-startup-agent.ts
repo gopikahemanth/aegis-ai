@@ -236,6 +236,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         "react-router-dom": "^6.26.0",
         "lucide-react": "^0.438.0",
         "react-is": "^18.3.1",
+        "react-hook-form": "^7.52.0",
+        "@hookform/resolvers": "^3.9.0",
       };
       const requiredDevDeps: Record<string, string> = {
         "@types/react": "^18.3.3",
@@ -277,6 +279,11 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
   private ensureConfigFiles(dir: string, framework: string): string[] {
     const patches: string[] = [];
+
+    // Ensure Prisma Schema is transformed to SQLite for zero-config local database execution
+    const prismaPatches = this.ensurePrismaDatabase(dir);
+    patches.push(...prismaPatches);
+
     if (framework !== "react-vite") return patches;
 
     const vitePath = join(dir, "vite.config.ts");
@@ -408,5 +415,32 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
       }
     }
     return results;
+  }
+
+  private ensurePrismaDatabase(dir: string): string[] {
+    const patches: string[] = [];
+    const schemaPath = join(dir, "prisma", "schema.prisma");
+    if (!existsSync(schemaPath)) return patches;
+
+    try {
+      let schema = readFileSync(schemaPath, "utf8");
+
+      if (schema.includes('provider = "postgresql"') || schema.includes("provider = 'postgresql'")) {
+        schema = schema.replace(/provider\s*=\s*["']postgresql["']/g, 'provider = "sqlite"');
+        schema = schema.replace(/url\s*=\s*env\("DATABASE_URL"\)/g, 'url = "file:./dev.db"');
+        writeFileSync(schemaPath, schema, "utf8");
+        patches.push("Converted Prisma schema to local SQLite (provider = 'sqlite')");
+      }
+
+      const envPath = join(dir, ".env");
+      if (!existsSync(envPath)) {
+        writeFileSync(envPath, 'PORT=5000\nDATABASE_URL="file:./dev.db"\n', "utf8");
+        patches.push("Created default .env file with local SQLite DATABASE_URL");
+      }
+    } catch (err: any) {
+      console.warn(`[Startup] Warning: Prisma schema patch failed: ${err.message}`);
+    }
+
+    return patches;
   }
 }

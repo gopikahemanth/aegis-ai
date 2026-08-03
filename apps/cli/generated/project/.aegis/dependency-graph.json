@@ -1,0 +1,194 @@
+{
+  "postcss.config.js": {
+    "path": "postcss.config.js",
+    "imports": [],
+    "importedBy": []
+  },
+  "server/index.ts": {
+    "path": "server/index.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "server/prisma.ts": {
+    "path": "server/prisma.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/App.tsx": {
+    "path": "src/App.tsx",
+    "imports": [
+      "src/shared/components/Navbar.tsx",
+      "src/design-system/index.tsx"
+    ],
+    "importedBy": [
+      "src/main.tsx"
+    ]
+  },
+  "src/design-system/components/Button.tsx": {
+    "path": "src/design-system/components/Button.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/components/EmptyState.tsx": {
+    "path": "src/design-system/components/EmptyState.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/components/Skeleton.tsx": {
+    "path": "src/design-system/components/Skeleton.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/index.tsx": {
+    "path": "src/design-system/index.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx",
+      "src/features/analytics/AnalyticsPage.tsx",
+      "src/features/dashboard/DashboardPage.tsx",
+      "src/features/exercises/ExerciseLibraryPage.tsx",
+      "src/features/history/WorkoutHistoryPage.tsx",
+      "src/features/logger/ActiveWorkoutPage.tsx"
+    ]
+  },
+  "src/design-system/tokens.ts": {
+    "path": "src/design-system/tokens.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/entities/fitness.ts": {
+    "path": "src/entities/fitness.ts",
+    "imports": [],
+    "importedBy": [
+      "src/features/analytics/AnalyticsPage.tsx",
+      "src/features/analytics/services/analyticsService.ts",
+      "src/features/dashboard/DashboardPage.tsx",
+      "src/features/dashboard/services/dashboardService.ts",
+      "src/features/exercises/ExerciseLibraryPage.tsx",
+      "src/features/exercises/services/exerciseService.ts",
+      "src/features/history/services/historyService.ts",
+      "src/features/history/WorkoutHistoryPage.tsx",
+      "src/features/logger/ActiveWorkoutPage.tsx",
+      "src/features/logger/services/loggerService.ts"
+    ]
+  },
+  "src/features/analytics/AnalyticsPage.tsx": {
+    "path": "src/features/analytics/AnalyticsPage.tsx",
+    "imports": [
+      "src/design-system/index.tsx",
+      "src/features/analytics/services/analyticsService.ts",
+      "src/entities/fitness.ts"
+    ],
+    "importedBy": []
+  },
+  "src/features/analytics/services/analyticsService.ts": {
+    "path": "src/features/analytics/services/analyticsService.ts",
+    "imports": [
+      "src/entities/fitness.ts"
+    ],
+    "importedBy": [
+      "src/features/analytics/AnalyticsPage.tsx"
+    ]
+  },
+  "src/features/dashboard/DashboardPage.tsx": {
+    "path": "src/features/dashboard/DashboardPage.tsx",
+    "imports": [
+      "src/design-system/index.tsx",
+      "src/entities/fitness.ts",
+      "src/features/dashboard/services/dashboardService.ts"
+    ],
+    "importedBy": []
+  },
+  "src/features/dashboard/services/dashboardService.ts": {
+    "path": "src/features/dashboard/services/dashboardService.ts",
+    "imports": [
+      "src/entities/fitness.ts"
+    ],
+    "importedBy": [
+      "src/features/dashboard/DashboardPage.tsx"
+    ]
+  },
+  "src/features/exercises/ExerciseLibraryPage.tsx": {
+    "path": "src/features/exercises/ExerciseLibraryPage.tsx",
+    "imports": [
+      "src/design-system/index.tsx",
+      "src/entities/fitness.ts",
+      "src/features/exercises/services/exerciseService.ts"
+    ],
+    "importedBy": []
+  },
+  "src/features/exercises/services/exerciseService.ts": {
+    "path": "src/features/exercises/services/exerciseService.ts",
+    "imports": [
+      "src/entities/fitness.ts"
+    ],
+    "importedBy": [
+      "src/features/exercises/ExerciseLibraryPage.tsx"
+    ]
+  },
+  "src/features/history/services/historyService.ts": {
+    "path": "src/features/history/services/historyService.ts",
+    "imports": [
+      "src/entities/fitness.ts"
+    ],
+    "importedBy": [
+      "src/features/history/WorkoutHistoryPage.tsx"
+    ]
+  },
+  "src/features/history/WorkoutHistoryPage.tsx": {
+    "path": "src/features/history/WorkoutHistoryPage.tsx",
+    "imports": [
+      "src/design-system/index.tsx",
+      "src/entities/fitness.ts",
+      "src/features/history/services/historyService.ts"
+    ],
+    "importedBy": []
+  },
+  "src/features/logger/ActiveWorkoutPage.tsx": {
+    "path": "src/features/logger/ActiveWorkoutPage.tsx",
+    "imports": [
+      "src/design-system/index.tsx",
+      "src/entities/fitness.ts",
+      "src/features/logger/services/loggerService.ts"
+    ],
+    "importedBy": []
+  },
+  "src/features/logger/services/loggerService.ts": {
+    "path": "src/features/logger/services/loggerService.ts",
+    "imports": [
+      "src/entities/fitness.ts"
+    ],
+    "importedBy": [
+      "src/features/logger/ActiveWorkoutPage.tsx"
+    ]
+  },
+  "src/main.tsx": {
+    "path": "src/main.tsx",
+    "imports": [
+      "src/App.tsx"
+    ],
+    "importedBy": []
+  },
+  "src/shared/components/Navbar.tsx": {
+    "path": "src/shared/components/Navbar.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/vite-env.d.ts": {
+    "path": "src/vite-env.d.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "tailwind.config.js": {
+    "path": "tailwind.config.js",
+    "imports": [],
+    "importedBy": []
+  },
+  "vite.config.ts": {
+    "path": "vite.config.ts",
+    "imports": [],
+    "importedBy": []
+  }
+}

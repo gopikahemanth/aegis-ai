@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { execSync, spawn } from "node:child_process";
 
@@ -181,9 +181,24 @@ export class ProjectStartupAgent {
       }
 
       if (serverPath) {
+        const scriptsDir = join(dir, "scripts");
+        if (!existsSync(scriptsDir)) mkdirSync(scriptsDir, { recursive: true });
+        const devRunnerPath = join(scriptsDir, "dev.js");
+        const devScriptContent = `import { spawn } from "node:child_process";
+
+console.log("🚀 Starting Aegis Fullstack Application (Backend + Frontend)...\\n");
+
+const server = spawn("npx", ["tsx", "${serverPath}"], { stdio: "inherit", shell: true });
+const vite = spawn("npx", ["vite"], { stdio: "inherit", shell: true });
+
+process.on("SIGINT", () => { server.kill(); vite.kill(); process.exit(); });
+process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
+`;
+        writeFileSync(devRunnerPath, devScriptContent, "utf8");
+
         scripts.server = `npx tsx ${serverPath}`;
-        scripts.dev = `npx concurrently "pnpm run server" "vite"`;
-        patches.push(`Configured fullstack server script (${serverPath}) & dual dev runner`);
+        scripts.dev = `node scripts/dev.js`;
+        patches.push(`Configured fullstack server script (${serverPath}) & native dev.js runner`);
       } else if (!scripts.dev) {
         scripts.dev = "vite";
         patches.push('Added script: "dev": "vite"');

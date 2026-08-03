@@ -77,9 +77,11 @@ This avoids type-safety compilation errors (such as `Type 'string | string[]' is
 Always ensure that every Lucide icon referenced inside any generated UI component (e.g. `BookOpen`, `ArrowRight`, `Trash2`, etc.) is explicitly declared in the imports statement at the top of the file from `'lucide-react'`.
 
 ## Prisma Client Singleton Pattern
-Always instantiate the Prisma client ONCE in a shared database utility file (such as `server/config/database.ts` or `src/server/db.ts`) and export it as a singleton.
+Always instantiate the Prisma client ONCE in a shared database utility file (such as `server/config/database.ts` or `server/prisma.ts`) and export it as a singleton. Always invoke `dotenv.config()` at the VERY TOP of this file before creating `new PrismaClient()`.
 For example:
 ```typescript
+import dotenv from 'dotenv';
+dotenv.config();
 import { PrismaClient } from '@prisma/client';
 export const prisma = new PrismaClient();
 ```

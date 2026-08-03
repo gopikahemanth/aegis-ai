@@ -502,7 +502,11 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         
         for (const lib of libs) {
           if (!pkg.dependencies[lib] && !pkg.devDependencies?.[lib]) {
-            pkg.dependencies[lib] = "latest";
+            if (lib === "prisma" || lib === "@prisma/client") {
+              pkg.dependencies[lib] = "^6.2.1";
+            } else {
+              pkg.dependencies[lib] = "latest";
+            }
           }
           if (commonTypesNeeded.includes(lib)) {
             const typesLib = `@types/${lib}`;
@@ -764,7 +768,11 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         
         for (const lib of libs) {
           if (!pkg.dependencies[lib] && !pkg.devDependencies?.[lib]) {
-            pkg.dependencies[lib] = "latest";
+            if (lib === "prisma" || lib === "@prisma/client") {
+              pkg.dependencies[lib] = "^6.2.1";
+            } else {
+              pkg.dependencies[lib] = "latest";
+            }
           }
           if (commonTypesNeeded.includes(lib)) {
             const typesLib = `@types/${lib}`;

@@ -184,9 +184,19 @@ export class ProjectStartupAgent {
         const scriptsDir = join(dir, "scripts");
         if (!existsSync(scriptsDir)) mkdirSync(scriptsDir, { recursive: true });
         const devRunnerPath = join(scriptsDir, "dev.js");
-        const devScriptContent = `import { spawn } from "node:child_process";
+        const devScriptContent = `import { spawn, execSync } from "node:child_process";
+import { existsSync } from "node:fs";
 
 console.log("🚀 Starting Aegis Fullstack Application (Backend + Frontend)...\\n");
+
+if (existsSync("prisma/schema.prisma")) {
+  console.log("📦 Generating Prisma Client...");
+  try {
+    execSync("npx prisma generate", { stdio: "inherit" });
+  } catch (err) {
+    console.warn("Warning: Prisma generation failed:", err.message);
+  }
+}
 
 const server = spawn("npx", ["tsx", "${serverPath}"], { stdio: "inherit", shell: true });
 const vite = spawn("npx", ["vite"], { stdio: "inherit", shell: true });
@@ -220,6 +230,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         "react-dom": "^18.3.1",
         "react-router-dom": "^6.26.0",
         "lucide-react": "^0.438.0",
+        "react-is": "^18.3.1",
       };
       const requiredDevDeps: Record<string, string> = {
         "@types/react": "^18.3.3",

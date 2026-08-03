@@ -87,7 +87,8 @@ const VALID_DEPENDENCIES_WHITELIST = new Set([
   "react-hook-form",
   "@hookform/resolvers",
   "concurrently",
-  "tsx"
+  "tsx",
+  "react-is"
 ]);
 
 export class Orchestrator {

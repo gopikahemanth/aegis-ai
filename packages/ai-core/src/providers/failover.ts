@@ -41,6 +41,11 @@ export class FailoverProvider implements AIProvider {
       }
     }
 
+    if (this.disabledProviders.size >= this.providers.length) {
+      console.log("[FailoverProvider] All providers were disabled — resetting disabled providers lifecycle tracking.");
+      this.disabledProviders.clear();
+    }
+
     for (const provider of this.providers) {
       if (this.disabledProviders.has(provider.name)) {
         continue;

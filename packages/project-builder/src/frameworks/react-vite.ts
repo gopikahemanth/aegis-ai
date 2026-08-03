@@ -18,10 +18,16 @@ export class ReactViteTemplate
     output: string,
   ) {
     if (existsSync(output)) {
-      rmSync(output, {
-        recursive: true,
-        force: true,
-      });
+      try {
+        rmSync(output, {
+          recursive: true,
+          force: true,
+          maxRetries: 3,
+          retryDelay: 100,
+        });
+      } catch (err: any) {
+        console.warn(`[ProjectBuilder] Warning: Could not completely remove existing target directory: ${err.message}`);
+      }
     }
 
     const repoRoot =

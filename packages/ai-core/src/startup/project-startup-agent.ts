@@ -185,16 +185,21 @@ export class ProjectStartupAgent {
         if (!existsSync(scriptsDir)) mkdirSync(scriptsDir, { recursive: true });
         const devRunnerPath = join(scriptsDir, "dev.js");
         const devScriptContent = `import { spawn, execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 
 console.log("🚀 Starting Aegis Fullstack Application (Backend + Frontend)...\\n");
 
+if (!existsSync(".env")) {
+  writeFileSync(".env", 'PORT=5000\\nDATABASE_URL="file:./dev.db"\\n', "utf8");
+}
+
 if (existsSync("prisma/schema.prisma")) {
-  console.log("📦 Generating Prisma Client...");
+  console.log("📦 Syncing Prisma Database Schema...");
   try {
+    execSync("npx prisma db push --skip-generate", { stdio: "inherit" });
     execSync("npx prisma generate", { stdio: "inherit" });
   } catch (err) {
-    console.warn("Warning: Prisma generation failed:", err.message);
+    console.warn("Warning: Prisma database sync skipped:", err.message);
   }
 }
 

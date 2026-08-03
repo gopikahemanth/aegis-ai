@@ -782,7 +782,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
     }
 
-    // Initial package dependencies installation
+     // Initial package dependencies installation
     console.log("[Orchestrator] Installing all project dependencies...");
     try {
       const pm = "pnpm";
@@ -791,6 +791,19 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.log(`[Orchestrator] Initial install completed. Exit code: ${installResult.exitCode}`);
       if (installResult.exitCode !== 0) {
         console.warn(`[Orchestrator] Warning: initial install exit code was non-zero. stderr: ${installResult.stderr}`);
+      }
+      
+      // Generate Prisma client if schema exists to ensure types exist during build verification
+      const prismaSchema = join(outputDirectory, "prisma/schema.prisma");
+      if (existsSync(prismaSchema)) {
+        console.log(`[Orchestrator] Prisma schema detected. Running 'pnpm exec prisma generate' in ${outputDirectory}...`);
+        try {
+          const { execSync } = await import("child_process");
+          execSync("pnpm exec prisma generate", { cwd: outputDirectory, stdio: "inherit" });
+          console.log("[Orchestrator] Prisma client generation successful.");
+        } catch (genErr: any) {
+          console.warn(`[Orchestrator] Warning: Prisma client generation failed: ${genErr.message}`);
+        }
       }
     } catch (instErr: any) {
       console.warn(`[Orchestrator] Warning: Initial package installation failed: ${instErr.message}`);

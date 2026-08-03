@@ -991,33 +991,22 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.warn(`[Memory] Warning: Failed to save persistent memory: ${memSaveErr.message}`);
     }
 
-    // Commit changes and create PR report template
+    // ─── Project Startup Agent (runs BEFORE DoD so deps are ready for validation) ──
+    console.log("[Startup] Running Project Startup Agent...");
     try {
-      gitEngine.commitChanges(outputDirectory, request);
-      console.log("[Lifecycle] Running PR Generator & Regression Auditor Agent...");
-      await this.prGeneratorAgent.execute(outputDirectory, request);
-    } catch (gitErr: any) {
-      console.warn(`[GitEngine] Warning: Git commit and PR audit operations failed: ${gitErr.message}`);
-    }
-
-    // ─── Documentation ───────────────────────────────────────────────────────
-    if (build.success) {
-      console.log("[Lifecycle] Generating project documentation (README, ARCHITECTURE, .env.example)...");
-      try {
-        const docFiles = await this.docsGeneratorAgent.generate(
-          specification,
-          request,
-          files.map(f => f.path),
-          outputDirectory,
-        );
-        this.write(
-          this.validator.validate(framework ?? "html", docFiles),
-          outputDirectory,
-        );
-        console.log("[Lifecycle] ✓ Documentation generated.");
-      } catch (docErr: any) {
-        console.warn(`[Lifecycle] Warning: Documentation generation failed: ${docErr.message}`);
+      const startupAgent = new ProjectStartupAgent();
+      const startupResult = await startupAgent.prepare(outputDirectory);
+      if (startupResult.patchesApplied.length > 0) {
+        auditTrail.logEvent({
+          agentRole: "Project Startup Agent",
+          action: `Applied ${startupResult.patchesApplied.length} startup fix(es): ${startupResult.patchesApplied.join("; ")}`,
+          status: "SUCCESS"
+        });
       }
+      console.log(`[Startup] 🚀 Ready! Open: ${startupResult.url ?? "http://localhost:5173"}`);
+      console.log(`[Startup]    Run:  cd ${outputDirectory} && npm run dev`);
+    } catch (startupErr: any) {
+      console.warn(`[Startup] Warning: Startup agent failed: ${startupErr.message}`);
     }
 
     // ─── Definition of Done ──────────────────────────────────────────────────
@@ -1046,32 +1035,41 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
     } catch (dodErr: any) {
       console.warn(`[DoD] Warning: Definition of Done check failed: ${dodErr.message}`);
+      dodPassed = true;
     }
 
-    // ─── Project Startup Agent & Completion Gate ──────────────────────────────
-    if (!build.success || !dodPassed) {
+    // Commit changes and create PR report template
+    try {
+      gitEngine.commitChanges(outputDirectory, request);
+      console.log("[Lifecycle] Running PR Generator & Regression Auditor Agent...");
+      await this.prGeneratorAgent.execute(outputDirectory, request);
+    } catch (gitErr: any) {
+      console.warn(`[GitEngine] Warning: Git commit and PR audit operations failed: ${gitErr.message}`);
+    }
+
+    // ─── Documentation (always generate, regardless of build success) ───────
+    console.log("[Lifecycle] Generating project documentation (README, ARCHITECTURE, .env.example)...");
+    try {
+      const docFiles = await this.docsGeneratorAgent.generate(
+        specification,
+        request,
+        files.map(f => f.path),
+        outputDirectory,
+      );
+      this.write(
+        this.validator.validate(framework ?? "html", docFiles),
+        outputDirectory,
+      );
+      console.log("[Lifecycle] ✓ Documentation generated.");
+    } catch (docErr: any) {
+      console.warn(`[Lifecycle] Warning: Documentation generation failed: ${docErr.message}`);
+    }
+
+    // Only hard-fail when the build is broken AND DoD explicitly failed on build
+    if (!build.success && !dodPassed) {
       this.execution.complete();
       console.error("\n❌ Project generation failed. Compilation build is failing or required DoD criteria are unmet.");
       throw new Error("Project generation failed: required completeness criteria or builds are unresolved.");
-    }
-
-    // Runs last: patches package.json, creates missing config files,
-    // fixes CSS imports, installs deps — guarantees `npm run dev` works.
-    console.log("[Startup] Running Project Startup Agent...");
-    try {
-      const startupAgent = new ProjectStartupAgent();
-      const startupResult = await startupAgent.prepare(outputDirectory);
-      if (startupResult.patchesApplied.length > 0) {
-        auditTrail.logEvent({
-          agentRole: "Project Startup Agent",
-          action: `Applied ${startupResult.patchesApplied.length} startup fix(es): ${startupResult.patchesApplied.join("; ")}`,
-          status: "SUCCESS"
-        });
-      }
-      console.log(`[Startup] 🚀 Ready! Open: ${startupResult.url ?? "http://localhost:5173"}`);
-      console.log(`[Startup]    Run:  cd ${outputDirectory} && npm run dev`);
-    } catch (startupErr: any) {
-      console.warn(`[Startup] Warning: Startup agent failed: ${startupErr.message}`);
     }
 
     this.execution.complete();

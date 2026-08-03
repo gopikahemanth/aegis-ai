@@ -276,8 +276,10 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
       violations.push("Possible hardcoded secret/API key detected — move to .env");
     }
 
-    // XSS: dangerouslySetInnerHTML with raw variable (not sanitized)
-    if (/dangerouslySetInnerHTML=\{\{\s*__html:\s*(?!DOMPurify)/i.test(source)) {
+    // XSS: dangerouslySetInnerHTML without DOMPurify — check both this file and full source
+    const hasDangerousHtml = /dangerouslySetInnerHTML/i.test(source);
+    const hasDomPurify = /DOMPurify|dompurify|import.*purify|sanitize\s*\(/i.test(source);
+    if (hasDangerousHtml && !hasDomPurify) {
       violations.push("dangerouslySetInnerHTML used without DOMPurify sanitization — XSS risk");
     }
 

@@ -85,7 +85,9 @@ const VALID_DEPENDENCIES_WHITELIST = new Set([
   "@types/bcryptjs",
   "@types/express",
   "react-hook-form",
-  "@hookform/resolvers"
+  "@hookform/resolvers",
+  "concurrently",
+  "tsx"
 ]);
 
 export class Orchestrator {

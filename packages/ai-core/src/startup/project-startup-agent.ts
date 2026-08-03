@@ -170,11 +170,25 @@ export class ProjectStartupAgent {
         patches.push('Set "type": "module"');
       }
 
-      // Add missing scripts
-      if (!scripts.dev) {
+      // Check for backend server entry points
+      let serverPath: string | null = null;
+      const candidates = ["server/index.ts", "server/server.ts", "server/app.ts", "src/server/index.ts", "src/server/server.ts"];
+      for (const candidate of candidates) {
+        if (existsSync(join(dir, candidate))) {
+          serverPath = candidate;
+          break;
+        }
+      }
+
+      if (serverPath) {
+        scripts.server = `tsx ${serverPath}`;
+        scripts.dev = `concurrently "pnpm run server" "vite"`;
+        patches.push(`Configured fullstack server script (${serverPath}) & dual dev runner`);
+      } else if (!scripts.dev) {
         scripts.dev = "vite";
         patches.push('Added script: "dev": "vite"');
       }
+
       if (!scripts.build) {
         scripts.build = "tsc && vite build";
         patches.push('Added script: "build": "tsc && vite build"');
@@ -201,6 +215,8 @@ export class ProjectStartupAgent {
         "tailwindcss": "^3.4.10",
         "typescript": "^5.5.3",
         "vite": "^5.4.1",
+        "tsx": "^4.19.0",
+        "concurrently": "^8.2.2"
       };
 
       let depsChanged = false;

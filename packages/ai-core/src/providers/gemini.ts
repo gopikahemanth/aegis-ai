@@ -74,15 +74,16 @@ export class GeminiProvider implements AIProvider {
         }
 
         return response.text ?? "";
-      } catch (error) {
+      } finally {
         if (timeoutId) clearTimeout(timeoutId);
-        throw error;
       }
     } catch (error: any) {
+      const msg = String(error?.message ?? error ?? "Provider request failed.");
+      const isRateLimit = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate limit") || msg.toLowerCase().includes("resource_exhausted") || msg.toLowerCase().includes("overloaded");
+      const retryAfter = isRateLimit ? 5 : undefined;
       throw new ProviderError(
-        error?.message ??
-          "Provider request failed.",
-        undefined,
+        msg,
+        retryAfter,
         error,
       );
     }

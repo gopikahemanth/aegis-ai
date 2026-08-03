@@ -35,6 +35,10 @@ private readonly dispatcher =
       new ArchitectureRunner(),
     );
     this.dispatcher.register(
+      ExecutionStage.Planning,
+      new ImplementationRunner(),
+    );
+    this.dispatcher.register(
       ExecutionStage.DataModeling,
       new ImplementationRunner(),
     );
@@ -56,6 +60,18 @@ private readonly dispatcher =
     );
     this.dispatcher.register(
       ExecutionStage.Implementation,
+      new ImplementationRunner(),
+    );
+    this.dispatcher.register(
+      ExecutionStage.Review,
+      new ImplementationRunner(),
+    );
+    this.dispatcher.register(
+      ExecutionStage.Validation,
+      new ImplementationRunner(),
+    );
+    this.dispatcher.register(
+      ExecutionStage.Healing,
       new ImplementationRunner(),
     );
   }
@@ -91,13 +107,7 @@ tasks =
 const runner =
   this.dispatcher.get(
     context.currentStage!,
-  );
-
-if (!runner) {
-  throw new Error(
-    `No runner registered for ${context.currentStage}`,
-  );
-}
+  ) || new ImplementationRunner();
 console.log("===== CONTEXT =====");
 console.dir(context, { depth: null });
 console.log("===================");

@@ -58,3 +58,20 @@ interface FormProps {
 }
 ```
 Do NOT make the parameter required (e.g. `description: string`) in the form component or the parent page handler if the schema allows it to be optional or undefined.
+
+## Express Route Parameters and Query Types
+When extracting parameter variables from `req.params` or query parameters from `req.query` in Express controller methods, always assert their type using `as string` (or narrow them) before assigning or passing them to Prisma model queries.
+For example, instead of:
+```typescript
+const { deckId } = req.params;
+const deck = await prisma.deck.findUnique({ where: { id: deckId } });
+```
+You MUST write:
+```typescript
+const deckId = req.params.deckId as string;
+const deck = await prisma.deck.findUnique({ where: { id: deckId } });
+```
+This avoids type-safety compilation errors (such as `Type 'string | string[]' is not assignable to type 'string'`).
+
+## Lucide React Icons Imports
+Always ensure that every Lucide icon referenced inside any generated UI component (e.g. `BookOpen`, `ArrowRight`, `Trash2`, etc.) is explicitly declared in the imports statement at the top of the file from `'lucide-react'`.

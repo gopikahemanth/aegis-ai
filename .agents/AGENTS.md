@@ -44,3 +44,17 @@ const { deckId } = useParams<{ deckId: string }>();
 if (!deckId) return;
 const data = await fetchDeckById(deckId!); // Assert defined so types match
 ```
+
+## Form Component and Parent Callback Type Safety
+When developing React form modals or form components that handle optional properties (for example, an optional `description?: string` or `category?: string` field), you MUST ensure that the optional property is defined with the same optional signature in both the form component props and the parent page's handler function signature.
+For example, if the page handler expects:
+```typescript
+const handleSave = async (data: { title: string; category: string; description?: string }) => { ... }
+```
+Then the form component MUST define its submit handler to match:
+```typescript
+interface FormProps {
+  onSubmit: (data: { title: string; category: string; description?: string }) => Promise<void>;
+}
+```
+Do NOT make the parameter required (e.g. `description: string`) in the form component or the parent page handler if the schema allows it to be optional or undefined.

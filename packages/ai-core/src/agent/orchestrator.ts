@@ -82,7 +82,9 @@ const VALID_DEPENDENCIES_WHITELIST = new Set([
   "@types/cors",
   "@types/jsonwebtoken",
   "@types/bcryptjs",
-  "@types/express"
+  "@types/express",
+  "react-hook-form",
+  "@hookform/resolvers"
 ]);
 
 export class Orchestrator {

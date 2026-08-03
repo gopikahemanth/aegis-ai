@@ -181,8 +181,8 @@ export class ProjectStartupAgent {
       }
 
       if (serverPath) {
-        scripts.server = `tsx ${serverPath}`;
-        scripts.dev = `concurrently "pnpm run server" "vite"`;
+        scripts.server = `npx tsx ${serverPath}`;
+        scripts.dev = `npx concurrently "pnpm run server" "vite"`;
         patches.push(`Configured fullstack server script (${serverPath}) & dual dev runner`);
       } else if (!scripts.dev) {
         scripts.dev = "vite";

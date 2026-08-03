@@ -238,8 +238,13 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         "react-is": "^18.3.1",
         "react-hook-form": "^7.52.0",
         "@hookform/resolvers": "^3.9.0",
+        "jspdf": "^2.5.1",
+        "fuse.js": "^7.0.0",
+        "marked": "^14.0.0",
+        "dompurify": "^3.1.6",
       };
       const requiredDevDeps: Record<string, string> = {
+        "@types/dompurify": "^3.0.5",
         "@types/react": "^18.3.3",
         "@types/react-dom": "^18.3.0",
         "@vitejs/plugin-react": "^4.3.1",
@@ -290,6 +295,20 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
     if (!existsSync(vitePath)) {
       writeFileSync(vitePath, `import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 5173,\n    open: false,\n    proxy: {\n      '/api': {\n        target: 'http://localhost:5000',\n        changeOrigin: true\n      }\n    }\n  },\n})\n`, "utf8");
       patches.push("Created vite.config.ts");
+    }
+
+    // Ensure this generated project is isolated from any parent pnpm workspace
+    const pnpmWorkspacePath = join(dir, "pnpm-workspace.yaml");
+    if (!existsSync(pnpmWorkspacePath)) {
+      writeFileSync(pnpmWorkspacePath, "packages: []\n", "utf8");
+      patches.push("Created pnpm-workspace.yaml (workspace isolation)");
+    }
+
+    // Allow Prisma and esbuild build scripts in pnpm
+    const npmrcPath = join(dir, ".npmrc");
+    if (!existsSync(npmrcPath)) {
+      writeFileSync(npmrcPath, "ignore-scripts=false\n", "utf8");
+      patches.push("Created .npmrc (allow build scripts)");
     }
 
     const tsconfigPath = join(dir, "tsconfig.json");

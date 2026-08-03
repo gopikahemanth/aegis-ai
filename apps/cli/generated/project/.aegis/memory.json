@@ -1,34 +1,35 @@
 {
   "projectName": "project",
-  "lastRequest": "Build a fullstack Workout & Fitness Tracker with Express endpoints, Prisma database models for exercises and workout logs, and a clean dark-mode React dashboard displaying weekly progress charts, personal record badges, and interactive workout logger.",
+  "lastRequest": "Build a fullstack Knowledge Base and Note Taking app with Express REST API endpoints, Prisma database models for notebooks, tags, and rich markdown notes, and a clean dark-mode React dashboard with sidebar navigation, tag filtering, and instant search.",
   "createdFiles": [
     "prisma/schema.prisma",
-    "server/prisma.ts",
     "server/index.ts",
-    "src/entities/fitness.ts",
-    "src/shared/components/Navbar.tsx",
+    "src/entities/index.ts",
+    "src/features/api/apiClient.ts",
+    "src/features/sidebar/components/Sidebar.tsx",
+    "src/features/editor/components/MarkdownEditor.tsx",
     "src/App.tsx",
-    "src/features/dashboard/services/dashboardService.ts",
-    "src/features/dashboard/DashboardPage.tsx",
-    "src/features/logger/services/loggerService.ts",
-    "src/features/logger/ActiveWorkoutPage.tsx",
-    "src/features/exercises/services/exerciseService.ts",
-    "src/features/exercises/ExerciseLibraryPage.tsx",
-    "src/features/history/services/historyService.ts",
-    "src/features/history/WorkoutHistoryPage.tsx",
-    "src/features/analytics/services/analyticsService.ts",
-    "src/features/analytics/AnalyticsPage.tsx",
+    "src/features/search/components/SearchBar.tsx",
     "Dockerfile",
     ".dockerignore",
     ".github/workflows/ci-cd.yml",
     "docker-compose.yml",
-    "fly.toml"
+    "fly.toml",
+    "src/features/notes/components/NoteList.tsx",
+    "src/features/notes/hooks/useNotesQuery.ts",
+    "server/schemas/notebook.schema.ts",
+    "server/schemas/tag.schema.ts",
+    "server/schemas/note.schema.ts",
+    "server/middleware/validate.ts",
+    "src/shared/hooks/useLocalStorage.ts",
+    "src/features/search/hooks/useFuzzySearch.ts",
+    "src/features/export/services/exportService.ts"
   ],
   "tasks": [
     {
       "id": 1,
-      "title": "Database Schema and ORM Configuration",
-      "description": "Initialize Prisma schema with User, Exercise, WorkoutLog, WorkoutSet, and PersonalRecord models, establish relationships, and configure connection.",
+      "title": "Database Modeling with Prisma and PostgreSQL",
+      "description": "Design and apply Prisma schema for User, Notebook, Note, and Tag models including migrations.",
       "completed": true,
       "stage": "Database",
       "priority": 1,
@@ -37,8 +38,8 @@
     },
     {
       "id": 2,
-      "title": "Backend Express API Implementation",
-      "description": "Implement Express server with TypeScript, CORS, environment configuration, and RESTful endpoints for exercises, active workout logging, history, and analytics aggregations using Prisma.",
+      "title": "Express.js API & Zod Schema Validation",
+      "description": "Implement Express REST endpoints for Notebooks, Notes, and Tags CRUD with Zod validation.",
       "completed": true,
       "stage": "Backend",
       "priority": 2,
@@ -49,36 +50,36 @@
     },
     {
       "id": 3,
-      "title": "Frontend Core Architecture and UI Components",
-      "description": "Set up React Vite with Tailwind CSS, Lucide icons, and shared layout/navigation components for dark-mode fitness tracking experience.",
+      "title": "Frontend Shell & State Management",
+      "description": "Setup Vite-React, Tailwind UI, sidebar layout, and React Query integration with the Backend APIs.",
       "completed": true,
       "stage": "Frontend",
       "priority": 3,
-      "dependencies": [],
-      "estimatedComplexity": 2
-    },
-    {
-      "id": 4,
-      "title": "Frontend Workout Logger and Exercise Library",
-      "description": "Build interactive active workout session logger with live timers and set tracking, alongside searchable exercise library management interface.",
-      "completed": true,
-      "stage": "Frontend",
-      "priority": 4,
       "dependencies": [
-        2,
-        3
+        2
       ],
       "estimatedComplexity": 3
     },
     {
-      "id": 5,
-      "title": "Frontend Dashboard, History, and Analytics",
-      "description": "Implement dashboard overview, chronological history viewer with expandable sets, and Recharts-based progress analytics with confetti celebrations.",
+      "id": 4,
+      "title": "Markdown Editor & Export Features",
+      "description": "Build live-preview markdown editor with autosave, and export functionalities to PDF, Text, and JSON.",
       "completed": true,
       "stage": "Frontend",
+      "priority": 4,
+      "dependencies": [
+        3
+      ],
+      "estimatedComplexity": 4
+    },
+    {
+      "id": 5,
+      "title": "Fuzzy Search, Tag Filtering & Docker Setup",
+      "description": "Integrate Fuse.js for client search, tag filters, docker-compose configuration, and end-to-end verification.",
+      "completed": true,
+      "stage": "Review",
       "priority": 5,
       "dependencies": [
-        2,
         4
       ],
       "estimatedComplexity": 3
@@ -86,13 +87,18 @@
   ],
   "history": [
     {
-      "timestamp": "2026-08-03T04:13:51.190Z",
-      "request": "Build a fullstack Workout & Fitness Tracker with Express endpoints, Prisma database models for exercises and workout logs, and a clean dark-mode React dashboard displaying weekly progress charts, personal record badges, and interactive workout logger.",
+      "timestamp": "2026-08-03T05:01:06.538Z",
+      "request": "Build a fullstack Knowledge Base and Note Taking app with Express REST API endpoints, Prisma database models for notebooks, tags, and rich markdown notes, and a clean dark-mode React dashboard with sidebar navigation, tag filtering, and instant search.",
       "stage": "Initialization"
     },
     {
-      "timestamp": "2026-08-03T04:16:16.822Z",
-      "request": "Build a fullstack Workout & Fitness Tracker with Express endpoints, Prisma database models for exercises and workout logs, and a clean dark-mode React dashboard displaying weekly progress charts, personal record badges, and interactive workout logger.",
+      "timestamp": "2026-08-03T05:03:30.894Z",
+      "request": "Build a fullstack Knowledge Base and Note Taking app with Express REST API endpoints, Prisma database models for notebooks, tags, and rich markdown notes, and a clean dark-mode React dashboard with sidebar navigation, tag filtering, and instant search.",
+      "stage": "ExecutionComplete"
+    },
+    {
+      "timestamp": "2026-08-03T05:40:05.063Z",
+      "request": "Build a fullstack Knowledge Base and Note Taking app with Express REST API endpoints, Prisma database models for notebooks, tags, and rich markdown notes, and a clean dark-mode React dashboard with sidebar navigation, tag filtering, and instant search.",
       "stage": "ExecutionComplete"
     }
   ]

@@ -1,4 +1,46 @@
 {
+  "apps/cli/src/commands/create.ts": {
+    "path": "apps/cli/src/commands/create.ts",
+    "imports": [],
+    "importedBy": [
+      "apps/cli/src/index.ts"
+    ]
+  },
+  "apps/cli/src/index.ts": {
+    "path": "apps/cli/src/index.ts",
+    "imports": [
+      "apps/cli/src/commands/create.ts"
+    ],
+    "importedBy": []
+  },
+  "packages/agent-runtime/src/execution-engine.ts": {
+    "path": "packages/agent-runtime/src/execution-engine.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "packages/ai-core/src/agents/coder-agent.ts": {
+    "path": "packages/ai-core/src/agents/coder-agent.ts",
+    "imports": [
+      "packages/ai-core/src/providers/failover.ts"
+    ],
+    "importedBy": []
+  },
+  "packages/ai-core/src/execution-engine.ts": {
+    "path": "packages/ai-core/src/execution-engine.ts",
+    "imports": [
+      "packages/ai-core/src/execution-engine.ts"
+    ],
+    "importedBy": [
+      "packages/ai-core/src/execution-engine.ts"
+    ]
+  },
+  "packages/ai-core/src/providers/failover.ts": {
+    "path": "packages/ai-core/src/providers/failover.ts",
+    "imports": [],
+    "importedBy": [
+      "packages/ai-core/src/agents/coder-agent.ts"
+    ]
+  },
   "postcss.config.js": {
     "path": "postcss.config.js",
     "imports": [],
@@ -9,16 +51,37 @@
     "imports": [],
     "importedBy": []
   },
-  "server/prisma.ts": {
-    "path": "server/prisma.ts",
+  "server/middleware/validate.ts": {
+    "path": "server/middleware/validate.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "server/schemas/note.schema.ts": {
+    "path": "server/schemas/note.schema.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "server/schemas/notebook.schema.ts": {
+    "path": "server/schemas/notebook.schema.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "server/schemas/tag.schema.ts": {
+    "path": "server/schemas/tag.schema.ts",
     "imports": [],
     "importedBy": []
   },
   "src/App.tsx": {
     "path": "src/App.tsx",
     "imports": [
-      "src/shared/components/Navbar.tsx",
-      "src/design-system/index.tsx"
+      "src/features/sidebar/components/Sidebar.tsx",
+      "src/features/search/components/SearchBar.tsx",
+      "src/features/notes/components/NoteList.tsx",
+      "src/features/editor/components/MarkdownEditor.tsx",
+      "src/features/notes/hooks/useNotesQuery.ts",
+      "src/features/export/services/exportService.ts",
+      "src/shared/hooks/useLocalStorage.ts",
+      "src/features/search/hooks/useFuzzySearch.ts"
     ],
     "importedBy": [
       "src/main.tsx"
@@ -42,124 +105,100 @@
   "src/design-system/index.tsx": {
     "path": "src/design-system/index.tsx",
     "imports": [],
-    "importedBy": [
-      "src/App.tsx",
-      "src/features/analytics/AnalyticsPage.tsx",
-      "src/features/dashboard/DashboardPage.tsx",
-      "src/features/exercises/ExerciseLibraryPage.tsx",
-      "src/features/history/WorkoutHistoryPage.tsx",
-      "src/features/logger/ActiveWorkoutPage.tsx"
-    ]
+    "importedBy": []
   },
   "src/design-system/tokens.ts": {
     "path": "src/design-system/tokens.ts",
     "imports": [],
     "importedBy": []
   },
-  "src/entities/fitness.ts": {
-    "path": "src/entities/fitness.ts",
+  "src/entities/index.ts": {
+    "path": "src/entities/index.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/entities.ts": {
+    "path": "src/entities.ts",
     "imports": [],
     "importedBy": [
-      "src/features/analytics/AnalyticsPage.tsx",
-      "src/features/analytics/services/analyticsService.ts",
-      "src/features/dashboard/DashboardPage.tsx",
-      "src/features/dashboard/services/dashboardService.ts",
-      "src/features/exercises/ExerciseLibraryPage.tsx",
-      "src/features/exercises/services/exerciseService.ts",
-      "src/features/history/services/historyService.ts",
-      "src/features/history/WorkoutHistoryPage.tsx",
-      "src/features/logger/ActiveWorkoutPage.tsx",
-      "src/features/logger/services/loggerService.ts"
+      "src/features/api/apiClient.ts",
+      "src/features/editor/components/MarkdownEditor.tsx",
+      "src/features/export/services/exportService.ts",
+      "src/features/notes/components/NoteList.tsx",
+      "src/features/notes/hooks/useNotesQuery.ts",
+      "src/features/search/hooks/useFuzzySearch.ts",
+      "src/features/sidebar/components/Sidebar.tsx"
     ]
   },
-  "src/features/analytics/AnalyticsPage.tsx": {
-    "path": "src/features/analytics/AnalyticsPage.tsx",
+  "src/features/api/apiClient.ts": {
+    "path": "src/features/api/apiClient.ts",
     "imports": [
-      "src/design-system/index.tsx",
-      "src/features/analytics/services/analyticsService.ts",
-      "src/entities/fitness.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/analytics/services/analyticsService.ts": {
-    "path": "src/features/analytics/services/analyticsService.ts",
-    "imports": [
-      "src/entities/fitness.ts"
+      "src/entities.ts"
     ],
     "importedBy": [
-      "src/features/analytics/AnalyticsPage.tsx"
+      "src/features/notes/hooks/useNotesQuery.ts"
     ]
   },
-  "src/features/dashboard/DashboardPage.tsx": {
-    "path": "src/features/dashboard/DashboardPage.tsx",
+  "src/features/editor/components/MarkdownEditor.tsx": {
+    "path": "src/features/editor/components/MarkdownEditor.tsx",
     "imports": [
-      "src/design-system/index.tsx",
-      "src/entities/fitness.ts",
-      "src/features/dashboard/services/dashboardService.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/dashboard/services/dashboardService.ts": {
-    "path": "src/features/dashboard/services/dashboardService.ts",
-    "imports": [
-      "src/entities/fitness.ts"
+      "src/entities.ts"
     ],
     "importedBy": [
-      "src/features/dashboard/DashboardPage.tsx"
+      "src/App.tsx"
     ]
   },
-  "src/features/exercises/ExerciseLibraryPage.tsx": {
-    "path": "src/features/exercises/ExerciseLibraryPage.tsx",
+  "src/features/export/services/exportService.ts": {
+    "path": "src/features/export/services/exportService.ts",
     "imports": [
-      "src/design-system/index.tsx",
-      "src/entities/fitness.ts",
-      "src/features/exercises/services/exerciseService.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/exercises/services/exerciseService.ts": {
-    "path": "src/features/exercises/services/exerciseService.ts",
-    "imports": [
-      "src/entities/fitness.ts"
+      "src/entities.ts"
     ],
     "importedBy": [
-      "src/features/exercises/ExerciseLibraryPage.tsx"
+      "src/App.tsx"
     ]
   },
-  "src/features/history/services/historyService.ts": {
-    "path": "src/features/history/services/historyService.ts",
+  "src/features/notes/components/NoteList.tsx": {
+    "path": "src/features/notes/components/NoteList.tsx",
     "imports": [
-      "src/entities/fitness.ts"
+      "src/entities.ts"
     ],
     "importedBy": [
-      "src/features/history/WorkoutHistoryPage.tsx"
+      "src/App.tsx"
     ]
   },
-  "src/features/history/WorkoutHistoryPage.tsx": {
-    "path": "src/features/history/WorkoutHistoryPage.tsx",
+  "src/features/notes/hooks/useNotesQuery.ts": {
+    "path": "src/features/notes/hooks/useNotesQuery.ts",
     "imports": [
-      "src/design-system/index.tsx",
-      "src/entities/fitness.ts",
-      "src/features/history/services/historyService.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/logger/ActiveWorkoutPage.tsx": {
-    "path": "src/features/logger/ActiveWorkoutPage.tsx",
-    "imports": [
-      "src/design-system/index.tsx",
-      "src/entities/fitness.ts",
-      "src/features/logger/services/loggerService.ts"
-    ],
-    "importedBy": []
-  },
-  "src/features/logger/services/loggerService.ts": {
-    "path": "src/features/logger/services/loggerService.ts",
-    "imports": [
-      "src/entities/fitness.ts"
+      "src/features/api/apiClient.ts",
+      "src/entities.ts"
     ],
     "importedBy": [
-      "src/features/logger/ActiveWorkoutPage.tsx"
+      "src/App.tsx"
+    ]
+  },
+  "src/features/search/components/SearchBar.tsx": {
+    "path": "src/features/search/components/SearchBar.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/features/search/hooks/useFuzzySearch.ts": {
+    "path": "src/features/search/hooks/useFuzzySearch.ts",
+    "imports": [
+      "src/entities.ts"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/features/sidebar/components/Sidebar.tsx": {
+    "path": "src/features/sidebar/components/Sidebar.tsx",
+    "imports": [
+      "src/entities.ts"
+    ],
+    "importedBy": [
+      "src/App.tsx"
     ]
   },
   "src/main.tsx": {
@@ -169,8 +208,8 @@
     ],
     "importedBy": []
   },
-  "src/shared/components/Navbar.tsx": {
-    "path": "src/shared/components/Navbar.tsx",
+  "src/shared/hooks/useLocalStorage.ts": {
+    "path": "src/shared/hooks/useLocalStorage.ts",
     "imports": [],
     "importedBy": [
       "src/App.tsx"

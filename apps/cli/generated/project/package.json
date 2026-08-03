@@ -4,38 +4,38 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/dev.js",
-    "server": "npx tsx server/index.ts",
+    "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@prisma/client": "^6.2.1",
-    "canvas-confetti": "latest",
-    "cors": "latest",
-    "dotenv": "latest",
-    "express": "latest",
-    "lucide-react": "latest",
-    "prisma": "^6.2.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-is": "^18.3.1",
     "react-router-dom": "^7.0.0",
-    "recharts": "latest"
+    "express": "latest",
+    "@prisma/client": "^6.2.1",
+    "prisma": "^6.2.1",
+    "zod": "latest",
+    "cors": "latest",
+    "lucide-react": "latest",
+    "clsx": "latest",
+    "tailwind-merge": "latest",
+    "@tanstack/react-query": "latest",
+    "axios": "latest",
+    "jspdf": "2.5.1",
+    "fuse.js": "7.0.0"
   },
   "devDependencies": {
-    "@types/canvas-confetti": "latest",
-    "@types/cors": "latest",
-    "@types/express": "latest",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.19",
-    "concurrently": "^8.2.2",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.1",
-    "tsx": "^4.19.0",
     "typescript": "^5.8.3",
-    "vite": "^7.0.0"
+    "vite": "^7.0.0",
+    "@types/express": "latest",
+    "@types/cors": "latest",
+    "@types/dompurify": "3.0.5"
   }
 }

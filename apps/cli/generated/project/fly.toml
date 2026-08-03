@@ -1,4 +1,4 @@
-app = "fitness-tracker-app"
+app = "knowledge-base-note-taking-app"
 primary_region = "bos"
 
 [http_service]

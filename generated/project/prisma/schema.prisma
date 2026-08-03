@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  decks        Deck[]
+  quizSessions QuizSession[]
+}
+
+model Deck {
+  id           String        @id @default(cuid())
+  title        String
+  description  String
+  category     String        @default("General")
+  isPublic     Boolean       @default(true)
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards        Card[]
+  quizSessions QuizSession[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Card {
+  id        String   @id @default(cuid())
+  deckId    String
+  deck      Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  front     String
+  back      String
+  hints     String?
+  tags      String?  // comma-separated tags
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model QuizSession {
+  id              String   @id @default(cuid())
+  deckId          String
+  deck            Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score           Int
+  totalCards      Int
+  correctCount    Int
+  incorrectCount  Int
+  durationSeconds Int
+  completedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+}

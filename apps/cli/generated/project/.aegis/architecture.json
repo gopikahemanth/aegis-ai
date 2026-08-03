@@ -24,6 +24,6 @@
   "additionalRules": [
     "Preserve type assertions in React TSX components",
     "Do not generate stubs or incomplete code blocks",
-    "Ensure Prisma client generation and database migration steps are executed successfully in the build pipeline before compiling the application code."
+    "Ensure all Prisma database models, migrations, and Express API routes are fully synchronized, initialized, and robustly error-handled to prevent runtime 500 and 404 responses during initial data fetching."
   ]
 }

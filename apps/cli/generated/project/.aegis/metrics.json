@@ -1,7 +1,15 @@
 {
   "buildHistory": [
     {
-      "timestamp": "2026-08-03T04:16:17.802Z",
+      "timestamp": "2026-08-03T05:03:31.943Z",
+      "success": false,
+      "durationMs": 3000,
+      "errors": [
+        "Sandbox Runtime & Browser Verification Failure:\nLive Browser verification failed: Captured 7 browser console errors:\nFailed to load resource: the server responded with a status of 404 (Not Found)\nFailed to load resource: the server responded with a status of 500 (Internal Server Error)\nFailed to load resource: the server responded with a status of 500 (Internal Server Error)\nFailed to load resource: the server responded with a status of 500 (Internal Server Error)\nFailed to load resource: the server responded with a status of 500 (Internal Server Error)\nFailed to load resource: the server responded with a status of 500 (Internal Server Error)\nFailed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "timestamp": "2026-08-03T05:40:39.147Z",
       "success": false,
       "durationMs": 3000,
       "errors": [
@@ -10,9 +18,9 @@
     }
   ],
   "telemetry": {
-    "totalTokensUsed": 341625,
-    "estimatedCostUsd": 0.038011,
+    "totalTokensUsed": 695761,
+    "estimatedCostUsd": 0.071952,
     "healingAttempts": 0,
-    "sandboxRuns": 1
+    "sandboxRuns": 2
   }
 }

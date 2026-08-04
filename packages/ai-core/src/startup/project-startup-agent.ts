@@ -181,7 +181,18 @@ export class ProjectStartupAgent {
 
       // Check for backend server entry points
       let serverPath: string | null = null;
-      const candidates = ["server/index.ts", "server/server.ts", "server/app.ts", "src/server/index.ts", "src/server/server.ts"];
+      const candidates = [
+        "backend/src/server.ts",
+        "backend/src/index.ts",
+        "backend/src/app.ts",
+        "backend/server.ts",
+        "server/index.ts",
+        "server/server.ts",
+        "server/app.ts",
+        "src/server/index.ts",
+        "src/server/server.ts",
+        "server.ts"
+      ];
       for (const candidate of candidates) {
         if (existsSync(join(dir, candidate))) {
           serverPath = candidate;
@@ -206,7 +217,6 @@ if (existsSync("prisma/schema.prisma")) {
   console.log("📦 Syncing Prisma Database Schema...");
   try {
     execSync("npx prisma db push --skip-generate", { stdio: "inherit" });
-    execSync("npx prisma generate", { stdio: "inherit" });
   } catch (err) {
     console.warn("Warning: Prisma database sync skipped:", err.message);
   }

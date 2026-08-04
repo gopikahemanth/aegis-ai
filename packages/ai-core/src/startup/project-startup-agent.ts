@@ -447,8 +447,15 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
   private ensurePrismaDatabase(dir: string): string[] {
     const patches: string[] = [];
-    const schemaPath = join(dir, "prisma", "schema.prisma");
-    if (!existsSync(schemaPath)) return patches;
+    const candidates = [
+      join(dir, "prisma", "schema.prisma"),
+      join(dir, "backend", "prisma", "schema.prisma"),
+      join(dir, "server", "prisma", "schema.prisma"),
+      join(dir, "src", "prisma", "schema.prisma"),
+    ];
+
+    const schemaPath = candidates.find(c => existsSync(c));
+    if (!schemaPath) return patches;
 
     try {
       let schema = readFileSync(schemaPath, "utf8");
@@ -464,6 +471,17 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
       if (!existsSync(envPath)) {
         writeFileSync(envPath, 'PORT=5000\nDATABASE_URL="file:./dev.db"\n', "utf8");
         patches.push("Created default .env file with local SQLite DATABASE_URL");
+      }
+
+      // Execute Prisma database push and client generation so tables exist before dev server runs
+      try {
+        const { execSync } = require("node:child_process");
+        const schemaRelativePath = schemaPath.substring(dir.length + 1);
+        execSync(`npx prisma db push --schema="${schemaRelativePath}" --skip-generate`, { cwd: dir, stdio: "pipe" });
+        execSync(`npx prisma generate --schema="${schemaRelativePath}"`, { cwd: dir, stdio: "pipe" });
+        patches.push(`Initialized SQLite database tables and generated Prisma client from ${schemaRelativePath}`);
+      } catch (dbPushErr: any) {
+        console.warn(`[Startup] Warning: Direct Prisma db push failed: ${dbPushErr.message}`);
       }
     } catch (err: any) {
       console.warn(`[Startup] Warning: Prisma schema patch failed: ${err.message}`);

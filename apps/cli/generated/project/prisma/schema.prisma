@@ -1,54 +1,16 @@
+generator client {
+  provider        = "prisma-client-js"
+}
+
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
-model User {
-  id        String     @id @default(uuid())
-  email     String     @unique
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  notebooks Notebook[]
-  tags      Tag[]
-}
-
-model Notebook {
-  id        String     @id @default(uuid())
+model Todo {
+  id        String   @id @default(cuid())
   title     String
-  color     String     @default("#3b82f6")
-  userId    String     @default("default-user")
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parentId  String?
-  parent    Notebook?  @relation("NotebookHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children  Notebook[] @relation("NotebookHierarchy")
-  notes     Note[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-}
-
-model Note {
-  id         String   @id @default(uuid())
-  title      String
-  content    String   @default("")
-  notebookId String
-  notebook   Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
-  isFavorite Boolean  @default(false)
-  tags       Tag[]    @relation("NoteToTag")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-}
-
-model Tag {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  color     String   @default("#64748b")
-  userId    String   @default("default-user")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  notes     Note[]   @relation("NoteToTag")
+  completed Boolean @default(false)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @updated_at
 }

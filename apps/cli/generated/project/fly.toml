@@ -1,4 +1,4 @@
-app = "knowledge-base-note-taking-app"
+app = "robust-fullstack-todo-app"
 primary_region = "bos"
 
 [http_service]

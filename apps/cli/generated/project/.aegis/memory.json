@@ -1,35 +1,21 @@
 {
   "projectName": "project",
-  "lastRequest": "Build a fullstack Knowledge Base and Note Taking app with Express REST API endpoints, Prisma database models for notebooks, tags, and rich markdown notes, and a clean dark-mode React dashboard with sidebar navigation, tag filtering, and instant search.",
+  "lastRequest": "Build a simple fullstack Todo app with Express REST API, Prisma SQLite database, and a React frontend with dark mode, task creation, completion toggle, and delete.",
   "createdFiles": [
+    "src/features/theme/context/ThemeContext.tsx",
+    "src/services/tasksApi.ts",
     "prisma/schema.prisma",
-    "server/index.ts",
-    "src/entities/index.ts",
-    "src/features/api/apiClient.ts",
-    "src/features/sidebar/components/Sidebar.tsx",
-    "src/features/editor/components/MarkdownEditor.tsx",
-    "src/App.tsx",
-    "src/features/search/components/SearchBar.tsx",
     "Dockerfile",
     ".dockerignore",
     ".github/workflows/ci-cd.yml",
     "docker-compose.yml",
-    "fly.toml",
-    "src/features/notes/components/NoteList.tsx",
-    "src/features/notes/hooks/useNotesQuery.ts",
-    "server/schemas/notebook.schema.ts",
-    "server/schemas/tag.schema.ts",
-    "server/schemas/note.schema.ts",
-    "server/middleware/validate.ts",
-    "src/shared/hooks/useLocalStorage.ts",
-    "src/features/search/hooks/useFuzzySearch.ts",
-    "src/features/export/services/exportService.ts"
+    "fly.toml"
   ],
   "tasks": [
     {
       "id": 1,
-      "title": "Database Modeling with Prisma and PostgreSQL",
-      "description": "Design and apply Prisma schema for User, Notebook, Note, and Tag models including migrations.",
+      "title": "Database Schema and Prisma Setup",
+      "description": "Configure SQLite database, define Todo schema in Prisma, and generate client libraries.",
       "completed": true,
       "stage": "Database",
       "priority": 1,
@@ -38,8 +24,8 @@
     },
     {
       "id": 2,
-      "title": "Express.js API & Zod Schema Validation",
-      "description": "Implement Express REST endpoints for Notebooks, Notes, and Tags CRUD with Zod validation.",
+      "title": "Express API Implementation and Validation",
+      "description": "Develop Express REST routes for full Todo CRUD, utilizing Zod schema parsing and error handling.",
       "completed": true,
       "stage": "Backend",
       "priority": 2,
@@ -50,55 +36,49 @@
     },
     {
       "id": 3,
-      "title": "Frontend Shell & State Management",
-      "description": "Setup Vite-React, Tailwind UI, sidebar layout, and React Query integration with the Backend APIs.",
+      "title": "Frontend Scaffold and Theme Context",
+      "description": "Set up Vite, Tailwind, Lucide Icons, and implement local storage-backed dark/light mode toggle.",
       "completed": true,
       "stage": "Frontend",
       "priority": 3,
-      "dependencies": [
-        2
-      ],
-      "estimatedComplexity": 3
+      "dependencies": [],
+      "estimatedComplexity": 2
     },
     {
       "id": 4,
-      "title": "Markdown Editor & Export Features",
-      "description": "Build live-preview markdown editor with autosave, and export functionalities to PDF, Text, and JSON.",
+      "title": "TanStack Query and Optimistic Todo UI",
+      "description": "Implement Todo list view, creation form, search filters, and handle CRUD using optimistic UI updates.",
       "completed": true,
       "stage": "Frontend",
       "priority": 4,
       "dependencies": [
+        2,
         3
       ],
       "estimatedComplexity": 4
     },
     {
       "id": 5,
-      "title": "Fuzzy Search, Tag Filtering & Docker Setup",
-      "description": "Integrate Fuse.js for client search, tag filters, docker-compose configuration, and end-to-end verification.",
+      "title": "Docker Setup and Integration Verification",
+      "description": "Create production-ready multi-stage Dockerfile for orchestration, verifying data persistence.",
       "completed": true,
-      "stage": "Review",
+      "stage": "Validation",
       "priority": 5,
       "dependencies": [
         4
       ],
-      "estimatedComplexity": 3
+      "estimatedComplexity": 2
     }
   ],
   "history": [
     {
-      "timestamp": "2026-08-03T05:01:06.538Z",
-      "request": "Build a fullstack Knowledge Base and Note Taking app with Express REST API endpoints, Prisma database models for notebooks, tags, and rich markdown notes, and a clean dark-mode React dashboard with sidebar navigation, tag filtering, and instant search.",
+      "timestamp": "2026-08-04T04:04:58.915Z",
+      "request": "Build a simple fullstack Todo app with Express REST API, Prisma SQLite database, and a React frontend with dark mode, task creation, completion toggle, and delete.",
       "stage": "Initialization"
     },
     {
-      "timestamp": "2026-08-03T05:03:30.894Z",
-      "request": "Build a fullstack Knowledge Base and Note Taking app with Express REST API endpoints, Prisma database models for notebooks, tags, and rich markdown notes, and a clean dark-mode React dashboard with sidebar navigation, tag filtering, and instant search.",
-      "stage": "ExecutionComplete"
-    },
-    {
-      "timestamp": "2026-08-03T05:40:05.063Z",
-      "request": "Build a fullstack Knowledge Base and Note Taking app with Express REST API endpoints, Prisma database models for notebooks, tags, and rich markdown notes, and a clean dark-mode React dashboard with sidebar navigation, tag filtering, and instant search.",
+      "timestamp": "2026-08-04T04:11:50.190Z",
+      "request": "Build a simple fullstack Todo app with Express REST API, Prisma SQLite database, and a React frontend with dark mode, task creation, completion toggle, and delete.",
       "stage": "ExecutionComplete"
     }
   ]

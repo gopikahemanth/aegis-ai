@@ -1,88 +1,12 @@
 {
-  "apps/cli/src/commands/create.ts": {
-    "path": "apps/cli/src/commands/create.ts",
-    "imports": [],
-    "importedBy": [
-      "apps/cli/src/index.ts"
-    ]
-  },
-  "apps/cli/src/index.ts": {
-    "path": "apps/cli/src/index.ts",
-    "imports": [
-      "apps/cli/src/commands/create.ts"
-    ],
-    "importedBy": []
-  },
-  "packages/agent-runtime/src/execution-engine.ts": {
-    "path": "packages/agent-runtime/src/execution-engine.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "packages/ai-core/src/agents/coder-agent.ts": {
-    "path": "packages/ai-core/src/agents/coder-agent.ts",
-    "imports": [
-      "packages/ai-core/src/providers/failover.ts"
-    ],
-    "importedBy": []
-  },
-  "packages/ai-core/src/execution-engine.ts": {
-    "path": "packages/ai-core/src/execution-engine.ts",
-    "imports": [
-      "packages/ai-core/src/execution-engine.ts"
-    ],
-    "importedBy": [
-      "packages/ai-core/src/execution-engine.ts"
-    ]
-  },
-  "packages/ai-core/src/providers/failover.ts": {
-    "path": "packages/ai-core/src/providers/failover.ts",
-    "imports": [],
-    "importedBy": [
-      "packages/ai-core/src/agents/coder-agent.ts"
-    ]
-  },
   "postcss.config.js": {
     "path": "postcss.config.js",
     "imports": [],
     "importedBy": []
   },
-  "server/index.ts": {
-    "path": "server/index.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "server/middleware/validate.ts": {
-    "path": "server/middleware/validate.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "server/schemas/note.schema.ts": {
-    "path": "server/schemas/note.schema.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "server/schemas/notebook.schema.ts": {
-    "path": "server/schemas/notebook.schema.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "server/schemas/tag.schema.ts": {
-    "path": "server/schemas/tag.schema.ts",
-    "imports": [],
-    "importedBy": []
-  },
   "src/App.tsx": {
     "path": "src/App.tsx",
-    "imports": [
-      "src/features/sidebar/components/Sidebar.tsx",
-      "src/features/search/components/SearchBar.tsx",
-      "src/features/notes/components/NoteList.tsx",
-      "src/features/editor/components/MarkdownEditor.tsx",
-      "src/features/notes/hooks/useNotesQuery.ts",
-      "src/features/export/services/exportService.ts",
-      "src/shared/hooks/useLocalStorage.ts",
-      "src/features/search/hooks/useFuzzySearch.ts"
-    ],
+    "imports": [],
     "importedBy": [
       "src/main.tsx"
     ]
@@ -102,8 +26,8 @@
     "imports": [],
     "importedBy": []
   },
-  "src/design-system/index.tsx": {
-    "path": "src/design-system/index.tsx",
+  "src/design-system/index.ts": {
+    "path": "src/design-system/index.ts",
     "imports": [],
     "importedBy": []
   },
@@ -112,94 +36,10 @@
     "imports": [],
     "importedBy": []
   },
-  "src/entities/index.ts": {
-    "path": "src/entities/index.ts",
+  "src/features/theme/context/ThemeContext.tsx": {
+    "path": "src/features/theme/context/ThemeContext.tsx",
     "imports": [],
     "importedBy": []
-  },
-  "src/entities.ts": {
-    "path": "src/entities.ts",
-    "imports": [],
-    "importedBy": [
-      "src/features/api/apiClient.ts",
-      "src/features/editor/components/MarkdownEditor.tsx",
-      "src/features/export/services/exportService.ts",
-      "src/features/notes/components/NoteList.tsx",
-      "src/features/notes/hooks/useNotesQuery.ts",
-      "src/features/search/hooks/useFuzzySearch.ts",
-      "src/features/sidebar/components/Sidebar.tsx"
-    ]
-  },
-  "src/features/api/apiClient.ts": {
-    "path": "src/features/api/apiClient.ts",
-    "imports": [
-      "src/entities.ts"
-    ],
-    "importedBy": [
-      "src/features/notes/hooks/useNotesQuery.ts"
-    ]
-  },
-  "src/features/editor/components/MarkdownEditor.tsx": {
-    "path": "src/features/editor/components/MarkdownEditor.tsx",
-    "imports": [
-      "src/entities.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/features/export/services/exportService.ts": {
-    "path": "src/features/export/services/exportService.ts",
-    "imports": [
-      "src/entities.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/features/notes/components/NoteList.tsx": {
-    "path": "src/features/notes/components/NoteList.tsx",
-    "imports": [
-      "src/entities.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/features/notes/hooks/useNotesQuery.ts": {
-    "path": "src/features/notes/hooks/useNotesQuery.ts",
-    "imports": [
-      "src/features/api/apiClient.ts",
-      "src/entities.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/features/search/components/SearchBar.tsx": {
-    "path": "src/features/search/components/SearchBar.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/features/search/hooks/useFuzzySearch.ts": {
-    "path": "src/features/search/hooks/useFuzzySearch.ts",
-    "imports": [
-      "src/entities.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/features/sidebar/components/Sidebar.tsx": {
-    "path": "src/features/sidebar/components/Sidebar.tsx",
-    "imports": [
-      "src/entities.ts"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
   },
   "src/main.tsx": {
     "path": "src/main.tsx",
@@ -208,12 +48,10 @@
     ],
     "importedBy": []
   },
-  "src/shared/hooks/useLocalStorage.ts": {
-    "path": "src/shared/hooks/useLocalStorage.ts",
+  "src/services/tasksApi.ts": {
+    "path": "src/services/tasksApi.ts",
     "imports": [],
-    "importedBy": [
-      "src/App.tsx"
-    ]
+    "importedBy": []
   },
   "src/vite-env.d.ts": {
     "path": "src/vite-env.d.ts",

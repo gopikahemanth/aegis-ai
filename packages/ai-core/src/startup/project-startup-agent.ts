@@ -257,6 +257,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         "react-is": "^18.3.1",
         "react-hook-form": "^7.52.0",
         "@hookform/resolvers": "^3.9.0",
+        "react-hot-toast": "^2.4.1",
         "zod": "^3.23.8",
         "jspdf": "^2.5.1",
         "fuse.js": "^7.0.0",
@@ -327,8 +328,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
     // Allow Prisma and esbuild build scripts in pnpm and bypass release age policies
     const npmrcPath = join(dir, ".npmrc");
     if (!existsSync(npmrcPath)) {
-      writeFileSync(npmrcPath, "ignore-scripts=false\nverify-deps-before-run=false\nminimum-release-age=0\n", "utf8");
-      patches.push("Created .npmrc (allow build scripts & bypass release age policies)");
+      writeFileSync(npmrcPath, "ignore-scripts=false\n", "utf8");
+      patches.push("Created .npmrc (allow build scripts)");
     }
 
     const tsconfigPath = join(dir, "tsconfig.json");

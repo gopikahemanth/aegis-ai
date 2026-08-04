@@ -272,16 +272,20 @@ export const Button: React.FC<ButtonProps> = ({
 interface SkeletonProps {
   className?: string;
   lines?: number;
+  count?: number;
+  height?: string | number;
+  width?: string | number;
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({ className = '', lines = 1 }) => {
-  if (lines > 1) {
+export const Skeleton: React.FC<SkeletonProps> = ({ className = '', lines = 1, count }) => {
+  const effectiveLines = count ?? lines;
+  if (effectiveLines > 1) {
     return (
       <div className="space-y-2" role="status" aria-label="Loading">
-        {Array.from({ length: lines }).map((_, i) => (
+        {Array.from({ length: effectiveLines }).map((_, i) => (
           <div
             key={i}
-            className={\`h-4 rounded-md bg-${tokens.neutral}-800 animate-pulse \${i === lines - 1 ? 'w-3/4' : 'w-full'} \${className}\`}
+            className={\`h-4 rounded-md bg-${tokens.neutral}-800 animate-pulse \${i === effectiveLines - 1 ? 'w-3/4' : 'w-full'} \${className}\`}
           />
         ))}
       </div>

@@ -140,9 +140,9 @@ export class FailoverProvider implements AIProvider {
           }
 
           const isGemini = provider.name === "gemini";
+          const maxAllowed = isGemini ? 10 : this.maxRetries;
           const is503 = error.message?.includes("503") || error.message?.includes("UNAVAILABLE") || error.message?.includes("high demand");
           const is429 = error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED");
-          const maxAllowed = isGemini && (is503 || is429 || retryAfter !== undefined) ? 10 : this.maxRetries;
 
           if (isGemini && retryAfter !== undefined && retryAfter <= 45 && attempts < maxAllowed) {
             const waitMs = (retryAfter + 1) * 1000;

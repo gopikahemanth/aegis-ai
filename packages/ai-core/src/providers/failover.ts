@@ -144,14 +144,14 @@ export class FailoverProvider implements AIProvider {
           }
 
           if (error instanceof ProviderError && error.retryAfter !== undefined) {
-            if (error.retryAfter <= 15 && attempts < maxAllowed) {
+            if (error.retryAfter <= 35 && attempts < maxAllowed) {
               const waitTime = error.retryAfter * 1000;
               console.log(
-                `[FailoverProvider] Respecting retry-after. Waiting ${error.retryAfter}s (attempt ${attempts}/${maxAllowed})...`
+                `[FailoverProvider] Respecting Gemini TPM quota retry-after. Waiting ${error.retryAfter}s (attempt ${attempts}/${maxAllowed})...`
               );
               await new Promise((resolve) => setTimeout(resolve, waitTime));
               continue;
-            } else if (error.retryAfter > 15) {
+            } else if (error.retryAfter > 35) {
               console.log(
                 `[FailoverProvider] Retry-after duration too long (${error.retryAfter}s). Bypassing retry to fallback immediately.`
               );

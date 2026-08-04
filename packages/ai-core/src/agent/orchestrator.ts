@@ -829,6 +829,22 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.warn(`[Orchestrator] Warning: Initial package installation failed: ${instErr.message}`);
     }
 
+    // ─── Project Startup Agent (Pre-Verification Setup) ─────────────────────
+    console.log("[Startup] Running Project Startup Agent to prepare database and environment...");
+    try {
+      const startupAgent = new ProjectStartupAgent();
+      const startupResult = await startupAgent.prepare(outputDirectory);
+      if (startupResult.patchesApplied.length > 0) {
+        auditTrail.logEvent({
+          agentRole: "Project Startup Agent",
+          action: `Pre-verification setup applied ${startupResult.patchesApplied.length} fix(es): ${startupResult.patchesApplied.join("; ")}`,
+          status: "SUCCESS"
+        });
+      }
+    } catch (startupErr: any) {
+      console.warn(`[Startup] Warning: Pre-verification startup agent failed: ${startupErr.message}`);
+    }
+
     let build =
       await this.runVerification(
         request,

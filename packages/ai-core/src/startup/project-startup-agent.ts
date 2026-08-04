@@ -91,6 +91,12 @@ export class ProjectStartupAgent {
       }
     }
 
+    // ── 7. Deterministic TypeScript fixups (no AI call needed) ───────────────
+    const fixedFiles = this.applyDeterministicTsFixes(outputDirectory);
+    if (fixedFiles.length > 0) {
+      patches.push(`Auto-fixed TypeScript patterns in: ${fixedFiles.join(", ")}`);
+    }
+
     const url = framework === "react-vite" || framework === "next"
       ? "http://localhost:5173"
       : framework === "express"
@@ -499,5 +505,81 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
     }
 
     return patches;
+  }
+
+  /**
+   * Deterministic TypeScript fixups applied after AI generation.
+   * These cover recurring bugs that the AI consistently produces.
+   * No AI call needed — pure regex transforms on generated files.
+   */
+  private applyDeterministicTsFixes(dir: string): string[] {
+    const fixed: string[] = [];
+    const srcDir = join(dir, "src");
+    if (!existsSync(srcDir)) return fixed;
+
+    const allFiles = this.walkFiles(srcDir, 8);
+    const tsxFiles = allFiles.filter(f => f.endsWith(".tsx") || f.endsWith(".ts"));
+
+    for (const absPath of tsxFiles) {
+      try {
+        let content = readFileSync(absPath, "utf8");
+        let changed = false;
+        const rel = relative(dir, absPath).replace(/\\/g, "/");
+
+        // Fix 1: ThemeContext not exported
+        // Pattern: `const ThemeContext = createContext` → `export const ThemeContext = createContext`
+        if (content.includes("const ThemeContext = createContext") && !content.includes("export const ThemeContext")) {
+          content = content.replace(
+            /^(const ThemeContext = createContext)/m,
+            "export const ThemeContext = createContext"
+          );
+          changed = true;
+        }
+
+        // Fix 2: Pages that are React.lazy-loaded need `export default`
+        // If this file is a Page and has only a named export, add a default re-export
+        const isPage = rel.includes("/pages/") || rel.includes("Page.tsx");
+        if (isPage) {
+          const namedExportMatch = content.match(/^export const (\w+):\s*React\.FC/m);
+          if (namedExportMatch && !content.includes("export default")) {
+            const componentName = namedExportMatch[1];
+            content = content.trimEnd() + `\n\nexport default ${componentName};\n`;
+            changed = true;
+          }
+        }
+
+        // Fix 3: App.tsx missing default export
+        if (rel === "src/App.tsx" || rel.endsWith("/App.tsx")) {
+          if (!content.includes("export default")) {
+            const namedMatch = content.match(/^export (function|const) (App\w*)/m);
+            if (namedMatch) {
+              content = content.trimEnd() + `\n\nexport default ${namedMatch[2]};\n`;
+              changed = true;
+            }
+          }
+        }
+
+        // Fix 4: useTheme / useContext returning `unknown` — add explicit return type
+        // Pattern: `export const useTheme = () => useContext(ThemeContext);`
+        // Missing the typed context. Add a generic type cast.
+        if (content.includes("useContext(ThemeContext)") && content.includes("unknown")) {
+          // Not much we can do without the type — just suppress by casting
+          content = content.replace(
+            /export const useTheme = \(\) => useContext\(ThemeContext\);/,
+            "export const useTheme = () => useContext(ThemeContext) as { theme: string; toggleTheme: () => void };"
+          );
+          changed = true;
+        }
+
+        if (changed) {
+          writeFileSync(absPath, content, "utf8");
+          fixed.push(rel);
+        }
+      } catch {
+        // Non-fatal — skip this file
+      }
+    }
+
+    return fixed;
   }
 }

@@ -1009,6 +1009,24 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.warn(`[Startup] Warning: Startup agent failed: ${startupErr.message}`);
     }
 
+    // ─── Documentation (always generate BEFORE DoD validation) ─────────────
+    console.log("[Lifecycle] Generating project documentation (README, ARCHITECTURE, .env.example)...");
+    try {
+      const docFiles = await this.docsGeneratorAgent.generate(
+        specification,
+        request,
+        files.map(f => f.path),
+        outputDirectory,
+      );
+      this.write(
+        this.validator.validate(framework ?? "html", docFiles),
+        outputDirectory,
+      );
+      console.log("[Lifecycle] ✓ Documentation generated.");
+    } catch (docErr: any) {
+      console.warn(`[Lifecycle] Warning: Documentation generation failed: ${docErr.message}`);
+    }
+
     // ─── Definition of Done ──────────────────────────────────────────────────
     console.log("[DoD] Running Definition of Done validation...");
     let dodPassed = false;
@@ -1045,24 +1063,6 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       await this.prGeneratorAgent.execute(outputDirectory, request);
     } catch (gitErr: any) {
       console.warn(`[GitEngine] Warning: Git commit and PR audit operations failed: ${gitErr.message}`);
-    }
-
-    // ─── Documentation (always generate, regardless of build success) ───────
-    console.log("[Lifecycle] Generating project documentation (README, ARCHITECTURE, .env.example)...");
-    try {
-      const docFiles = await this.docsGeneratorAgent.generate(
-        specification,
-        request,
-        files.map(f => f.path),
-        outputDirectory,
-      );
-      this.write(
-        this.validator.validate(framework ?? "html", docFiles),
-        outputDirectory,
-      );
-      console.log("[Lifecycle] ✓ Documentation generated.");
-    } catch (docErr: any) {
-      console.warn(`[Lifecycle] Warning: Documentation generation failed: ${docErr.message}`);
     }
 
     // Only hard-fail when the build is broken AND DoD explicitly failed on build

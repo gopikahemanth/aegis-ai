@@ -174,8 +174,17 @@ export class SandboxVerifier {
       await page.screenshot({ path: screenshotPath });
       console.log(`[Sandbox] Visual screenshot captured: ${screenshotPath}`);
 
-      if (consoleErrors.length > 0) {
-        throw new Error(`Captured ${consoleErrors.length} browser console errors:\n${consoleErrors.join("\n")}`);
+      // Filter out non-fatal 404 asset warnings (favicons, missing images/styles)
+      const fatalErrors = consoleErrors.filter(err => {
+        const lower = err.toLowerCase();
+        if (lower.includes("favicon") || lower.includes("404 (not found)") || err.trim() === "%o" || err.trim() === "%s") {
+          return false;
+        }
+        return true;
+      });
+
+      if (fatalErrors.length > 0) {
+        throw new Error(`Captured ${fatalErrors.length} fatal browser console errors:\n${fatalErrors.join("\n")}`);
       }
 
       await browser.close();

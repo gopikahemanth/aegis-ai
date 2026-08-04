@@ -131,7 +131,17 @@ export class FailoverProvider implements AIProvider {
             error.message
           );
 
-          const maxAllowed = (error instanceof ProviderError && error.retryAfter !== undefined) ? 6 : this.maxRetries;
+          const is503 = error.message?.includes("503") || error.message?.includes("UNAVAILABLE") || error.message?.includes("high demand");
+          const maxAllowed = is503 ? 5 : ((error instanceof ProviderError && error.retryAfter !== undefined) ? 6 : this.maxRetries);
+
+          if (is503 && attempts < maxAllowed) {
+            const waitTime = attempts * 3000;
+            console.log(
+              `[FailoverProvider] 503 High Demand detected on ${provider.name}. Waiting ${waitTime / 1000}s (attempt ${attempts}/${maxAllowed})...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, waitTime));
+            continue;
+          }
 
           if (error instanceof ProviderError && error.retryAfter !== undefined) {
             if (error.retryAfter <= 15 && attempts < maxAllowed) {

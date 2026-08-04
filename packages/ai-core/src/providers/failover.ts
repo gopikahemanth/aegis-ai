@@ -139,11 +139,12 @@ export class FailoverProvider implements AIProvider {
             }
           }
 
+          const isGemini = provider.name === "gemini";
           const is503 = error.message?.includes("503") || error.message?.includes("UNAVAILABLE") || error.message?.includes("high demand");
           const is429 = error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED");
-          const maxAllowed = (is503 || is429 || retryAfter !== undefined) ? 10 : this.maxRetries;
+          const maxAllowed = isGemini && (is503 || is429 || retryAfter !== undefined) ? 10 : this.maxRetries;
 
-          if (retryAfter !== undefined && retryAfter <= 45 && attempts < maxAllowed) {
+          if (isGemini && retryAfter !== undefined && retryAfter <= 45 && attempts < maxAllowed) {
             const waitMs = (retryAfter + 1) * 1000;
             console.log(
               `[FailoverProvider] 429 Rate Limit / Quota detected on ${provider.name}. Waiting ${retryAfter + 1}s for quota refill (attempt ${attempts}/${maxAllowed})...`
@@ -152,8 +153,8 @@ export class FailoverProvider implements AIProvider {
             continue;
           }
 
-          if (is503 && attempts < maxAllowed) {
-            const waitTime = attempts * 3000;
+          if (isGemini && is503 && attempts < maxAllowed) {
+            const waitTime = Math.min(attempts * 3000, 10000);
             console.log(
               `[FailoverProvider] 503 High Demand detected on ${provider.name}. Waiting ${waitTime / 1000}s (attempt ${attempts}/${maxAllowed})...`
             );
@@ -162,11 +163,12 @@ export class FailoverProvider implements AIProvider {
           }
 
           if (attempts < maxAllowed) {
+            const nextDelay = Math.min(delay, 5000);
             console.log(
-              `[FailoverProvider] Backing off for ${delay}ms...`
+              `[FailoverProvider] Backing off for ${nextDelay}ms...`
             );
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            delay *= 2; // exponential backoff
+            await new Promise((resolve) => setTimeout(resolve, nextDelay));
+            delay = Math.min(delay * 2, 5000);
           } else {
             break;
           }

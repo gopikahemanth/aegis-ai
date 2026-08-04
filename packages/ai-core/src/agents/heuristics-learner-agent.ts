@@ -19,7 +19,7 @@ Return ONLY the rule as a single-line string. Do not write markdown, backticks, 
       { role: "system", content: "You are a professional compiler analysis and coding rules coordinator." },
       { role: "user", content: prompt }
     ], {
-      model: "gemini-3.5-flash-lite",
+      model: "gemini-flash-lite-latest",
       temperature: 0.1
     });
 

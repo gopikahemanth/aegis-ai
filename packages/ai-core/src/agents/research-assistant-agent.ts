@@ -29,7 +29,7 @@ Never output markdown backticks (like \`\`\`json) or extra text, just the raw JS
       { role: "system", content: "You are a professional software engineering research assistant." },
       { role: "user", content: prompt }
     ], {
-      model: "gemini-3.5-flash-lite",
+      model: "gemini-flash-lite-latest",
       temperature: 0.2
     });
 

@@ -4,7 +4,7 @@ import type { AIProvider, ChatMessage, ChatOptions } from "./base.js";
 
 export class FailoverProvider implements AIProvider {
   public readonly name = "failover";
-  private readonly disabledProviders = new Set<string>();
+  private readonly disabledUntil = new Map<string, number>();
 
   constructor(
     private readonly providers: AIProvider[],
@@ -41,13 +41,21 @@ export class FailoverProvider implements AIProvider {
       }
     }
 
-    if (this.disabledProviders.size >= this.providers.length) {
-      console.log("[FailoverProvider] All providers were disabled — resetting disabled providers lifecycle tracking.");
-      this.disabledProviders.clear();
+    const now = Date.now();
+    for (const [pName, expiry] of this.disabledUntil.entries()) {
+      if (now >= expiry) {
+        this.disabledUntil.delete(pName);
+      }
+    }
+
+    if (this.disabledUntil.size >= this.providers.length) {
+      console.log("[FailoverProvider] All providers were disabled — resetting disabled provider timeouts.");
+      this.disabledUntil.clear();
     }
 
     for (const provider of this.providers) {
-      if (this.disabledProviders.has(provider.name)) {
+      const until = this.disabledUntil.get(provider.name);
+      if (until && Date.now() < until) {
         continue;
       }
 
@@ -154,9 +162,9 @@ export class FailoverProvider implements AIProvider {
       }
 
       console.warn(
-        `[FailoverProvider] Provider ${provider.name} exhausted all attempts. Disabling provider for this lifecycle, falling back.`
+        `[FailoverProvider] Provider ${provider.name} exhausted all attempts. Disabling provider for 15s, falling back.`
       );
-      this.disabledProviders.add(provider.name);
+      this.disabledUntil.set(provider.name, Date.now() + 15000);
     }
 
     throw new Error(

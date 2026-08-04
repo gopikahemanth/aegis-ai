@@ -9,7 +9,7 @@ export class DependencyInstaller {
   ) {
     const args =
       packageManager === "pnpm"
-        ? ["install", "--ignore-workspace"]
+        ? ["install", "--ignore-workspace", "--config.minimum-release-age=0", "--no-frozen-lockfile"]
         : ["install"];
 
     return this.terminal.run(

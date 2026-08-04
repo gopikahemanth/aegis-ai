@@ -247,6 +247,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         "react-is": "^18.3.1",
         "react-hook-form": "^7.52.0",
         "@hookform/resolvers": "^3.9.0",
+        "zod": "^3.23.8",
         "jspdf": "^2.5.1",
         "fuse.js": "^7.0.0",
         "marked": "^14.0.0",
@@ -475,7 +476,6 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
       // Execute Prisma database push and client generation so tables exist before dev server runs
       try {
-        const { execSync } = require("node:child_process");
         const schemaRelativePath = schemaPath.substring(dir.length + 1);
         execSync(`npx prisma db push --schema="${schemaRelativePath}" --skip-generate`, { cwd: dir, stdio: "pipe" });
         execSync(`npx prisma generate --schema="${schemaRelativePath}"`, { cwd: dir, stdio: "pipe" });

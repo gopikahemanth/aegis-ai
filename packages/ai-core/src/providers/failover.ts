@@ -131,8 +131,26 @@ export class FailoverProvider implements AIProvider {
             error.message
           );
 
+          let retryAfter = error instanceof ProviderError ? error.retryAfter : undefined;
+          if (retryAfter === undefined && error.message) {
+            const match = error.message.match(/retry in ([0-9.]+)\s*s/i);
+            if (match) {
+              retryAfter = Math.ceil(parseFloat(match[1]));
+            }
+          }
+
           const is503 = error.message?.includes("503") || error.message?.includes("UNAVAILABLE") || error.message?.includes("high demand");
-          const maxAllowed = is503 ? 5 : ((error instanceof ProviderError && error.retryAfter !== undefined) ? 6 : this.maxRetries);
+          const is429 = error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED");
+          const maxAllowed = (is503 || is429 || retryAfter !== undefined) ? 10 : this.maxRetries;
+
+          if (retryAfter !== undefined && retryAfter <= 45 && attempts < maxAllowed) {
+            const waitMs = (retryAfter + 1) * 1000;
+            console.log(
+              `[FailoverProvider] 429 Rate Limit / Quota detected on ${provider.name}. Waiting ${retryAfter + 1}s for quota refill (attempt ${attempts}/${maxAllowed})...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, waitMs));
+            continue;
+          }
 
           if (is503 && attempts < maxAllowed) {
             const waitTime = attempts * 3000;
@@ -141,22 +159,6 @@ export class FailoverProvider implements AIProvider {
             );
             await new Promise((resolve) => setTimeout(resolve, waitTime));
             continue;
-          }
-
-          if (error instanceof ProviderError && error.retryAfter !== undefined) {
-            if (error.retryAfter <= 35 && attempts < maxAllowed) {
-              const waitTime = error.retryAfter * 1000;
-              console.log(
-                `[FailoverProvider] Respecting Gemini TPM quota retry-after. Waiting ${error.retryAfter}s (attempt ${attempts}/${maxAllowed})...`
-              );
-              await new Promise((resolve) => setTimeout(resolve, waitTime));
-              continue;
-            } else if (error.retryAfter > 35) {
-              console.log(
-                `[FailoverProvider] Retry-after duration too long (${error.retryAfter}s). Bypassing retry to fallback immediately.`
-              );
-              break;
-            }
           }
 
           if (attempts < maxAllowed) {

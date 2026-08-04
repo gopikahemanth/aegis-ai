@@ -9,13 +9,14 @@
     ".dockerignore",
     ".github/workflows/ci-cd.yml",
     "docker-compose.yml",
-    "fly.toml"
+    "fly.toml",
+    ".env"
   ],
   "tasks": [
     {
       "id": 1,
-      "title": "Database Schema and Prisma Setup",
-      "description": "Configure SQLite database, define Todo schema in Prisma, and generate client libraries.",
+      "title": "Database Schema & Validation Setup",
+      "description": "Define Prisma Task model with SQLite and build shared Zod validation schemas for task entities.",
       "completed": true,
       "stage": "Database",
       "priority": 1,
@@ -24,47 +25,51 @@
     },
     {
       "id": 2,
-      "title": "Express API Implementation and Validation",
-      "description": "Develop Express REST routes for full Todo CRUD, utilizing Zod schema parsing and error handling.",
+      "title": "Backend Express REST API Development",
+      "description": "Implement Express server, repository layer, and controllers for task CRUD, filtering, search, bulk delete, and export endpoints.",
       "completed": true,
       "stage": "Backend",
       "priority": 2,
       "dependencies": [
         1
       ],
-      "estimatedComplexity": 3
+      "estimatedComplexity": 4
     },
     {
       "id": 3,
-      "title": "Frontend Scaffold and Theme Context",
-      "description": "Set up Vite, Tailwind, Lucide Icons, and implement local storage-backed dark/light mode toggle.",
+      "title": "Frontend Client API & State Management",
+      "description": "Build Axios client layer, custom React hooks for optimistic updates with Sonner toasts, and theme management logic.",
       "completed": true,
       "stage": "Frontend",
       "priority": 3,
-      "dependencies": [],
-      "estimatedComplexity": 2
+      "dependencies": [
+        2
+      ],
+      "estimatedComplexity": 3
     },
     {
       "id": 4,
-      "title": "TanStack Query and Optimistic Todo UI",
-      "description": "Implement Todo list view, creation form, search filters, and handle CRUD using optimistic UI updates.",
+      "title": "Frontend Components & Feature UI",
+      "description": "Construct Tailwind-styled UI components for task management, filter/search controls, dark mode, and CSV/JSON export.",
       "completed": true,
       "stage": "Frontend",
       "priority": 4,
       "dependencies": [
-        2,
         3
       ],
       "estimatedComplexity": 4
     },
     {
       "id": 5,
-      "title": "Docker Setup and Integration Verification",
-      "description": "Create production-ready multi-stage Dockerfile for orchestration, verifying data persistence.",
+      "title": "Dockerization & Build Validation",
+      "description": "Configure multi-stage Dockerfile, docker-compose, and perform full end-to-end production build and runtime validation.",
       "completed": true,
       "stage": "Validation",
       "priority": 5,
       "dependencies": [
+        1,
+        2,
+        3,
         4
       ],
       "estimatedComplexity": 2
@@ -78,6 +83,11 @@
     },
     {
       "timestamp": "2026-08-04T04:11:50.190Z",
+      "request": "Build a simple fullstack Todo app with Express REST API, Prisma SQLite database, and a React frontend with dark mode, task creation, completion toggle, and delete.",
+      "stage": "ExecutionComplete"
+    },
+    {
+      "timestamp": "2026-08-04T04:23:08.344Z",
       "request": "Build a simple fullstack Todo app with Express REST API, Prisma SQLite database, and a React frontend with dark mode, task creation, completion toggle, and delete.",
       "stage": "ExecutionComplete"
     }

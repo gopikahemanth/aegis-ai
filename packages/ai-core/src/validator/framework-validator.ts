@@ -4,7 +4,6 @@ export class FrameworkValidator {
 private readonly blocked = {
   "react-vite": new Set([
     // Project configuration
-    "package.json",
     "package-lock.json",
     "pnpm-lock.yaml",
     "yarn.lock",

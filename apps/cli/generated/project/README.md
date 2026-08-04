@@ -1,49 +1,52 @@
-# Robust Fullstack Todo App: A simple fullstack Todo application with dark mode and task management features
+# Task Master Pro: A Simple Fullstack Todo App
+Task Master Pro is a fullstack Todo application built with Express REST API, Prisma SQLite database, and a React frontend.
 
 ## Features
+* Dark mode for enhanced user experience
 * Task creation with input validation
-* Task completion toggle with dynamic update
-* Task deletion with confirmation prompt
-* Dark mode toggle with persisted theme preference
+* Completion toggle for tasks
+* Delete functionality for tasks
 * Responsive design for various screen sizes
 
 ## Tech Stack
 | Technology | Purpose |
 | --- | --- |
 | React | Frontend framework |
-| Vite | Development server and build tool |
-| TypeScript | Programming language |
 | Express | REST API framework |
-| Prisma | ORM for SQLite database |
-| SQLite | Relational database management system |
+| Prisma | SQLite database ORM |
+| SQLite | Database management |
+| TypeScript | Programming language |
+| Vite | Development server and build tool |
 
 ## Getting Started
 ### Prerequisites
-To run this project, you need Node.js (version 16 or higher) and a package manager (npm or yarn).
+* Node version: 16 or higher
+* Package manager: npm or yarn
 
 ### Installation Steps
-1. Clone the repository: `git clone https://github.com/your-username/robust-fullstack-todo-app.git`
-2. Navigate to the project directory: `cd robust-fullstack-todo-app`
-3. Install dependencies: `npm install` or `yarn install`
+1. Clone the repository: `git clone https://github.com/your-username/task-master-pro.git`
+2. Install dependencies: `npm install` or `yarn install`
+3. Copy the example environment file: `cp .env.example .env`
+4. Fill in the environment variables in the `.env` file
 
 ### Environment Setup
-1. Copy the example environment file: `cp .env.example .env`
-2. Fill in the required environment variables in the `.env` file
+Create a new file named `.env` in the root directory and add your environment variables.
 
 ### Running Locally
 Start the development server: `npm run dev` or `yarn dev`
 
 ## Available Scripts
-* `npm run dev`: Start the development server
-* `npm run build`: Build the application for production
-* `npm run test`: Run unit tests and integration tests
-* `npm run lint`: Check code for linting errors and formatting issues
+* `npm run dev` or `yarn dev`: Start the development server
+* `npm run build` or `yarn build`: Build the application for production
+* `npm run test` or `yarn test`: Run unit tests
+* `npm run lint` or `yarn lint`: Run code linting
 
 ## Project Structure
-* `src`: Source code for the React application
-* `src/features`: Feature-specific components and contexts
-* `src/services`: API clients and data fetching utilities
 * `prisma`: Prisma schema and database configuration
+* `src`: React frontend code
+* `src/api`: Express REST API code
+* `src/components`: Reusable React components
+* `src/utils`: Utility functions
 
 ## License
 This project is licensed under the MIT License.

@@ -1,4 +1,4 @@
-app = "robust-fullstack-todo-app"
+app = "task-master-pro"
 primary_region = "bos"
 
 [http_service]

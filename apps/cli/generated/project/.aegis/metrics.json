@@ -7,12 +7,20 @@
       "errors": [
         "Sandbox Runtime & Browser Verification Failure:\nLive Browser verification failed: Captured 1 browser console errors:\nFailed to load resource: the server responded with a status of 404 (Not Found)"
       ]
+    },
+    {
+      "timestamp": "2026-08-04T04:23:08.575Z",
+      "success": false,
+      "durationMs": 3000,
+      "errors": [
+        " ERROR  Unexpected non-whitespace character after JSON at position 9 (line 1 column 10) while parsing '\"scripts\": {  \"start\": \"npx prisma migr' in C:\\Users\\vishn\\OneDrive\\Desktop\\Projects\\aegis-ai\\apps\\cli\\generated\\project\\package.json\nFor help, run: pnpm help run\n"
+      ]
     }
   ],
   "telemetry": {
-    "totalTokensUsed": 133975,
-    "estimatedCostUsd": 0.02226,
+    "totalTokensUsed": 422679,
+    "estimatedCostUsd": 0.054400000000000004,
     "healingAttempts": 0,
-    "sandboxRuns": 1
+    "sandboxRuns": 2
   }
 }

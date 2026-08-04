@@ -148,8 +148,17 @@ export class ProjectStartupAgent {
     try {
       pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as Record<string, unknown>;
     } catch {
-      console.warn("[Startup] Could not parse package.json — skipping patch");
-      return patches;
+      console.warn("[Startup] Warning: package.json corrupted — reconstructing valid package.json");
+      pkg = {
+        name: dir.split(/[\\/]/).at(-1) ?? "aegis-app",
+        private: true,
+        version: "0.0.1",
+        type: "module",
+        scripts: {},
+        dependencies: {},
+        devDependencies: {}
+      };
+      patches.push("Reconstructed corrupted package.json structure");
     }
 
     const scripts = (pkg.scripts as Record<string, string>) ?? {};

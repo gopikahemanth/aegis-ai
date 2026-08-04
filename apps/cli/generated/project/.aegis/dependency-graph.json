@@ -1,4 +1,9 @@
 {
+  "index.js": {
+    "path": "index.js",
+    "imports": [],
+    "importedBy": []
+  },
   "postcss.config.js": {
     "path": "postcss.config.js",
     "imports": [],

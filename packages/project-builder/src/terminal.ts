@@ -11,30 +11,69 @@ export class TerminalRunner {
     command: string,
     args: string[],
     cwd: string,
+    timeoutMs: number = 120000,
   ): Promise<CommandResult> {
     return new Promise((resolve) => {
-    const child = spawn(command, args, {
-  cwd,
-  shell: process.platform === "win32",
-});
+      let isResolved = false;
+      const env = {
+        ...process.env,
+        CI: "true",
+        CONTINUOUS_INTEGRATION: "true",
+        FORCE_COLOR: "0",
+      };
+
+      const child = spawn(command, args, {
+        cwd,
+        env,
+        shell: process.platform === "win32",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
 
       let stdout = "";
       let stderr = "";
 
-      child.stdout.on("data", (data) => {
+      const timer = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true;
+          try { child.kill("SIGKILL"); } catch {}
+          resolve({
+            stdout,
+            stderr: stderr + "\n[TerminalRunner] Command timed out after 120s",
+            exitCode: 124,
+          });
+        }
+      }, timeoutMs);
+
+      child.stdout?.on("data", (data) => {
         stdout += data.toString();
       });
 
-      child.stderr.on("data", (data) => {
+      child.stderr?.on("data", (data) => {
         stderr += data.toString();
       });
 
       child.on("close", (code) => {
-        resolve({
-          stdout,
-          stderr,
-          exitCode: code ?? 0,
-        });
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(timer);
+          resolve({
+            stdout,
+            stderr,
+            exitCode: code ?? 0,
+          });
+        }
+      });
+
+      child.on("error", (err) => {
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(timer);
+          resolve({
+            stdout,
+            stderr: stderr + "\n" + err.message,
+            exitCode: 1,
+          });
+        }
       });
     });
   }

@@ -314,11 +314,11 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
       patches.push("Created pnpm-workspace.yaml (workspace isolation)");
     }
 
-    // Allow Prisma and esbuild build scripts in pnpm
+    // Allow Prisma and esbuild build scripts in pnpm and bypass release age policies
     const npmrcPath = join(dir, ".npmrc");
     if (!existsSync(npmrcPath)) {
-      writeFileSync(npmrcPath, "ignore-scripts=false\n", "utf8");
-      patches.push("Created .npmrc (allow build scripts)");
+      writeFileSync(npmrcPath, "ignore-scripts=false\nverify-deps-before-run=false\nminimum-release-age=0\n", "utf8");
+      patches.push("Created .npmrc (allow build scripts & bypass release age policies)");
     }
 
     const tsconfigPath = join(dir, "tsconfig.json");

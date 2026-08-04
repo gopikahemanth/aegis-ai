@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { execSync, spawn } from "node:child_process";
 
 export interface StartupResult {
@@ -476,7 +476,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
       // Execute Prisma database push and client generation so tables exist before dev server runs
       try {
-        const schemaRelativePath = schemaPath.substring(dir.length + 1);
+        const schemaRelativePath = relative(dir, schemaPath);
         execSync(`npx prisma db push --schema="${schemaRelativePath}" --skip-generate`, { cwd: dir, stdio: "pipe" });
         execSync(`npx prisma generate --schema="${schemaRelativePath}"`, { cwd: dir, stdio: "pipe" });
         patches.push(`Initialized SQLite database tables and generated Prisma client from ${schemaRelativePath}`);

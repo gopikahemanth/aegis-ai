@@ -941,75 +941,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         await this.installer.installPackages("pnpm", outputDirectory, missingPkgsToInstall);
       }
 
-      // Recursive Disk File Scanner: Collect all .ts/.tsx/.js/.jsx files in project directory
-      const getAllProjectFiles = (dir: string): { fullPath: string; relPath: string; content: string }[] => {
-        const results: { fullPath: string; relPath: string; content: string }[] = [];
-        if (!existsSync(dir)) return results;
-        for (const entry of readdirSync(dir)) {
-          if (entry === "node_modules" || entry === ".git" || entry === "dist") continue;
-          const full = join(dir, entry);
-          if (statSync(full).isDirectory()) {
-            results.push(...getAllProjectFiles(full));
-          } else if (/\.(ts|tsx|js|jsx)$/.test(entry)) {
-            try {
-              results.push({ fullPath: full, relPath: relative(outputDirectory, full), content: readFileSync(full, "utf8") });
-            } catch {}
-          }
-        }
-        return results;
-      };
-
-      const allDiskFiles = getAllProjectFiles(outputDirectory);
-
-      // Local Relative & Alias File Import Scanner: Scan all imports and generate stubs if missing
-      for (const diskFile of allDiskFiles) {
-        const fileDir = dirname(diskFile.fullPath);
-        const importMatches = diskFile.content.matchAll(/import\s+(?:[\s\S]*?\s+from\s+)?['"]((?:\.|\@\/)[^'"]+)['"]/g);
-        for (const m of importMatches) {
-          const rawImportPath = m[1];
-          let targetPath = rawImportPath.startsWith("@/")
-            ? join(outputDirectory, "src", rawImportPath.slice(2))
-            : resolve(fileDir, rawImportPath);
-
-          let targetFileExists = false;
-          for (const ext of ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"]) {
-            if (existsSync(targetPath + ext)) {
-              try {
-                if (!statSync(targetPath + ext).isDirectory()) {
-                  targetFileExists = true;
-                  break;
-                }
-              } catch {}
-            }
-          }
-
-          if (!targetFileExists) {
-            let stubExt = rawImportPath.toLowerCase().includes("button") || rawImportPath.toLowerCase().includes("card") || rawImportPath.toLowerCase().includes("component") || rawImportPath.toLowerCase().includes("page") || rawImportPath.toLowerCase().includes("navbar") || rawImportPath.toLowerCase().includes("spinner") ? ".tsx" : ".ts";
-            const fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
-            const stubRelName = relative(outputDirectory, fullStubPath);
-            console.log(`[Orchestrator] Pre-build missing local import scanner: Generating stub for missing file "${stubRelName}"...`);
-            
-            let stubContent = "";
-            const lowerRel = stubRelName.toLowerCase();
-            const componentName = stubRelName.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Component";
-
-            if (lowerRel.includes("apiclient") || lowerRel.includes("api")) {
-              stubContent = `import axios from 'axios';\nexport interface Artwork { id: string | number; title: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; }\nexport interface User { id: string | number; email: string; name?: string; }\nexport interface Artist { id: string | number; name: string; }\nexport interface Category { id: string | number; name: string; }\nexport const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
-            } else if (lowerRel.includes("entity") || lowerRel.includes("entities") || lowerRel.includes("type") || lowerRel.includes("model")) {
-              stubContent = `export interface ${componentName} { id: string | number; title?: string; name?: string; email?: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; createdAt?: string; updatedAt?: string; }\nexport type ${componentName}Input = Partial<${componentName}>;\nexport default ${componentName};\n`;
-            } else if (lowerRel.includes("button")) {
-              stubContent = `import React from 'react';\nexport const Button: React.FC<any> = ({ children, ...props }) => <button className="px-4 py-2 bg-indigo-600 text-white rounded" {...props}>{children}</button>;\nexport default Button;\n`;
-            } else if (lowerRel.includes("card")) {
-              stubContent = `import React from 'react';\nexport const ${componentName}: React.FC<any> = (props) => <div className="p-4 border rounded shadow" {...props}>{props.title || '${componentName}'}</div>;\nexport default ${componentName};\n`;
-            } else {
-              stubContent = `import React from 'react';\nexport interface Artwork { id: string | number; title?: string; imageUrl?: string; price?: number; }\nexport const ${componentName}: React.FC<any> = (props: any) => <div className="p-4" {...props}>{props?.children || '${componentName}'}</div>;\nexport default ${componentName};\n`;
-            }
-            
-            mkdirSync(dirname(fullStubPath), { recursive: true });
-            writeFileSync(fullStubPath, stubContent, "utf8");
-          }
-        }
-      }
+      this.resolveMissingLocalImports(outputDirectory);
     } catch (scanErr: any) {
       console.warn(`[Orchestrator] Pre-build import scan non-fatal warning: ${scanErr.message}`);
     }
@@ -1038,15 +970,14 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
       const initialHadCleanCompilation = !build.stderr?.includes("error TS") && !build.stderr?.includes("ELIFECYCLE");
 
-      while (!build.success && attempts < maxRepairAttempts) {
+      while (attempts < maxRepairAttempts) {
         attempts++;
-        console.log();
-        console.log(`[Self-Healing] Attempting automatic repair ${attempts}/${maxRepairAttempts}...`);
+        console.log(`\n[Self-Healing] Attempting automatic repair ${attempts}/${maxRepairAttempts}...`);
 
         const fullDiagnostics = [
-          build.stderr ? `===== BUILD STDERR =====\n${build.stderr}` : "",
-          build.stdout ? `===== BUILD STDOUT =====\n${build.stdout}` : "",
-        ].filter(Boolean).join("\n\n") || "Build failed with no output";
+          build.stdout || "",
+          build.stderr || "",
+        ].filter(Boolean).join("\n");
 
         // Check for missing packages first
         const packages = this.dependencyResolver.resolve(fullDiagnostics);
@@ -1055,6 +986,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
           try {
             const pm = "pnpm";
             await this.installer.installPackages(pm, outputDirectory, packages);
+            this.resolveMissingLocalImports(outputDirectory);
             build = await this.runVerification(request, framework, outputDirectory);
             if (build.success) {
               console.log("[DependencyResolver] ✓ Build succeeded after package installation!");
@@ -1119,11 +1051,15 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               return prevHash !== newHash;
             });
 
-            if (trulyChangedFiles.length === 0 && attempts > 1) {
-              console.warn("[Self-Healing] ⚠️ Repair produced identical output to previous attempt — model response stalled, escalating context depth.");
+            if (trulyChangedFiles.length === 0) {
+              console.log(`[Self-Healing] AI proposed repair files, but they are identical to previous failed attempt. Retrying prompt with explicit instructions...`);
+              continue;
             }
 
             console.log(`[Self-Healing] Parsed ${repairedFiles.length} corrected file(s). Writing to ${outputDirectory}...`);
+            this.writer.write(repairedFiles, outputDirectory);
+            this.resolveMissingLocalImports(outputDirectory);
+
             const validatedRepairedFiles = this.validate(framework, repairedFiles);
 
             // Create rollback backup in case this repair attempt causes a build regression
@@ -1411,6 +1347,80 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     }
 
     return { success: true };
+  }
+
+  private resolveMissingLocalImports(outputDirectory: string) {
+    try {
+      const getAllProjectFiles = (dir: string): { fullPath: string; relPath: string; content: string }[] => {
+        const results: { fullPath: string; relPath: string; content: string }[] = [];
+        if (!existsSync(dir)) return results;
+        for (const entry of readdirSync(dir)) {
+          if (entry === "node_modules" || entry === ".git" || entry === "dist") continue;
+          const full = join(dir, entry);
+          if (statSync(full).isDirectory()) {
+            results.push(...getAllProjectFiles(full));
+          } else if (/\.(ts|tsx|js|jsx)$/.test(entry)) {
+            try {
+              results.push({ fullPath: full, relPath: relative(outputDirectory, full), content: readFileSync(full, "utf8") });
+            } catch {}
+          }
+        }
+        return results;
+      };
+
+      const allDiskFiles = getAllProjectFiles(outputDirectory);
+
+      for (const diskFile of allDiskFiles) {
+        const fileDir = dirname(diskFile.fullPath);
+        const importMatches = diskFile.content.matchAll(/import\s+(?:[\s\S]*?\s+from\s+)?['"]((?:\.|\@\/)[^'"]+)['"]/g);
+        for (const m of importMatches) {
+          const rawImportPath = m[1];
+          let targetPath = rawImportPath.startsWith("@/")
+            ? join(outputDirectory, "src", rawImportPath.slice(2))
+            : resolve(fileDir, rawImportPath);
+
+          let targetFileExists = false;
+          for (const ext of ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"]) {
+            if (existsSync(targetPath + ext)) {
+              try {
+                if (!statSync(targetPath + ext).isDirectory()) {
+                  targetFileExists = true;
+                  break;
+                }
+              } catch {}
+            }
+          }
+
+          if (!targetFileExists) {
+            let stubExt = rawImportPath.toLowerCase().includes("button") || rawImportPath.toLowerCase().includes("card") || rawImportPath.toLowerCase().includes("component") || rawImportPath.toLowerCase().includes("page") || rawImportPath.toLowerCase().includes("navbar") || rawImportPath.toLowerCase().includes("spinner") || rawImportPath.toLowerCase().includes("dashboard") || rawImportPath.toLowerCase().includes("gallery") ? ".tsx" : ".ts";
+            const fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
+            const stubRelName = relative(outputDirectory, fullStubPath);
+            console.log(`[Orchestrator] Pre-build missing local import scanner: Generating stub for missing file "${stubRelName}"...`);
+            
+            let stubContent = "";
+            const lowerRel = stubRelName.toLowerCase();
+            const componentName = stubRelName.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Component";
+
+            if (lowerRel.includes("apiclient") || lowerRel.includes("api")) {
+              stubContent = `import axios from 'axios';\nexport interface Artwork { id: string | number; title: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; }\nexport interface User { id: string | number; email: string; name?: string; }\nexport interface Artist { id: string | number; name: string; }\nexport interface Category { id: string | number; name: string; }\nexport const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
+            } else if (lowerRel.includes("entity") || lowerRel.includes("entities") || lowerRel.includes("type") || lowerRel.includes("model")) {
+              stubContent = `export interface ${componentName} { id: string | number; title?: string; name?: string; email?: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; createdAt?: string; updatedAt?: string; }\nexport type ${componentName}Input = Partial<${componentName}>;\nexport default ${componentName};\n`;
+            } else if (lowerRel.includes("button")) {
+              stubContent = `import React from 'react';\nexport const Button: React.FC<any> = ({ children, ...props }) => <button className="px-4 py-2 bg-indigo-600 text-white rounded" {...props}>{children}</button>;\nexport default Button;\n`;
+            } else if (lowerRel.includes("card")) {
+              stubContent = `import React from 'react';\nexport const ${componentName}: React.FC<any> = (props) => <div className="p-4 border rounded shadow" {...props}>{props.title || '${componentName}'}</div>;\nexport default ${componentName};\n`;
+            } else {
+              stubContent = `import React from 'react';\nexport interface Artwork { id: string | number; title?: string; imageUrl?: string; price?: number; }\nexport const ${componentName}: React.FC<any> = (props: any) => <div className="p-4" {...props}>{props?.children || '${componentName}'}</div>;\nexport default ${componentName};\n`;
+            }
+            
+            mkdirSync(dirname(fullStubPath), { recursive: true });
+            writeFileSync(fullStubPath, stubContent, "utf8");
+          }
+        }
+      }
+    } catch (scanErr: any) {
+      console.warn(`[Orchestrator] Pre-build import scan non-fatal warning: ${scanErr.message}`);
+    }
   }
 
   getProvider() {

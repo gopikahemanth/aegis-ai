@@ -542,8 +542,12 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         const absSchema = resolve(schemaPath);
         const schemaRelativePath = relative(absDir, absSchema);
 
-        execSync(`npx prisma db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: absDir, stdio: "pipe" });
-        execSync(`npx prisma generate --schema="${schemaRelativePath}"`, { cwd: absDir, stdio: "pipe" });
+        const prismaBin = existsSync(join(absDir, "node_modules", "prisma", "build", "index.js"))
+          ? `node "${join(absDir, "node_modules", "prisma", "build", "index.js")}"`
+          : `npx prisma@6`;
+
+        execSync(`${prismaBin} db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: absDir, stdio: "pipe" });
+        execSync(`${prismaBin} generate --schema="${schemaRelativePath}"`, { cwd: absDir, stdio: "pipe" });
         patches.push(`Initialized SQLite database tables and generated Prisma client from ${schemaRelativePath}`);
       } catch (dbPushErr: any) {
         console.warn(`[Startup] Warning: Direct Prisma db push failed: ${dbPushErr.message}`);

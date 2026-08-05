@@ -533,6 +533,28 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         let changed = false;
         const rel = relative(dir, absPath).replace(/\\/g, "/");
 
+        // Fix 0: Sub-file demuxing if === FILE: was embedded in content
+        if (/===\s*FILE:/i.test(content)) {
+          const blocks = content.split(/===\s*FILE:\s*/i).filter(Boolean);
+          const firstBlock = blocks[0];
+          if (!firstBlock.startsWith("src/")) {
+            content = firstBlock;
+            changed = true;
+          }
+          for (let i = firstBlock.startsWith("src/") ? 0 : 1; i < blocks.length; i++) {
+            const block = blocks[i];
+            const match = block.match(/^(.*?)\s*===([\s\S]*)$/);
+            if (match) {
+              const subRel = match[1].trim().replace(/^`+|`+$/g, "");
+              let subContent = match[2].trim().replace(/^```[a-zA-Z0-9_-]*\n?/, "").replace(/\n?```$/, "").trim();
+              const subAbs = join(dir, subRel);
+              mkdirSync(join(subAbs, ".."), { recursive: true });
+              writeFileSync(subAbs, subContent, "utf8");
+              fixed.push(`Demuxed sub-file: ${subRel}`);
+            }
+          }
+        }
+
         // Fix 1: ThemeContext not exported
         // Pattern: `const ThemeContext = createContext` → `export const ThemeContext = createContext`
         if (content.includes("const ThemeContext = createContext") && !content.includes("export const ThemeContext")) {

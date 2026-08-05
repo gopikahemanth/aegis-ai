@@ -19,25 +19,34 @@ export class Parser {
 
   parse(response: string): GeneratedFile[] {
     const files: GeneratedFile[] = [];
-
-    const regex =
-      /===FILE:\s*(.*?)===([\s\S]*?)(?=(===FILE:|$))/g;
+    const regex = /===\s*FILE:\s*(.*?)===([\s\S]*?)(?=(===\s*FILE:|$))/gi;
 
     let match: RegExpExecArray | null;
 
     while ((match = regex.exec(response)) !== null) {
-      const path = match[1].trim();
+      const rawPath = match[1].trim().replace(/^`+|`+$/g, "");
+      let content = match[2].trim();
 
-      if (this.blockedFiles.has(path)) {
-        console.log(
-          `Skipping protected file: ${path}`,
-        );
+      // Strip leading markdown code block syntax if present
+      content = content.replace(/^```[a-zA-Z0-9_-]*\n?/, "").replace(/\n?```$/, "").trim();
+
+      if (this.blockedFiles.has(rawPath)) {
+        console.log(`Skipping protected file: ${rawPath}`);
         continue;
       }
 
+      // If content internally contains sub === FILE: markers, parse them recursively
+      if (/===\s*FILE:/i.test(content)) {
+        const nestedFiles = this.parse(content);
+        if (nestedFiles.length > 0) {
+          files.push(...nestedFiles);
+          continue;
+        }
+      }
+
       files.push({
-        path,
-        content: match[2].trim(),
+        path: rawPath,
+        content,
       });
     }
 

@@ -20,15 +20,22 @@ export class Parser {
   parse(response: string): GeneratedFile[] {
     const files: GeneratedFile[] = [];
 
-    // Format 1: === FILE: relative/path === or ===FILE: relative/path
-    const headerRegex = /={3,}\s*(?:FILE:)?\s*([^\n\r=]+?)\s*={0,3}\r?\n([\s\S]*?)(?=(?:={3,}\s*(?:FILE:)?\s*[^\n\r=]+?)|$)/gi;
+    // Format 1: === FILE: relative/path === or ===FILE: relative/path ===
+    const headerRegex = /={3,}\s*(?:FILE:\s*)?([^\n\r=]+?)\s*={0,3}\r?\n([\s\S]*?)(?=(?:={3,}\s*(?:FILE:\s*)?[^\n\r=]+?)|$)/gi;
     let match: RegExpExecArray | null;
+
+    const validFileExtRegex = /\.(ts|tsx|js|jsx|json|css|scss|html|prisma|md|env|yml|yaml|svg|png|jpg|jpeg|dockerfile|gitignore)$/i;
+    const invalidPathChars = /[?:()<>;,='"]/;
 
     while ((match = headerRegex.exec(response)) !== null) {
       let rawPath = match[1].trim().replace(/^`+|`+$/g, "").replace(/^FILE:\s*/i, "").trim();
       let content = match[2].trim();
 
       if (!rawPath || rawPath.length > 250 || rawPath.includes("\n")) continue;
+
+      // Reject JS ternary or equality operators mistaken for headers
+      if (invalidPathChars.test(rawPath) && !rawPath.includes("/")) continue;
+      if (!validFileExtRegex.test(rawPath) && !rawPath.toLowerCase().includes("file:")) continue;
 
       // Clean markdown code blocks from content
       content = content.replace(/^```[a-zA-Z0-9_-]*\r?\n?/, "").replace(/\r?\n?```$/, "").trim();

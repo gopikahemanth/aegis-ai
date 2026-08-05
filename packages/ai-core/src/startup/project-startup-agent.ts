@@ -517,10 +517,10 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         patches.push("Created default .env file with local SQLite DATABASE_URL");
       }
 
-      // Ensure Prisma 7 config file exists if global Prisma CLI is Prisma 7
+      // Remove conflicting Prisma 7 prisma.config.ts if present so Prisma 6 operates cleanly
       const prismaConfigPath = join(dir, "prisma.config.ts");
-      if (!existsSync(prismaConfigPath)) {
-        writeFileSync(prismaConfigPath, `import { defineConfig } from '@prisma/config';\n\nexport default defineConfig({\n  earlyAccess: true,\n  schema: {\n    kind: 'single',\n    filepath: '${relative(dir, schemaPath).replace(/\\/g, "/")}',\n  },\n});\n`, "utf8");
+      if (existsSync(prismaConfigPath)) {
+        try { unlinkSync(prismaConfigPath); } catch {}
       }
 
       // Execute Prisma database push and client generation using local node_modules/.bin/prisma first

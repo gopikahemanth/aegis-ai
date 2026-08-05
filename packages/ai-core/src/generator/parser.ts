@@ -92,13 +92,15 @@ export class Parser {
       }
     }
 
-    // Format 3 Fallback: Resilient Markdown headings (e.g. ### Repair 1: `src/path.tsx` or **File:** src/path.tsx)
+    // Format 3 Fallback: Resilient Markdown headings (e.g. ### 2. Repairing `src/path.tsx` or ### `src/path.tsx`)
     if (files.length === 0) {
-      const sectionRegex = /(?:###|##|\*\*File:\*\*|\*\*Path:\*\*)\s*(?:Repair\s*\d*:?\s*)?`?([a-zA-Z0-9_\-\.\/]+\.(?:ts|tsx|js|jsx|css|html|json|prisma))`?[^\n]*\r?\n(?:[^\n]*\r?\n)?```[a-zA-Z0-9_-]*\r?\n([\s\S]*?)```/gi;
+      const sectionRegex = /(?:###|##|\*\*File:\*\*|\*\*Path:\*\*)[^\n`]*?`?([a-zA-Z0-9_\-\/]+\/[a-zA-Z0-9_\-\/\.]+\.(?:ts|tsx|js|jsx|css|html|json|prisma))`?[^\n]*\r?\n[\s\S]*?```[a-zA-Z0-9_-]*\r?\n([\s\S]*?)```/gi;
       while ((match = sectionRegex.exec(response)) !== null) {
         const rawPath = match[1].trim();
         const content = match[2].trim();
-        files.push({ path: rawPath, content });
+        if (rawPath && content) {
+          files.push({ path: rawPath, content });
+        }
       }
     }
 

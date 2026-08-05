@@ -1374,6 +1374,21 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
       const allDiskFiles = getAllProjectFiles(outputDirectory);
 
+      // Auto-rename any disk .ts file containing JSX to .tsx
+      for (const diskFile of allDiskFiles) {
+        if (diskFile.fullPath.endsWith(".ts") && !diskFile.fullPath.endsWith(".d.ts")) {
+          const hasJsx = /<[A-Z][A-Za-z0-9\.]*[\s/>]/.test(diskFile.content) || /return\s*\(\s*</.test(diskFile.content);
+          if (hasJsx) {
+            const newTsxPath = diskFile.fullPath.replace(/\.ts$/, ".tsx");
+            console.log(`[Orchestrator] Renaming JSX file from .ts to .tsx: ${diskFile.relPath} -> ${relative(outputDirectory, newTsxPath)}`);
+            writeFileSync(newTsxPath, diskFile.content, "utf8");
+            try { unlinkSync(diskFile.fullPath); } catch {}
+            diskFile.fullPath = newTsxPath;
+            diskFile.relPath = relative(outputDirectory, newTsxPath);
+          }
+        }
+      }
+
       for (const diskFile of allDiskFiles) {
         const fileDir = dirname(diskFile.fullPath);
         const importMatches = diskFile.content.matchAll(/import\s+(?:[\s\S]*?\s+from\s+)?['"]((?:\.|\@\/)[^'"]+)['"]/g);

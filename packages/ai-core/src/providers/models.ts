@@ -1,9 +1,9 @@
 export const Models = {
   cerebras: {
-    default: "llama3.3-70b",
-    strong: "llama3.3-70b",
-    fast: "llama3.1-8b",
-    balanced: "llama3.3-70b",
+    default: "gpt-oss-120b",
+    strong: "gpt-oss-120b",
+    fast: "gemma-4-31b",
+    balanced: "gpt-oss-120b",
   },
 
   groq: {
@@ -28,10 +28,10 @@ export const Models = {
   },
 
   gemini: {
-    default: "gemini-2.0-flash",
-    strong: "gemini-2.0-flash",
-    fast: "gemini-2.0-flash",
-    balanced: "gemini-2.0-flash",
+    default: "gemini-3.1-flash-lite",
+    strong: "gemini-2.5-flash-lite",
+    fast: "gemini-3.1-flash-lite",
+    balanced: "gemini-2.5-flash-lite",
   },
 
   ollama: {

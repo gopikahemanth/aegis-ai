@@ -163,12 +163,17 @@ export class FailoverProvider implements AIProvider {
           }
 
           if (is429) {
+            if (retryAfter && retryAfter <= 15) {
+              console.log(`[FailoverProvider] 429 Rate Limit on provider "${provider.name}". Backing off for ${retryAfter}s as requested by provider...`);
+              await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+              continue;
+            }
             const disableSec = Math.max(retryAfter ?? 15, 15);
             this.disabledUntil.set(provider.name, Date.now() + disableSec * 1000);
             console.warn(
               `[FailoverProvider] 429 Rate Limit on provider "${provider.name}". Disabling for ${disableSec}s and failing over immediately.`
             );
-            break; // Immediately exit provider loop to switch to next provider in chain
+            break;
           }
 
           if (providerAttempts < this.maxRetries) {

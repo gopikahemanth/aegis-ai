@@ -163,9 +163,11 @@ export class FailoverProvider implements AIProvider {
           }
 
           if (is429) {
-            if (retryAfter && retryAfter <= 60) {
+            if (retryAfter && retryAfter <= 60 && quotaAttempts < maxQuotaAttempts) {
+              quotaAttempts++;
+              providerAttempts--;
               const sleepSec = Math.min(retryAfter, 60);
-              console.log(`[FailoverProvider] 429 Rate Limit on provider "${provider.name}". Backing off for ${sleepSec}s as requested by provider...`);
+              console.log(`[FailoverProvider] 429 Rate Limit on provider "${provider.name}". Cooldown ${quotaAttempts}/${maxQuotaAttempts}: Sleeping for ${sleepSec}s as requested by provider...`);
               await new Promise((resolve) => setTimeout(resolve, sleepSec * 1000));
               continue;
             }

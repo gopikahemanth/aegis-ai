@@ -121,9 +121,6 @@ export class ProjectStartupAgent {
       for (const p of patches) console.log(`  ✓ ${p}`);
     }
 
-    console.log(`[Startup] ✅ Project is ready. Run: npm run dev`);
-    console.log(`[Startup] 🌐 Then open: ${url}`);
-
     return { success: true, url, framework, patchesApplied: patches };
   }
 
@@ -515,7 +512,13 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         patches.push("Created default .env file with local SQLite DATABASE_URL");
       }
 
-      // Execute Prisma database push and client generation so tables exist before dev server runs
+      // Ensure Prisma 7 config file exists if global Prisma CLI is Prisma 7
+      const prismaConfigPath = join(dir, "prisma.config.ts");
+      if (!existsSync(prismaConfigPath)) {
+        writeFileSync(prismaConfigPath, `import { defineConfig } from '@prisma/config';\n\nexport default defineConfig({\n  earlyAccess: true,\n  schema: {\n    kind: 'single',\n    filepath: '${relative(dir, schemaPath).replace(/\\/g, "/")}',\n  },\n});\n`, "utf8");
+      }
+
+      // Execute Prisma database push and client generation using local node_modules/.bin/prisma first
       try {
         if (process.platform === "win32") {
           try {
@@ -523,8 +526,11 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           } catch { /* ignore */ }
         }
         const schemaRelativePath = relative(dir, schemaPath);
-        execSync(`npx prisma db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: dir, stdio: "pipe" });
-        execSync(`npx prisma generate --schema="${schemaRelativePath}"`, { cwd: dir, stdio: "pipe" });
+        const localPrisma = join(dir, "node_modules", ".bin", process.platform === "win32" ? "prisma.cmd" : "prisma");
+        const prismaCmd = existsSync(localPrisma) ? `"${localPrisma}"` : "npx prisma";
+
+        execSync(`${prismaCmd} db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: dir, stdio: "pipe" });
+        execSync(`${prismaCmd} generate --schema="${schemaRelativePath}"`, { cwd: dir, stdio: "pipe" });
         patches.push(`Initialized SQLite database tables and generated Prisma client from ${schemaRelativePath}`);
       } catch (dbPushErr: any) {
         console.warn(`[Startup] Warning: Direct Prisma db push failed: ${dbPushErr.message}`);

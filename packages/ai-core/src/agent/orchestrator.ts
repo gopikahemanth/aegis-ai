@@ -942,9 +942,24 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         try {
           const mapper = new ErrorRootCauseMapper();
           const rootCause = mapper.analyze(fullDiagnostics, parsedFiles.map(f => f.path));
-          const errorPayload = rootCause.summary
-            ? `${fullDiagnostics}\n\n=== STRUCTURED ROOT CAUSE DIAGNOSIS ===\n${rootCause.summary}\nTarget files to repair: ${rootCause.filesToFix.join(", ")}`
-            : fullDiagnostics;
+
+          // Attach actual broken file contents from disk to errorPayload so BuildHealer sees exact code
+          const brokenFileSnippets: string[] = [];
+          for (const targetRelPath of rootCause.filesToFix) {
+            const absTarget = join(outputDirectory, targetRelPath);
+            if (existsSync(absTarget)) {
+              try {
+                const code = readFileSync(absTarget, "utf8");
+                brokenFileSnippets.push(`=== FILE CONTENT TO REPAIR (${targetRelPath}) ===\n${code}`);
+              } catch { /* ignore */ }
+            }
+          }
+
+          const errorPayload = [
+            fullDiagnostics,
+            rootCause.summary ? `=== STRUCTURED ROOT CAUSE DIAGNOSIS ===\n${rootCause.summary}` : "",
+            brokenFileSnippets.join("\n\n")
+          ].filter(Boolean).join("\n\n");
 
           const repairResponse =
             await this.repairCoordinator.repair(
@@ -955,9 +970,20 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
           const repairedFiles = this.parser.parse(repairResponse);
           if (repairedFiles.length > 0) {
-            console.log(`[Self-Healing] Parsed ${repairedFiles.length} corrected files. Writing to disk...`);
+            console.log(`[Self-Healing] Parsed ${repairedFiles.length} corrected file(s). Writing to ${outputDirectory}...`);
             const validatedRepairedFiles = this.validate(framework, repairedFiles);
+            
+            // Write files to disk and update parsedFiles in-memory array
             this.write(validatedRepairedFiles, outputDirectory);
+            for (const rFile of validatedRepairedFiles) {
+              console.log(`[Self-Healing] ✓ Updated: ${join(outputDirectory, rFile.path)}`);
+              const existingIdx = parsedFiles.findIndex(f => f.path === rFile.path);
+              if (existingIdx !== -1) {
+                parsedFiles[existingIdx] = rFile;
+              } else {
+                parsedFiles.push(rFile);
+              }
+            }
 
             build = await this.runVerification(request, framework, outputDirectory);
             if (build.success) {

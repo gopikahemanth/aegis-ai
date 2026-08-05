@@ -15,6 +15,16 @@ export class FileWriter {
         .replace(/^(\.\/|\/)+/, "")
         .replace(/^(generated\/project\/|apps\/cli\/generated\/project\/)+/i, "");
 
+      // If a .ts file contains JSX tags, auto-convert extension to .tsx before writing
+      if (cleanRelativePath.endsWith(".ts") && !cleanRelativePath.endsWith(".d.ts")) {
+        const hasJsx = /<[A-Z][A-Za-z0-9]*[\s/>]/.test(file.content) ||
+                       /<(div|span|button|form|input|p|h[1-6]|a|ul|li|section|header|footer|main|nav)[\s/>]/.test(file.content) ||
+                       /<\/([A-Za-z0-9]+)>/.test(file.content);
+        if (hasJsx) {
+          cleanRelativePath = cleanRelativePath.replace(/\.ts$/, ".tsx");
+        }
+      }
+
       const fullPath = join(outputDir, cleanRelativePath);
 
       // Clean up conflicting alternate extension files (e.g. index.ts when writing index.tsx)

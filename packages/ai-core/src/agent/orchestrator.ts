@@ -905,6 +905,45 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.warn(`[Startup] Warning: Pre-verification startup agent failed: ${startupErr.message}`);
     }
 
+    // ─── Pre-Build Import Scan: Install any uninstalled packages upfront ────
+    try {
+      const codeFiles = parsedFiles.filter(f => f.path.endsWith(".ts") || f.path.endsWith(".tsx") || f.path.endsWith(".js") || f.path.endsWith(".jsx"));
+      const concatenatedCode = codeFiles.map(f => `// File: ${f.path}\n${f.content}`).join("\n\n");
+      const importMatches = concatenatedCode.matchAll(/import\s+(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]/g);
+      const importedPkgs = new Set<string>();
+      for (const m of importMatches) {
+        const imp = m[1];
+        if (!imp.startsWith(".") && !imp.startsWith("/") && !imp.startsWith("\\") && !imp.startsWith("node:")) {
+          const pkgName = imp.startsWith("@") ? imp.split("/").slice(0, 2).join("/") : imp.split("/")[0];
+          importedPkgs.add(pkgName);
+        }
+      }
+      
+      const missingPkgsToInstall: string[] = [];
+      const pkgJsonPath = join(outputDirectory, "package.json");
+      if (existsSync(pkgJsonPath)) {
+        try {
+          const pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
+          const allDeclared = new Set([
+            ...Object.keys(pkgJson.dependencies || {}),
+            ...Object.keys(pkgJson.devDependencies || {})
+          ]);
+          for (const pkg of importedPkgs) {
+            if (!allDeclared.has(pkg)) {
+              missingPkgsToInstall.push(pkg);
+            }
+          }
+        } catch {}
+      }
+
+      if (missingPkgsToInstall.length > 0) {
+        console.log(`[Orchestrator] Pre-build import scan detected ${missingPkgsToInstall.length} uninstalled package(s): ${missingPkgsToInstall.join(", ")}. Installing...`);
+        await this.installer.installPackages("pnpm", outputDirectory, missingPkgsToInstall);
+      }
+    } catch (scanErr: any) {
+      console.warn(`[Orchestrator] Pre-build import scan non-fatal warning: ${scanErr.message}`);
+    }
+
     let build =
       await this.runVerification(
         request,
@@ -1220,6 +1259,8 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     console.log("[DoD] Running Definition of Done validation...");
     let dodPassed = false;
     try {
+      // Re-verify actual latest build status before evaluating DoD criteria
+      build = await this.runVerification(request, framework, outputDirectory);
       const dodResult = this.definitionOfDone.validate(outputDirectory, inferredFeatureNames, build.success);
       console.log(`[DoD] ${dodResult.summary}`);
       dodPassed = dodResult.passed;

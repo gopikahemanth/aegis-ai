@@ -643,10 +643,27 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
             content = content.replace(/(const app = express\(\);)/, "export const prisma = new PrismaClient();\n$1");
             changed = true;
           }
-          if (content.includes("dotenv.config()") && !content.includes("import dotenv")) {
-            content = "import dotenv from 'dotenv';\n" + content;
-            changed = true;
-          }
+        }
+
+        // Fix 7: Truncated JSX onClick handler setTheme(theme === 'light' ? 'dark' : 'light' -> setTheme(theme === 'light' ? 'dark' : 'light')
+        if (content.includes("setTheme(theme === 'light' ? 'dark' : 'light'") && !content.includes("setTheme(theme === 'light' ? 'dark' : 'light')")) {
+          content = content.replace("setTheme(theme === 'light' ? 'dark' : 'light'", "setTheme(theme === 'light' ? 'dark' : 'light')");
+          changed = true;
+        }
+
+        // Fix 8: Unclosed braces or parentheses at end of file
+        const openBraces = (content.match(/\{/g) || []).length;
+        const closeBraces = (content.match(/\}/g) || []).length;
+        if (openBraces > closeBraces) {
+          content = content.trimEnd() + "\n" + "}".repeat(openBraces - closeBraces) + "\n";
+          changed = true;
+        }
+
+        const openParens = (content.match(/\(/g) || []).length;
+        const closeParens = (content.match(/\)/g) || []).length;
+        if (openParens > closeParens) {
+          content = content.trimEnd() + "\n" + ")".repeat(openParens - closeParens) + ";\n";
+          changed = true;
         }
 
         // Fix 7: .ts file containing JSX syntax should be renamed to .tsx

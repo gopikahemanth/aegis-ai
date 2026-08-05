@@ -96,7 +96,12 @@ export class GeminiProvider implements AIProvider {
     } catch (error: any) {
       const msg = String(error?.message ?? error ?? "Provider request failed.");
       const isRateLimit = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate limit") || msg.toLowerCase().includes("resource_exhausted") || msg.toLowerCase().includes("overloaded");
-      const retryAfter = isRateLimit ? 5 : undefined;
+      let retryAfter: number | undefined = undefined;
+      if (isRateLimit) {
+        // Try to extract retryDelay from error JSON (e.g. "retryDelay":"58s" or "Please retry in 58.4s")
+        const retryDelayMatch = msg.match(/"retryDelay":\s*"(\d+)s?"/i) || msg.match(/retry in ([0-9.]+)\s*s/i);
+        retryAfter = retryDelayMatch ? Math.ceil(parseFloat(retryDelayMatch[1])) : 15;
+      }
       throw new ProviderError(
         msg,
         retryAfter,

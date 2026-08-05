@@ -19,25 +19,27 @@ export class Parser {
 
   parse(response: string): GeneratedFile[] {
     const files: GeneratedFile[] = [];
-    const regex = /===\s*FILE:\s*(.*?)===([\s\S]*?)(?=(===\s*FILE:|$))/gi;
 
+    // Format 1: === FILE: relative/path === or ===FILE: relative/path
+    const headerRegex = /={3,}\s*(?:FILE:)?\s*([^\n\r=]+?)\s*={0,3}\r?\n([\s\S]*?)(?=(?:={3,}\s*(?:FILE:)?\s*[^\n\r=]+?)|$)/gi;
     let match: RegExpExecArray | null;
 
-    while ((match = regex.exec(response)) !== null) {
-      const rawPath = match[1].trim().replace(/^`+|`+$/g, "");
+    while ((match = headerRegex.exec(response)) !== null) {
+      let rawPath = match[1].trim().replace(/^`+|`+$/g, "").replace(/^FILE:\s*/i, "").trim();
       let content = match[2].trim();
 
-      // Strip leading markdown code block syntax if present
-      content = content.replace(/^```[a-zA-Z0-9_-]*\n?/, "").replace(/\n?```$/, "").trim();
+      if (!rawPath || rawPath.length > 250 || rawPath.includes("\n")) continue;
 
-      // Only skip protected lockfiles
+      // Clean markdown code blocks from content
+      content = content.replace(/^```[a-zA-Z0-9_-]*\r?\n?/, "").replace(/\r?\n?```$/, "").trim();
+
       if (rawPath.endsWith("lock.yaml") || rawPath.endsWith("lock.json") || rawPath === "yarn.lock") {
         console.log(`Skipping protected lockfile: ${rawPath}`);
         continue;
       }
 
-      // If content internally contains sub === FILE: markers, parse them recursively
-      if (/===\s*FILE:/i.test(content)) {
+      // Check if sub-files are concatenated inside
+      if (/={3,}\s*(?:FILE:)?/i.test(content) && content.includes("package.json")) {
         const nestedFiles = this.parse(content);
         if (nestedFiles.length > 0) {
           files.push(...nestedFiles);
@@ -49,6 +51,16 @@ export class Parser {
         path: rawPath,
         content,
       });
+    }
+
+    // Format 2 Fallback: ```language file="path" or ```language filename="path"
+    if (files.length === 0) {
+      const codeBlockRegex = /```[a-zA-Z0-9_-]*\s+(?:file|filename)=["']?([^\s"']+)["']?\r?\n([\s\S]*?)```/gi;
+      while ((match = codeBlockRegex.exec(response)) !== null) {
+        const rawPath = match[1].trim();
+        const content = match[2].trim();
+        files.push({ path: rawPath, content });
+      }
     }
 
     return files;

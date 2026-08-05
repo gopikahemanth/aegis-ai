@@ -802,21 +802,36 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
     }
 
-     // Initial package dependencies installation
+    // Check output directory and package.json existence
+    const pkgJsonPath = join(outputDirectory, "package.json");
+    const hasPkgJson = existsSync(pkgJsonPath);
+    console.log(`[Orchestrator] Output directory: ${outputDirectory}`);
+    console.log(`[Orchestrator] package.json exists: ${hasPkgJson}`);
+    console.log(`[Orchestrator] Current working directory: ${process.cwd()}`);
+
+    // Initial package dependencies installation
     console.log("[Orchestrator] Installing all project dependencies...");
     try {
       const pm = "pnpm";
       console.log(`[Orchestrator] Running '${pm} install' in generated project at ${outputDirectory}...`);
       const installResult = await this.installer.install(pm, outputDirectory);
       console.log(`[Orchestrator] Initial install completed. Exit code: ${installResult.exitCode}`);
-      if (installResult.exitCode !== 0) {
-        console.warn(`[Orchestrator] Warning: initial install exit code was non-zero. stderr: ${installResult.stderr}`);
+      
+      if (installResult.exitCode !== 0 || !existsSync(join(outputDirectory, "node_modules"))) {
+        console.warn(`[Orchestrator] Warning: pnpm install exit code non-zero. Stderr: ${installResult.stderr}. Attempting npm install fallback...`);
+        try {
+          const { execSync } = await import("child_process");
+          execSync("npm install --legacy-peer-deps --silent", { cwd: outputDirectory, stdio: "pipe", timeout: 180_000 });
+          console.log("[Orchestrator] ✓ Fallback npm install succeeded!");
+        } catch (npmErr: any) {
+          console.error(`[Orchestrator] Fallback npm install failed: ${npmErr.message}`);
+        }
       }
       
       // Generate Prisma client if schema exists to ensure types exist during build verification
       const prismaSchema = join(outputDirectory, "prisma/schema.prisma");
       if (existsSync(prismaSchema)) {
-        console.log(`[Orchestrator] Prisma schema detected. Running 'pnpm exec prisma generate' in ${outputDirectory}...`);
+        console.log(`[Orchestrator] Prisma schema detected. Running local Prisma generate in ${outputDirectory}...`);
         try {
           const { execSync } = await import("child_process");
           if (process.platform === "win32") {
@@ -824,10 +839,10 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               execSync(`wmic process where "ExecutablePath like '%node.exe%' and CommandLine like '%generated%project%'" call terminate`, { stdio: "ignore" });
             } catch { /* ignore */ }
           }
-          execSync("pnpm exec prisma generate", { cwd: outputDirectory, stdio: "inherit" });
-          console.log("[Orchestrator] Prisma client generation successful.");
+          execSync("npx prisma generate", { cwd: outputDirectory, stdio: "inherit" });
+          console.log("[Orchestrator] Local Prisma client generation successful.");
         } catch (genErr: any) {
-          console.warn(`[Orchestrator] Warning: Prisma client generation failed: ${genErr.message}`);
+          console.warn(`[Orchestrator] Warning: Local Prisma client generation failed: ${genErr.message}`);
         }
       }
     } catch (instErr: any) {

@@ -9,7 +9,13 @@ export interface GeneratedFile {
 export class FileWriter {
   write(files: GeneratedFile[], outputDir: string) {
     for (const file of files) {
-      const fullPath = join(outputDir, file.path);
+      // Strip redundant outputDir prefixes or leading slashes from file.path
+      let cleanRelativePath = file.path
+        .replace(/\\/g, "/")
+        .replace(/^(\.\/|\/)+/, "")
+        .replace(/^(generated\/project\/|apps\/cli\/generated\/project\/)+/i, "");
+
+      const fullPath = join(outputDir, cleanRelativePath);
 
       // Clean up conflicting alternate extension files (e.g. index.ts when writing index.tsx)
       if (fullPath.endsWith(".tsx")) {

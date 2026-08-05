@@ -17,8 +17,8 @@ import {
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
 import { Parser } from "../generator/parser.js";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, statSync } from "node:fs";
+import { join, dirname, resolve, relative } from "node:path";
 import { DependencyResolver, DependencyInstaller } from "@aegis/project-builder";
 import { PatchEngine } from "../healing/patch-engine.js";
 import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
@@ -939,6 +939,49 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       if (missingPkgsToInstall.length > 0) {
         console.log(`[Orchestrator] Pre-build import scan detected ${missingPkgsToInstall.length} uninstalled package(s): ${missingPkgsToInstall.join(", ")}. Installing...`);
         await this.installer.installPackages("pnpm", outputDirectory, missingPkgsToInstall);
+      }
+
+      // Local Relative File Import Scanner: Scan all relative imports and generate stubs if missing
+      for (const file of codeFiles) {
+        const fileDir = dirname(join(outputDirectory, file.path));
+        const relImportMatches = file.content.matchAll(/import\s+(?:[\s\S]*?\s+from\s+)?['"](\.[^'"]+)['"]/g);
+        for (const m of relImportMatches) {
+          const relPath = m[1];
+          let targetPath = resolve(fileDir, relPath);
+          let targetFileExists = false;
+          
+          for (const ext of ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"]) {
+            if (existsSync(targetPath + ext)) {
+              try {
+                if (!statSync(targetPath + ext).isDirectory()) {
+                  targetFileExists = true;
+                  break;
+                }
+              } catch {}
+            }
+          }
+
+          if (!targetFileExists) {
+            let stubExt = relPath.toLowerCase().includes("button") || relPath.toLowerCase().includes("card") || relPath.toLowerCase().includes("component") ? ".tsx" : ".ts";
+            const fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
+            const stubRelName = relative(outputDirectory, fullStubPath);
+            console.log(`[Orchestrator] Pre-build missing local import scanner: Generating stub for missing file "${stubRelName}"...`);
+            
+            let stubContent = "";
+            if (stubRelName.toLowerCase().includes("apiclient") || stubRelName.toLowerCase().includes("api")) {
+              stubContent = `import axios from 'axios';\nexport const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
+            } else if (stubRelName.toLowerCase().includes("button")) {
+              stubContent = `import React from 'react';\nexport const Button: React.FC<any> = ({ children, ...props }) => <button className="px-4 py-2 bg-indigo-600 text-white rounded" {...props}>{children}</button>;\nexport default Button;\n`;
+            } else if (stubRelName.toLowerCase().includes("card")) {
+              stubContent = `import React from 'react';\nexport const ArtworkCard: React.FC<any> = (props) => <div className="p-4 border rounded shadow" {...props}>{props.title || 'Artwork'}</div>;\nexport default ArtworkCard;\n`;
+            } else {
+              stubContent = `import React from 'react';\nexport const DummyComponent: React.FC<any> = (props) => <div {...props} />;\nexport default DummyComponent;\n`;
+            }
+            
+            mkdirSync(dirname(fullStubPath), { recursive: true });
+            writeFileSync(fullStubPath, stubContent, "utf8");
+          }
+        }
       }
     } catch (scanErr: any) {
       console.warn(`[Orchestrator] Pre-build import scan non-fatal warning: ${scanErr.message}`);

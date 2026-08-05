@@ -22,7 +22,9 @@ export class RequirementAnalyzer {
         ? "Express"
         : undefined,
 
-      database: lower.includes("postgres")
+      database: lower.includes("sqlite")
+        ? "SQLite"
+        : lower.includes("postgres")
         ? "PostgreSQL"
         : undefined,
 

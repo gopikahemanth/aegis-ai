@@ -33,5 +33,24 @@ export class SpecificationGenerator {
       throw new Error(`Invalid JSON specification response: ${response}`);
     }
     const cleaned = response.substring(startIdx, endIdx + 1);
-    return JSON.parse(cleaned);}
+    const spec = JSON.parse(cleaned) as ProjectSpecification;
+
+    // Hard deterministic override if user prompt explicitly specifies tech stack
+    const reqLower = request.toLowerCase();
+    if (reqLower.includes("sqlite")) {
+      spec.database = "SQLite";
+    } else if (reqLower.includes("postgres")) {
+      spec.database = "PostgreSQL";
+    }
+
+    if (reqLower.includes("express")) {
+      spec.backend = "Express";
+    }
+
+    if (reqLower.includes("react") && !reqLower.includes("next.js")) {
+      spec.frontend = "React";
+    }
+
+    return spec;
+  }
 }

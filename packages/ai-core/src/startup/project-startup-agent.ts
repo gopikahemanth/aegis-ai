@@ -668,6 +668,12 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
+        // Fix 11: React Query v5 keepPreviousData removal
+        if (content.includes("keepPreviousData")) {
+          content = content.replace(/keepPreviousData\s*:\s*true/g, "placeholderData: (prev: any) => prev").replace(/keepPreviousData\s*:\s*false/g, "");
+          changed = true;
+        }
+
         // Fix 7: .ts file containing JSX syntax should be renamed to .tsx
         if (absPath.endsWith(".ts") && !absPath.endsWith(".d.ts") && !rel.startsWith("server/")) {
           const hasJsx = /<[a-zA-Z][a-zA-Z0-9]*\s*(className|onClick|id|children|style|key)=/.test(content) || /return\s*\(\s*<[a-zA-Z]/.test(content);

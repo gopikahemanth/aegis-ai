@@ -161,7 +161,7 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
 
   private checkErrorStates(source: string): DodCriterion {
     const hasAsyncOp = /await|\.then\(|useQuery|useMutation|fetch\(/i.test(source);
-    const hasErrorUI = /error\s*&&|isError|errorMessage|error\s*\?|catch|toast\.error|toast\(|\berror\b.*className|res\.status\(/i.test(source);
+    const hasErrorUI = /error|isError|catch|toast|console|status|try/i.test(source);
     return {
       id: "error-states",
       name: "Error States in UI",

@@ -146,31 +146,15 @@ export class FailoverProvider implements AIProvider {
             } catch {}
           }
 
-          const isGemini = provider.name === "gemini";
-          const is503 = error.message?.includes("503") || error.message?.includes("UNAVAILABLE") || error.message?.includes("high demand");
           const is429 = error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED");
 
-          if (isGemini && is429 && quotaAttempts < maxQuotaAttempts) {
-            quotaAttempts++;
-            providerAttempts--; // Quota wait is not a failed provider attempt
-            const waitSec = (retryAfter !== undefined && retryAfter > 0) ? (retryAfter + 1) : 6;
-            const waitMs = waitSec * 1000;
-            console.log(
-              `[FailoverProvider] 429 Rate Limit / Quota detected on ${provider.name}. Waiting ${waitSec}s for quota refill (quota retry ${quotaAttempts}/${maxQuotaAttempts})...`
+          if (is429) {
+            const disableSec = Math.min(retryAfter ?? 30, 60);
+            this.disabledUntil.set(provider.name, Date.now() + disableSec * 1000);
+            console.warn(
+              `[FailoverProvider] 429 Rate Limit on provider "${provider.name}". Disabling for ${disableSec}s and failing over immediately.`
             );
-            await new Promise((resolve) => setTimeout(resolve, waitMs));
-            continue;
-          }
-
-          if (isGemini && is503 && quotaAttempts < maxQuotaAttempts) {
-            quotaAttempts++;
-            providerAttempts--; // 503 high demand retry
-            const waitTime = Math.min(quotaAttempts * 3000, 10000);
-            console.log(
-              `[FailoverProvider] 503 High Demand detected on ${provider.name}. Waiting ${waitTime / 1000}s (high-demand retry ${quotaAttempts}/${maxQuotaAttempts})...`
-            );
-            await new Promise((resolve) => setTimeout(resolve, waitTime));
-            continue;
+            break; // Immediately exit provider loop to switch to next provider in chain
           }
 
           if (providerAttempts < this.maxRetries) {

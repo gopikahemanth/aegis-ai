@@ -1021,6 +1021,9 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
       console.log(`[Startup] 🚀 Ready! Open: ${startupResult.url ?? "http://localhost:5173"}`);
       console.log(`[Startup]    Run:  cd ${outputDirectory} && npm run dev`);
+
+      // Re-verify build status after ProjectStartupAgent applied all deterministic fixes
+      build = await this.runVerification(request, framework, outputDirectory);
     } catch (startupErr: any) {
       console.warn(`[Startup] Warning: Startup agent failed: ${startupErr.message}`);
     }

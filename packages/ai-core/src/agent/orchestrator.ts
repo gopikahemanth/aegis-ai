@@ -976,7 +976,10 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
             // Write files to disk and update parsedFiles in-memory array
             this.write(validatedRepairedFiles, outputDirectory);
             for (const rFile of validatedRepairedFiles) {
-              console.log(`[Self-Healing] ✓ Updated: ${join(outputDirectory, rFile.path)}`);
+              const fullPath = join(outputDirectory, rFile.path);
+              const diskContent = existsSync(fullPath) ? readFileSync(fullPath, "utf8") : "";
+              console.log(`[Self-Healing] ✓ Updated: ${fullPath} (${rFile.content.length} bytes written, disk size: ${diskContent.length} bytes)`);
+              
               const existingIdx = parsedFiles.findIndex(f => f.path === rFile.path);
               if (existingIdx !== -1) {
                 parsedFiles[existingIdx] = rFile;

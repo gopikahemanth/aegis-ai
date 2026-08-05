@@ -398,13 +398,14 @@ Project Context Summary:
 ${projectSummary}
 
 Output Rules:
-1. Return ONLY the fully updated files that need fixing.
-2. Never explain.
-3. Never use markdown or triple backticks.
-4. Every file must begin exactly like this:
-5. ===FILE: relative/path===
+1. Return FULL, COMPLETE, 100% WORKING source code files from line 1 to the final line for every file that needs fixing.
+2. Ensure ALL JSX/HTML elements have exact corresponding closing tags (e.g. </div>, </button>, </Form>).
+3. Ensure ALL functions, hooks, objects, and conditionals have matching closing braces '}' and parentheses ')'.
+4. Never abbreviate code, omit lines, or use placeholders like "// rest of component remains same".
+5. Every file must begin strictly with:
+===FILE: relative/path===
 
-Modify only the files that need fixing. Do not recreate other files.`;
+Output ONLY valid file blocks. Do not include markdown text, explanations, or backticks.`;
   }
 
   public getDataArchitecturePrompt(): string {

@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, renameSync, unlinkSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { execSync, spawn } from "node:child_process";
 
 export interface StartupResult {
@@ -525,12 +525,13 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
             execSync(`wmic process where "ExecutablePath like '%node.exe%' and CommandLine like '%generated%project%'" call terminate`, { stdio: "ignore" });
           } catch { /* ignore */ }
         }
-        const schemaRelativePath = relative(dir, schemaPath);
-        const localPrisma = join(dir, "node_modules", ".bin", process.platform === "win32" ? "prisma.cmd" : "prisma");
-        const prismaCmd = existsSync(localPrisma) ? `"${localPrisma}"` : "npx prisma";
+        const absDir = resolve(dir);
+        const schemaRelativePath = relative(absDir, schemaPath);
+        const localPrisma = resolve(absDir, "node_modules", ".bin", process.platform === "win32" ? "prisma.cmd" : "prisma");
+        const prismaCmd = existsSync(localPrisma) ? `"${localPrisma}"` : "pnpm exec prisma";
 
-        execSync(`${prismaCmd} db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: dir, stdio: "pipe" });
-        execSync(`${prismaCmd} generate --schema="${schemaRelativePath}"`, { cwd: dir, stdio: "pipe" });
+        execSync(`${prismaCmd} db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: absDir, stdio: "pipe" });
+        execSync(`${prismaCmd} generate --schema="${schemaRelativePath}"`, { cwd: absDir, stdio: "pipe" });
         patches.push(`Initialized SQLite database tables and generated Prisma client from ${schemaRelativePath}`);
       } catch (dbPushErr: any) {
         console.warn(`[Startup] Warning: Direct Prisma db push failed: ${dbPushErr.message}`);

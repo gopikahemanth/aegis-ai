@@ -24,7 +24,7 @@ export class TaskPlanner {
       await this.provider.chat([
         {
           role: "system",
-          content: this.promptManager.getPlannerPrompt(),
+          content: this.promptManager.getPlannerPrompt(specification),
         },
         {
           role: "user",

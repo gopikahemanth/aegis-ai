@@ -55,7 +55,7 @@ export class DataArchitectureAgent extends BaseAgent {
   ): Promise<DataArchitecturePlan> {
     console.log(`[DataArchitectureAgent] Planning real data architectures and schemas...`);
 
-    const prompt = this.promptManager.getDataArchitecturePrompt();
+    const prompt = this.promptManager.getDataArchitecturePrompt(specification);
     const response = await this.provider.chat([
       {
         role: "system",

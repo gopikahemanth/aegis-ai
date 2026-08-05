@@ -9,6 +9,9 @@ export class DependencyResolver {
     const patterns = [
       /Cannot find module ['"]([^'"]+)['"]/g,
       /Cannot find package ['"]([^'"]+)['"]/g,
+      /Rollup failed to resolve import ['"]([^'"]+)['"]/g,
+      /Failed to resolve import ['"]([^'"]+)['"]/g,
+      /Could not resolve ['"]([^'"]+)['"]/g,
     ];
 
     for (const pattern of patterns) {

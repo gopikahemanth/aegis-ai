@@ -1023,7 +1023,21 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               }
             }
 
-            const nextBuild = await this.runVerification(request, framework, outputDirectory);
+            let nextBuild = await this.runVerification(request, framework, outputDirectory);
+            if (!nextBuild.success) {
+              const newDiagnostics = [nextBuild.stderr, nextBuild.stdout].filter(Boolean).join("\n");
+              const missingPkgs = this.dependencyResolver.resolve(newDiagnostics);
+              if (missingPkgs.length > 0) {
+                console.log(`[DependencyResolver] Post-repair missing packages detected: ${missingPkgs.join(", ")}. Installing...`);
+                try {
+                  await this.installer.installPackages("pnpm", outputDirectory, missingPkgs);
+                  nextBuild = await this.runVerification(request, framework, outputDirectory);
+                } catch (instErr: any) {
+                  console.warn(`[DependencyResolver] Post-repair package install failed: ${instErr.message}`);
+                }
+              }
+            }
+
             if (nextBuild.success) {
               console.log("[Self-Healing] ✓ Build succeeded after automatic repair!");
               build = nextBuild;

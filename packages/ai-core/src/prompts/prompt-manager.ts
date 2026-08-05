@@ -1,3 +1,5 @@
+import type { ProjectSpecification } from "../architect/specification.js";
+
 export class PromptManager {
   private getBaseSystemPrompt(role: string): string {
     return `You are Aegis AI, an autonomous senior software engineering system.
@@ -92,8 +94,19 @@ Do not generate code.
 Do not explain anything.`;
   }
 
-  public getPlannerPrompt(): string {
+  public getPlannerPrompt(spec?: ProjectSpecification): string {
     return `${this.getBaseSystemPrompt("Planner Agent")}
+
+STRICT ARCHITECTURE LOCK (MUST CONFORM TO THESE STACK CONSTRAINTS):
+- Frontend Framework: ${spec?.frontend ?? spec?.type ?? "React / Vite"}
+- Backend Framework: ${spec?.backend ?? "Express"}
+- Database Engine: ${spec?.database ?? "SQLite"}
+- Authentication: ${spec?.auth ?? "JWT / Session"}
+
+CRITICAL ARCHITECTURE CONSTRAINTS:
+- Do NOT plan Next.js API routes if backend is Express.
+- Do NOT plan PostgreSQL if database is SQLite.
+- All task descriptions MUST strictly adhere to the above locked tech stack.
 
 Break the project into execution tasks. Be extremely concise. Generate a maximum of 5 high-level tasks to cover the entire implementation scope. Keep task descriptions short to prevent output truncation.
 Tasks MUST follow a logical order: DataModeling/Database/Backend/APIs MUST be planned and executed BEFORE Frontend.
@@ -408,8 +421,16 @@ Output Rules:
 Output ONLY valid file blocks. Do not include markdown text, explanations, or backticks.`;
   }
 
-  public getDataArchitecturePrompt(): string {
+  public getDataArchitecturePrompt(spec?: ProjectSpecification): string {
+    const dbProvider = (spec?.database ?? "sqlite").toLowerCase().includes("postgres") ? "postgresql" : "sqlite";
     return `${this.getBaseSystemPrompt("Data Architecture / Schema Agent")}
+
+STRICT ARCHITECTURE LOCK:
+- Database Engine: ${spec?.database ?? "SQLite"}
+- Prisma Datasource Provider: MUST BE provider = "${dbProvider}"
+
+CRITICAL SCHEMA RULE:
+- Your Prisma schema MUST use provider = "${dbProvider}". Do NOT use postgresql if database is SQLite.
 
 Analyze the requirements and design a robust, complete full-stack data architecture.
 Define the models, database schemas, REST APIs, and client-side hooks needed.

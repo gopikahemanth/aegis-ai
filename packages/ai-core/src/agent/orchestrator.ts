@@ -927,6 +927,8 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
       console.error("======================================\n");
 
+      const initialHadCleanCompilation = !build.stderr?.includes("error TS") && !build.stderr?.includes("ELIFECYCLE");
+
       while (!build.success && attempts < maxRepairAttempts) {
         attempts++;
         console.log();
@@ -1055,7 +1057,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               console.log("[Self-Healing] ✓ Build succeeded after automatic repair!");
               build = nextBuild;
               break;
-            } else if (build.success) {
+            } else if (build.success || initialHadCleanCompilation) {
               console.warn("[Self-Healing] ⚠️ Repair attempt introduced a build regression. Rolling back to last working state...");
               for (const [relPath, origContent] of backupFiles.entries()) {
                 const fullPath = join(outputDirectory, relPath);

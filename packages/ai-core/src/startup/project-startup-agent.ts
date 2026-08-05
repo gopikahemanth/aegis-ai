@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { execSync, spawn } from "node:child_process";
 
@@ -450,7 +450,6 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
   private walkFiles(dir: string, maxDepth: number, depth = 0): string[] {
     if (depth > maxDepth) return [];
-    const { readdirSync, statSync } = require("node:fs") as typeof import("node:fs");
     const results: string[] = [];
     for (const entry of readdirSync(dir)) {
       const full = join(dir, entry);

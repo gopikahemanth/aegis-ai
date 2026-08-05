@@ -674,6 +674,12 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
+        // Fix 12: React.FC untyped props mismatch fix (TS2322 IntrinsicAttributes)
+        if (content.includes("React.FC =") || /export const [A-Z][a-zA-Z0-9]*:\s*React\.FC\s*=/.test(content)) {
+          content = content.replace(/export const ([A-Z][a-zA-Z0-9]*):\s*React\.FC\s*=\s*/g, "export const $1: React.FC<any> = ");
+          changed = true;
+        }
+
         // Fix 7: .ts file containing JSX syntax should be renamed to .tsx
         if (absPath.endsWith(".ts") && !absPath.endsWith(".d.ts") && !rel.startsWith("server/")) {
           const hasJsx = /<[a-zA-Z][a-zA-Z0-9]*\s*(className|onClick|id|children|style|key)=/.test(content) || /return\s*\(\s*<[a-zA-Z]/.test(content);

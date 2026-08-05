@@ -105,9 +105,12 @@ export class ProjectStartupAgent {
     }
 
     // ── 7. Deterministic TypeScript fixups (no AI call needed) ───────────────
-    const fixedFiles = this.applyDeterministicTsFixes(outputDirectory);
+    const { fixed: fixedFiles, truncated: truncatedFiles } = this.applyDeterministicTsFixes(outputDirectory);
     if (fixedFiles.length > 0) {
       patches.push(`Auto-fixed TypeScript patterns in: ${fixedFiles.join(", ")}`);
+    }
+    if (truncatedFiles.length > 0) {
+      console.warn(`[Startup] ⚠️ Detected truncated AI output (needs regeneration, not patched): ${truncatedFiles.join(", ")}`);
     }
 
     const url = framework === "react-vite" || framework === "next"
@@ -548,9 +551,10 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
    * These cover recurring bugs that the AI consistently produces.
    * No AI call needed — pure regex transforms on generated files.
    */
-  private applyDeterministicTsFixes(dir: string): string[] {
+  private applyDeterministicTsFixes(dir: string): { fixed: string[]; truncated: string[] } {
     const fixed: string[] = [];
-    if (!existsSync(dir)) return fixed;
+    const truncated: string[] = [];
+    if (!existsSync(dir)) return { fixed, truncated };
 
     const allFiles = this.walkFiles(dir, 8).filter(f => !f.includes("node_modules"));
     const tsxFiles = allFiles.filter(f => f.endsWith(".tsx") || f.endsWith(".ts"));
@@ -675,6 +679,25 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
+        // Fix 9: Truncation Detector — Check if file ends mid-expression
+        const openBraces = (content.match(/\{/g) || []).length;
+        const closeBraces = (content.match(/\}/g) || []).length;
+        const openParens = (content.match(/\(/g) || []).length;
+        const closeParens = (content.match(/\)/g) || []).length;
+        const braceDelta = openBraces - closeBraces;
+        const parenDelta = openParens - closeParens;
+
+        const lastMeaningfulLine = content.trimEnd().split("\n").filter(l => l.trim()).pop() ?? "";
+        const looksTruncatedMidExpression =
+          /[,.]$/.test(lastMeaningfulLine.trim()) ||
+          /(&&|\|\||===|!==|==|!=|=>|=|\?|:|\+|-|\*|\/)\s*$/.test(lastMeaningfulLine.trim()) ||
+          /\b(return|const|let|var|if|else|for|while)\s*$/.test(lastMeaningfulLine.trim()) ||
+          (/\.\w+(\(|\[)?$/.test(lastMeaningfulLine.trim()) && !/[)\];]$/.test(lastMeaningfulLine.trim()));
+
+        if ((braceDelta > 0 || parenDelta > 0) && looksTruncatedMidExpression) {
+          truncated.push(rel);
+        }
+
         if (changed) {
           writeFileSync(absPath, content, "utf8");
           fixed.push(rel);
@@ -684,6 +707,6 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
       }
     }
 
-    return fixed;
+    return { fixed, truncated };
   }
 }

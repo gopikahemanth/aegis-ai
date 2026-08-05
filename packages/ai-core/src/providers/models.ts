@@ -21,10 +21,10 @@ export const Models = {
   },
 
   gemini: {
-    default: "gemini-3.1-flash-lite",
-    strong: "gemini-3.1-flash-lite",
-    fast: "gemini-3.1-flash-lite",
-    balanced: "gemini-3.1-flash-lite",
+    default: "gemini-2.5-flash",
+    strong: "gemini-2.5-pro",
+    fast: "gemini-2.5-flash",
+    balanced: "gemini-2.5-pro",
   },
 
   ollama: {

@@ -63,7 +63,7 @@ export class GeminiProvider implements AIProvider {
               Models.gemini.default,
             contents: contentParts,
             config: {
-              maxOutputTokens: 8192,
+              maxOutputTokens: options?.maxTokens ?? 8192,
             },
           }),
           timeoutPromise,
@@ -74,6 +74,14 @@ export class GeminiProvider implements AIProvider {
           const prompt = response.usageMetadata.promptTokenCount || 0;
           const completion = response.usageMetadata.candidatesTokenCount || 0;
           MetricsTracker.getInstance().logUsage(prompt, completion);
+        }
+
+        const finishReason = response.candidates?.[0]?.finishReason;
+        if (finishReason === "MAX_TOKENS") {
+          throw new ProviderError(
+            "Gemini response was truncated (MAX_TOKENS) — output incomplete.",
+            2
+          );
         }
 
         return response.text ?? "";

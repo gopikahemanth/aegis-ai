@@ -973,6 +973,20 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
           const repairedFiles = this.parser.parse(repairResponse);
           if (repairedFiles.length > 0) {
+            const previousAttemptHashes = (this as any)._previousAttemptHashes || new Map<string, string>();
+            (this as any)._previousAttemptHashes = previousAttemptHashes;
+
+            const trulyChangedFiles = repairedFiles.filter(rFile => {
+              const prevHash = previousAttemptHashes.get(rFile.path);
+              const newHash = rFile.content.length + ":" + rFile.content.slice(0, 50);
+              previousAttemptHashes.set(rFile.path, newHash);
+              return prevHash !== newHash;
+            });
+
+            if (trulyChangedFiles.length === 0 && attempts > 1) {
+              console.warn("[Self-Healing] ⚠️ Repair produced identical output to previous attempt — model response stalled, escalating context depth.");
+            }
+
             console.log(`[Self-Healing] Parsed ${repairedFiles.length} corrected file(s). Writing to ${outputDirectory}...`);
             const validatedRepairedFiles = this.validate(framework, repairedFiles);
 

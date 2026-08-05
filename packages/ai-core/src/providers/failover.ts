@@ -163,7 +163,7 @@ export class FailoverProvider implements AIProvider {
           }
 
           if (is429) {
-            const disableSec = Math.min(retryAfter ?? 30, 60);
+            const disableSec = Math.max(retryAfter ?? 15, 15);
             this.disabledUntil.set(provider.name, Date.now() + disableSec * 1000);
             console.warn(
               `[FailoverProvider] 429 Rate Limit on provider "${provider.name}". Disabling for ${disableSec}s and failing over immediately.`

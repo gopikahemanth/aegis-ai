@@ -9,10 +9,22 @@ export class OllamaProvider implements AIProvider {
     private readonly defaultModel = "llama3"
   ) {}
 
+  async isHealthy(): Promise<boolean> {
+    try {
+      const res = await fetch(`${this.host}/api/tags`, { method: "GET", signal: AbortSignal.timeout(500) });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
   async chat(
     messages: ChatMessage[],
     options?: ChatOptions,
   ): Promise<string> {
+    if (!(await this.isHealthy())) {
+      throw new ProviderError("Ollama is not running locally on " + this.host);
+    }
     try {
       const response = await fetch(`${this.host}/api/chat`, {
         method: "POST",

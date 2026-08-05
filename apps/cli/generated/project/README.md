@@ -1,25 +1,26 @@
-# ArtGalleryPortal
+# AegisArtGallery
 
-A full-stack web application designed for managing and discovering digital art collections with seamless performance and a modern user interface.
+A robust full-stack web application for managing and browsing digital art collections with advanced filtering and search capabilities.
 
 ## Features
 
-*   **Advanced Filtering:** Sort and filter artwork by category, artist, and medium.
-*   **Search Functionality:** Real-time search implementation to quickly locate specific pieces.
-*   **Dark Mode Support:** Fully responsive design with togglable light and dark themes using system preference detection.
-*   **Persistent Data:** Robust database management using Prisma with SQLite for reliable local storage.
-*   **Type-Safe Architecture:** Full TypeScript integration from backend API routes to frontend components.
+*   **Gallery Management:** View high-resolution artworks with detailed metadata.
+*   **Search & Filtering:** Real-time search functionality with filtering by artist, category, and year.
+*   **Dark Mode:** Built-in theme toggling for enhanced accessibility and user comfort.
+*   **Responsive Design:** Fully fluid UI layout optimized for desktop, tablet, and mobile devices.
+*   **Type-Safe Architecture:** End-to-end type safety using TypeScript and Prisma.
+*   **Efficient Data Layer:** Optimized SQLite database queries for fast retrieval and filtering.
 
 ## Tech Stack
 
 | Technology | Purpose |
 | :--- | :--- |
-| React | Frontend UI library |
-| Express | Backend API server |
-| Prisma | ORM for database management |
-| SQLite | Relational database engine |
-| TypeScript | Type safety across the stack |
-| Tailwind CSS | Styling and theme management |
+| **React** | Frontend user interface library |
+| **Express** | Node.js backend framework |
+| **Prisma** | ORM for database management and type-safe queries |
+| **SQLite** | Lightweight, file-based database engine |
+| **TypeScript** | Static typing for both client and server |
+| **Tailwind CSS** | Utility-first styling for responsive layouts |
 
 ## Getting Started
 
@@ -32,8 +33,8 @@ A full-stack web application designed for managing and discovering digital art c
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/username/art-gallery-portal.git
-   cd art-gallery-portal
+   git clone https://github.com/username/aegis-art-gallery.git
+   cd aegis-art-gallery
    ```
 
 2. Install dependencies:
@@ -47,40 +48,37 @@ A full-stack web application designed for managing and discovering digital art c
    ```bash
    cp .env.example .env
    ```
-2. Open the `.env` file and configure your `DATABASE_URL` and any required API keys.
 
-3. Run database migrations:
+2. Open the `.env` file and configure your database connection string and application port.
+
+### Running Locally
+
+1. Run database migrations:
    ```bash
    npx prisma migrate dev
    ```
 
-### Running Locally
-
-To start the development server for both the frontend and backend:
-
-```bash
-npm run dev
-```
-
-The application will be accessible at `http://localhost:3000`.
+2. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
 ## Available Scripts
 
 *   `npm run dev`: Starts the development server with hot-reloading.
-*   `npm run build`: Compiles the project for production deployment.
+*   `npm run build`: Compiles the application for production deployment.
+*   `npm run lint`: Runs ESLint to check for code quality and style violations.
 *   `npm run test`: Executes the test suite using Vitest.
-*   `npm run lint`: Runs ESLint to check for code quality and style issues.
-*   `npm run prisma:generate`: Generates the Prisma client based on the schema.
+*   `npm run prisma:generate`: Regenerates the Prisma client after schema updates.
 
 ## Project Structure
 
-*   `/prisma`: Contains the `schema.prisma` file and migration history.
-*   `/src/api`: Express backend routes and controller logic.
-*   `/src/components`: Reusable React components (buttons, filters, cards).
-*   `/src/hooks`: Custom React hooks for state management and data fetching.
-*   `/src/types`: Global TypeScript interface definitions.
-*   `/public`: Static assets, including images and fonts.
+*   `/src/client`: React components, hooks, and application state logic.
+*   `/src/server`: Express API routes, middleware, and controllers.
+*   `/prisma`: Contains the schema file and database migration history.
+*   `/public`: Static assets including images and fonts.
+*   `/dist`: Compiled production files generated during the build process.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

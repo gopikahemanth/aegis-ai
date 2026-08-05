@@ -33,10 +33,10 @@ export class FileWriter {
         if (existsSync(altPath)) {
           try { unlinkSync(altPath); } catch {}
         }
-      } else if (fullPath.endsWith(".ts")) {
-        const altPath = fullPath.replace(/\.ts$/, ".tsx");
-        if (existsSync(altPath)) {
-          try { unlinkSync(altPath); } catch {}
+      } else if (cleanRelativePath.endsWith(".ts") && !cleanRelativePath.endsWith(".d.ts")) {
+        const altTsxPath = join(outputDir, cleanRelativePath.replace(/\.ts$/, ".tsx"));
+        if (existsSync(altTsxPath)) {
+          cleanRelativePath = cleanRelativePath.replace(/\.ts$/, ".tsx");
         }
       } else if (fullPath.endsWith(".jsx")) {
         const altPath = fullPath.replace(/\.jsx$/, ".js");

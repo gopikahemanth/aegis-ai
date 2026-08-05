@@ -104,6 +104,18 @@ export class Parser {
       }
     }
 
+    // Format 4 Fallback: Code block with file path on line 1 comment (e.g. ```tsx\n// src/components/shared/Button.tsx)
+    if (files.length === 0) {
+      const commentBlockRegex = /```[a-zA-Z0-9_-]*\r?\n(?:\/\/\s*|\/\*\s*)([a-zA-Z0-9_\-\/]+\/[a-zA-Z0-9_\-\/\.]+\.(?:ts|tsx|js|jsx|css|html|json|prisma))(?:\s*\*\/)?[^\n]*\r?\n([\s\S]*?)```/gi;
+      while ((match = commentBlockRegex.exec(response)) !== null) {
+        const rawPath = match[1].trim();
+        const content = match[2].trim();
+        if (rawPath && content) {
+          files.push({ path: rawPath, content });
+        }
+      }
+    }
+
     return files;
   }
 }

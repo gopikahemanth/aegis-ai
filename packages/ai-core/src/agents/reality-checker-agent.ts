@@ -72,6 +72,8 @@ For each violation:
   2. Implement the real logic (real parsing, real calculation, real persistence)
   3. If a library is needed (pdfjs-dist, jsPDF, mammoth), add the import and implement it
   4. Remove ALL hardcoded scores, static chart arrays, and setTimeout-based fake loading
+  5. IF YOU IMPORT ANY NEW THIRD-PARTY NPM PACKAGES (e.g. jspdf, jspdf-autotable, html2canvas), LIST THEM AT THE VERY END OF YOUR RESPONSE AS:
+NEW_DEPENDENCIES: package1, package2
 
 Output ONLY the corrected files. Follow the standard file output format.`;
   }

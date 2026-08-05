@@ -983,6 +983,19 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               response,
             );
 
+          const newDepsMatch = repairResponse.match(/NEW_DEPENDENCIES:\s*([^\r\n]+)/i);
+          if (newDepsMatch) {
+            const declaredPkgs = newDepsMatch[1].split(",").map(p => p.trim()).filter(Boolean);
+            if (declaredPkgs.length > 0) {
+              console.log(`[Self-Healing] Detected explicit NEW_DEPENDENCIES declaration: ${declaredPkgs.join(", ")}. Installing...`);
+              try {
+                await this.installer.installPackages("pnpm", outputDirectory, declaredPkgs);
+              } catch (depInstErr: any) {
+                console.warn(`[Self-Healing] Warning: Failed to install declared NEW_DEPENDENCIES: ${depInstErr.message}`);
+              }
+            }
+          }
+
           const repairedFiles = this.parser.parse(repairResponse);
           if (repairedFiles.length > 0) {
             const previousAttemptHashes = (this as any)._previousAttemptHashes || new Map<string, string>();

@@ -819,6 +819,11 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         console.log(`[Orchestrator] Prisma schema detected. Running 'pnpm exec prisma generate' in ${outputDirectory}...`);
         try {
           const { execSync } = await import("child_process");
+          if (process.platform === "win32") {
+            try {
+              execSync(`wmic process where "ExecutablePath like '%node.exe%' and CommandLine like '%generated%project%'" call terminate`, { stdio: "ignore" });
+            } catch { /* ignore */ }
+          }
           execSync("pnpm exec prisma generate", { cwd: outputDirectory, stdio: "inherit" });
           console.log("[Orchestrator] Prisma client generation successful.");
         } catch (genErr: any) {

@@ -496,6 +496,11 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
       // Execute Prisma database push and client generation so tables exist before dev server runs
       try {
+        if (process.platform === "win32") {
+          try {
+            execSync(`wmic process where "ExecutablePath like '%node.exe%' and CommandLine like '%generated%project%'" call terminate`, { stdio: "ignore" });
+          } catch { /* ignore */ }
+        }
         const schemaRelativePath = relative(dir, schemaPath);
         execSync(`npx prisma db push --schema="${schemaRelativePath}" --skip-generate`, { cwd: dir, stdio: "pipe" });
         execSync(`npx prisma generate --schema="${schemaRelativePath}"`, { cwd: dir, stdio: "pipe" });

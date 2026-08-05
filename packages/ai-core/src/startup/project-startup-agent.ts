@@ -305,6 +305,10 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
       };
 
       let depsChanged = false;
+      if ("express" in deps && !("@types/express" in devDeps)) {
+        (pkg.devDependencies as Record<string, string>)["@types/express"] = "^4.17.21";
+        depsChanged = true;
+      }
       for (const [k, v] of Object.entries(requiredDeps)) {
         if (!(k in deps)) {
           (pkg.dependencies as Record<string, string>)[k] = v;
@@ -347,8 +351,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
     const vitePath = join(dir, "vite.config.ts");
     if (!existsSync(vitePath)) {
-      writeFileSync(vitePath, `import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 5173,\n    open: false,\n    proxy: {\n      '/api': {\n        target: 'http://localhost:5000',\n        changeOrigin: true\n      }\n    }\n  },\n})\n`, "utf8");
-      patches.push("Created vite.config.ts");
+      writeFileSync(vitePath, `import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\nimport path from 'path'\n\nexport default defineConfig({\n  plugins: [react()],\n  resolve: {\n    alias: {\n      '@': path.resolve(__dirname, './src')\n    }\n  },\n  server: {\n    port: 5173,\n    open: false,\n    proxy: {\n      '/api': {\n        target: 'http://localhost:5000',\n        changeOrigin: true\n      }\n    }\n  },\n})\n`, "utf8");
+      patches.push("Created vite.config.ts with @ path alias");
     }
 
     // Ensure this generated project is isolated from any parent pnpm workspace
@@ -378,6 +382,10 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           allowImportingTsExtensions: true,
           resolveJsonModule: true,
           isolatedModules: true,
+          baseUrl: ".",
+          paths: {
+            "@/*": ["./src/*"]
+          },
           noEmit: true,
           jsx: "react-jsx",
           strict: false,

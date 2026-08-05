@@ -17,7 +17,7 @@ import {
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
 import { Parser } from "../generator/parser.js";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, statSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, statSync, readdirSync } from "node:fs";
 import { join, dirname, resolve, relative } from "node:path";
 import { DependencyResolver, DependencyInstaller } from "@aegis/project-builder";
 import { PatchEngine } from "../healing/patch-engine.js";
@@ -941,15 +941,37 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         await this.installer.installPackages("pnpm", outputDirectory, missingPkgsToInstall);
       }
 
-      // Local Relative File Import Scanner: Scan all relative imports and generate stubs if missing
-      for (const file of codeFiles) {
-        const fileDir = dirname(join(outputDirectory, file.path));
-        const relImportMatches = file.content.matchAll(/import\s+(?:[\s\S]*?\s+from\s+)?['"](\.[^'"]+)['"]/g);
-        for (const m of relImportMatches) {
-          const relPath = m[1];
-          let targetPath = resolve(fileDir, relPath);
+      // Recursive Disk File Scanner: Collect all .ts/.tsx/.js/.jsx files in project directory
+      const getAllProjectFiles = (dir: string): { fullPath: string; relPath: string; content: string }[] => {
+        const results: { fullPath: string; relPath: string; content: string }[] = [];
+        if (!existsSync(dir)) return results;
+        for (const entry of readdirSync(dir)) {
+          if (entry === "node_modules" || entry === ".git" || entry === "dist") continue;
+          const full = join(dir, entry);
+          if (statSync(full).isDirectory()) {
+            results.push(...getAllProjectFiles(full));
+          } else if (/\.(ts|tsx|js|jsx)$/.test(entry)) {
+            try {
+              results.push({ fullPath: full, relPath: relative(outputDirectory, full), content: readFileSync(full, "utf8") });
+            } catch {}
+          }
+        }
+        return results;
+      };
+
+      const allDiskFiles = getAllProjectFiles(outputDirectory);
+
+      // Local Relative & Alias File Import Scanner: Scan all imports and generate stubs if missing
+      for (const diskFile of allDiskFiles) {
+        const fileDir = dirname(diskFile.fullPath);
+        const importMatches = diskFile.content.matchAll(/import\s+(?:[\s\S]*?\s+from\s+)?['"]((?:\.|\@\/)[^'"]+)['"]/g);
+        for (const m of importMatches) {
+          const rawImportPath = m[1];
+          let targetPath = rawImportPath.startsWith("@/")
+            ? join(outputDirectory, "src", rawImportPath.slice(2))
+            : resolve(fileDir, rawImportPath);
+
           let targetFileExists = false;
-          
           for (const ext of ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"]) {
             if (existsSync(targetPath + ext)) {
               try {
@@ -962,23 +984,25 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
           }
 
           if (!targetFileExists) {
-            let stubExt = relPath.toLowerCase().includes("button") || relPath.toLowerCase().includes("card") || relPath.toLowerCase().includes("component") ? ".tsx" : ".ts";
+            let stubExt = rawImportPath.toLowerCase().includes("button") || rawImportPath.toLowerCase().includes("card") || rawImportPath.toLowerCase().includes("component") || rawImportPath.toLowerCase().includes("page") || rawImportPath.toLowerCase().includes("navbar") || rawImportPath.toLowerCase().includes("spinner") ? ".tsx" : ".ts";
             const fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
             const stubRelName = relative(outputDirectory, fullStubPath);
             console.log(`[Orchestrator] Pre-build missing local import scanner: Generating stub for missing file "${stubRelName}"...`);
             
             let stubContent = "";
-            if (stubRelName.toLowerCase().includes("apiclient") || stubRelName.toLowerCase().includes("api")) {
+            const lowerRel = stubRelName.toLowerCase();
+            const componentName = stubRelName.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Component";
+
+            if (lowerRel.includes("apiclient") || lowerRel.includes("api")) {
               stubContent = `import axios from 'axios';\nexport interface Artwork { id: string | number; title: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; }\nexport interface User { id: string | number; email: string; name?: string; }\nexport interface Artist { id: string | number; name: string; }\nexport interface Category { id: string | number; name: string; }\nexport const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
-            } else if (stubRelName.toLowerCase().includes("entity") || stubRelName.toLowerCase().includes("entities") || stubRelName.toLowerCase().includes("type") || stubRelName.toLowerCase().includes("model")) {
-              const entityName = stubRelName.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Artwork";
-              stubContent = `export interface ${entityName} { id: string | number; title?: string; name?: string; email?: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; createdAt?: string; updatedAt?: string; }\nexport type ${entityName}Input = Partial<${entityName}>;\nexport default ${entityName};\n`;
-            } else if (stubRelName.toLowerCase().includes("button")) {
+            } else if (lowerRel.includes("entity") || lowerRel.includes("entities") || lowerRel.includes("type") || lowerRel.includes("model")) {
+              stubContent = `export interface ${componentName} { id: string | number; title?: string; name?: string; email?: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; createdAt?: string; updatedAt?: string; }\nexport type ${componentName}Input = Partial<${componentName}>;\nexport default ${componentName};\n`;
+            } else if (lowerRel.includes("button")) {
               stubContent = `import React from 'react';\nexport const Button: React.FC<any> = ({ children, ...props }) => <button className="px-4 py-2 bg-indigo-600 text-white rounded" {...props}>{children}</button>;\nexport default Button;\n`;
-            } else if (stubRelName.toLowerCase().includes("card")) {
-              stubContent = `import React from 'react';\nexport const ArtworkCard: React.FC<any> = (props) => <div className="p-4 border rounded shadow" {...props}>{props.title || 'Artwork'}</div>;\nexport default ArtworkCard;\n`;
+            } else if (lowerRel.includes("card")) {
+              stubContent = `import React from 'react';\nexport const ${componentName}: React.FC<any> = (props) => <div className="p-4 border rounded shadow" {...props}>{props.title || '${componentName}'}</div>;\nexport default ${componentName};\n`;
             } else {
-              stubContent = `import React from 'react';\nexport interface Artwork { id: string | number; title?: string; imageUrl?: string; price?: number; }\nexport const DummyComponent: React.FC<any> = (props) => <div {...props} />;\nexport default DummyComponent;\n`;
+              stubContent = `import React from 'react';\nexport interface Artwork { id: string | number; title?: string; imageUrl?: string; price?: number; }\nexport const ${componentName}: React.FC<any> = (props: any) => <div className="p-4" {...props}>{props?.children || '${componentName}'}</div>;\nexport default ${componentName};\n`;
             }
             
             mkdirSync(dirname(fullStubPath), { recursive: true });

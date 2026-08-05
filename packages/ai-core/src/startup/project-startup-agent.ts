@@ -527,12 +527,11 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           } catch { /* ignore */ }
         }
         const absDir = resolve(dir);
-        const schemaRelativePath = relative(absDir, schemaPath);
-        const localPrisma = resolve(absDir, "node_modules", ".bin", process.platform === "win32" ? "prisma.cmd" : "prisma");
-        const prismaCmd = existsSync(localPrisma) ? `"${localPrisma}"` : "pnpm exec prisma";
+        const absSchema = resolve(schemaPath);
+        const schemaRelativePath = relative(absDir, absSchema);
 
-        execSync(`${prismaCmd} db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: absDir, stdio: "pipe" });
-        execSync(`${prismaCmd} generate --schema="${schemaRelativePath}"`, { cwd: absDir, stdio: "pipe" });
+        execSync(`npx prisma db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: absDir, stdio: "pipe" });
+        execSync(`npx prisma generate --schema="${schemaRelativePath}"`, { cwd: absDir, stdio: "pipe" });
         patches.push(`Initialized SQLite database tables and generated Prisma client from ${schemaRelativePath}`);
       } catch (dbPushErr: any) {
         console.warn(`[Startup] Warning: Direct Prisma db push failed: ${dbPushErr.message}`);
@@ -649,21 +648,6 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         // Fix 7: Truncated JSX onClick handler setTheme(theme === 'light' ? 'dark' : 'light' -> setTheme(theme === 'light' ? 'dark' : 'light')
         if (content.includes("setTheme(theme === 'light' ? 'dark' : 'light'") && !content.includes("setTheme(theme === 'light' ? 'dark' : 'light')")) {
           content = content.replace("setTheme(theme === 'light' ? 'dark' : 'light'", "setTheme(theme === 'light' ? 'dark' : 'light')");
-          changed = true;
-        }
-
-        // Fix 8: Unclosed braces or parentheses at end of file
-        const openBraces = (content.match(/\{/g) || []).length;
-        const closeBraces = (content.match(/\}/g) || []).length;
-        if (openBraces > closeBraces) {
-          content = content.trimEnd() + "\n" + "}".repeat(openBraces - closeBraces) + "\n";
-          changed = true;
-        }
-
-        const openParens = (content.match(/\(/g) || []).length;
-        const closeParens = (content.match(/\)/g) || []).length;
-        if (openParens > closeParens) {
-          content = content.trimEnd() + "\n" + ")".repeat(openParens - closeParens) + ";\n";
           changed = true;
         }
 

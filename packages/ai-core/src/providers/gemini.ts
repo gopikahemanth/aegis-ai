@@ -62,6 +62,9 @@ export class GeminiProvider implements AIProvider {
               options?.model ??
               Models.gemini.default,
             contents: contentParts,
+            config: {
+              maxOutputTokens: 8192,
+            },
           }),
           timeoutPromise,
         ]);

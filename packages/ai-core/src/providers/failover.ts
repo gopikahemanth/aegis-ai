@@ -163,7 +163,7 @@ export class FailoverProvider implements AIProvider {
           }
 
           if (is429) {
-            if (retryAfter && retryAfter <= 15) {
+            if (retryAfter && retryAfter <= 45) {
               console.log(`[FailoverProvider] 429 Rate Limit on provider "${provider.name}". Backing off for ${retryAfter}s as requested by provider...`);
               await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
               continue;

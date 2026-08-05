@@ -1,6 +1,0 @@
-{
-  "models": [],
-  "databaseSchema": "// Schema generation fallback\n// Request: A comprehensive Todo app with user authentication, task management, and customizable display, featuring a REST API built with Express, a Prisma SQLite database for data storage, and a React frontend with dark mode, task creation, completion toggle, and deletion functionality. The app will include user input for task creation, parsing and validation for task data, and storage of tasks in the SQLite database. The React frontend will display a list of tasks, allow users to toggle task completion, and delete tasks, with loading, empty, and error states handled accordingly. The app will also include accessibility features and responsive design for a seamless user experience.",
-  "apis": [],
-  "hooks": []
-}

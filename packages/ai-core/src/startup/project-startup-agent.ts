@@ -517,10 +517,9 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
    */
   private applyDeterministicTsFixes(dir: string): string[] {
     const fixed: string[] = [];
-    const srcDir = join(dir, "src");
-    if (!existsSync(srcDir)) return fixed;
+    if (!existsSync(dir)) return fixed;
 
-    const allFiles = this.walkFiles(srcDir, 8);
+    const allFiles = this.walkFiles(dir, 8).filter(f => !f.includes("node_modules"));
     const tsxFiles = allFiles.filter(f => f.endsWith(".tsx") || f.endsWith(".ts"));
 
     for (const absPath of tsxFiles) {

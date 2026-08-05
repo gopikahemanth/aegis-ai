@@ -30,7 +30,7 @@ export class CerebrasProvider implements AIProvider {
             "User-Agent": "AegisAI/1.0",
           },
           body: JSON.stringify({
-            model: options?.model ?? Models.cerebras?.default ?? "llama-3.3-70b",
+            model: options?.model ?? Models.cerebras?.default ?? "llama3.3-70b",
             messages: messages.map((m) => ({
               role: m.role,
               content: m.content,

@@ -35,8 +35,13 @@ export class GeminiProvider implements AIProvider {
       const prompt =
         messages
           .map(
-            (m) =>
-              `${m.role.toUpperCase()}:\n${m.content}`,
+            (m) => {
+              let text = m.content;
+              if (text.length > 12000) {
+                text = text.slice(0, 12000) + "\n\n...[Context Truncated to Stay Within Token Limits]...";
+              }
+              return `${m.role.toUpperCase()}:\n${text}`;
+            },
           )
           .join("\n\n");
 

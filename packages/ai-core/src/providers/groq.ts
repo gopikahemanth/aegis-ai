@@ -39,7 +39,10 @@ async chat(
           options?.temperature ?? 0.2,
         max_completion_tokens:
           options?.maxTokens ?? 4096,
-        messages,
+        messages: messages.map((m) => ({
+          role: m.role,
+          content: m.content.length > 12000 ? m.content.slice(0, 12000) + "\n\n...[Truncated]..." : m.content,
+        })),
       });
 
     if (response.usage) {

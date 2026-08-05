@@ -608,8 +608,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         }
 
         // Fix 8: DOMPurify Sanitization for dangerouslySetInnerHTML
-        if (content.includes("dangerouslySetInnerHTML") && !/DOMPurify|dompurify/i.test(content)) {
-          if (!content.includes("DOMPurify")) {
+        if (content.includes("dangerouslySetInnerHTML") && !content.includes("DOMPurify.sanitize")) {
+          if (!content.includes("import DOMPurify") && !content.includes('from "dompurify"') && !content.includes("from 'dompurify'")) {
             content = "import DOMPurify from 'dompurify';\n" + content;
           }
           content = content.replace(

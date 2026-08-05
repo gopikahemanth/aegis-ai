@@ -9,7 +9,7 @@ export const Models = {
   groq: {
     default: "llama-3.3-70b-versatile",
     strong: "llama-3.3-70b-versatile",
-    fast: "llama-3.3-70b-versatile",
+    fast: "llama-3.1-8b-instant",
     balanced: "llama-3.3-70b-versatile",
   },
 
@@ -28,10 +28,10 @@ export const Models = {
   },
 
   gemini: {
-    default: "gemini-3.1-flash-lite",
-    strong: "gemini-2.5-flash-lite",
-    fast: "gemini-3.1-flash-lite",
-    balanced: "gemini-2.5-flash-lite",
+    default: "gemini-1.5-flash",
+    strong: "gemini-1.5-flash",
+    fast: "gemini-1.5-flash",
+    balanced: "gemini-1.5-flash",
   },
 
   ollama: {

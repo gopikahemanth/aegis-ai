@@ -680,7 +680,16 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
-        // Fix 9: Truncation Detector — Check if file ends mid-expression
+        // Fix 9: TS2488 - useDarkMode hook destructured as array instead of object
+        if (content.includes("useDarkMode") && /const\s*\[\s*(?:isDark|isDarkMode)[^\]]*\]\s*=\s*useDarkMode\(\)/.test(content)) {
+          content = content.replace(
+            /const\s*\[\s*(?:isDark|isDarkMode|theme|toggle)[^\]]*\]\s*=\s*useDarkMode\(\)/g,
+            "const { isDarkMode, toggleDarkMode, isDark, toggle } = (useDarkMode() as any) || {}"
+          );
+          changed = true;
+        }
+
+        // Fix 10: Truncation Detector — Check if file ends mid-expression
         if (!isLikelySyntacticallyComplete(content)) {
           truncated.push(rel);
         }

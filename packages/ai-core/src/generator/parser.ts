@@ -70,6 +70,16 @@ export class Parser {
       }
     }
 
+    // Format 3 Fallback: ### Repair N: `path` or ### `path` followed by ```code block
+    if (files.length === 0) {
+      const markdownHeaderRegex = /(?:###|##|\*\*File:\*\*|\*\*Path:\*\*)[^\n`]*?`([^`\n]+\.(?:ts|tsx|js|jsx|css|html|json|prisma))`[^\n]*?\r?\n[\s\S]*?```(?:[a-zA-Z0-9_-]*)\r?\n([\s\S]*?)```/gi;
+      while ((match = markdownHeaderRegex.exec(response)) !== null) {
+        const rawPath = match[1].trim();
+        const content = match[2].trim();
+        files.push({ path: rawPath, content });
+      }
+    }
+
     return files;
   }
 }

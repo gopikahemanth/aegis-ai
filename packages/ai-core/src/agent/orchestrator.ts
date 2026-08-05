@@ -969,7 +969,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
             
             let stubContent = "";
             if (stubRelName.toLowerCase().includes("apiclient") || stubRelName.toLowerCase().includes("api")) {
-              stubContent = `import axios from 'axios';\nexport const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
+              stubContent = `import axios from 'axios';\nexport interface Artwork { id: string | number; title: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; }\nexport interface User { id: string | number; email: string; name?: string; }\nexport interface Artist { id: string | number; name: string; }\nexport interface Category { id: string | number; name: string; }\nexport const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
             } else if (stubRelName.toLowerCase().includes("button")) {
               stubContent = `import React from 'react';\nexport const Button: React.FC<any> = ({ children, ...props }) => <button className="px-4 py-2 bg-indigo-600 text-white rounded" {...props}>{children}</button>;\nexport default Button;\n`;
             } else if (stubRelName.toLowerCase().includes("card")) {

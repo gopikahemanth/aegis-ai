@@ -23,6 +23,11 @@ export class FileWriter {
         if (hasJsx) {
           cleanRelativePath = cleanRelativePath.replace(/\.ts$/, ".tsx");
         }
+      } else if (cleanRelativePath.endsWith(".ts") && !cleanRelativePath.endsWith(".d.ts")) {
+        const altTsxPath = join(outputDir, cleanRelativePath.replace(/\.ts$/, ".tsx"));
+        if (existsSync(altTsxPath)) {
+          cleanRelativePath = cleanRelativePath.replace(/\.ts$/, ".tsx");
+        }
       }
 
       const fullPath = join(outputDir, cleanRelativePath);
@@ -32,11 +37,6 @@ export class FileWriter {
         const altPath = fullPath.replace(/\.tsx$/, ".ts");
         if (existsSync(altPath)) {
           try { unlinkSync(altPath); } catch {}
-        }
-      } else if (cleanRelativePath.endsWith(".ts") && !cleanRelativePath.endsWith(".d.ts")) {
-        const altTsxPath = join(outputDir, cleanRelativePath.replace(/\.ts$/, ".tsx"));
-        if (existsSync(altTsxPath)) {
-          cleanRelativePath = cleanRelativePath.replace(/\.ts$/, ".tsx");
         }
       } else if (fullPath.endsWith(".jsx")) {
         const altPath = fullPath.replace(/\.jsx$/, ".js");

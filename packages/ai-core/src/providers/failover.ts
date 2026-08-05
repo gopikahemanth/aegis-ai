@@ -144,10 +144,11 @@ export class FailoverProvider implements AIProvider {
           const is503 = error.message?.includes("503") || error.message?.includes("UNAVAILABLE") || error.message?.includes("high demand");
           const is429 = error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED");
 
-          if (isGemini && retryAfter !== undefined && retryAfter <= 65 && attempts < maxAllowed) {
-            const waitMs = (retryAfter + 1) * 1000;
+          if (isGemini && is429 && attempts < maxAllowed) {
+            const waitSec = (retryAfter !== undefined && retryAfter <= 65) ? (retryAfter + 1) : 6;
+            const waitMs = waitSec * 1000;
             console.log(
-              `[FailoverProvider] 429 Rate Limit / Quota detected on ${provider.name}. Waiting ${retryAfter + 1}s for quota refill (attempt ${attempts}/${maxAllowed})...`
+              `[FailoverProvider] 429 Rate Limit / Quota detected on ${provider.name}. Waiting ${waitSec}s for quota refill (attempt ${attempts}/${maxAllowed})...`
             );
             await new Promise((resolve) => setTimeout(resolve, waitMs));
             continue;

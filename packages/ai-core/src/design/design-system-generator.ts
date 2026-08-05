@@ -338,6 +338,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description
 export * from './components/Button.js';
 export * from './components/Skeleton.js';
 export * from './components/EmptyState.js';
+export * from './components/GlassCard.js';
 `,
     });
 

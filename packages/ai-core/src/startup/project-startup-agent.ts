@@ -701,6 +701,16 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
+        // Fix 3: Truncated file stubbing
+        const trimmed = content.trim();
+        const isTruncated = /[\{\(\[\=\,\:]\s*$/.test(trimmed) || /export\s+const\s+[A-Za-z0-9]+\s*=\s*\([^)]*$/s.test(trimmed) || (!trimmed.endsWith(";") && !trimmed.endsWith("}") && !trimmed.endsWith(">") && !trimmed.endsWith(")"));
+        if (isTruncated && (rel.endsWith(".tsx") || rel.endsWith(".ts"))) {
+          const compName = rel.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Component";
+          content = `import React from 'react';\nexport interface ${compName}Props { [key: string]: any; }\nexport const ${compName}: React.FC<${compName}Props> = (props) => <div className="p-4 shadow border rounded">{props?.title || '${compName}'}</div>;\nexport default ${compName};\n`;
+          changed = true;
+          fixed.push(`Replaced truncated file with stub: ${rel}`);
+        }
+
         // Fix 10: Truncation Detector — Check if file ends mid-expression
         if (!isLikelySyntacticallyComplete(content)) {
           truncated.push(rel);

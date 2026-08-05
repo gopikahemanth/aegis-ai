@@ -1395,11 +1395,30 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
             let stubExt = rawImportPath.toLowerCase().includes("button") || rawImportPath.toLowerCase().includes("card") || rawImportPath.toLowerCase().includes("component") || rawImportPath.toLowerCase().includes("page") || rawImportPath.toLowerCase().includes("navbar") || rawImportPath.toLowerCase().includes("spinner") || rawImportPath.toLowerCase().includes("dashboard") || rawImportPath.toLowerCase().includes("gallery") ? ".tsx" : ".ts";
             const fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
             const stubRelName = relative(outputDirectory, fullStubPath);
+
+            // Fuzzy resolution: check if a file with the same component/module name exists elsewhere in diskFiles
+            const componentName = stubRelName.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Component";
+            const matchingDiskFile = allDiskFiles.find(f => {
+              const bName = f.relPath.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "");
+              return bName === componentName && f.fullPath !== fullStubPath;
+            });
+
+            if (matchingDiskFile) {
+              console.log(`[Orchestrator] Pre-build missing local import scanner: Found matching file "${matchingDiskFile.relPath}" for "${stubRelName}". Creating re-export shim...`);
+              let relImportToTarget = relative(dirname(fullStubPath), matchingDiskFile.fullPath).replace(/\\/g, "/");
+              if (!relImportToTarget.startsWith(".")) relImportToTarget = "./" + relImportToTarget;
+              relImportToTarget = relImportToTarget.replace(/\.(ts|tsx|js|jsx)$/, "");
+
+              const shimContent = `export * from '${relImportToTarget}';\nexport { default } from '${relImportToTarget}';\n`;
+              mkdirSync(dirname(fullStubPath), { recursive: true });
+              writeFileSync(fullStubPath, shimContent, "utf8");
+              continue;
+            }
+
             console.log(`[Orchestrator] Pre-build missing local import scanner: Generating stub for missing file "${stubRelName}"...`);
             
             let stubContent = "";
             const lowerRel = stubRelName.toLowerCase();
-            const componentName = stubRelName.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Component";
 
             if (lowerRel.includes("apiclient") || lowerRel.includes("api")) {
               stubContent = `import axios from 'axios';\nexport interface Artwork { id: string | number; title: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; }\nexport interface User { id: string | number; email: string; name?: string; }\nexport interface Artist { id: string | number; name: string; }\nexport interface Category { id: string | number; name: string; }\nexport const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;

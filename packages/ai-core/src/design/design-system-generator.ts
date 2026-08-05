@@ -331,6 +331,19 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description
 `,
     });
 
+    // ── GlassCard.tsx ────────────────────────────────────────────────────────
+    files.push({
+      path: "src/design-system/components/GlassCard.tsx",
+      content: `import React from 'react';
+
+export const GlassCard: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ children, className = '', ...props }) => (
+  <div className={\`bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-md p-6 \${className}\`} {...props}>
+    {children}
+  </div>
+);
+`,
+    });
+
     // ── index.ts ──────────────────────────────────────────────────────────────
     files.push({
       path: "src/design-system/index.ts",

@@ -149,6 +149,7 @@ export class ProjectStartupAgent {
 
   private patchPackageJson(pkgPath: string, framework: string, dir: string): string[] {
     const patches: string[] = [];
+    let depsChanged = false;
     let pkg: Record<string, unknown>;
 
     try {
@@ -306,6 +307,13 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
     if (patches.length > 0) {
       writeFileSync(pkgPath, JSON.stringify(pkg, null, 2), "utf8");
+      if (depsChanged) {
+        try {
+          console.log("[Startup] Installing newly added dependencies...");
+          execSync("npm install --legacy-peer-deps --silent", { cwd: dir, stdio: "pipe", timeout: 120_000 });
+          console.log("[Startup] ✓ Newly added dependencies installed successfully.");
+        } catch { /* non-fatal */ }
+      }
     }
 
     return patches;

@@ -374,7 +374,7 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
     if (!existsSync(dir)) return results;
     const walk = (d: string) => {
       for (const entry of readdirSync(d)) {
-        if (entry === "node_modules" || entry.startsWith(".")) continue;
+        if (entry === "node_modules" || entry === "dist" || entry === "build" || entry === "out" || entry === "coverage" || entry.startsWith(".")) continue;
         const fullPath = join(d, entry);
         const stat = statSync(fullPath);
         if (stat.isDirectory()) walk(fullPath);

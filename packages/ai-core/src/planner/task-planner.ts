@@ -64,6 +64,14 @@ export class TaskPlanner {
       return {
         ...task,
         id,
+        title: (task.title || "")
+          .replace(/PostgreSQL|Postgres/gi, specification.database || "SQLite")
+          .replace(/NextAuth/gi, "Express JWT Auth")
+          .replace(/Next\.js 14|Next\.js/gi, specification.frontend || "React"),
+        description: (task.description || "")
+          .replace(/PostgreSQL|Postgres/gi, specification.database || "SQLite")
+          .replace(/NextAuth/gi, "Express JWT Auth")
+          .replace(/Next\.js 14|Next\.js/gi, specification.frontend || "React"),
         priority: isNaN(priority) ? 1 : priority,
         estimatedComplexity: isNaN(estimatedComplexity) ? 1 : estimatedComplexity,
         dependencies,

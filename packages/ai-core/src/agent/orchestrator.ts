@@ -1398,9 +1398,15 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
             // Fuzzy resolution: check if a file with the same component/module name exists elsewhere in diskFiles
             const componentName = stubRelName.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Component";
+            const lowerComp = componentName.toLowerCase();
             const matchingDiskFile = allDiskFiles.find(f => {
-              const bName = f.relPath.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "");
-              return bName === componentName && f.fullPath !== fullStubPath;
+              const bName = f.relPath.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "";
+              const lowerBName = bName.toLowerCase();
+              if (f.fullPath === fullStubPath) return false;
+              if (lowerBName === lowerComp) return true;
+              if (lowerComp.endsWith("page") && lowerBName === lowerComp.replace("page", "")) return true;
+              if (lowerBName.endsWith("page") && lowerComp === lowerBName.replace("page", "")) return true;
+              return false;
             });
 
             if (matchingDiskFile) {
@@ -1422,10 +1428,10 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
             if (lowerRel.includes("apiclient") || lowerRel.includes("api")) {
               stubContent = `import axios from 'axios';\nexport interface Artwork { id: string | number; title: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; }\nexport interface User { id: string | number; email: string; name?: string; }\nexport interface Artist { id: string | number; name: string; }\nexport interface Category { id: string | number; name: string; }\nexport const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
-            } else if (lowerRel.includes("entity") || lowerRel.includes("entities") || lowerRel.includes("type") || lowerRel.includes("model")) {
-              stubContent = `export interface ${componentName} { id: string | number; title?: string; name?: string; email?: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; createdAt?: string; updatedAt?: string; }\nexport type ${componentName}Input = Partial<${componentName}>;\nexport default ${componentName};\n`;
+            } else if (lowerRel.includes("entity") || lowerRel.includes("entities") || lowerRel.includes("type") || lowerRel.includes("types") || lowerRel.includes("model") || lowerRel.includes("models")) {
+              stubContent = `export interface Artwork { id: string | number; title?: string; name?: string; email?: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; createdAt?: string; updatedAt?: string; }\nexport interface User { id: string | number; email: string; name?: string; }\nexport interface Artist { id: string | number; name: string; }\nexport interface Category { id: string | number; name: string; }\nexport interface ${componentName} { id: string | number; title?: string; name?: string; email?: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; createdAt?: string; updatedAt?: string; }\nexport type ${componentName}Input = Partial<${componentName}>;\nexport default ${componentName};\n`;
             } else if (lowerRel.includes("button")) {
-              stubContent = `import React from 'react';\nexport const Button: React.FC<any> = ({ children, ...props }) => <button className="px-4 py-2 bg-indigo-600 text-white rounded" {...props}>{children}</button>;\nexport default Button;\n`;
+              stubContent = `import React from 'react';\nexport interface ButtonProps { children?: any; variant?: any; size?: any; loading?: any; icon?: any; [key: string]: any; }\nexport const Button: React.FC<ButtonProps> = ({ children, variant, size, loading, icon, ...props }: any) => <button className="px-4 py-2 bg-indigo-600 text-white rounded" {...props}>{children}</button>;\nexport default Button;\n`;
             } else if (lowerRel.includes("card")) {
               stubContent = `import React from 'react';\nexport const ${componentName}: React.FC<any> = (props) => <div className="p-4 border rounded shadow" {...props}>{props.title || '${componentName}'}</div>;\nexport default ${componentName};\n`;
             } else {

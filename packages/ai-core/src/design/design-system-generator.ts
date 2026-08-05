@@ -199,25 +199,26 @@ export const animations = {
       path: "src/design-system/components/Button.tsx",
       content: `import React from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | string;
+export type ButtonSize = 'sm' | 'md' | 'lg' | string;
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: any;
+  size?: any;
   loading?: boolean;
   icon?: React.ReactNode;
   children?: React.ReactNode;
+  [key: string]: any;
 }
 
-const variantClasses: Record<ButtonVariant, string> = {
+const variantClasses: Record<string, string> = {
   primary:   'bg-${tokens.brand}-600 text-white hover:bg-${tokens.brand}-500 focus-visible:ring-${tokens.brand}-500 shadow-sm',
   secondary: 'bg-${tokens.neutral}-800 border border-${tokens.neutral}-700 text-${tokens.neutral}-200 hover:bg-${tokens.neutral}-700 focus-visible:ring-${tokens.neutral}-600',
   ghost:     'text-${tokens.neutral}-400 hover:text-${tokens.neutral}-200 hover:bg-${tokens.neutral}-800/60 focus-visible:ring-${tokens.neutral}-600',
   danger:    'bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500 shadow-sm',
 };
 
-const sizeClasses: Record<ButtonSize, string> = {
+const sizeClasses: Record<string, string> = {
   sm: 'px-3 py-1.5 text-xs gap-1.5',
   md: 'px-4 py-2 text-sm gap-2',
   lg: 'px-6 py-3 text-base gap-2.5',

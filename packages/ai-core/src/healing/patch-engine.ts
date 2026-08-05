@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { Parser } from "../generator/parser.js";
 import { FileWriter } from "../writer/writer.js";
+import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
 
 export class PatchEngine {
   private readonly parser = new Parser();
@@ -9,9 +10,18 @@ export class PatchEngine {
 
   apply(response: string, projectPath: string): number {
     // 1. Parse standard full file blocks (===FILE: path===)
-    const files = this.parser.parse(response);
-    if (files.length > 0) {
-      this.writer.write(files, projectPath);
+    const rawFiles = this.parser.parse(response);
+    const validFiles = rawFiles.filter(f => {
+      if (!f.path.endsWith(".ts") && !f.path.endsWith(".tsx")) return true;
+      const complete = isLikelySyntacticallyComplete(f.content);
+      if (!complete) {
+        console.warn(`[PatchEngine] ⚠️ Refusing to write truncated file to disk: ${f.path}`);
+      }
+      return complete;
+    });
+
+    if (validFiles.length > 0) {
+      this.writer.write(validFiles, projectPath);
     }
 
     // 2. Parse search-replace patch blocks (===PATCH: path===)
@@ -61,6 +71,6 @@ export class PatchEngine {
       }
     }
 
-    return files.length + patchedCount;
+    return validFiles.length + patchedCount;
   }
 }

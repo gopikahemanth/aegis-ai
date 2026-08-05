@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, renameSync, unlinkSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { execSync, spawn } from "node:child_process";
+import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
 
 export interface StartupResult {
   success: boolean;
@@ -680,21 +681,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         }
 
         // Fix 9: Truncation Detector — Check if file ends mid-expression
-        const openBraces = (content.match(/\{/g) || []).length;
-        const closeBraces = (content.match(/\}/g) || []).length;
-        const openParens = (content.match(/\(/g) || []).length;
-        const closeParens = (content.match(/\)/g) || []).length;
-        const braceDelta = openBraces - closeBraces;
-        const parenDelta = openParens - closeParens;
-
-        const lastMeaningfulLine = content.trimEnd().split("\n").filter(l => l.trim()).pop() ?? "";
-        const looksTruncatedMidExpression =
-          /[,.]$/.test(lastMeaningfulLine.trim()) ||
-          /(&&|\|\||===|!==|==|!=|=>|=|\?|:|\+|-|\*|\/)\s*$/.test(lastMeaningfulLine.trim()) ||
-          /\b(return|const|let|var|if|else|for|while)\s*$/.test(lastMeaningfulLine.trim()) ||
-          (/\.\w+(\(|\[)?$/.test(lastMeaningfulLine.trim()) && !/[)\];]$/.test(lastMeaningfulLine.trim()));
-
-        if ((braceDelta > 0 || parenDelta > 0) && looksTruncatedMidExpression) {
+        if (!isLikelySyntacticallyComplete(content)) {
           truncated.push(rel);
         }
 

@@ -21,6 +21,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from "
 import { join } from "node:path";
 import { DependencyResolver, DependencyInstaller } from "@aegis/project-builder";
 import { PatchEngine } from "../healing/patch-engine.js";
+import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
 import { ErrorRootCauseMapper } from "../healing/error-root-cause-mapper.js";
 import { DependencyGraphEngine } from "../dependency/dependency-graph.js";
 import { GitIntegrationEngine } from "../git/git-engine.js";
@@ -664,8 +665,14 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
             existingFiles,
             imagePayload,
           );
+
+          // Validate that all generated TypeScript files are syntactically complete
+          const truncatedCodeFiles = result.files.filter(f => (f.path.endsWith(".ts") || f.path.endsWith(".tsx")) && !isLikelySyntacticallyComplete(f.content));
+          if (truncatedCodeFiles.length > 0) {
+            throw new Error(`Truncated code generated in file(s): ${truncatedCodeFiles.map(f => f.path).join(", ")}`);
+          }
         } catch (coderError: any) {
-          console.warn(`[Orchestrator] CoderAgent failed for task "${task.title}": ${coderError.message}`);
+          console.warn(`[Orchestrator] CoderAgent validation failed for task "${task.title}": ${coderError.message}`);
           console.log(`[Orchestrator] Launching inline Coder self-healing loop...`);
           let repairAttempts = 0;
           let success = false;
@@ -682,15 +689,20 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               );
 
               const repairedFiles = this.parser.parse(repairResponse);
-              if (repairedFiles.length > 0) {
+              const validRepairedFiles = repairedFiles.filter(f => {
+                if (!f.path.endsWith(".ts") && !f.path.endsWith(".tsx")) return true;
+                return isLikelySyntacticallyComplete(f.content);
+              });
+
+              if (validRepairedFiles.length > 0) {
                 result = {
                   response: repairResponse,
-                  files: repairedFiles
+                  files: validRepairedFiles
                 };
                 success = true;
-                console.log(`[Self-Healing] ✓ Coder repair succeeded! Resolved placeholders.`);
+                console.log(`[Self-Healing] ✓ Coder repair succeeded! Validated completeness.`);
               } else {
-                throw new Error("No file changes parsed from repair response.");
+                throw new Error("No syntactically complete file changes parsed from repair response.");
               }
             } catch (repairErr: any) {
               lastError = repairErr;

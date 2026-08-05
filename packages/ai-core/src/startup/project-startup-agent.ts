@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, renameSync, unlinkSync } from "node:fs";
 import { join, relative } from "node:path";
 import { execSync, spawn } from "node:child_process";
 
@@ -269,9 +269,13 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         "fuse.js": "^7.0.0",
         "marked": "^14.0.0",
         "dompurify": "^3.1.6",
+        "@tanstack/react-query": "^5.51.1",
+        "zustand": "^4.5.4",
+        "react-lazy-load-image-component": "^1.6.2",
       };
       const requiredDevDeps: Record<string, string> = {
         "@types/dompurify": "^3.0.5",
+        "@types/react-lazy-load-image-component": "^1.6.3",
         "@types/react": "^18.3.3",
         "@types/react-dom": "^18.3.0",
         "@vitejs/plugin-react": "^4.3.1",
@@ -589,6 +593,30 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
             content = "import dotenv from 'dotenv';\n" + content;
             changed = true;
           }
+        }
+
+        // Fix 7: .ts file containing JSX syntax should be renamed to .tsx
+        if (absPath.endsWith(".ts") && !absPath.endsWith(".d.ts") && !rel.startsWith("server/")) {
+          const hasJsx = /<[a-zA-Z][a-zA-Z0-9]*\s*(className|onClick|id|children|style|key)=/.test(content) || /return\s*\(\s*<[a-zA-Z]/.test(content);
+          if (hasJsx) {
+            const tsxPath = absPath + "x";
+            writeFileSync(tsxPath, content, "utf8");
+            try { unlinkSync(absPath); } catch {}
+            fixed.push(`${rel} -> ${rel}x`);
+            continue;
+          }
+        }
+
+        // Fix 8: DOMPurify Sanitization for dangerouslySetInnerHTML
+        if (content.includes("dangerouslySetInnerHTML") && !/DOMPurify|dompurify/i.test(content)) {
+          if (!content.includes("DOMPurify")) {
+            content = "import DOMPurify from 'dompurify';\n" + content;
+          }
+          content = content.replace(
+            /dangerouslySetInnerHTML=\{\{\s*__html:\s*(?!DOMPurify\.sanitize\()([^}]+?)\s*\}\}/g,
+            "dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize($1) }}"
+          );
+          changed = true;
         }
 
         if (changed) {

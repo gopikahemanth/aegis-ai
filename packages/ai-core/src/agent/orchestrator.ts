@@ -1434,7 +1434,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               if (!relImportToTarget.startsWith(".")) relImportToTarget = "./" + relImportToTarget;
               relImportToTarget = relImportToTarget.replace(/\.(ts|tsx|js|jsx)$/, "");
 
-              const shimContent = `export * from '${relImportToTarget}';\nexport { default } from '${relImportToTarget}';\n`;
+              const shimContent = `import * as Mod from '${relImportToTarget}';\nexport * from '${relImportToTarget}';\nconst _default = (Mod as any).default || (Mod as any)['${componentName}'] || Mod[Object.keys(Mod)[0]] || Mod;\nexport default _default;\n`;
               mkdirSync(dirname(fullStubPath), { recursive: true });
               writeFileSync(fullStubPath, shimContent, "utf8");
               continue;

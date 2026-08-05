@@ -570,6 +570,12 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
+        // Fix 5: ThemeProvider / DarkModeProvider import alias mismatch
+        if (content.includes("DarkModeProvider") && !content.includes("export const DarkModeProvider")) {
+          content = content.replace(/DarkModeProvider/g, "ThemeProvider");
+          changed = true;
+        }
+
         if (changed) {
           writeFileSync(absPath, content, "utf8");
           fixed.push(rel);

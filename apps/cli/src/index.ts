@@ -6,7 +6,12 @@ import { runCLI } from "./cli.js";
 async function main() {
   showBanner();
 
-  await runCLI();
+  try {
+    await runCLI();
+  } catch (err: any) {
+    console.error(`\n❌ Execution Error: ${err?.message || err}`);
+    process.exit(1);
+  }
 }
 
 main();

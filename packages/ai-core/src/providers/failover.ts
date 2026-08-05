@@ -141,8 +141,8 @@ export class FailoverProvider implements AIProvider {
           if (retryAfter === undefined && error.details) {
             try {
               const detailsStr = JSON.stringify(error.details);
-              const match = detailsStr.match(/(\d+(\.\d+)?)s/);
-              if (match) retryAfter = Math.ceil(parseFloat(match[1]));
+              const match = detailsStr.match(/"retryDelay":\s*"(\d+)s?"/i) || detailsStr.match(/retry\s*in\s*(\d+)s?/i);
+              if (match) retryAfter = parseInt(match[1], 10);
             } catch {}
           }
 

@@ -576,13 +576,19 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
-        // Fix 6: server/index.ts missing prisma export
-        if ((rel === "server/index.ts" || rel.endsWith("/server/index.ts")) && !content.includes("export const prisma")) {
-          if (!content.includes("@prisma/client")) {
-            content = "import { PrismaClient } from '@prisma/client';\n" + content;
+        // Fix 6: server/index.ts missing prisma export or dotenv import
+        if (rel === "server/index.ts" || rel.endsWith("/server/index.ts")) {
+          if (!content.includes("export const prisma")) {
+            if (!content.includes("@prisma/client")) {
+              content = "import { PrismaClient } from '@prisma/client';\n" + content;
+            }
+            content = content.replace(/(const app = express\(\);)/, "export const prisma = new PrismaClient();\n$1");
+            changed = true;
           }
-          content = content.replace(/(const app = express\(\);)/, "export const prisma = new PrismaClient();\n$1");
-          changed = true;
+          if (content.includes("dotenv.config()") && !content.includes("import dotenv")) {
+            content = "import dotenv from 'dotenv';\n" + content;
+            changed = true;
+          }
         }
 
         if (changed) {

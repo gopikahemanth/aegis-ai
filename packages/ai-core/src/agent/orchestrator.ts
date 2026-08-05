@@ -970,12 +970,15 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
             let stubContent = "";
             if (stubRelName.toLowerCase().includes("apiclient") || stubRelName.toLowerCase().includes("api")) {
               stubContent = `import axios from 'axios';\nexport interface Artwork { id: string | number; title: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; }\nexport interface User { id: string | number; email: string; name?: string; }\nexport interface Artist { id: string | number; name: string; }\nexport interface Category { id: string | number; name: string; }\nexport const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
+            } else if (stubRelName.toLowerCase().includes("entity") || stubRelName.toLowerCase().includes("entities") || stubRelName.toLowerCase().includes("type") || stubRelName.toLowerCase().includes("model")) {
+              const entityName = stubRelName.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Artwork";
+              stubContent = `export interface ${entityName} { id: string | number; title?: string; name?: string; email?: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; createdAt?: string; updatedAt?: string; }\nexport type ${entityName}Input = Partial<${entityName}>;\nexport default ${entityName};\n`;
             } else if (stubRelName.toLowerCase().includes("button")) {
               stubContent = `import React from 'react';\nexport const Button: React.FC<any> = ({ children, ...props }) => <button className="px-4 py-2 bg-indigo-600 text-white rounded" {...props}>{children}</button>;\nexport default Button;\n`;
             } else if (stubRelName.toLowerCase().includes("card")) {
               stubContent = `import React from 'react';\nexport const ArtworkCard: React.FC<any> = (props) => <div className="p-4 border rounded shadow" {...props}>{props.title || 'Artwork'}</div>;\nexport default ArtworkCard;\n`;
             } else {
-              stubContent = `import React from 'react';\nexport const DummyComponent: React.FC<any> = (props) => <div {...props} />;\nexport default DummyComponent;\n`;
+              stubContent = `import React from 'react';\nexport interface Artwork { id: string | number; title?: string; imageUrl?: string; price?: number; }\nexport const DummyComponent: React.FC<any> = (props) => <div {...props} />;\nexport default DummyComponent;\n`;
             }
             
             mkdirSync(dirname(fullStubPath), { recursive: true });

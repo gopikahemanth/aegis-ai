@@ -116,6 +116,19 @@ export class Parser {
       }
     }
 
+    // Post-Process Normalization: Ensure React component files ending in .ts are normalized to .tsx
+    for (const f of files) {
+      if (f.path.endsWith(".ts") && !f.path.endsWith(".d.ts")) {
+        const isComponentDir = /\/(components|views|pages|ui)\//i.test(f.path);
+        const hasJsx = /<[A-Z][A-Za-z0-9]*[\s/>]/.test(f.content) ||
+                       /<(div|span|button|form|input|p|h[1-6]|a|ul|li|section|header|footer|main|nav)[\s/>]/.test(f.content) ||
+                       /<\/([A-Za-z0-9]+)>/.test(f.content);
+        if (isComponentDir || hasJsx) {
+          f.path = f.path.replace(/\.ts$/, ".tsx");
+        }
+      }
+    }
+
     return files;
   }
 }

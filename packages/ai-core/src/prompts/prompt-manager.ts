@@ -415,10 +415,18 @@ Output Rules:
 2. Ensure ALL JSX/HTML elements have exact corresponding closing tags (e.g. </div>, </button>, </Form>).
 3. Ensure ALL functions, hooks, objects, and conditionals have matching closing braces '}' and parentheses ')'.
 4. Never abbreviate code, omit lines, or use placeholders like "// rest of component remains same".
-5. Every file must begin strictly with:
-===FILE: relative/path===
+5. Format every repaired file strictly as:
+===FILE: src/relative/path.tsx===
+[full complete file content here]
 
-Output ONLY valid file blocks. Do not include markdown text, explanations, or backticks.`;
+Alternatively, output a JSON object with schema:
+{
+  "files": [
+    { "path": "src/relative/path.tsx", "content": "..." }
+  ]
+}
+
+DO NOT INCLUDE ANY OTHER MARKDOWN HEADINGS (like ### Repair 1: or File:). ONLY USE ===FILE: path=== OR THE RAW JSON SCHEMA.`;
   }
 
   public getDataArchitecturePrompt(spec?: ProjectSpecification): string {

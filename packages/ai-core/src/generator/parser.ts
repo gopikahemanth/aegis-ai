@@ -20,6 +20,28 @@ export class Parser {
   parse(response: string): GeneratedFile[] {
     const files: GeneratedFile[] = [];
 
+    // Format 0: Raw JSON response parsing (e.g. {"files": [{"path": "...", "content": "..."}]})
+    try {
+      const jsonStart = response.indexOf("{");
+      const jsonEnd = response.lastIndexOf("}");
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        const potentialJson = response.substring(jsonStart, jsonEnd + 1);
+        const parsed = JSON.parse(potentialJson);
+        const list = Array.isArray(parsed) ? parsed : (parsed.files || parsed.repairedFiles || parsed.codeFiles);
+        if (Array.isArray(list) && list.length > 0) {
+          for (const item of list) {
+            if (item && typeof item.path === "string" && typeof item.content === "string") {
+              files.push({
+                path: item.path.trim().replace(/^`+|`+$/g, ""),
+                content: item.content.trim(),
+              });
+            }
+          }
+          if (files.length > 0) return files;
+        }
+      }
+    } catch { /* Fall through to regex format parsers */ }
+
     // Format 1: === FILE: relative/path === or ===FILE: relative/path ===
     const headerRegex = /={3,}\s*(?:FILE:\s*)?([^\n\r=]+?)\s*={0,3}\r?\n([\s\S]*?)(?=(?:={3,}\s*(?:FILE:\s*)?[^\n\r=]+?)|$)/gi;
     let match: RegExpExecArray | null;
@@ -70,10 +92,10 @@ export class Parser {
       }
     }
 
-    // Format 3 Fallback: ### Repair N: `path` or ### `path` followed by ```code block
+    // Format 3 Fallback: Resilient Markdown headings (e.g. ### Repair 1: `src/path.tsx` or **File:** src/path.tsx)
     if (files.length === 0) {
-      const markdownHeaderRegex = /(?:###|##|\*\*File:\*\*|\*\*Path:\*\*)[^\n`]*?`([^`\n]+\.(?:ts|tsx|js|jsx|css|html|json|prisma))`[^\n]*?\r?\n[\s\S]*?```(?:[a-zA-Z0-9_-]*)\r?\n([\s\S]*?)```/gi;
-      while ((match = markdownHeaderRegex.exec(response)) !== null) {
+      const sectionRegex = /(?:###|##|\*\*File:\*\*|\*\*Path:\*\*)\s*(?:Repair\s*\d*:?\s*)?`?([a-zA-Z0-9_\-\.\/]+\.(?:ts|tsx|js|jsx|css|html|json|prisma))`?[^\n]*\r?\n(?:[^\n]*\r?\n)?```[a-zA-Z0-9_-]*\r?\n([\s\S]*?)```/gi;
+      while ((match = sectionRegex.exec(response)) !== null) {
         const rawPath = match[1].trim();
         const content = match[2].trim();
         files.push({ path: rawPath, content });

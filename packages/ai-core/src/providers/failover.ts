@@ -57,9 +57,10 @@ export class FailoverProvider implements AIProvider {
       const until = this.disabledUntil.get(provider.name);
       if (until && Date.now() < until) {
         continue;
-      }      let providerAttempts = 0;
+      }
+      let providerAttempts = 0;
       let quotaAttempts = 0;
-      const maxQuotaAttempts = 12;
+      const maxQuotaAttempts = 30;
       let delay = this.initialDelayMs;
 
       while (providerAttempts < this.maxRetries) {

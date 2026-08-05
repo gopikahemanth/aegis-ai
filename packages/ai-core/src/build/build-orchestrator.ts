@@ -29,9 +29,15 @@ export class BuildOrchestrator {
       );
 
     if (!result.success) {
-      console.log(
-        "✗ Build failed.",
-      );
+      console.log("✗ Build failed.");
+      if (result.stderr) {
+        console.error("===== BUILD STDERR =====");
+        console.error(result.stderr);
+      }
+      if (result.stdout) {
+        console.log("===== BUILD STDOUT =====");
+        console.log(result.stdout);
+      }
       return result;
     }
 

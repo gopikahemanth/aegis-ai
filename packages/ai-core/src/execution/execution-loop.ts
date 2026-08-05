@@ -108,11 +108,7 @@ const runner =
   this.dispatcher.get(
     context.currentStage!,
   ) || new ImplementationRunner();
-console.log("===== CONTEXT =====");
-console.dir(context, { depth: null });
-console.log("===================");
-console.log("Execution Context:");
-console.dir(context, { depth: 1 });
+console.log(`[Execution] Running stage "${context.currentStage}" for task: "${task.title}"`);
 
 const result =
   await runner.run(

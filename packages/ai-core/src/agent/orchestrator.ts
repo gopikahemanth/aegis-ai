@@ -1043,8 +1043,6 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
           status: "SUCCESS"
         });
       }
-      console.log(`[Startup] 🚀 Ready! Open: ${startupResult.url ?? "http://localhost:5173"}`);
-      console.log(`[Startup]    Run:  cd ${outputDirectory} && npm run dev`);
 
       // Re-verify build status after ProjectStartupAgent applied all deterministic fixes
       build = await this.runVerification(request, framework, outputDirectory);
@@ -1114,6 +1112,9 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.error("\n❌ Project generation failed. Compilation build is failing or required DoD criteria are unmet.");
       throw new Error("Project generation failed: required completeness criteria or builds are unresolved.");
     }
+
+    console.log(`\n[Startup] 🚀 Ready! Open: http://localhost:5173`);
+    console.log(`[Startup]    Run:  cd ${outputDirectory} && npm run dev\n`);
 
     this.execution.complete();
     return {

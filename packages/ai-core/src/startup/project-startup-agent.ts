@@ -37,14 +37,27 @@ export class ProjectStartupAgent {
     const framework = this.detectFramework(outputDirectory);
     console.log(`[Startup] Detected framework: ${framework}`);
 
-    // ── 2. Patch package.json ────────────────────────────────────────────────
+    // ── 2. Patch or Create package.json ──────────────────────────────────────
     const pkgPath = join(outputDirectory, "package.json");
-    if (existsSync(pkgPath)) {
-      const patched = this.patchPackageJson(pkgPath, framework, outputDirectory);
-      patches.push(...patched);
-    } else {
-      console.warn("[Startup] package.json not found — skipping script patch");
+    if (!existsSync(pkgPath)) {
+      console.warn("[Startup] package.json not found — constructing fresh package.json");
+      writeFileSync(pkgPath, JSON.stringify({
+        name: outputDirectory.split(/[\\/]/).at(-1) ?? "aegis-app",
+        private: true,
+        version: "0.0.1",
+        type: "module",
+        scripts: {
+          "dev": "vite",
+          "build": "tsc && vite build",
+          "preview": "vite preview"
+        },
+        dependencies: {},
+        devDependencies: {}
+      }, null, 2), "utf8");
+      patches.push("Constructed fresh package.json");
     }
+    const patched = this.patchPackageJson(pkgPath, framework, outputDirectory);
+    patches.push(...patched);
 
     // ── 3. Patch missing config files ────────────────────────────────────────
     const configPatches = this.ensureConfigFiles(outputDirectory, framework);

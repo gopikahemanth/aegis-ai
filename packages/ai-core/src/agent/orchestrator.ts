@@ -804,9 +804,34 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
     // Check output directory and package.json existence
     const pkgJsonPath = join(outputDirectory, "package.json");
-    const hasPkgJson = existsSync(pkgJsonPath);
+    if (!existsSync(pkgJsonPath)) {
+      console.warn("[Orchestrator] Warning: package.json missing before install — constructing base package.json");
+      writeFileSync(pkgJsonPath, JSON.stringify({
+        name: outputDirectory.split(/[\\/]/).at(-1) ?? "aegis-app",
+        private: true,
+        version: "0.0.1",
+        type: "module",
+        scripts: {
+          "dev": "vite",
+          "build": "tsc && vite build",
+          "preview": "vite preview"
+        },
+        dependencies: {
+          "react": "^18.3.1",
+          "react-dom": "^18.3.1",
+          "react-router-dom": "^6.26.0"
+        },
+        devDependencies: {
+          "@types/react": "^18.3.3",
+          "@types/react-dom": "^18.3.0",
+          "@vitejs/plugin-react": "^4.3.1",
+          "typescript": "^5.5.3",
+          "vite": "^5.4.1"
+        }
+      }, null, 2), "utf8");
+    }
     console.log(`[Orchestrator] Output directory: ${outputDirectory}`);
-    console.log(`[Orchestrator] package.json exists: ${hasPkgJson}`);
+    console.log(`[Orchestrator] package.json exists: ${existsSync(pkgJsonPath)}`);
     console.log(`[Orchestrator] Current working directory: ${process.cwd()}`);
 
     // Initial package dependencies installation

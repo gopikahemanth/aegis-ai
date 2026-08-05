@@ -28,12 +28,14 @@ const schema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_MODEL: z.string().optional(),
+  CEREBRAS_API_KEY: z.string().optional(),
   AI_PROVIDER: z
     .enum([
-      "groq",
+      "cerebras",
       "gemini",
+      "groq",
       "openrouter",
     ])
-    .default("groq"),
+    .default("cerebras"),
 });
 export const env = schema.parse(process.env);

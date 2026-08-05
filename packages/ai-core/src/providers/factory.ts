@@ -5,6 +5,7 @@ import { GeminiProvider } from "./gemini.js";
 import { FailoverProvider } from "./failover.js";
 import { OllamaProvider } from "./ollama.js";
 import { OpenRouterProvider } from "./openrouter.js";
+import { CerebrasProvider } from "./cerebras.js";
 import { env } from "../utils/env.js";
 import type { AIProvider } from "./base.js";
 
@@ -12,6 +13,7 @@ export class ProviderFactory {
   static createRegistry() {
     const registry = new ProviderRegistry();
 
+    if (env.CEREBRAS_API_KEY) registry.register(new CerebrasProvider());
     registry.register(new GroqProvider());
     registry.register(new GeminiProvider());
     registry.register(new OllamaProvider());
@@ -24,7 +26,9 @@ export class ProviderFactory {
     const providers: AIProvider[] = [];
     const preferred = env.AI_PROVIDER;
 
-    if (preferred === "gemini" && env.GEMINI_API_KEY) {
+    if (preferred === "cerebras" && env.CEREBRAS_API_KEY) {
+      providers.push(new CerebrasProvider());
+    } else if (preferred === "gemini" && env.GEMINI_API_KEY) {
       providers.push(new GeminiProvider());
     } else if (preferred === "groq" && env.GROQ_API_KEY) {
       providers.push(new GroqProvider());
@@ -32,6 +36,9 @@ export class ProviderFactory {
       providers.push(new OpenRouterProvider());
     }
 
+    if (preferred !== "cerebras" && env.CEREBRAS_API_KEY) {
+      providers.push(new CerebrasProvider());
+    }
     if (preferred !== "gemini" && env.GEMINI_API_KEY) {
       providers.push(new GeminiProvider());
     }

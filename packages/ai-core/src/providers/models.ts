@@ -1,4 +1,11 @@
 export const Models = {
+  cerebras: {
+    default: "llama-3.3-70b",
+    strong: "llama-3.3-70b",
+    fast: "llama3.1-8b",
+    balanced: "llama-3.3-70b",
+  },
+
   groq: {
     default: "llama-3.3-70b-versatile",
     strong: "llama-3.3-70b-versatile",

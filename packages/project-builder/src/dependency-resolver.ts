@@ -18,11 +18,12 @@ export class DependencyResolver {
       for (const match of details.matchAll(pattern)) {
         const importPath = match[1];
 
-        // Skip relative and absolute path imports
+        // Skip relative, path alias (@/), and absolute path imports
         if (
           importPath.startsWith(".") ||
           importPath.startsWith("/") ||
           importPath.startsWith("\\") ||
+          importPath.startsWith("@/") ||
           /^[a-zA-Z]:/.test(importPath)
         ) {
           continue;

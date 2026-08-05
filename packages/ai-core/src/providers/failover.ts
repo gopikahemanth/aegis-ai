@@ -57,13 +57,14 @@ export class FailoverProvider implements AIProvider {
       const until = this.disabledUntil.get(provider.name);
       if (until && Date.now() < until) {
         continue;
-      }
-
-      let attempts = 0;
+      }      let providerAttempts = 0;
+      let quotaAttempts = 0;
+      const maxQuotaAttempts = 12;
       let delay = this.initialDelayMs;
 
-      while (true) {
+      while (providerAttempts < this.maxRetries) {
         try {
+          providerAttempts++;
           let activeOptions = options;
           const providerName = provider.name as keyof typeof Models;
 
@@ -120,11 +121,10 @@ export class FailoverProvider implements AIProvider {
           }
 
           console.log(
-            `[FailoverProvider] Attempting chat with provider: ${provider.name} (attempt ${attempts + 1}/${this.maxRetries})`
+            `[FailoverProvider] Attempting chat with provider: ${provider.name} (attempt ${providerAttempts}/${this.maxRetries})`
           );
           return await provider.chat(messages, activeOptions);
         } catch (error: any) {
-          attempts++;
           lastError = error;
           console.warn(
             `[FailoverProvider] Provider ${provider.name} failed:`,
@@ -138,40 +138,48 @@ export class FailoverProvider implements AIProvider {
               retryAfter = Math.ceil(parseFloat(match[1]));
             }
           }
+          if (retryAfter === undefined && error.details) {
+            try {
+              const detailsStr = JSON.stringify(error.details);
+              const match = detailsStr.match(/(\d+(\.\d+)?)s/);
+              if (match) retryAfter = Math.ceil(parseFloat(match[1]));
+            } catch {}
+          }
 
           const isGemini = provider.name === "gemini";
-          const maxAllowed = isGemini ? 10 : this.maxRetries;
           const is503 = error.message?.includes("503") || error.message?.includes("UNAVAILABLE") || error.message?.includes("high demand");
           const is429 = error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED");
 
-          if (isGemini && is429 && attempts < maxAllowed) {
-            const waitSec = (retryAfter !== undefined && retryAfter <= 65) ? (retryAfter + 1) : 6;
+          if (isGemini && is429 && quotaAttempts < maxQuotaAttempts) {
+            quotaAttempts++;
+            providerAttempts--; // Quota wait is not a failed provider attempt
+            const waitSec = (retryAfter !== undefined && retryAfter > 0) ? (retryAfter + 1) : 6;
             const waitMs = waitSec * 1000;
             console.log(
-              `[FailoverProvider] 429 Rate Limit / Quota detected on ${provider.name}. Waiting ${waitSec}s for quota refill (attempt ${attempts}/${maxAllowed})...`
+              `[FailoverProvider] 429 Rate Limit / Quota detected on ${provider.name}. Waiting ${waitSec}s for quota refill (quota retry ${quotaAttempts}/${maxQuotaAttempts})...`
             );
             await new Promise((resolve) => setTimeout(resolve, waitMs));
             continue;
           }
 
-          if (isGemini && is503 && attempts < maxAllowed) {
-            const waitTime = Math.min(attempts * 3000, 10000);
+          if (isGemini && is503 && quotaAttempts < maxQuotaAttempts) {
+            quotaAttempts++;
+            providerAttempts--; // 503 high demand retry
+            const waitTime = Math.min(quotaAttempts * 3000, 10000);
             console.log(
-              `[FailoverProvider] 503 High Demand detected on ${provider.name}. Waiting ${waitTime / 1000}s (attempt ${attempts}/${maxAllowed})...`
+              `[FailoverProvider] 503 High Demand detected on ${provider.name}. Waiting ${waitTime / 1000}s (high-demand retry ${quotaAttempts}/${maxQuotaAttempts})...`
             );
             await new Promise((resolve) => setTimeout(resolve, waitTime));
             continue;
           }
 
-          if (attempts < maxAllowed) {
+          if (providerAttempts < this.maxRetries) {
             const nextDelay = Math.min(delay, 5000);
             console.log(
               `[FailoverProvider] Backing off for ${nextDelay}ms...`
             );
             await new Promise((resolve) => setTimeout(resolve, nextDelay));
             delay = Math.min(delay * 2, 5000);
-          } else {
-            break;
           }
         }
       }

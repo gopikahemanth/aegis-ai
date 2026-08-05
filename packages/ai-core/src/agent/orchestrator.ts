@@ -861,13 +861,29 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       let attempts = 0;
       const maxRepairAttempts = 3;
 
+      console.error("\n===== BUILD FAILURE DIAGNOSTICS =====");
+      if (build.stderr) {
+        console.error("===== BUILD STDERR =====");
+        console.error(build.stderr);
+      }
+      if (build.stdout) {
+        console.log("===== BUILD STDOUT =====");
+        console.log(build.stdout);
+      }
+      console.error("======================================\n");
+
       while (!build.success && attempts < maxRepairAttempts) {
         attempts++;
         console.log();
         console.log(`[Self-Healing] Attempting automatic repair ${attempts}/${maxRepairAttempts}...`);
 
+        const fullDiagnostics = [
+          build.stderr ? `===== BUILD STDERR =====\n${build.stderr}` : "",
+          build.stdout ? `===== BUILD STDOUT =====\n${build.stdout}` : "",
+        ].filter(Boolean).join("\n\n") || "Build failed with no output";
+
         // Check for missing packages first
-        const packages = this.dependencyResolver.resolve(build.stderr || "");
+        const packages = this.dependencyResolver.resolve(fullDiagnostics);
         if (packages.length > 0) {
           console.log(`[DependencyResolver] Installing missing packages: ${packages.join(", ")}`);
           try {
@@ -885,10 +901,10 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
         try {
           const mapper = new ErrorRootCauseMapper();
-          const rootCause = mapper.analyze(build.stderr || "", parsedFiles.map(f => f.path));
+          const rootCause = mapper.analyze(fullDiagnostics, parsedFiles.map(f => f.path));
           const errorPayload = rootCause.summary
-            ? `${build.stderr || ""}\n\n=== STRUCTURED ROOT CAUSE DIAGNOSIS ===\n${rootCause.summary}\nTarget files to repair: ${rootCause.filesToFix.join(", ")}`
-            : (build.stderr || "");
+            ? `${fullDiagnostics}\n\n=== STRUCTURED ROOT CAUSE DIAGNOSIS ===\n${rootCause.summary}\nTarget files to repair: ${rootCause.filesToFix.join(", ")}`
+            : fullDiagnostics;
 
           const repairResponse =
             await this.repairCoordinator.repair(
@@ -910,6 +926,9 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
             }
           } else {
             console.warn("[Self-Healing] No file changes were parsed from the repair response.");
+            console.log("[Self-Healing] === RAW REPAIR RESPONSE ===");
+            console.log(repairResponse);
+            console.log("[Self-Healing] ===========================");
             break;
           }
         } catch (error: any) {
@@ -1106,10 +1125,10 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     request: string,
     framework: string,
     outputDirectory: string
-  ): Promise<{ success: boolean; stderr?: string }> {
+  ): Promise<{ success: boolean; stderr?: string; stdout?: string }> {
     const verifyResult = await this.buildOrchestrator.verify(outputDirectory);
     if (!verifyResult.success) {
-      return { success: false, stderr: verifyResult.stderr || "Build failed" };
+      return { success: false, stderr: verifyResult.stderr || "Build failed", stdout: verifyResult.stdout };
     }
 
     const screenshotFile = join(outputDirectory, "screenshot.png");

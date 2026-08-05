@@ -223,7 +223,7 @@ if (!existsSync(".env")) {
 if (existsSync("prisma/schema.prisma")) {
   console.log("📦 Syncing Prisma Database Schema...");
   try {
-    execSync("npx prisma db push --skip-generate", { stdio: "inherit" });
+    execSync("npx prisma db push --accept-data-loss", { stdio: "inherit" });
   } catch (err) {
     console.warn("Warning: Prisma database sync skipped:", err.message);
   }
@@ -510,7 +510,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           } catch { /* ignore */ }
         }
         const schemaRelativePath = relative(dir, schemaPath);
-        execSync(`npx prisma db push --schema="${schemaRelativePath}" --skip-generate`, { cwd: dir, stdio: "pipe" });
+        execSync(`npx prisma db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: dir, stdio: "pipe" });
         execSync(`npx prisma generate --schema="${schemaRelativePath}"`, { cwd: dir, stdio: "pipe" });
         patches.push(`Initialized SQLite database tables and generated Prisma client from ${schemaRelativePath}`);
       } catch (dbPushErr: any) {

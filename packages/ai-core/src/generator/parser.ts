@@ -30,8 +30,9 @@ export class Parser {
       // Strip leading markdown code block syntax if present
       content = content.replace(/^```[a-zA-Z0-9_-]*\n?/, "").replace(/\n?```$/, "").trim();
 
-      if (this.blockedFiles.has(rawPath)) {
-        console.log(`Skipping protected file: ${rawPath}`);
+      // Only skip protected lockfiles
+      if (rawPath.endsWith("lock.yaml") || rawPath.endsWith("lock.json") || rawPath === "yarn.lock") {
+        console.log(`Skipping protected lockfile: ${rawPath}`);
         continue;
       }
 

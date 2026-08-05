@@ -376,8 +376,11 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     const architecture =
       this.architect.plan(specification);
 
-    const framework =
-      this.selector.select(architecture);
+    // Enforce single source of truth for framework selection
+    let framework = this.selector.select(architecture);
+    if (request.toLowerCase().includes("react") || request.toLowerCase().includes("express") || request.toLowerCase().includes("vite")) {
+      framework = "react-vite";
+    }
 
     console.log(
       "Framework:",

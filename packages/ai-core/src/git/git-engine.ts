@@ -37,6 +37,14 @@ export class GitIntegrationEngine {
 
   commitChanges(projectPath: string, request: string) {
     console.log("[GitEngine] Staging and committing changes to Git...");
+    const lockFile = join(projectPath, ".git", "index.lock");
+    if (existsSync(lockFile)) {
+      try {
+        const { unlinkSync } = require("node:fs");
+        unlinkSync(lockFile);
+        console.log("[GitEngine] Cleaned stale .git/index.lock file.");
+      } catch { /* ignore */ }
+    }
     this.runCommand("git add .", projectPath);
 
     // Format descriptive commit message and strip double quotes to prevent shell escapes errors

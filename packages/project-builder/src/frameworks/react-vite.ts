@@ -22,18 +22,18 @@ export class ReactViteTemplate
       try {
         if (process.platform === "win32") {
           try {
-            // Kill any node processes running from generated/project to release Prisma DLL / SQLite locks
-            execSync(`wmic process where "ExecutablePath like '%node.exe%' and CommandLine like '%generated%project%'" call terminate`, { stdio: "ignore" });
+            // Kill any node/vite processes running from generated/project to release Prisma DLL / SQLite locks
+            execSync(`powershell -Command "Get-Process node,vite -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*generated*' } | Stop-Process -Force"`, { stdio: "ignore" });
           } catch { /* ignore if process doesn't exist */ }
         }
         rmSync(output, {
           recursive: true,
           force: true,
-          maxRetries: 5,
-          retryDelay: 300,
+          maxRetries: 10,
+          retryDelay: 500,
         });
       } catch (err: any) {
-        console.warn(`[ProjectBuilder] Warning: Could not completely remove existing target directory: ${err.message}`);
+        console.warn(`[ProjectBuilder] Warning: Target directory clean non-fatal error: ${err.message}`);
       }
     }
 

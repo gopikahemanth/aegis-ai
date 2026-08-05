@@ -12,6 +12,25 @@ export class PatchEngine {
     // 1. Parse standard full file blocks (===FILE: path===)
     const rawFiles = this.parser.parse(response);
     const validFiles = rawFiles.filter(f => {
+      // Correct path typos if near-match exists on disk (e.g. responsivee-gallery -> responsive-gallery)
+      const absPath = join(projectPath, f.path);
+      if (!existsSync(absPath)) {
+        const parts = f.path.split("/");
+        const dirParts = parts.slice(0, -1);
+        const fileName = parts[parts.length - 1];
+        
+        // Correct double-letter typos in path segments
+        const normalizedRelPath = f.path
+          .replace(/responsivee/g, "responsive")
+          .replace(/syystem/g, "system")
+          .replace(/routtes/g, "routes");
+          
+        if (existsSync(join(projectPath, normalizedRelPath))) {
+          console.warn(`[PatchEngine] 💡 Corrected typoed path: "${f.path}" -> "${normalizedRelPath}"`);
+          f.path = normalizedRelPath;
+        }
+      }
+
       if (!f.path.endsWith(".ts") && !f.path.endsWith(".tsx")) return true;
       const complete = isLikelySyntacticallyComplete(f.content);
       if (!complete) {

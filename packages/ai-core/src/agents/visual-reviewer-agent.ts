@@ -35,6 +35,9 @@ Analyze the screenshot for:
 2. Elements overlapping inappropriately.
 3. Spacing, alignment, contrast, or typography errors.
 
+STRICT COMPONENT API CONSTRAINTS:
+Do NOT suggest or invent non-existent props on existing components (e.g. do NOT introduce variant="outline" if Button component only accepts primary/secondary/ghost/danger).
+
 You MUST respond ONLY with a raw JSON block in this exact schema (no markdown formatting, no code blocks):
 {
   "issues": [

@@ -146,7 +146,21 @@ export class FailoverProvider implements AIProvider {
             } catch {}
           }
 
+          const is402 = error.message?.includes("402") || error.message?.includes("Payment required");
+          const isFetchFailed = error.message?.includes("fetch failed") || error.message?.includes("ECONNREFUSED");
           const is429 = error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED");
+
+          if (is402) {
+            console.warn(`[FailoverProvider] 402 Payment Required on provider "${provider.name}". Disabling for 10 minutes.`);
+            this.disabledUntil.set(provider.name, Date.now() + 600000);
+            break;
+          }
+
+          if (isFetchFailed) {
+            console.warn(`[FailoverProvider] Connection failed on provider "${provider.name}". Disabling for 10 minutes.`);
+            this.disabledUntil.set(provider.name, Date.now() + 600000);
+            break;
+          }
 
           if (is429) {
             const disableSec = Math.min(retryAfter ?? 30, 60);

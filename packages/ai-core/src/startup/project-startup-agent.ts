@@ -231,9 +231,10 @@ if (!existsSync(".env")) {
 }
 
 if (existsSync("prisma/schema.prisma")) {
-  console.log("📦 Syncing Prisma Database Schema...");
+  console.log("📦 Syncing Prisma Database Schema & Generating Client...");
   try {
     execSync("npx prisma db push --accept-data-loss", { stdio: "inherit" });
+    execSync("npx prisma generate", { stdio: "inherit" });
   } catch (err) {
     console.warn("Warning: Prisma database sync skipped:", err.message);
   }

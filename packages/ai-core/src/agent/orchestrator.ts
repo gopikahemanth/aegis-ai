@@ -17,7 +17,7 @@ import {
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
 import { Parser } from "../generator/parser.js";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { DependencyResolver, DependencyInstaller } from "@aegis/project-builder";
 import { PatchEngine } from "../healing/patch-engine.js";
@@ -975,8 +975,14 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
           if (repairedFiles.length > 0) {
             console.log(`[Self-Healing] Parsed ${repairedFiles.length} corrected file(s). Writing to ${outputDirectory}...`);
             const validatedRepairedFiles = this.validate(framework, repairedFiles);
-            
-            // Write files to disk and update parsedFiles in-memory array
+
+            // Create rollback backup in case this repair attempt causes a build regression
+            const backupFiles = new Map<string, string | null>();
+            for (const rFile of validatedRepairedFiles) {
+              const fullPath = join(outputDirectory, rFile.path);
+              backupFiles.set(rFile.path, existsSync(fullPath) ? readFileSync(fullPath, "utf8") : null);
+            }
+
             this.write(validatedRepairedFiles, outputDirectory);
             for (const rFile of validatedRepairedFiles) {
               const fullPath = join(outputDirectory, rFile.path);
@@ -991,10 +997,25 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               }
             }
 
-            build = await this.runVerification(request, framework, outputDirectory);
-            if (build.success) {
+            const nextBuild = await this.runVerification(request, framework, outputDirectory);
+            if (nextBuild.success) {
               console.log("[Self-Healing] ✓ Build succeeded after automatic repair!");
+              build = nextBuild;
               break;
+            } else if (build.success) {
+              console.warn("[Self-Healing] ⚠️ Repair attempt introduced a build regression. Rolling back to last working state...");
+              for (const [relPath, origContent] of backupFiles.entries()) {
+                const fullPath = join(outputDirectory, relPath);
+                if (origContent !== null) {
+                  writeFileSync(fullPath, origContent, "utf8");
+                } else if (existsSync(fullPath)) {
+                  try { unlinkSync(fullPath); } catch {}
+                }
+              }
+              // Re-run verification to confirm working state restored
+              build = await this.runVerification(request, framework, outputDirectory);
+            } else {
+              build = nextBuild;
             }
           } else {
             console.warn("[Self-Healing] No file changes were parsed from the repair response.");

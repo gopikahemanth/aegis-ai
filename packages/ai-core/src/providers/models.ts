@@ -9,7 +9,7 @@ export const Models = {
   groq: {
     default: "llama-3.3-70b-versatile",
     strong: "llama-3.3-70b-versatile",
-    fast: "llama-3.1-8b-instant",
+    fast: "llama-3.3-70b-versatile",
     balanced: "llama-3.3-70b-versatile",
   },
 

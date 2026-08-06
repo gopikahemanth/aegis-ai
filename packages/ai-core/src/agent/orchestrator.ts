@@ -1409,7 +1409,9 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
           }
 
           if (!targetFileExists) {
-            let stubExt = rawImportPath.toLowerCase().includes("button") || rawImportPath.toLowerCase().includes("card") || rawImportPath.toLowerCase().includes("component") || rawImportPath.toLowerCase().includes("page") || rawImportPath.toLowerCase().includes("navbar") || rawImportPath.toLowerCase().includes("spinner") || rawImportPath.toLowerCase().includes("dashboard") || rawImportPath.toLowerCase().includes("gallery") ? ".tsx" : ".ts";
+            const isUiTarget = /[\/\\](pages|components|views|ui|features)[\/\\]/i.test(targetPath) ||
+                              /(button|card|component|page|navbar|spinner|dashboard|gallery|header|footer|modal|drawer|form|input)/i.test(targetPath);
+            let stubExt = isUiTarget ? ".tsx" : ".ts";
             const fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
             const stubRelName = relative(outputDirectory, fullStubPath);
 

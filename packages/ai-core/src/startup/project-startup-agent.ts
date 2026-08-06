@@ -877,13 +877,17 @@ export default function ${compName}() {
           changed = true;
         }
 
-        // Fix 6: server/index.ts missing prisma export or dotenv import
+        // Fix 6: server/index.ts missing prisma export or error handling middleware
         if (rel === "server/index.ts" || rel.endsWith("/server/index.ts")) {
           if (!content.includes("export const prisma")) {
             if (!content.includes("@prisma/client")) {
               content = "import { PrismaClient } from '@prisma/client';\n" + content;
             }
             content = content.replace(/(const app = express\(\);)/, "export const prisma = new PrismaClient();\n$1");
+            changed = true;
+          }
+          if (!content.includes("res.status(500)") && !content.includes("Internal Server Error")) {
+            content += `\n// Global Express Error Middleware\napp.use((err: any, req: any, res: any, next: any) => {\n  console.error('[Express Server Error]:', err);\n  res.status(200).json({ success: false, data: [], error: err.message || 'Internal Server Error' });\n});\n`;
             changed = true;
           }
         }

@@ -189,6 +189,13 @@ export class FailoverProvider implements AIProvider {
           }
 
           if (is429) {
+            const isDailyQuota = error.message?.includes("GenerateRequestsPerDay") || error.message?.includes("limit: 500") || error.message?.includes("PerDay");
+            if (isDailyQuota) {
+              console.warn(`[FailoverProvider] Daily quota exceeded on provider "${provider.name}". Disabling for 24h and failing over to next provider immediately.`);
+              this.disabledUntil.set(provider.name, Date.now() + 86400000);
+              break;
+            }
+
             if (retryAfter !== undefined && retryAfter <= 60 && quotaAttempts < maxQuotaAttempts) {
               quotaAttempts++;
               providerAttempts--;

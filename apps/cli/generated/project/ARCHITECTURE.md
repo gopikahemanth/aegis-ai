@@ -1,40 +1,41 @@
-# Architecture Documentation: art-gallery-platform
+# Architecture: AegisExpenseTracker
 
 ## 1. System Overview
-The `art-gallery-platform` is a high-performance React application designed for the exhibition and management of digital art assets. It employs a modular architecture focused on scalability, utilizing a component-driven development pattern to ensure consistent UI across gallery views and administrative dashboards.
+AegisExpenseTracker is a high-performance React-based financial management application designed for real-time transaction tracking and analytical reporting. The architecture prioritizes modularity and type safety to ensure long-term maintainability and consistent state synchronization across the client-side lifecycle.
 
 ## 2. Folder Structure
 ```text
-src/
-├── assets/          # Static assets (images, fonts, global styles)
-├── components/      # Reusable UI primitives (Button, Card, Modal)
-├── features/        # Feature-based modules (Gallery, Auth, Admin)
-├── hooks/           # Shared custom React hooks
-├── services/        # API clients and external integration logic
-├── store/           # Global state configuration (Redux/Zustand)
-├── utils/           # Helper functions and constants
-└── App.tsx          # Root application component
+/src
+├── assets/          # Static assets (images, global CSS)
+├── components/      # Atomic UI components (Buttons, Inputs, Cards)
+├── features/        # Domain-specific modules (Dashboard, Transactions, Auth)
+├── hooks/           # Reusable custom React hooks
+├── services/        # API client configurations and external service integrations
+├── store/           # Global state slices and persistence configuration
+├── types/           # Global TypeScript interfaces and type definitions
+├── utils/           # Pure helper functions and formatting logic
+└── App.tsx          # Root component and provider composition
 ```
 
 ## 3. Key Design Decisions
-*   **Feature-based Folder Structure:** Organized by domain logic rather than file type to reduce cognitive load and facilitate easier codebase navigation as the platform scales.
-*   **TypeScript:** Enforced for all modules to provide type safety, reducing runtime errors and improving IDE intellisense.
-*   **React Query (TanStack Query):** Selected for server-state management to handle caching, background refetching, and synchronization, minimizing manual API orchestration.
-*   **Styled Components / Tailwind CSS:** Used to enforce a design system, ensuring modular styling and preventing CSS global namespace collisions.
+*   **React + TypeScript:** Selected for compile-time type safety and enhanced developer experience during refactoring of financial models.
+*   **Feature-based Directory Structure:** Decouples domain logic (e.g., Transactions vs. Auth) to prevent "spaghetti" imports as the codebase scales.
+*   **Tailwind CSS:** Chosen for utility-first styling to ensure design consistency and minimize CSS bundle size.
+*   **Zustand:** Chosen over Redux for global state due to its minimal boilerplate and superior performance for medium-scale reactive state.
 
 ## 4. Data Flow
-1.  **User Action:** A user triggers an event (e.g., clicking "View Artwork").
-2.  **Service Call:** The component invokes a hook, which triggers a function in `services/`.
-3.  **State Update:** The data layer (React Query) fetches data from the backend; if successful, it updates the cache.
-4.  **Re-render:** React detects the state update and re-renders the UI components with the new props.
-5.  **Persistence:** Mutations (e.g., "Favorite Artwork") are sent via `POST/PATCH` requests; upon completion, the cache is invalidated to force a fresh data fetch.
+1.  **Initiation:** User interacts with a component (e.g., `AddTransactionForm`).
+2.  **Processing:** The form triggers a validation schema (Zod) and calls a service method.
+3.  **Persistence:** The service performs an asynchronous request to the API. 
+4.  **Sync:** Upon success, the service updates the global `store` (Zustand).
+5.  **Re-render:** React observers detect the store mutation, triggering a granular re-render of components subscribed to that specific state slice.
 
-## 5. State Management Approach
-*   **Server State:** Managed by **React Query**, serving as the single source of truth for all remote data.
-*   **Global Client State:** Handled by **Zustand** for lightweight, non-persisted application concerns (e.g., UI theme, sidebar toggle, user session tokens).
-*   **Local State:** Managed via standard `useState` and `useReducer` hooks for component-specific logic (e.g., form inputs, dropdown toggles).
+## 5. State Management
+*   **Server State:** Managed via React Query (TanStack Query) to handle caching, background refetching, and request deduping.
+*   **Client/UI State:** Managed via Zustand for ephemeral data (e.g., modal visibility, filter parameters) that does not need server synchronization.
+*   **Persistence:** Sensitive settings are persisted to `localStorage` using Zustand middleware for persistent state across sessions.
 
 ## 6. Error Handling Strategy
-*   **Boundary Layers:** Use `react-error-boundary` to wrap critical features, preventing total application crashes upon individual module failures.
-*   **Global Interceptors:** Axios/Fetch interceptors capture 4xx/5xx status codes to trigger global notification toasts and log errors to external monitoring tools (e.g., Sentry).
-*   **Graceful Degradation:** UI components implement "Empty States" and "Loading Skeletons" to maintain a consistent user experience during data fetching or network failures.
+*   **Boundary Layers:** Global `ErrorBoundary` components capture unexpected runtime UI crashes to prevent white-screen failures.
+*   **Service Layer:** Centralized `Axios` interceptors catch network errors, formatting them into standardized application error objects.
+*   **User Feedback:** Toast notifications are triggered via a centralized notification store, providing immediate visual feedback for failed operations (e.g., network timeout, validation error).

@@ -1,44 +1,44 @@
-# Art Gallery Platform
+# AegisExpenseTracker
 
-A full-stack web application designed for managing and discovering fine art collections with real-time filtering, search capabilities, and a responsive UI.
+A comprehensive full-stack personal finance management application designed to track expenses, manage category budgets, and visualize spending habits.
 
 ## Features
 
-*   **Art Catalog Management:** Full CRUD operations for artists, artworks, and collections.
-*   **Dynamic Search:** Real-time keyword filtering to find specific artworks by title or artist.
-*   **Advanced Filtering:** Sort and filter artworks by category, medium, and year of creation.
-*   **Dark Mode Support:** Persistent theme toggling using Tailwind CSS and React state management.
-*   **Type-Safe API:** Backend infrastructure built with Express and Prisma for robust database interactions.
-*   **Responsive Design:** Mobile-first layout optimized for tablet and desktop viewing.
+*   **Transaction Management:** Create, read, update, and delete expenses with automated timestamping.
+*   **Budgeting:** Set and monitor monthly spending limits per category.
+*   **Analytics Dashboard:** Visualize spending trends and category distribution using interactive charts.
+*   **Data Persistence:** Robust SQLite storage managed via Prisma ORM.
+*   **Theming:** Seamless toggling between light and dark modes for user preference.
+*   **Type Safety:** End-to-end TypeScript integration for maintainable and reliable code.
 
 ## Tech Stack
 
 | Technology | Purpose |
 | :--- | :--- |
-| React | Frontend UI framework |
-| TypeScript | Type safety across frontend and backend |
-| Express | Node.js web server framework |
-| Prisma | ORM for database schema management |
+| React | Frontend UI library |
+| TypeScript | Type safety for frontend and backend |
+| Express.js | Backend REST API server |
+| Prisma | Database ORM and schema management |
 | SQLite | Lightweight relational database |
-| Tailwind CSS | Utility-first styling for UI and dark mode |
-| Vite | Frontend build tool and development server |
+| Tailwind CSS | Utility-first styling and theming |
+| Recharts | Data visualization and analytics |
 
 ## Getting Started
 
 ### Prerequisites
 
-*   **Node.js:** v18.0.0 or higher
-*   **npm:** v9.0.0 or higher
+*   Node.js (v18.x or higher)
+*   npm (v9.x or higher) or yarn
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/username/art-gallery-platform.git
-   cd art-gallery-platform
+   git clone https://github.com/yourusername/AegisExpenseTracker.git
+   cd AegisExpenseTracker
    ```
 
-2. Install dependencies:
+2. Install dependencies for both client and server:
    ```bash
    npm install
    ```
@@ -50,39 +50,31 @@ A full-stack web application designed for managing and discovering fine art coll
    cp .env.example .env
    ```
 
-2. Open the newly created `.env` file and configure your database connection string and any required API secret keys.
-
-3. Initialize the database:
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
+2. Open the `.env` file and configure your database connection string and API ports as required.
 
 ### Running Locally
 
-To start the development server for both the frontend and backend:
+To start the development environment (concurrently running the frontend and backend):
+
 ```bash
 npm run dev
 ```
 
-The application will be accessible at `http://localhost:5173`.
-
 ## Available Scripts
 
-*   `npm run dev`: Starts the development server with hot module replacement.
-*   `npm run build`: Compiles the project for production deployment.
-*   `npm run lint`: Runs ESLint to identify and fix code quality issues.
-*   `npm run test`: Executes the test suite via Vitest.
-*   `npm run prisma:generate`: Generates Prisma client types based on the schema.
+*   `npm run dev`: Starts the development server for both React and Express.
+*   `npm run build`: Compiles the application for production deployment.
+*   `npm run lint`: Executes ESLint to check for code quality and style violations.
+*   `npm run test`: Runs the test suite to ensure functional integrity.
+*   `prisma:generate`: Generates the Prisma client based on the current schema.
 
 ## Project Structure
 
-*   `/src/client`: Frontend React components, hooks, and pages.
-*   `/src/server`: Express API routes, controllers, and middleware.
-*   `/prisma`: Database schema definition and migration files.
-*   `/public`: Static assets including icons and images.
-*   `/types`: Shared TypeScript interfaces for data models.
+*   `/client`: Contains the React frontend application, components, and UI logic.
+*   `/server`: Contains the Express API routes, controllers, and middleware.
+*   `/prisma`: Holds the `schema.prisma` file and migration history.
+*   `/shared`: Houses shared TypeScript interfaces and constants used by both frontend and backend.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

@@ -1,12 +1,16 @@
 import React from 'react';
 
 interface GlassCardProps {
-  children?: React.ReactNode;
+  children: React.ReactNode;
   className?: string;
   [key: string]: any;
 }
 
-export const GlassCard: React.FC<any> = ({ children, className = '', ...props }) => (
+export const GlassCard: React.FC<any> = ({ 
+  children, 
+  className = '', 
+  ...props 
+}) => (
   <div 
     className={`bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-md p-6 ${className}`} 
     {...props}

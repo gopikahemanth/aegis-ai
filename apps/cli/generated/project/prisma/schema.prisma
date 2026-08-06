@@ -8,17 +8,19 @@ datasource db {
 }
 
 model User {
-  id           Int    @id @default(autoincrement())
-  email        String @unique
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
   passwordHash String
+  tasks        Task[]
+  createdAt    DateTime @default(now())
 }
 
-model Artwork {
+model Task {
   id          Int      @id @default(autoincrement())
   title       String
-  artist      String
-  description String
-  imageUrl    String
-  category    String
+  description String?
+  status      String   @default("TODO")
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
   createdAt   DateTime @default(now())
 }

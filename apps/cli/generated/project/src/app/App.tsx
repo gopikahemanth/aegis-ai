@@ -1,20 +1,20 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ThemeProvider } from 'next-themes';
-import { GalleryPage } from '@/features/gallery-discovery/components/GalleryPage';
 
-const queryClient = new QueryClient();
+const Dashboard = lazy(() => import('@/features/dashboard/DashboardPage'));
+const Transactions = lazy(() => import('@/features/transactions/TransactionsPage'));
 
-export default function App() {
+export const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class">
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<GalleryPage />} />
-          </Routes>
-        </BrowserRouter>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <BrowserRouter>
+      <Suspense fallback={<div>Loading...</div>}>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/transactions" element={<Transactions />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
   );
-}
+};
+
+export default App;

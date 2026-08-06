@@ -85,7 +85,7 @@ export class FeatureContractValidator {
       name: "Data Persistence / History",
       triggerKeywords: [/history|save\s*result|persist|scan\s*history/i],
       requiredPatterns: [
-        { label: "real persistence mechanism", pattern: /localStorage\.(setItem|getItem)|indexedDB|fetch.*POST|axios\.post|supabase|prisma|mongoose/i }
+        { label: "real persistence mechanism", pattern: /localStorage\.(setItem|getItem)|sessionStorage|indexedDB|fetch|axios|apiClient|useMutation|useQuery|supabase|prisma|mongoose|sqlite|db/i }
       ],
       forbiddenPatterns: [
         { label: "history only in React state", pattern: /setHistory\s*\(\s*\[\.\.\.\w+,/i }

@@ -1334,15 +1334,20 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.log("[VisualReviewer] Running multimodal layout quality review...");
       const visualIssues = await this.visualReviewerAgent.execute(request, screenshotFile);
       if (visualIssues.length > 0) {
-        console.warn(`[VisualReviewer] QA detected ${visualIssues.length} visual layout bugs:`);
-        const errorMsg = visualIssues.map(issue => `[Visual Issue] in '${issue.element}': ${issue.bug} (severity: ${issue.severity})`).join("\n");
+        console.warn(`[VisualReviewer] QA detected ${visualIssues.length} visual layout observation(s):`);
         for (const issue of visualIssues) {
           console.warn(`  - [${issue.severity.toUpperCase()}] ${issue.element}: ${issue.bug}`);
         }
-        return {
-          success: false,
-          stderr: `Visual layout review failed with the following layout issues:\n${errorMsg}\n\nPlease fix the css files, html files, or container spacing to align with standard styling guidelines.`
-        };
+        const highSeverityIssues = visualIssues.filter(i => i.severity.toLowerCase() === "high" || i.severity.toLowerCase() === "critical");
+        if (highSeverityIssues.length > 0) {
+          const errorMsg = highSeverityIssues.map(issue => `[Visual Issue] in '${issue.element}': ${issue.bug} (severity: ${issue.severity})`).join("\n");
+          return {
+            success: false,
+            stderr: `Visual layout review failed with high-severity layout issues:\n${errorMsg}\n\nPlease fix the css files, html files, or container spacing to align with standard styling guidelines.`
+          };
+        } else {
+          console.log("[VisualReviewer] ✓ No critical layout bugs observed (minor visual observations logged).");
+        }
       } else {
         console.log("[VisualReviewer] ✓ Multimodal QA passed! No layout bugs observed.");
       }

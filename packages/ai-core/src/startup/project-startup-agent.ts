@@ -351,7 +351,12 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         }
       }
 
-      // required deps loop (depsChanged already declared above via the scan loop)
+      // Always force-align React & @types/react to 18.x to prevent React 19 type mismatch
+      (pkg.dependencies as Record<string, string>)["react"] = "^18.3.1";
+      (pkg.dependencies as Record<string, string>)["react-dom"] = "^18.3.1";
+      (pkg.devDependencies as Record<string, string>)["@types/react"] = "^18.3.3";
+      (pkg.devDependencies as Record<string, string>)["@types/react-dom"] = "^18.3.0";
+
       for (const [k, v] of Object.entries(requiredDeps)) {
         if (!(k in (pkg.dependencies as Record<string, string> ?? {}))) {
           (pkg.dependencies as Record<string, string>)[k] = v;

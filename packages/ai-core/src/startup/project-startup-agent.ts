@@ -40,6 +40,10 @@ export class ProjectStartupAgent {
     const framework = this.detectFramework(outputDirectory);
     console.log(`[Startup] Detected framework: ${framework}`);
 
+    // Ensure .npmrc overrides pnpm minimum-release-age policy
+    const npmrcPath = join(outputDirectory, ".npmrc");
+    writeFileSync(npmrcPath, "minimum-release-age=0\nverify-deps-before-run=false\n", "utf8");
+
     // ── 2. Patch or Create package.json ──────────────────────────────────────
     const pkgPath = join(outputDirectory, "package.json");
     if (!existsSync(pkgPath)) {

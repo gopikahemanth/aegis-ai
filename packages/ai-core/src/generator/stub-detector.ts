@@ -1,6 +1,7 @@
 export class StubDetector {
   private readonly stubPatterns = [
-    /\bTODO\b/,
+    /\/\/\s*TODO/i,
+    /\/\*\s*TODO/i,
     /implement\s+(here|later|this)/i,
     /\/\/.*placeholder/i,          // // ... placeholder
     /\/\*.*placeholder/i,          // /* ... placeholder

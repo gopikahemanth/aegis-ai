@@ -895,9 +895,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               execSync(`wmic process where "ExecutablePath like '%node.exe%' and CommandLine like '%generated%project%'" call terminate`, { stdio: "ignore" });
             } catch { /* ignore */ }
           }
-          const prismaBin = existsSync(join(outputDirectory, "node_modules", "prisma", "build", "index.js"))
-            ? `node "${join(outputDirectory, "node_modules", "prisma", "build", "index.js")}"`
-            : `npx prisma@6`;
+          const prismaBin = "npx prisma@6";
 
           execSync(`${prismaBin} generate`, { cwd: outputDirectory, stdio: "inherit" });
           console.log("[Orchestrator] Local Prisma client generation successful.");

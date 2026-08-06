@@ -590,9 +590,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         const absSchema = resolve(schemaPath);
         const schemaRelativePath = relative(absDir, absSchema);
 
-        const prismaBin = existsSync(join(absDir, "node_modules", "prisma", "build", "index.js"))
-          ? `node "${join(absDir, "node_modules", "prisma", "build", "index.js")}"`
-          : `npx prisma@6`;
+        const prismaBin = "npx prisma@6";
 
         execSync(`${prismaBin} db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: absDir, stdio: "pipe" });
         execSync(`${prismaBin} generate --schema="${schemaRelativePath}"`, { cwd: absDir, stdio: "pipe" });

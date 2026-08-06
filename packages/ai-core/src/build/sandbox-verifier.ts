@@ -1,7 +1,7 @@
 import { createServer, Server, get } from "node:http";
 import { readFileSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 
 export interface SandboxResult {
   success: boolean;
@@ -117,7 +117,7 @@ export class SandboxVerifier {
     const serverReady = await this.pollUrl(targetUrl, 10000);
 
     if (!serverReady) {
-      if (childProcess) childProcess.kill();
+      this.killChildProcess(childProcess);
       if (staticServer) staticServer.close();
       return {
         success: false,
@@ -188,7 +188,7 @@ export class SandboxVerifier {
       }
 
       await browser.close();
-      if (childProcess) childProcess.kill();
+      this.killChildProcess(childProcess);
       if (staticServer) staticServer.close();
 
       return {
@@ -204,7 +204,7 @@ export class SandboxVerifier {
           await browser.close();
         } catch (e) {}
       }
-      if (childProcess) childProcess.kill();
+      this.killChildProcess(childProcess);
       if (staticServer) staticServer.close();
 
       return {
@@ -213,5 +213,16 @@ export class SandboxVerifier {
         logs,
       };
     }
+  }
+
+  private killChildProcess(childProcess: any) {
+    if (!childProcess) return;
+    try {
+      if (process.platform === "win32") {
+        execSync(`taskkill /F /T /PID ${childProcess.pid}`, { stdio: "ignore" });
+      } else {
+        childProcess.kill("SIGKILL");
+      }
+    } catch {}
   }
 }

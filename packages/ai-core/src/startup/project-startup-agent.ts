@@ -834,7 +834,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         // Fix 13.12: TS2559 Type '{ children }' has no properties in common with type 'IntrinsicAttributes'
         if (rel.includes("Layout") || rel.includes("Shell") || rel.includes("Card") || rel.includes("Container") || rel.includes("/components/")) {
           if (content.includes("React.FC") && !content.includes("children?:") && !content.includes("React.FC<any>")) {
-            content = content.replace(/: React\.FC\s*</g, ": React.FC<any | ").replace(/: React\.FC\s*=/g, ": React.FC<any> =");
+            content = content.replace(/: React\.FC<[^>]+>/g, ": React.FC<any>").replace(/: React\.FC\s*=/g, ": React.FC<any> =");
             changed = true;
           }
           if (/export (const|function) (Layout|AppShell|DashboardShell|Card|Container|Wrapper)/.test(content) && !content.includes("children?:")) {

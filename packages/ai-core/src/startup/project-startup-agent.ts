@@ -837,25 +837,22 @@ export default function ${compName}() {
         }
 
         // Fix 2: Pages that are React.lazy-loaded need `export default`
-        // If this file is a Page and has only a named export, add a default re-export
         const isPage = rel.includes("/pages/") || rel.includes("Page.tsx");
-        if (isPage) {
-          const namedExportMatch = content.match(/^export const (\w+):\s*React\.FC/m);
-          if (namedExportMatch && !content.includes("export default")) {
-            const componentName = namedExportMatch[1];
+        if (isPage && !content.includes("export default")) {
+          const namedExportMatch = content.match(/^export const (\w+):\s*React\.FC/m) || content.match(/^export (function|const) ([A-Z]\w+)/m);
+          if (namedExportMatch) {
+            const componentName = namedExportMatch[1] || namedExportMatch[2];
             content = content.trimEnd() + `\n\nexport default ${componentName};\n`;
             changed = true;
           }
         }
 
         // Fix 3: App.tsx missing default export
-        if (rel === "src/App.tsx" || rel.endsWith("/App.tsx")) {
-          if (!content.includes("export default")) {
-            const namedMatch = content.match(/^export (function|const) (App\w*)/m);
-            if (namedMatch) {
-              content = content.trimEnd() + `\n\nexport default ${namedMatch[2]};\n`;
-              changed = true;
-            }
+        if ((rel === "src/App.tsx" || rel.endsWith("/App.tsx")) && !content.includes("export default")) {
+          const namedMatch = content.match(/^export (function|const) (App\w*)/m);
+          if (namedMatch) {
+            content = content.trimEnd() + `\n\nexport default ${namedMatch[2]};\n`;
+            changed = true;
           }
         }
 

@@ -380,8 +380,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
       writeFileSync(pkgPath, JSON.stringify(pkg, null, 2), "utf8");
       if (depsChanged) {
         try {
-          console.log("[Startup] Installing newly added dependencies...");
-          execSync("npm install --legacy-peer-deps --silent", { cwd: dir, stdio: "pipe", timeout: 120_000 });
+          console.log("[Startup] Installing newly added dependencies via pnpm...");
+          execSync("pnpm install --no-frozen-lockfile", { cwd: dir, stdio: "pipe", timeout: 120_000 });
           console.log("[Startup] ✓ Newly added dependencies installed successfully.");
         } catch { /* non-fatal */ }
       }

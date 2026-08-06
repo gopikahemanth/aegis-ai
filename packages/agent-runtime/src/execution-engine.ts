@@ -25,9 +25,18 @@ export class ExecutionEngine {
     const projectPath = "./generated/project";
     try {
       if (existsSync(projectPath)) {
+        if (process.platform === "win32") {
+          try {
+            // Kill any background dev servers or node locks in target directory
+            const { execSync } = await import("node:child_process");
+            execSync(`powershell -Command "Get-Process node,vite -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*generated*' } | Stop-Process -Force"`, { stdio: "ignore" });
+          } catch { /* ignore if process doesn't exist */ }
+        }
         rmSync(projectPath, {
           recursive: true,
           force: true,
+          maxRetries: 10,
+          retryDelay: 500,
         });
       }
     } catch (rmError: any) {

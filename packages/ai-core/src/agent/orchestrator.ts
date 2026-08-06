@@ -50,6 +50,10 @@ import { PromptInferenceEngine } from "../prompts/prompt-inference-engine.js";
 import { DesignSystemGenerator } from "../design/design-system-generator.js";
 import { DefinitionOfDone } from "../validation/definition-of-done.js";
 import { ProjectStartupAgent } from "../startup/project-startup-agent.js";
+import { SpecificationNormalizer } from "../spec/canonical-spec.js";
+import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-generator.js";
+import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
+import { ValidationStateManager } from "../validation/validation-state.js";
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
   "express",
@@ -494,13 +498,18 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     const guidancePrompt = enrichedRequest + (existingArch ? `\n(Guideline: Follow the existing framework "${existingArch.framework}", styled with "${existingArch.styling}", using naming rules: ${existingArch.namingConventions.join(", ")})` : "");
 
     const {
-      specification,
+      specification: rawSpecification,
       architecturePlan,
     } =
       await this.architectAgent.execute(
         guidancePrompt,
         imagePayload,
       );
+
+    const canonicalSpec = SpecificationNormalizer.normalize(request, rawSpecification);
+    (this as any)._currentCanonicalSpec = canonicalSpec;
+    const specification = canonicalSpec;
+    ValidationStateManager.getInstance().reset();
 
     // Merge specification inferred libraries into package.json (filtered by whitelist)
     const pkgPath = join(outputDirectory, "package.json");
@@ -1336,8 +1345,26 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       await this.projectStartupAgent.prepare(outputDirectory);
     } catch {}
     const verifyResult = await this.buildOrchestrator.verify(outputDirectory);
+    ValidationStateManager.getInstance().recordBuild(verifyResult.success, verifyResult.stderr);
+
     if (!verifyResult.success) {
       return { success: false, stderr: verifyResult.stderr || "Build failed", stdout: verifyResult.stdout };
+    }
+
+    // ── Semantic Domain Alignment Audit ──────────────────────────────────────
+    const spec = (this as any)._currentCanonicalSpec || SpecificationNormalizer.normalize(request, { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" });
+    const domainAudit = DomainConsistencyValidator.validate(outputDirectory, spec);
+    ValidationStateManager.getInstance().recordSemanticScore(domainAudit.score);
+
+    if (!domainAudit.passed && (domainAudit.forbiddenMatches.length > 0 || domainAudit.missingRequiredFeatures.length > 0)) {
+      const issueSummary = domainAudit.forbiddenMatches.concat(domainAudit.missingRequiredFeatures).join("; ");
+      console.warn(`[DomainConsistencyValidator] ⚠️ Domain alignment score: ${domainAudit.score}/100. Issues: ${issueSummary}`);
+      if (domainAudit.score < 75) {
+        return {
+          success: false,
+          stderr: `Domain Consistency Audit Failed (score ${domainAudit.score}/100):\n${issueSummary}\n\nPlease purge all task/Kanban components and regenerate proper ${spec.domainCategory} features.`
+        };
+      }
     }
 
     const screenshotFile = join(outputDirectory, "screenshot.png");
@@ -1352,18 +1379,22 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         const highSeverityIssues = visualIssues.filter(i => i.severity.toLowerCase() === "high" || i.severity.toLowerCase() === "critical");
         if (highSeverityIssues.length > 0) {
           const errorMsg = highSeverityIssues.map(issue => `[Visual Issue] in '${issue.element}': ${issue.bug} (severity: ${issue.severity})`).join("\n");
+          ValidationStateManager.getInstance().recordVisualReview(false, highSeverityIssues.map(i => i.bug));
           return {
             success: false,
             stderr: `Visual layout review failed with high-severity layout issues:\n${errorMsg}\n\nPlease fix the css files, html files, or container spacing to align with standard styling guidelines.`
           };
         } else {
           console.log("[VisualReviewer] ✓ No critical layout bugs observed (minor visual observations logged).");
+          ValidationStateManager.getInstance().recordVisualReview(true, []);
         }
       } else {
         console.log("[VisualReviewer] ✓ Multimodal QA passed! No layout bugs observed.");
+        ValidationStateManager.getInstance().recordVisualReview(true, []);
       }
     }
 
+    ValidationStateManager.getInstance().recordRuntime(true);
     return { success: true };
   }
 
@@ -1457,163 +1488,9 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               continue;
             }
 
-            console.log(`[Orchestrator] Pre-build missing local import scanner: Generating stub for missing file "${stubRelName}"...`);
-            
-            let stubContent = "";
-            const lowerRel = stubRelName.toLowerCase();
-
-            if (lowerRel.includes("apiclient") || lowerRel.includes("api")) {
-              stubContent = `import axios from 'axios';\nexport interface Artwork { id: string | number; title: string; imageUrl: string; price: number; artist: { name: string; [key: string]: any } | any; category?: any; medium?: string; [key: string]: any; }\nexport interface User { id: string | number; email: string; name?: string; }\nexport interface Artist { id: string | number; name: string; }\nexport interface Category { id: string | number; name: string; }\nexport const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
-            } else if (lowerRel.includes("entity") || lowerRel.includes("entities") || lowerRel.includes("type") || lowerRel.includes("types") || lowerRel.includes("model") || lowerRel.includes("models")) {
-              stubContent = `export interface Artwork { id: string | number; title: string; imageUrl: string; price: number; artist: { name: string; [key: string]: any } | any; category?: any; medium?: string; createdAt?: string; updatedAt?: string; [key: string]: any; }\nexport interface User { id: string | number; email: string; name?: string; }\nexport interface Artist { id: string | number; name: string; }\nexport interface Category { id: string | number; name: string; }\nexport interface ${componentName} { id: string | number; title?: string; name?: string; email?: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; createdAt?: string; updatedAt?: string; [key: string]: any; }\nexport type ${componentName}Input = Partial<${componentName}>;\nexport default ${componentName};\n`;
-            } else if (lowerRel.includes("button")) {
-              stubContent = `import React from 'react';\nexport interface ButtonProps { children?: any; variant?: any; size?: any; loading?: any; icon?: any; [key: string]: any; }\nexport const Button: React.FC<ButtonProps> = ({ children, variant, size, loading, icon, ...props }: any) => <button className="px-4 py-2 bg-indigo-600 text-white rounded" {...props}>{children}</button>;\nexport default Button;\n`;
-            } else if (lowerRel.includes("card")) {
-              stubContent = `import React from 'react';\nexport const ${componentName}: React.FC<any> = (props) => <div className="p-4 border rounded shadow" {...props}>{props.title || '${componentName}'}</div>;\nexport default ${componentName};\n`;
-            } else if (lowerRel.includes("page") || lowerRel.includes("gallery") || lowerRel.includes("dashboard")) {
-              // Fallback: If no feature page matches, create a domain-matched full functional dashboard
-              const isExpenseApp = outputDirectory.toLowerCase().includes("expense") || outputDirectory.toLowerCase().includes("budget") || outputDirectory.toLowerCase().includes("transaction");
-              const fallbackContent = isExpenseApp ? `import React, { useState } from 'react';
-export default function DashboardPage() {
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
-  const transactions = [
-    { id: 1, merchant: 'Supermarket Groceries', category: 'Food & Dining', amount: '$124.50', date: '2026-08-05' },
-    { id: 2, merchant: 'Monthly Electric Utility', category: 'Housing', amount: '$85.00', date: '2026-08-04' },
-    { id: 3, merchant: 'Gas Station Fuel', category: 'Transportation', amount: '$45.00', date: '2026-08-03' },
-    { id: 4, merchant: 'Streaming Subscription', category: 'Entertainment', amount: '$14.99', date: '2026-08-01' }
-  ];
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
-      <header className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8 border-b border-slate-800 pb-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">Personal Expense Tracker</h1>
-          <p className="text-slate-400 text-sm mt-1">Track monthly spending, monitor category budgets, and manage transactions.</p>
-        </div>
-        <input
-          type="text"
-          placeholder="Search transactions..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        />
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <span className="text-xs text-slate-400 font-semibold uppercase">Total Monthly Spent</span>
-          <h2 className="text-2xl font-bold text-emerald-400 mt-1">$2,450.00</h2>
-          <div className="w-full bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
-            <div className="bg-emerald-500 h-full w-[65%]"></div>
-          </div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <span className="text-xs text-slate-400 font-semibold uppercase">Monthly Budget Limit</span>
-          <h2 className="text-2xl font-bold text-white mt-1">$3,800.00</h2>
-          <span className="text-xs text-slate-500 mt-2 block">$1,350.00 remaining</span>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <span className="text-xs text-slate-400 font-semibold uppercase">Active Categories</span>
-          <h2 className="text-2xl font-bold text-indigo-400 mt-1">4 Budgets</h2>
-          <span className="text-xs text-slate-500 mt-2 block">100% budget compliance</span>
-        </div>
-      </div>
-
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <h2 className="text-lg font-bold text-white mb-4">Recent Transactions</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-950 text-slate-400 text-xs uppercase border-b border-slate-800">
-              <tr>
-                <th className="py-3 px-4">Merchant</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {transactions.filter(t => categoryFilter === 'All' || t.category === categoryFilter).map((t) => (
-                <tr key={t.id} className="hover:bg-slate-850">
-                  <td className="py-3.5 px-4 font-semibold text-white">{t.merchant}</td>
-                  <td className="py-3.5 px-4"><span className="bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full text-xs">{t.category}</span></td>
-                  <td className="py-3.5 px-4 text-slate-400">{t.date}</td>
-                  <td className="py-3.5 px-4 text-right font-bold text-emerald-400">{t.amount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-` : `import React, { useState } from 'react';
-export default function DashboardPage() {
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('All');
-  const sampleItems = [
-    { id: 1, title: 'Database Schema & Auth Setup', category: 'High Priority', status: 'In Progress', tag: 'Backend' },
-    { id: 2, title: 'Kanban Board Drag & Drop', category: 'Medium Priority', status: 'To Do', tag: 'Frontend' },
-    { id: 3, title: 'Dark Mode Persistent State', category: 'Low Priority', status: 'Done', tag: 'UI' }
-  ];
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
-      <header className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8 border-b border-slate-800 pb-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">Dashboard Overview</h1>
-          <p className="text-slate-400 text-sm mt-1">Manage tasks, track project status, and search records in real time.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            placeholder="Search items..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-      </header>
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {['All', 'To Do', 'In Progress', 'Done'].map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setFilter(cat)}
-            className={\`px-4 py-1.5 rounded-full text-xs font-medium border transition-colors \${filter === cat ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'}\`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {['To Do', 'In Progress', 'Done'].map((status) => (
-          <div key={status} className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-            <h2 className="text-sm font-bold text-slate-300 mb-3 flex items-center justify-between">
-              <span>{status}</span>
-              <span className="bg-slate-800 text-slate-400 px-2 py-0.5 rounded text-xs">Active</span>
-            </h2>
-            <div className="space-y-3">
-              {sampleItems.filter(i => i.status === status && (filter === 'All' || i.category.toLowerCase().includes(filter.toLowerCase()) || i.tag.toLowerCase().includes(filter.toLowerCase()))).map(item => (
-                <div key={item.id} className="bg-slate-900 border border-slate-800 p-4 rounded-lg shadow-sm hover:border-slate-700 transition-all">
-                  <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="font-semibold text-indigo-400">{item.tag}</span>
-                    <span className="text-slate-500">{item.category}</span>
-                  </div>
-                  <h3 className="text-sm font-semibold text-white">{item.title}</h3>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-export default ${componentName};
-`;
-            stubContent = fallbackContent;
-            } else {
-              stubContent = `import React from 'react';\nexport interface Artwork { id: string | number; title?: string; imageUrl?: string; price?: number; }\nexport const ${componentName}: React.FC<any> = (props: any) => <div className="p-4" {...props}>{props?.children || '${componentName}'}</div>;\nexport default ${componentName};\n`;
-            }
+            console.log(`[Orchestrator] Pre-build missing local import scanner: Generating domain-aware stub for missing file "${stubRelName}"...`);
+            const spec = (this as any)._currentCanonicalSpec || SpecificationNormalizer.normalize("", { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" });
+            const stubContent = DomainAwareFallbackGenerator.generateFallbackComponent(spec, componentName, stubRelName);
             
             mkdirSync(dirname(fullStubPath), { recursive: true });
             writeFileSync(fullStubPath, stubContent, "utf8");

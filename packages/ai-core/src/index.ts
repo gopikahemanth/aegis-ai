@@ -25,4 +25,7 @@ export * from "./prompts/prompt-inference-engine.js";
 export * from "./design/design-system-generator.js";
 export * from "./validation/definition-of-done.js";
 export * from "./startup/project-startup-agent.js";
-
+export * from "./spec/canonical-spec.js";
+export * from "./semantics/domain-fallback-generator.js";
+export * from "./semantics/domain-consistency-validator.js";
+export * from "./validation/validation-state.js";

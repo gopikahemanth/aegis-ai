@@ -36,10 +36,15 @@ export interface DefinitionOfDoneResult {
  *  ✅ Accessibility basics are met
  *  ✅ Documentation is generated (README.md)
  */
+import { ValidationStateManager } from "./validation-state.js";
+
 export class DefinitionOfDone {
   private readonly sourceExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".vue", ".svelte"]);
 
-  validate(projectDirectory: string, inferredFeatures: string[] = [], buildSuccess = true): DefinitionOfDoneResult {
+  validate(projectDirectory: string, inferredFeatures: string[] = [], buildSuccess?: boolean): DefinitionOfDoneResult {
+    const valState = ValidationStateManager.getInstance().getState();
+    const effectiveBuildSuccess = buildSuccess !== undefined ? buildSuccess : valState.latestBuildSuccess;
+
     const sourceFiles = this.collectSourceFiles(projectDirectory);
     const allSource = sourceFiles.map(f => {
       try { return readFileSync(f, "utf8"); } catch { return ""; }
@@ -49,8 +54,8 @@ export class DefinitionOfDone {
       {
         id: "build-success",
         name: "Build Verification",
-        passed: buildSuccess,
-        detail: buildSuccess ? "Project compiled and built successfully" : "Project build is failing compilation errors",
+        passed: effectiveBuildSuccess,
+        detail: effectiveBuildSuccess ? "Project compiled and built successfully" : "Project build is failing compilation errors",
       },
       this.checkNoHardcodedData(allSource),
       this.checkFormValidation(allSource),

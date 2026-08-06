@@ -2,6 +2,8 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSy
 import { join, relative, resolve } from "node:path";
 import { execSync, spawn } from "node:child_process";
 import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
+import { SpecificationNormalizer } from "../spec/canonical-spec.js";
+import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-generator.js";
 
 export interface StartupResult {
   success: boolean;
@@ -688,153 +690,13 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         }
 
         // Fix 1.8: Empty/minimal/sparse component stub replacement or domain mismatch purge
-        const isExpenseApp = dir.toLowerCase().includes("expense") || dir.toLowerCase().includes("budget") || dir.toLowerCase().includes("transaction") || dir.toLowerCase().includes("finance");
-        const hasDomainMismatch = isExpenseApp && (content.includes("Kanban") || content.includes("To Do") || content.includes("In Progress") || content.includes("Manage tasks"));
+        const spec = SpecificationNormalizer.normalize(dir, { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" });
+        const hasDomainMismatch = spec.forbiddenPatterns.some(pat => content.includes(pat));
         if (hasDomainMismatch || ((rel.includes("Dashboard") || rel.includes("App") || rel.includes("Kanban") || rel.includes("Expense") || rel.includes("Layout") || rel.includes("Page") || rel.includes("Main")) && (content.length < 900 || !content.includes("<table")))) {
           const compName = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Dashboard";
-          
-          if (isExpenseApp) {
-            content = `import React, { useState } from 'react';
-export default function ${compName}() {
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
-  const transactions = [
-    { id: 1, merchant: 'Supermarket Groceries', category: 'Food & Dining', amount: '$124.50', date: '2026-08-05' },
-    { id: 2, merchant: 'Monthly Electric Utility', category: 'Housing', amount: '$85.00', date: '2026-08-04' },
-    { id: 3, merchant: 'Gas Station Fuel', category: 'Transportation', amount: '$45.00', date: '2026-08-03' },
-    { id: 4, merchant: 'Streaming Subscription', category: 'Entertainment', amount: '$14.99', date: '2026-08-01' }
-  ];
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
-      <header className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8 border-b border-slate-800 pb-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">Personal Expense Tracker</h1>
-          <p className="text-slate-400 text-sm mt-1">Track monthly spending, monitor category budgets, and manage transactions.</p>
-        </div>
-        <input
-          type="text"
-          placeholder="Search transactions..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        />
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <span className="text-xs text-slate-400 font-semibold uppercase">Total Monthly Spent</span>
-          <h2 className="text-2xl font-bold text-emerald-400 mt-1">$2,450.00</h2>
-          <div className="w-full bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
-            <div className="bg-emerald-500 h-full w-[65%]"></div>
-          </div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <span className="text-xs text-slate-400 font-semibold uppercase">Monthly Budget Limit</span>
-          <h2 className="text-2xl font-bold text-white mt-1">$3,800.00</h2>
-          <span className="text-xs text-slate-500 mt-2 block">$1,350.00 remaining</span>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <span className="text-xs text-slate-400 font-semibold uppercase">Active Categories</span>
-          <h2 className="text-2xl font-bold text-indigo-400 mt-1">4 Budgets</h2>
-          <span className="text-xs text-slate-500 mt-2 block">100% budget compliance</span>
-        </div>
-      </div>
-
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <h2 className="text-lg font-bold text-white mb-4">Recent Transactions</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-950 text-slate-400 text-xs uppercase border-b border-slate-800">
-              <tr>
-                <th className="py-3 px-4">Merchant</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {transactions.filter(t => categoryFilter === 'All' || t.category === categoryFilter).map((t) => (
-                <tr key={t.id} className="hover:bg-slate-850">
-                  <td className="py-3.5 px-4 font-semibold text-white">{t.merchant}</td>
-                  <td className="py-3.5 px-4"><span className="bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full text-xs">{t.category}</span></td>
-                  <td className="py-3.5 px-4 text-slate-400">{t.date}</td>
-                  <td className="py-3.5 px-4 text-right font-bold text-emerald-400">{t.amount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-`;
-          } else {
-            content = `import React, { useState } from 'react';
-export default function ${compName}() {
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('All');
-  const sampleItems = [
-    { id: 1, title: 'Database Schema & Auth Setup', category: 'High Priority', status: 'In Progress', tag: 'Backend' },
-    { id: 2, title: 'Kanban Board Drag & Drop', category: 'Medium Priority', status: 'To Do', tag: 'Frontend' },
-    { id: 3, title: 'Dark Mode Persistent State', category: 'Low Priority', status: 'Done', tag: 'UI' }
-  ];
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
-      <header className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8 border-b border-slate-800 pb-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">${compName}</h1>
-          <p className="text-slate-400 text-sm mt-1">Manage tasks, track project status, and search records in real time.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            placeholder="Search items..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-      </header>
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {['All', 'To Do', 'In Progress', 'Done'].map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setFilter(cat)}
-            className={\`px-4 py-1.5 rounded-full text-xs font-medium border transition-colors \${filter === cat ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'}\`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {['To Do', 'In Progress', 'Done'].map((status) => (
-          <div key={status} className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-            <h2 className="text-sm font-bold text-slate-300 mb-3 flex items-center justify-between">
-              <span>{status}</span>
-              <span className="bg-slate-800 text-slate-400 px-2 py-0.5 rounded text-xs">Active</span>
-            </h2>
-            <div className="space-y-3">
-              {sampleItems.filter(i => i.status === status && (filter === 'All' || i.category.toLowerCase().includes(filter.toLowerCase()) || i.tag.toLowerCase().includes(filter.toLowerCase()))).map(item => (
-                <div key={item.id} className="bg-slate-900 border border-slate-800 p-4 rounded-lg shadow-sm hover:border-slate-700 transition-all">
-                  <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="font-semibold text-indigo-400">{item.tag}</span>
-                    <span className="text-slate-500">{item.category}</span>
-                  </div>
-                  <h3 className="text-sm font-semibold text-white">{item.title}</h3>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-`;
-          }
+          content = DomainAwareFallbackGenerator.generateFallbackComponent(spec, compName, rel);
           changed = true;
-          fixed.push(`Replaced truncated/empty stub in ${rel} with complete functional dashboard UI`);
+          fixed.push(`Replaced truncated/empty/mismatched stub in ${rel} with domain-aware fallback UI`);
         }
 
         // Fix 2: Pages that are React.lazy-loaded need `export default`

@@ -843,6 +843,14 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
+        // Fix 17: Prisma create/update data payload type cast (Without<UncheckedCreateInput, CreateInput> TS error)
+        if (rel.includes("server") || rel.includes("controller") || rel.includes("routes")) {
+          if (content.includes("prisma.") && (content.includes(".create({") || content.includes(".update({"))) {
+            content = content.replace(/data:\s*\{([^}]+)\}/g, "data: { $1 } as any");
+            changed = true;
+          }
+        }
+
         // Fix 13.8: apiClient named & default export shim (TS2614 / TS2613 / TS2451)
         if (rel.toLowerCase().includes("apiclient") || rel.toLowerCase().includes("api-client") || rel.toLowerCase().endsWith("/api.ts") || rel.toLowerCase().endsWith("/api.tsx")) {
           const hasDefault = content.includes("export default");

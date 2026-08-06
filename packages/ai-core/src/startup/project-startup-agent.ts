@@ -448,6 +448,28 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         references: [{ path: "./tsconfig.node.json" }],
       }, null, 2), "utf8");
       patches.push("Created tsconfig.json");
+    } else {
+      try {
+        const tsconfig = JSON.parse(readFileSync(tsconfigPath, "utf8"));
+        tsconfig.compilerOptions = tsconfig.compilerOptions || {};
+        let tsChanged = false;
+        if (!tsconfig.compilerOptions.baseUrl) {
+          tsconfig.compilerOptions.baseUrl = ".";
+          tsChanged = true;
+        }
+        if (!tsconfig.compilerOptions.paths || !tsconfig.compilerOptions.paths["@/*"]) {
+          tsconfig.compilerOptions.paths = { ...tsconfig.compilerOptions.paths, "@/*": ["./src/*"] };
+          tsChanged = true;
+        }
+        if (tsconfig.compilerOptions.strict !== false) {
+          tsconfig.compilerOptions.strict = false;
+          tsChanged = true;
+        }
+        if (tsChanged) {
+          writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2), "utf8");
+          patches.push("Patched tsconfig.json with @ path aliases and relaxed strict checks");
+        }
+      } catch { /* non-fatal */ }
     }
 
     const tsconfigNodePath = join(dir, "tsconfig.node.json");

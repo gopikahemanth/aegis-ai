@@ -789,17 +789,19 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
-        // Fix 13.8: apiClient named export shim (TS2614 Module has no exported member apiClient)
-        if (rel.toLowerCase().includes("apiclient") || rel.toLowerCase().includes("api-client")) {
-          if (!content.includes("export const apiClient") && !content.includes("export { apiClient")) {
-            const hasDefault = content.includes("export default");
-            const hasAxios = content.includes("import axios");
-            if (hasDefault) {
-              content += `\nexport const apiClient: any = (globalThis as any).apiClient || {};\n`;
-            } else {
-              const axiosImport = hasAxios ? "" : "import axios from 'axios';\n";
-              content += `\n${axiosImport}export const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
-            }
+        // Fix 13.8: apiClient named & default export shim (TS2614 / TS2613 / TS2451)
+        if (rel.toLowerCase().includes("apiclient") || rel.toLowerCase().includes("api-client") || rel.toLowerCase().endsWith("/api.ts") || rel.toLowerCase().endsWith("/api.tsx")) {
+          const hasDefault = content.includes("export default");
+          const hasAnyApiClient = /\b(const|let|var|function|type|interface|export)\s+apiClient\b/.test(content);
+          const hasAxios = content.includes("import axios");
+
+          if (!hasAnyApiClient) {
+            content += `\nexport const apiClient: any = (globalThis as any).apiClient || {};\n`;
+            changed = true;
+          }
+          if (!hasDefault) {
+            const axiosImport = hasAxios ? "" : "import axios from 'axios';\n";
+            content += `\n${axiosImport}const _apiDefault = (globalThis as any).apiClient || {};\nexport default _apiDefault;\n`;
             changed = true;
           }
         }

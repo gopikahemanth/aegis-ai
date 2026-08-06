@@ -5,6 +5,7 @@ import type { AIProvider, ChatMessage, ChatOptions } from "./base.js";
 export class FailoverProvider implements AIProvider {
   public readonly name = "failover";
   private readonly disabledUntil = new Map<string, number>();
+  private readonly permanentlyDisabled = new Set<string>(); // 402 payment required
 
   constructor(
     private readonly providers: AIProvider[],
@@ -48,9 +49,31 @@ export class FailoverProvider implements AIProvider {
       }
     }
 
-    if (this.disabledUntil.size >= this.providers.length) {
-      console.log("[FailoverProvider] All providers were disabled — resetting disabled provider timeouts.");
-      this.disabledUntil.clear();
+    // Count available (non-permanent, non-temporarily-disabled) providers
+    const available = this.providers.filter(p =>
+      !this.permanentlyDisabled.has(p.name) &&
+      !(this.disabledUntil.has(p.name) && Date.now() < (this.disabledUntil.get(p.name) ?? 0))
+    );
+
+    if (available.length === 0) {
+      // Find soonest expiry among temporary disables (excluding permanent)
+      const tempDisables = [...this.disabledUntil.entries()]
+        .filter(([name]) => !this.permanentlyDisabled.has(name));
+      if (tempDisables.length > 0) {
+        const soonest = Math.min(...tempDisables.map(([, exp]) => exp));
+        const waitMs = Math.max(soonest - Date.now(), 0);
+        if (waitMs > 0) {
+          console.log(`[FailoverProvider] All providers temporarily rate-limited. Waiting ${Math.round(waitMs / 1000)}s for soonest provider to recover...`);
+          await new Promise(resolve => setTimeout(resolve, waitMs));
+        }
+        // Clear expired disables
+        for (const [pName, expiry] of this.disabledUntil.entries()) {
+          if (Date.now() >= expiry) this.disabledUntil.delete(pName);
+        }
+      } else {
+        console.log("[FailoverProvider] All providers permanently disabled — resetting temporary disables.");
+        this.disabledUntil.clear();
+      }
     }
 
     for (const provider of this.providers) {
@@ -147,13 +170,15 @@ export class FailoverProvider implements AIProvider {
             } catch {}
           }
 
-          const is402 = error.message?.includes("402") || error.message?.includes("Payment required");
+          const is402 = error.message?.includes("402") || error.message?.toLowerCase().includes("payment required");
           const isFetchFailed = error.message?.includes("fetch failed") || error.message?.includes("ECONNREFUSED");
-          const is429 = error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED");
+          const is429 = error.message?.includes("429") || error.message?.includes("quota") ||
+            error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.toLowerCase().includes("rate limit");
 
           if (is402) {
-            console.warn(`[FailoverProvider] 402 Payment Required on provider "${provider.name}". Disabling for 10 minutes.`);
-            this.disabledUntil.set(provider.name, Date.now() + 600000);
+            console.warn(`[FailoverProvider] 402 Payment Required on provider "${provider.name}". Permanently disabling for this session.`);
+            this.permanentlyDisabled.add(provider.name);
+            this.disabledUntil.set(provider.name, Date.now() + 86400000); // 24h
             break;
           }
 

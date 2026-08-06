@@ -56,16 +56,22 @@ async chat(
     );
 
   } catch (error: any) {
+    const msg: string = error?.error?.error?.message ?? error?.message ?? "Provider request failed.";
 
-    const retryAfter =
-      Number(
-        error?.headers?.["retry-after"],
-      ) || undefined;
+    // Parse retry time from Groq error messages like "try again in 24m3.744s" or "try again in 3.5s"
+    let retryAfter: number | undefined = Number(error?.headers?.["retry-after"]) || undefined;
+    if (!retryAfter) {
+      const minuteMatch = msg.match(/try again in (\d+)m([\d.]+)s/i);
+      const secondMatch = msg.match(/try again in ([\d.]+)s/i);
+      if (minuteMatch) {
+        retryAfter = parseInt(minuteMatch[1]) * 60 + Math.ceil(parseFloat(minuteMatch[2]));
+      } else if (secondMatch) {
+        retryAfter = Math.ceil(parseFloat(secondMatch[1]));
+      }
+    }
 
     throw new ProviderError(
-      error?.error?.error?.message ??
-      error?.message ??
-      "Provider request failed.",
+      msg,
       retryAfter,
       error,
     );

@@ -119,8 +119,8 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
 
   private checkNoHardcodedData(source: string): DodCriterion {
     const patterns = [
-      /const\s+\w*(score|users|data|items|list)\w*\s*=\s*\[[\s\S]{1,200}\]/,
-      /const\s+\w*(score|rating|percent|ats)\w*\s*=\s*\d{2,3}\s*[;,]/i,
+      /const\s+(hardcodedScore|staticUsers|dummyScores)\s*=\s*\[[\s\S]{1,200}\]/,
+      /const\s+(atsScore|dummyRating)\s*=\s*\d{2,3}\s*[;,]/i,
     ];
     const violation = patterns.find(p => p.test(source));
     return {

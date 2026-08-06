@@ -690,7 +690,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         // Fix 1.8: Empty/minimal/sparse component stub replacement or domain mismatch purge
         const isExpenseApp = dir.toLowerCase().includes("expense") || dir.toLowerCase().includes("budget") || dir.toLowerCase().includes("transaction") || dir.toLowerCase().includes("finance");
         const hasDomainMismatch = isExpenseApp && (content.includes("Kanban") || content.includes("To Do") || content.includes("In Progress") || content.includes("Manage tasks"));
-        if ((rel.includes("Dashboard") || rel.includes("App.tsx") || rel.includes("Kanban") || rel.includes("Expense") || rel.includes("Main")) && (content.length < 900 || hasDomainMismatch || !content.includes("<table"))) {
+        if (hasDomainMismatch || ((rel.includes("Dashboard") || rel.includes("App") || rel.includes("Kanban") || rel.includes("Expense") || rel.includes("Layout") || rel.includes("Page") || rel.includes("Main")) && (content.length < 900 || !content.includes("<table")))) {
           const compName = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Dashboard";
           
           if (isExpenseApp) {

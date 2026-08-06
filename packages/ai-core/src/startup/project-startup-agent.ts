@@ -772,14 +772,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
-        // Fix 15: TS2739 missing required properties on React.FC component props (e.g. GalleryPageProps)
+        // Fix 15: TS2739 missing required properties on React.FC component props
         if (rel.includes("/pages/") || rel.includes("/components/")) {
-          if (content.includes("interface ")) {
-            content = content.replace(/(interface\s+[A-Za-z0-9_]+\s*\{[\s\S]*?\})/g, (block) => {
-              return block.replace(/^(\s*[a-zA-Z0-9_]+)(\s*:\s*[^;?]+;)/gm, "$1?$2");
-            });
-            changed = true;
-          }
           if (/: React\.FC</.test(content)) {
             content = content.replace(/: React\.FC<[^>]+>/g, ": React.FC<any>");
             changed = true;

@@ -1511,7 +1511,7 @@ export const ${componentName}: React.FC<any> = (props: any) => {
               <span className="bg-slate-800 text-slate-400 px-2 py-0.5 rounded text-xs">Active</span>
             </h2>
             <div className="space-y-3">
-              {sampleItems.filter(i => filter === 'All' || i.status === status || i.status === filter).map(item => (
+              {sampleItems.filter(i => i.status === status && (filter === 'All' || i.category.toLowerCase().includes(filter.toLowerCase()) || i.tag.toLowerCase().includes(filter.toLowerCase()))).map(item => (
                 <div key={item.id} className="bg-slate-900 border border-slate-800 p-4 rounded-lg shadow-sm hover:border-slate-700 transition-all">
                   <div className="flex items-center justify-between text-xs mb-2">
                     <span className="font-semibold text-indigo-400">{item.tag}</span>

@@ -1389,7 +1389,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
       for (const diskFile of allDiskFiles) {
         const fileDir = dirname(diskFile.fullPath);
-        const importMatches = diskFile.content.matchAll(/import\s+(?:[\s\S]*?\s+from\s+)?['"]((?:\.|\@\/)[^'"]+)['"]/g);
+        const importMatches = diskFile.content.matchAll(/(?:import\s+(?:[\s\S]*?\s+from\s+)?|import\s*\(\s*)['"]((?:\.|\@\/)[^'"]+)['"]/g);
         for (const m of importMatches) {
           const rawImportPath = m[1];
           let targetPath = rawImportPath.startsWith("@/")
@@ -1425,6 +1425,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               if (lowerBName === lowerComp) return true;
               if (lowerComp.endsWith("page") && lowerBName === lowerComp.replace("page", "")) return true;
               if (lowerBName.endsWith("page") && lowerComp === lowerBName.replace("page", "")) return true;
+              if (lowerComp.endsWith("dashboard") && lowerBName === lowerComp.replace("dashboard", "admin")) return true;
               return false;
             });
 

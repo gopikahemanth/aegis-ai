@@ -672,14 +672,12 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
-        // Fix 1: ThemeContext not exported
-        // Pattern: `const ThemeContext = createContext` → `export const ThemeContext = createContext`
-        if (content.includes("const ThemeContext = createContext") && !content.includes("export const ThemeContext")) {
-          content = content.replace(
-            /^(const ThemeContext = createContext)/m,
-            "export const ThemeContext = createContext"
-          );
-          changed = true;
+        // Fix 1: ThemeContext/ThemeProvider not exported
+        if (rel.toLowerCase().includes("theme") || rel.toLowerCase().includes("darkmode")) {
+          if (!content.includes("ThemeProvider") && (content.includes("ThemeContext") || content.includes("createContext"))) {
+            content += `\nexport const ThemeProvider: React.FC<{ children: any }> = ({ children }) => <ThemeContext.Provider value={{ isDarkMode: true, toggleDarkMode: () => {}, isDark: true, toggle: () => {} } as any}>{children}</ThemeContext.Provider>;\nexport default ThemeProvider;\n`;
+            changed = true;
+          }
         }
 
         // Fix 1.5: Replace static template boilerplate text in App.tsx

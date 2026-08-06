@@ -22,13 +22,19 @@ export class ProviderFactory {
     const preferred = env.AI_PROVIDER;
 
     if (preferred === "gemini" && env.GEMINI_API_KEY) {
-      providers.push(new GeminiProvider());
+      providers.push(new GeminiProvider(env.GEMINI_API_KEY, "gemini"));
+      if (env.GEMINI_API_KEY_2) {
+        providers.push(new GeminiProvider(env.GEMINI_API_KEY_2, "gemini-2"));
+      }
     } else if (preferred === "groq" && env.GROQ_API_KEY) {
       providers.push(new GroqProvider());
     }
 
     if (preferred !== "gemini" && env.GEMINI_API_KEY) {
-      providers.push(new GeminiProvider());
+      providers.push(new GeminiProvider(env.GEMINI_API_KEY, "gemini"));
+      if (env.GEMINI_API_KEY_2) {
+        providers.push(new GeminiProvider(env.GEMINI_API_KEY_2, "gemini-2"));
+      }
     }
     if (preferred !== "groq" && env.GROQ_API_KEY) {
       providers.push(new GroqProvider());

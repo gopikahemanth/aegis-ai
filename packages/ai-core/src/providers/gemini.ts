@@ -11,19 +11,21 @@ import type {
 } from "./base.js";
 
 export class GeminiProvider implements AIProvider {
-  public readonly name = "gemini";
-
+  public readonly name: string;
   private readonly client: GoogleGenAI;
 
-  constructor() {
-    if (!env.GEMINI_API_KEY) {
+  constructor(apiKey?: string, customName: string = "gemini") {
+    const key = apiKey || env.GEMINI_API_KEY;
+    this.name = customName;
+
+    if (!key) {
       throw new Error(
         "GEMINI_API_KEY is not configured.",
       );
     }
 
     this.client = new GoogleGenAI({
-      apiKey: env.GEMINI_API_KEY,
+      apiKey: key,
     });
   }
 

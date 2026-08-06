@@ -34,6 +34,13 @@ export const Models = {
     balanced: "gemini-3.1-flash-lite",
   },
 
+  "gemini-2": {
+    default: "gemini-3.1-flash-lite",
+    strong: "gemini-3.1-flash-lite",
+    fast: "gemini-3.1-flash-lite",
+    balanced: "gemini-3.1-flash-lite",
+  },
+
   ollama: {
     default: "llama3.1",
     strong: "llama3.1",

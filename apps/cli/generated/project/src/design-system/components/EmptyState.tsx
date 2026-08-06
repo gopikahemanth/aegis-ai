@@ -2,12 +2,12 @@ import React from 'react';
 
 interface EmptyStateProps {
   icon?: React.ReactNode;
-  title: string;
+  title?: string;
   description?: string;
   action?: React.ReactNode;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description, action }) => (
+export const EmptyState: React.FC<any> = ({ icon, title, description, action }) => (
   <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
     {icon && (
       <div className="mb-4 text-slate-600" aria-hidden="true">

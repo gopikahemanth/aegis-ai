@@ -1,7 +1,17 @@
-export interface Artwork { id: string | number; title: string; imageUrl: string; price: number; artist: { name: string; [key: string]: any } | any; category?: any; medium?: string; createdAt?: string; updatedAt?: string; [key: string]: any; }
-export interface User { id: string | number; email: string; name?: string; }
-export interface Artist { id: string | number; name: string; }
-export interface Category { id: string | number; name: string; }
-export interface artwork { id: string | number; title?: string; name?: string; email?: string; imageUrl?: string; price?: number; artist?: any; category?: any; medium?: string; createdAt?: string; updatedAt?: string; [key: string]: any; }
-export type artworkInput = Partial<artwork>;
-export default artwork;
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export interface Artwork {
+  id: number;
+  title: string;
+  artist: string;
+  description: string;
+  imageUrl: string;
+  categoryId: number;
+  category: Category; // Added relation
+  createdAt: string;
+  updatedAt: string;
+}

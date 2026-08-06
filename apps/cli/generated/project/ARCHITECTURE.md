@@ -1,41 +1,40 @@
-# Architecture: AegisArtGallery
+# Architecture Documentation: art-gallery-platform
 
 ## 1. System Overview
-AegisArtGallery is a responsive React-based digital catalog designed for high-fidelity art asset management and exhibition curation. The system emphasizes performance, modular UI component isolation, and immutable data flow to ensure a seamless experience for gallery administrators and art enthusiasts.
+The `art-gallery-platform` is a high-performance React application designed for the exhibition and management of digital art assets. It employs a modular architecture focused on scalability, utilizing a component-driven development pattern to ensure consistent UI across gallery views and administrative dashboards.
 
 ## 2. Folder Structure
 ```text
 src/
 ├── assets/          # Static assets (images, fonts, global styles)
-├── components/      # Atomic UI elements (Button, GalleryCard, Modal)
-├── hooks/           # Shared logic (useAuth, useGalleryFetch)
-├── layouts/         # Page scaffolding (Header, Sidebar, Footer)
-├── pages/           # Route-level views (Home, ExhibitDetail, Upload)
-├── services/        # API interaction layers (axios clients, endpoints)
-├── store/           # Global state management configuration
-├── utils/           # Helper functions (formatters, validators)
-└── App.js           # Main entry and router configuration
+├── components/      # Reusable UI primitives (Button, Card, Modal)
+├── features/        # Feature-based modules (Gallery, Auth, Admin)
+├── hooks/           # Shared custom React hooks
+├── services/        # API clients and external integration logic
+├── store/           # Global state configuration (Redux/Zustand)
+├── utils/           # Helper functions and constants
+└── App.tsx          # Root application component
 ```
 
 ## 3. Key Design Decisions
-*   **React (Functional Components + Hooks):** Chosen for a declarative UI paradigm and superior performance via component-level state isolation.
-*   **Axios:** Selected for its robust request/response interceptor support, critical for injecting authentication tokens and standardizing error handling.
-*   **CSS Modules:** Implemented to avoid global scope pollution and ensure component-level style encapsulation.
-*   **React Router:** Utilized for declarative client-side routing to support complex nested gallery navigation without full page reloads.
+*   **Feature-based Folder Structure:** Organized by domain logic rather than file type to reduce cognitive load and facilitate easier codebase navigation as the platform scales.
+*   **TypeScript:** Enforced for all modules to provide type safety, reducing runtime errors and improving IDE intellisense.
+*   **React Query (TanStack Query):** Selected for server-state management to handle caching, background refetching, and synchronization, minimizing manual API orchestration.
+*   **Styled Components / Tailwind CSS:** Used to enforce a design system, ensuring modular styling and preventing CSS global namespace collisions.
 
 ## 4. Data Flow
-1.  **Action:** User triggers an event (e.g., clicking an artwork).
-2.  **Dispatch:** A React hook or action creator invokes a service function.
-3.  **Transport:** The `service` layer performs an asynchronous API request using Axios.
-4.  **Update:** The response data is normalized and dispatched to the global `store` (Context/Redux).
-5.  **Render:** React detects state changes and re-renders components subscribed to the updated data slices.
+1.  **User Action:** A user triggers an event (e.g., clicking "View Artwork").
+2.  **Service Call:** The component invokes a hook, which triggers a function in `services/`.
+3.  **State Update:** The data layer (React Query) fetches data from the backend; if successful, it updates the cache.
+4.  **Re-render:** React detects the state update and re-renders the UI components with the new props.
+5.  **Persistence:** Mutations (e.g., "Favorite Artwork") are sent via `POST/PATCH` requests; upon completion, the cache is invalidated to force a fresh data fetch.
 
 ## 5. State Management Approach
-The application employs a hybrid strategy:
-*   **Global State (Context API/Redux):** Used for session data, user authentication, and critical gallery metadata that must persist across page navigation.
-*   **Local State (`useState`/`useReducer`):** Used for transient UI concerns such as input field values, modal visibility, and specific view toggles to minimize unnecessary re-renders.
+*   **Server State:** Managed by **React Query**, serving as the single source of truth for all remote data.
+*   **Global Client State:** Handled by **Zustand** for lightweight, non-persisted application concerns (e.g., UI theme, sidebar toggle, user session tokens).
+*   **Local State:** Managed via standard `useState` and `useReducer` hooks for component-specific logic (e.g., form inputs, dropdown toggles).
 
 ## 6. Error Handling Strategy
-*   **Global Boundary:** A top-level `ErrorBoundary` component catches runtime rendering exceptions to prevent white-screen crashes.
-*   **Service-Level Interceptors:** Axios interceptors capture non-2xx HTTP responses, automatically triggering user-facing notifications via a toast system.
-*   **Validation:** Input sanitization and form validation (using Zod or similar schemas) are performed client-side prior to network transmission to reduce server load.
+*   **Boundary Layers:** Use `react-error-boundary` to wrap critical features, preventing total application crashes upon individual module failures.
+*   **Global Interceptors:** Axios/Fetch interceptors capture 4xx/5xx status codes to trigger global notification toasts and log errors to external monitoring tools (e.g., Sentry).
+*   **Graceful Degradation:** UI components implement "Empty States" and "Loading Skeletons" to maintain a consistent user experience during data fetching or network failures.

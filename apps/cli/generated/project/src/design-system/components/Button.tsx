@@ -25,7 +25,7 @@ const sizeClasses: Record<string, string> = {
   lg: 'px-6 py-3 text-base gap-2.5',
 };
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button: React.FC<any> = ({
   variant = 'primary',
   size = 'md',
   loading = false,

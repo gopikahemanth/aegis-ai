@@ -3,39 +3,31 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export const uploadArtwork = async (req: Request, res: Response) => {
+export const getAllArtworks = async (req: Request, res: Response) => {
   try {
-    const { title, artistName, description, price, category } = req.body;
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
-
-    const artwork = await prisma.artwork.create({
-      data: {
-        title,
-        artistName,
-        description,
-        price: parseFloat(price),
-        category,
-        imageUrl
-      }
+    const { category } = req.query;
+    const where = category && category !== 'all' ? { category: { slug: String(category) } } : {};
+    
+    const artworks = await prisma.artwork.findMany({
+      where,
+      include: { category: true },
+      orderBy: { createdAt: 'desc' }
     });
-    res.status(201).json(artwork);
+    
+    res.json({ success: true, data: artworks });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to upload artwork' });
+    res.json([]);
   }
 };
 
-export const getArtworks = async (req: Request, res: Response) => {
-  const { category, search } = req.query;
-  const where: any = {};
-  
-  if (category && category !== 'ALL') where.category = category;
-  if (search) {
-    where.OR = [
-      { title: { contains: search as string } },
-      { artistName: { contains: search as string } }
-    ];
+export const createArtwork = async (req: Request, res: Response) => {
+  try {
+    const { title, artist, description, imageUrl, categoryId } = req.body;
+    const newArtwork = await prisma.artwork.create({
+      data: { title, artist, description, imageUrl, categoryId: Number(categoryId) }
+    });
+    res.status(201).json({ success: true, data: newArtwork });
+  } catch (error) {
+    res.status(400).json({ success: false, message: 'Validation failed' });
   }
-
-  const artworks = await prisma.artwork.findMany({ where, orderBy: { createdAt: 'desc' } });
-  res.json(artworks);
 };

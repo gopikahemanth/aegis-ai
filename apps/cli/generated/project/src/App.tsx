@@ -1,15 +1,16 @@
-import React, { lazy, Suspense } from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const GalleryPage = lazy(() => import('./features/gallery/GalleryPage'));
 const queryClient = new QueryClient();
 
-export default function App() {
+const GalleryPage = React.lazy(() => import('./pages/GalleryPage'));
+
+const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="min-h-screen animate-pulse bg-slate-950" />}>
           <Routes>
             <Route path="/" element={<GalleryPage />} />
           </Routes>
@@ -17,4 +18,6 @@ export default function App() {
       </BrowserRouter>
     </QueryClientProvider>
   );
-}
+};
+
+export default App;

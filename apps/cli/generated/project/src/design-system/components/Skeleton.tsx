@@ -8,7 +8,7 @@ interface SkeletonProps {
   width?: string | number;
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({ className = '', lines = 1, count }) => {
+export const Skeleton: React.FC<any> = ({ className = '', lines = 1, count }) => {
   const effectiveLines = count ?? lines;
   if (effectiveLines > 1) {
     return (

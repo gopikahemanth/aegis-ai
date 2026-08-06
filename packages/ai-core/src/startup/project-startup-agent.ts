@@ -687,10 +687,11 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           fixed.push("Replaced boilerplate text in src/App.tsx with AppRoutes loader");
         }
 
-        // Fix 1.8: Empty/minimal/sparse component stub replacement (under 900 chars or missing header/table)
-        if ((rel.includes("Dashboard") || rel.includes("App.tsx") || rel.includes("Kanban") || rel.includes("Expense")) && (content.length < 900 || !content.includes("<table")) && (content.includes("<div>Dashboard</div>") || content.includes("<div>App</div>") || !content.includes("<header") || !content.includes("<table"))) {
+        // Fix 1.8: Empty/minimal/sparse component stub replacement or domain mismatch purge
+        const isExpenseApp = dir.toLowerCase().includes("expense") || dir.toLowerCase().includes("budget") || dir.toLowerCase().includes("transaction") || dir.toLowerCase().includes("finance");
+        const hasDomainMismatch = isExpenseApp && (content.includes("Kanban") || content.includes("To Do") || content.includes("In Progress") || content.includes("Manage tasks"));
+        if ((rel.includes("Dashboard") || rel.includes("App.tsx") || rel.includes("Kanban") || rel.includes("Expense") || rel.includes("Main")) && (content.length < 900 || hasDomainMismatch || !content.includes("<table"))) {
           const compName = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Dashboard";
-          const isExpenseApp = dir.toLowerCase().includes("expense") || rel.toLowerCase().includes("expense") || rel.toLowerCase().includes("budget") || rel.toLowerCase().includes("transaction");
           
           if (isExpenseApp) {
             content = `import React, { useState } from 'react';

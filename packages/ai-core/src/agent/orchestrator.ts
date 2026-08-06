@@ -1453,6 +1453,8 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               stubContent = `import React from 'react';\nexport interface ButtonProps { children?: any; variant?: any; size?: any; loading?: any; icon?: any; [key: string]: any; }\nexport const Button: React.FC<ButtonProps> = ({ children, variant, size, loading, icon, ...props }: any) => <button className="px-4 py-2 bg-indigo-600 text-white rounded" {...props}>{children}</button>;\nexport default Button;\n`;
             } else if (lowerRel.includes("card")) {
               stubContent = `import React from 'react';\nexport const ${componentName}: React.FC<any> = (props) => <div className="p-4 border rounded shadow" {...props}>{props.title || '${componentName}'}</div>;\nexport default ${componentName};\n`;
+            } else if (lowerRel.includes("page")) {
+              stubContent = `import React from 'react';\nexport const ${componentName}: React.FC<any> = (props: any) => <div className="p-6 min-h-screen bg-slate-900 text-white"><h1 className="text-2xl font-bold mb-4">${componentName}</h1><p className="text-slate-400">Content for ${componentName}</p></div>;\nexport default ${componentName};\n`;
             } else {
               stubContent = `import React from 'react';\nexport interface Artwork { id: string | number; title?: string; imageUrl?: string; price?: number; }\nexport const ${componentName}: React.FC<any> = (props: any) => <div className="p-4" {...props}>{props?.children || '${componentName}'}</div>;\nexport default ${componentName};\n`;
             }

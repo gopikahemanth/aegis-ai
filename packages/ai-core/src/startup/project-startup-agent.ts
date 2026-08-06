@@ -832,6 +832,19 @@ export default function ${compName}() {
           changed = true;
         }
 
+        // Fix 13.5: TS2724 entity module missing capitalized export (e.g. Task vs task)
+        if (rel.includes("entities") || rel.includes("types") || rel.includes("models")) {
+          const baseName = rel.split("/").pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "";
+          if (baseName) {
+            const pascalName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
+            if (!content.includes(`export type ${pascalName}`) && !content.includes(`export interface ${pascalName}`) && !content.includes(`export const ${pascalName}`) && !content.includes(`export class ${pascalName}`)) {
+              content += `\nexport type ${pascalName} = any;\nexport default ${pascalName};\n`;
+              changed = true;
+              fixed.push(`Added missing capitalized export ${pascalName} to ${rel}`);
+            }
+          }
+        }
+
         // Fix 14: TS2339 hook return ReactNode cast fix (e.g. const { artworks, loading } = useArtwork() or useGallery())
         if (/(useArtwork|useGallery|useArtworks)\(.*\)/.test(content) && /const\s*\{[^}]+\}\s*=\s*(useArtwork|useGallery|useArtworks)/.test(content)) {
           content = content.replace(

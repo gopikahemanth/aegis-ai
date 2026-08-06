@@ -814,16 +814,17 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
-        // Fix 13.11: Dual export shim for React components (TS2614 Module has no exported member 'LoadingSpinner'/'Spinner'/'Button'/etc.)
+        // Fix 13.11: Dual export shim for React components (TS2614 / TS2652)
         const baseComp = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "";
         if (baseComp && /^[A-Z]/.test(baseComp) && (rel.includes("Component") || rel.includes("component") || rel.includes("shared") || rel.includes("ui") || rel.includes("design-system") || rel.includes("features"))) {
-          const hasDefault = content.includes("export default");
-          const hasNamed = content.includes(`export const ${baseComp}`) || content.includes(`export function ${baseComp}`) || content.includes(`export class ${baseComp}`);
-          if (hasDefault && !hasNamed) {
+          const hasExplicitDefault = content.includes("export default");
+          const hasNamedExport = new RegExp(`export\\s+(const|let|var|function|class|type|interface|enum)\\s+${baseComp}\\b`).test(content) && !new RegExp(`export\\s+default\\s+(function|class)\\s+${baseComp}\\b`).test(content);
+
+          if (hasExplicitDefault && !hasNamedExport && !content.includes(`const ${baseComp}`) && !content.includes(`function ${baseComp}`)) {
             content += `\nexport const ${baseComp}: any = (props: any) => <div className="${baseComp.toLowerCase()}-shim" {...props}>{props?.children}</div>;\n`;
             changed = true;
           }
-          if (hasNamed && !hasDefault) {
+          if (hasNamedExport && !hasExplicitDefault) {
             content += `\nconst _compDef_${baseComp}: any = (props: any) => <div className="${baseComp.toLowerCase()}-shim" {...props}>{props?.children}</div>;\nexport default _compDef_${baseComp};\n`;
             changed = true;
           }

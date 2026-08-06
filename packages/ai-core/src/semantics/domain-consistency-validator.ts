@@ -48,11 +48,11 @@ export class DomainConsistencyValidator {
 
         // Check for forbidden domain patterns
         for (const pattern of spec.forbiddenPatterns) {
-          if (content.includes(pattern)) {
+          if (content.includes(pattern) || rel.includes(pattern)) {
             forbiddenMatches.push(`${rel}: contains forbidden pattern '${pattern}'`);
             
             // Unconditional Contamination Purge for components/layouts
-            if (rel.includes("src/") && (rel.includes("Component") || rel.includes("Layout") || rel.includes("Page") || rel.includes("App") || rel.includes("Board") || rel.includes("Shell"))) {
+            if (rel.includes("src/")) {
               const compName = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Component";
               const cleanContent = DomainAwareFallbackGenerator.generateFallbackComponent(spec, compName, rel);
               writeFileSync(file, cleanContent, "utf8");

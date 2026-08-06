@@ -8,6 +8,13 @@ export class DomainAwareFallbackGenerator {
   ): string {
     const domain = spec.domainCategory;
     const lowerRel = targetRelPath.toLowerCase();
+    let safeCompName = componentName;
+    for (const pat of spec.forbiddenPatterns) {
+      if (pat.length > 2) {
+        safeCompName = safeCompName.replace(new RegExp(pat, "gi"), domain === "expense-tracker" ? "Expense" : "Feature");
+      }
+    }
+    if (!safeCompName || /^\d+$/.test(safeCompName)) safeCompName = "DomainFeature";
 
     if (lowerRel.includes("apiclient") || lowerRel.includes("api-client")) {
       return `import axios from 'axios';
@@ -17,7 +24,7 @@ export default apiClient;
     }
 
     if (lowerRel.includes("type") || lowerRel.includes("model") || lowerRel.includes("entity")) {
-      return `export interface ${componentName} {
+      return `export interface ${safeCompName} {
   id: string | number;
   title?: string;
   name?: string;
@@ -26,14 +33,14 @@ export default apiClient;
   createdAt?: string;
   [key: string]: any;
 }
-export default ${componentName};
+export default ${safeCompName};
 `;
     }
 
     if (domain === "expense-tracker") {
       return `import React, { useState } from 'react';
 
-export default function ${componentName}() {
+export default function ${safeCompName}() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   

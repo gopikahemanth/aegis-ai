@@ -1,33 +1,34 @@
 # AegisArtGallery
 
-A robust full-stack web application for managing and browsing digital art collections with advanced filtering and search capabilities.
+A robust full-stack web application for managing and browsing digital art collections with real-time filtering and responsive design.
 
 ## Features
 
-*   **Gallery Management:** View high-resolution artworks with detailed metadata.
-*   **Search & Filtering:** Real-time search functionality with filtering by artist, category, and year.
-*   **Dark Mode:** Built-in theme toggling for enhanced accessibility and user comfort.
-*   **Responsive Design:** Fully fluid UI layout optimized for desktop, tablet, and mobile devices.
-*   **Type-Safe Architecture:** End-to-end type safety using TypeScript and Prisma.
-*   **Efficient Data Layer:** Optimized SQLite database queries for fast retrieval and filtering.
+*   **Dynamic Art Gallery:** Browse collections with a masonry-style grid layout.
+*   **Advanced Search & Filtering:** Real-time filtering by artist, genre, and creation date.
+*   **State Persistence:** Dark mode integration with system preference detection.
+*   **RESTful API:** Efficient data retrieval using Express.js and Prisma ORM.
+*   **Type Safety:** End-to-end TypeScript integration for reliable data handling.
+*   **Relational Database:** SQLite-backed storage for optimized local development.
 
 ## Tech Stack
 
 | Technology | Purpose |
 | :--- | :--- |
-| **React** | Frontend user interface library |
-| **Express** | Node.js backend framework |
-| **Prisma** | ORM for database management and type-safe queries |
-| **SQLite** | Lightweight, file-based database engine |
-| **TypeScript** | Static typing for both client and server |
-| **Tailwind CSS** | Utility-first styling for responsive layouts |
+| React | Frontend UI Library |
+| TypeScript | Type-safe programming language |
+| Express | Backend API Framework |
+| Prisma | ORM for database management |
+| SQLite | Relational database engine |
+| Vite | Frontend build tool and dev server |
+| Tailwind CSS | Utility-first styling framework |
 
 ## Getting Started
 
 ### Prerequisites
 
-*   Node.js (v18.0.0 or higher)
-*   npm (v9.0.0 or higher) or yarn
+*   **Node.js**: Version 18.x or higher
+*   **npm**: Version 9.x or higher
 
 ### Installation
 
@@ -49,36 +50,39 @@ A robust full-stack web application for managing and browsing digital art collec
    cp .env.example .env
    ```
 
-2. Open the `.env` file and configure your database connection string and application port.
+2. Open the `.env` file and configure the following variables:
+   *   `DATABASE_URL`: The file path for the SQLite database (e.g., `file:./dev.db`).
+   *   `PORT`: The port for the backend server (default: `3000`).
 
-### Running Locally
-
-1. Run database migrations:
+3. Initialize the database schema:
    ```bash
    npx prisma migrate dev
    ```
 
-2. Start the development server:
-   ```bash
-   npm run dev
-   ```
+### Running Locally
+
+To start both the frontend and backend development servers, run:
+
+```bash
+npm run dev
+```
 
 ## Available Scripts
 
-*   `npm run dev`: Starts the development server with hot-reloading.
-*   `npm run build`: Compiles the application for production deployment.
-*   `npm run lint`: Runs ESLint to check for code quality and style violations.
+*   `npm run dev`: Starts the development environment with hot reloading.
+*   `npm run build`: Compiles the application for production.
+*   `npm run lint`: Runs ESLint to check for code quality and style issues.
+*   `npm run prisma:generate`: Generates the Prisma client based on the current schema.
 *   `npm run test`: Executes the test suite using Vitest.
-*   `npm run prisma:generate`: Regenerates the Prisma client after schema updates.
 
 ## Project Structure
 
-*   `/src/client`: React components, hooks, and application state logic.
-*   `/src/server`: Express API routes, middleware, and controllers.
-*   `/prisma`: Contains the schema file and database migration history.
-*   `/public`: Static assets including images and fonts.
-*   `/dist`: Compiled production files generated during the build process.
+*   `/prisma`: Contains the database schema (`schema.prisma`) and migration history.
+*   `/src/client`: Frontend React components, hooks, and styles.
+*   `/src/server`: Express API routes, controllers, and middleware.
+*   `/src/shared`: TypeScript interfaces shared between the client and server.
+*   `/public`: Static assets, images, and global manifests.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the [MIT License](LICENSE).

@@ -682,6 +682,13 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
+        // Fix 1.5: Replace static template boilerplate text in App.tsx
+        if (rel === "src/App.tsx" && content.includes("Aegis React Template")) {
+          content = `import React from "react";\nimport { AppRoutes } from "./routes";\n\nexport default function App() {\n  return (\n    <div className="min-h-screen bg-slate-950 text-slate-100">\n      <AppRoutes />\n    </div>\n  );\n}\n`;
+          changed = true;
+          fixed.push("Replaced boilerplate text in src/App.tsx with AppRoutes loader");
+        }
+
         // Fix 2: Pages that are React.lazy-loaded need `export default`
         // If this file is a Page and has only a named export, add a default re-export
         const isPage = rel.includes("/pages/") || rel.includes("Page.tsx");

@@ -1,14 +1,10 @@
+import React from "react";
+import { AppRoutes } from "./routes";
+
 export default function App() {
   return (
-    <main
-      style={{
-        padding: "2rem",
-        fontFamily: "system-ui",
-      }}
-    >
-      <h1>🚀 Aegis React Template</h1>
-
-      <p>Your project is ready.</p>
-    </main>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <AppRoutes />
+    </div>
   );
 }

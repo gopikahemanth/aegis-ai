@@ -687,10 +687,10 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           fixed.push("Replaced boilerplate text in src/App.tsx with AppRoutes loader");
         }
 
-        // Fix 1.8: Empty/minimal component stub replacement (e.g. Dashboard.tsx under 350 chars)
-        if ((rel.includes("Dashboard") || rel.includes("App.tsx") || rel.includes("Kanban") || rel.includes("Expense")) && content.length < 350 && (content.includes("<div>Dashboard</div>") || content.includes("<div>App</div>") || !content.includes("<header"))) {
+        // Fix 1.8: Empty/minimal/sparse component stub replacement (under 900 chars or missing header/table)
+        if ((rel.includes("Dashboard") || rel.includes("App.tsx") || rel.includes("Kanban") || rel.includes("Expense")) && (content.length < 900 || !content.includes("<table")) && (content.includes("<div>Dashboard</div>") || content.includes("<div>App</div>") || !content.includes("<header") || !content.includes("<table"))) {
           const compName = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Dashboard";
-          const isExpenseApp = rel.toLowerCase().includes("expense") || rel.toLowerCase().includes("budget") || rel.toLowerCase().includes("transaction");
+          const isExpenseApp = dir.toLowerCase().includes("expense") || rel.toLowerCase().includes("expense") || rel.toLowerCase().includes("budget") || rel.toLowerCase().includes("transaction");
           
           if (isExpenseApp) {
             content = `import React, { useState } from 'react';

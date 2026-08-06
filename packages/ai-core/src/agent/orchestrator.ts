@@ -899,6 +899,12 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
           execSync(`${prismaBin} generate`, { cwd: outputDirectory, stdio: "inherit" });
           console.log("[Orchestrator] Local Prisma client generation successful.");
+          try {
+            execSync(`${prismaBin} db push --accept-data-loss`, { cwd: outputDirectory, stdio: "inherit" });
+            console.log("[Orchestrator] ✓ SQLite database tables pushed successfully.");
+          } catch (pushErr: any) {
+            console.warn(`[Orchestrator] Warning: SQLite database push non-fatal warning: ${pushErr.message}`);
+          }
         } catch (genErr: any) {
           console.warn(`[Orchestrator] Warning: Local Prisma client generation failed: ${genErr.message}`);
         }

@@ -821,7 +821,7 @@ export default function ${compName}() {
         }
 
         // Fix 12: React.FC untyped props mismatch fix (TS2322 IntrinsicAttributes)
-        if (content.includes("React.FC =") || /export const [A-Z][a-zA-Z0-9]*:\s*React\.FC\s*=/.test(content)) {
+        if (content.includes("React.FC =")) {
           content = content.replace(/export const ([A-Z][a-zA-Z0-9]*):\s*React\.FC\s*=\s*/g, "export const $1: React.FC<any> = ");
           changed = true;
         }

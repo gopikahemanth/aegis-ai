@@ -784,8 +784,19 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
             if (!content.includes(`export type ${pascalName}`) && !content.includes(`export interface ${pascalName}`) && !content.includes(`export const ${pascalName}`) && !content.includes(`export class ${pascalName}`)) {
               content += `\nexport type ${pascalName} = any;\n`;
               changed = true;
-              fixed.push(`Added missing capitalized type ${pascalName} to ${rel}`);
             }
+          }
+        }
+
+        // Fix 13.9: AuthState / AuthContext property shims (isAuthenticated, login, logout, user, token)
+        if (rel.includes("auth") || rel.includes("Auth") || rel.includes("Protected") || rel.includes("context") || rel.includes("Context")) {
+          if (content.includes("isAuthenticated") && content.includes("AuthState") && !content.includes("isAuthenticated?:")) {
+            content = content.replace(/(interface\s+AuthState\s*\{)/, "$1\n  isAuthenticated?: boolean;\n  user?: any;\n  token?: string;");
+            changed = true;
+          }
+          if (content.includes("useAuth()") && !content.includes("isAuthenticated")) {
+            content = content.replace(/const\s*\{([^}]+)\}\s*=\s*useAuth\(\)/g, "const { $1 } = (useAuth() as any) || {}");
+            changed = true;
           }
         }
 

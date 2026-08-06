@@ -137,6 +137,8 @@ export class Orchestrator {
 
   private readonly designSystemGenerator = new DesignSystemGenerator();
 
+  private readonly projectStartupAgent = new ProjectStartupAgent();
+
   private readonly definitionOfDone = new DefinitionOfDone();
 
   private readonly executionLoop = new ExecutionLoop();
@@ -1330,6 +1332,9 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     framework: string,
     outputDirectory: string
   ): Promise<{ success: boolean; stderr?: string; stdout?: string }> {
+    try {
+      await this.projectStartupAgent.prepare(outputDirectory);
+    } catch {}
     const verifyResult = await this.buildOrchestrator.verify(outputDirectory);
     if (!verifyResult.success) {
       return { success: false, stderr: verifyResult.stderr || "Build failed", stdout: verifyResult.stdout };

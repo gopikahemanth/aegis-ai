@@ -929,8 +929,15 @@ export default function ${compName}() {
 
         // Fix 13.8: apiClient named export shim (TS2614 Module has no exported member apiClient)
         if (rel.toLowerCase().includes("apiclient") || rel.toLowerCase().includes("api-client")) {
-          if (!content.includes("export const apiClient")) {
-            content += `\nimport axios from 'axios';\nexport const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
+          if (!content.includes("export const apiClient") && !content.includes("export { apiClient")) {
+            const hasDefault = content.includes("export default");
+            const hasAxios = content.includes("import axios");
+            if (hasDefault) {
+              content += `\nexport const apiClient: any = (globalThis as any).apiClient || {};\n`;
+            } else {
+              const axiosImport = hasAxios ? "" : "import axios from 'axios';\n";
+              content += `\n${axiosImport}export const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
+            }
             changed = true;
           }
         }

@@ -919,10 +919,18 @@ export default function ${compName}() {
           if (baseName) {
             const pascalName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
             if (!content.includes(`export type ${pascalName}`) && !content.includes(`export interface ${pascalName}`) && !content.includes(`export const ${pascalName}`) && !content.includes(`export class ${pascalName}`)) {
-              content += `\nexport type ${pascalName} = any;\nexport default ${pascalName};\n`;
+              content += `\nexport type ${pascalName} = any;\n`;
               changed = true;
-              fixed.push(`Added missing capitalized export ${pascalName} to ${rel}`);
+              fixed.push(`Added missing capitalized type ${pascalName} to ${rel}`);
             }
+          }
+        }
+
+        // Fix 13.8: apiClient named export shim (TS2614 Module has no exported member apiClient)
+        if (rel.toLowerCase().includes("apiclient") || rel.toLowerCase().includes("api-client")) {
+          if (!content.includes("export const apiClient")) {
+            content += `\nimport axios from 'axios';\nexport const apiClient = axios.create({ baseURL: '/api' });\nexport default apiClient;\n`;
+            changed = true;
           }
         }
 

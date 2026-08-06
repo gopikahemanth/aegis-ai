@@ -946,6 +946,12 @@ export default function ${compName}() {
           }
         }
 
+        // Fix 16: TS2339 ZodError .errors property access fix
+        if (content.includes(".errors")) {
+          content = content.replace(/(\w+)\.errors/g, "($1 as any).errors");
+          changed = true;
+        }
+
         // Fix 16: Safe Express API route error handling — return empty array or mock object on DB error instead of unhandled 500
         if (rel.includes("server/") || rel.includes("controllers/") || rel.includes("routes/")) {
           if (content.includes("res.status(500)") && !content.includes("res.json([])")) {

@@ -64,7 +64,7 @@ export class FailoverProvider implements AIProvider {
         const waitMs = Math.max(soonest - Date.now(), 0);
         if (waitMs > 0) {
           console.log(`[FailoverProvider] All providers temporarily rate-limited. Waiting ${Math.round(waitMs / 1000)}s for soonest provider to recover...`);
-          await new Promise(resolve => setTimeout(resolve, waitMs));
+          await new Promise(resolve => setTimeout(resolve, waitMs + 500));
         }
         // Clear expired disables
         for (const [pName, expiry] of this.disabledUntil.entries()) {

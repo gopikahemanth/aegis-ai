@@ -294,6 +294,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         "@types/react-lazy-load-image-component": "^1.6.3",
         "@types/react": "^18.3.3",
         "@types/react-dom": "^18.3.0",
+        "@types/node": "^22.0.0",
         "@vitejs/plugin-react": "^4.3.1",
         "autoprefixer": "^10.4.20",
         "postcss": "^8.4.41",
@@ -304,19 +305,61 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         "concurrently": "^8.2.2"
       };
 
-      let depsChanged = false;
-      if ("express" in deps && !("@types/express" in devDeps)) {
-        (pkg.devDependencies as Record<string, string>)["@types/express"] = "^4.17.21";
-        depsChanged = true;
+      // Server-side package type mappings
+      const serverTypeMappings: Record<string, { dep?: string; devDep?: string }> = {
+        "express":   { dep: "express",          devDep: "@types/express" },
+        "cors":      { dep: "cors",              devDep: "@types/cors" },
+        "dotenv":    { dep: "dotenv" },
+        "multer":    { dep: "multer",            devDep: "@types/multer" },
+        "bcryptjs":  { dep: "bcryptjs",         devDep: "@types/bcryptjs" },
+        "jsonwebtoken": { dep: "jsonwebtoken",  devDep: "@types/jsonwebtoken" },
+        "cookie-parser": { dep: "cookie-parser", devDep: "@types/cookie-parser" },
+        "morgan":    { dep: "morgan",           devDep: "@types/morgan" },
+      };
+
+      // Scan all source files for npm imports and auto-add missing packages
+      const scannedImports = this.scanImportsFromSrc(dir);
+      for (const importedPkg of scannedImports) {
+        const allCurrentDeps = { ...deps, ...devDeps, ...((pkg.dependencies as Record<string, string>) ?? {}), ...((pkg.devDependencies as Record<string, string>) ?? {}) };
+        if (!(importedPkg in allCurrentDeps)) {
+          // Check if it's a known server package
+          const serverMapping = serverTypeMappings[importedPkg];
+          if (serverMapping) {
+            if (serverMapping.dep) {
+              (pkg.dependencies as Record<string, string>)[serverMapping.dep] = "latest";
+              depsChanged = true;
+            }
+            if (serverMapping.devDep) {
+              (pkg.devDependencies as Record<string, string>)[serverMapping.devDep] = "latest";
+              depsChanged = true;
+            }
+          } else if (!importedPkg.startsWith("node:") && !importedPkg.startsWith("@types/")) {
+            // Add as runtime dep
+            (pkg.dependencies as Record<string, string>)[importedPkg] = "latest";
+            depsChanged = true;
+          }
+        }
+        // Auto-add @types/express etc. when the package is already present
+        const serverMapping2 = serverTypeMappings[importedPkg];
+        if (serverMapping2?.devDep) {
+          const currentDevDeps = (pkg.devDependencies as Record<string, string>) ?? {};
+          if (!(serverMapping2.devDep in currentDevDeps)) {
+            currentDevDeps[serverMapping2.devDep] = "latest";
+            pkg.devDependencies = currentDevDeps;
+            depsChanged = true;
+          }
+        }
       }
+
+      // required deps loop (depsChanged already declared above via the scan loop)
       for (const [k, v] of Object.entries(requiredDeps)) {
-        if (!(k in deps)) {
+        if (!(k in (pkg.dependencies as Record<string, string> ?? {}))) {
           (pkg.dependencies as Record<string, string>)[k] = v;
           depsChanged = true;
         }
       }
       for (const [k, v] of Object.entries(requiredDevDeps)) {
-        if (!(k in devDeps)) {
+        if (!(k in (pkg.devDependencies as Record<string, string> ?? {}))) {
           (pkg.devDependencies as Record<string, string>)[k] = v;
           depsChanged = true;
         }
@@ -738,5 +781,44 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
     }
 
     return { fixed, truncated };
+  }
+  /**
+   * Scans all .ts/.tsx files under src/ for npm import statements
+   * and returns the set of npm package names imported.
+   */
+  private scanImportsFromSrc(dir: string): string[] {
+    const packages = new Set<string>();
+    const srcDir = join(dir, "src");
+    if (!existsSync(srcDir)) return [];
+
+    const walk = (d: string) => {
+      try {
+        for (const entry of readdirSync(d)) {
+          const full = join(d, entry);
+          try {
+            if (statSync(full).isDirectory()) {
+              walk(full);
+            } else if (full.endsWith(".ts") || full.endsWith(".tsx")) {
+              const src = readFileSync(full, "utf8");
+              // Match ES imports: import ... from 'pkg' and require('pkg')
+              const importRe = /(?:import\s[^'"]*from\s+|require\s*\()['"]((?!\.|\/)(?!node:)[^'"]+)['"]/g;
+              for (const m of src.matchAll(importRe)) {
+                let pkg = m[1];
+                // Normalise scoped packages
+                if (pkg.startsWith("@")) {
+                  const parts = pkg.split("/");
+                  pkg = parts.length >= 2 ? parts.slice(0, 2).join("/") : pkg;
+                } else {
+                  pkg = pkg.split("/")[0];
+                }
+                if (pkg && !pkg.startsWith("@/")) packages.add(pkg);
+              }
+            }
+          } catch { /* skip */ }
+        }
+      } catch { /* skip */ }
+    };
+    walk(srcDir);
+    return [...packages];
   }
 }

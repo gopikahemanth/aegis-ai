@@ -122,8 +122,8 @@ export class SandboxVerifier {
       staticServer = this.startStaticServer(projectPath, port);
     }
 
-    // Wait for the server to bind and respond
-    const serverReady = await this.pollUrl(targetUrl, 10000);
+    // Wait for the server to bind and respond (25s — Windows npm/npx startup is slower)
+    const serverReady = await this.pollUrl(targetUrl, 25000);
 
     if (!serverReady) {
       this.killChildProcess(childProcess);

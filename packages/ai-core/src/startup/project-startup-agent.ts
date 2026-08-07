@@ -549,6 +549,17 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
       patches.push("Created src/vite-env.d.ts");
     }
 
+    // Auto-create src/utils/cn.ts if missing
+    const utilsDir = join(dir, "src", "utils");
+    if (!existsSync(utilsDir)) {
+      try { mkdirSync(utilsDir, { recursive: true }); } catch {}
+    }
+    const cnPath = join(utilsDir, "cn.ts");
+    if (!existsSync(cnPath)) {
+      writeFileSync(cnPath, `export function cn(...inputs: any[]): string {\n  return inputs.filter(Boolean).join(" ");\n}\nexport default cn;\n`, "utf8");
+      patches.push("Created src/utils/cn.ts helper");
+    }
+
     if (patches.length > 0) {
       writeFileSync(mainPath, content, "utf8");
     }

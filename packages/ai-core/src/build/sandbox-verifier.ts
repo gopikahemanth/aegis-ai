@@ -98,9 +98,10 @@ export class SandboxVerifier {
           } catch {}
 
           console.log(`[Sandbox] Spawning dev server via 'pnpm dev' on port ${port}...`);
-          childProcess = spawn("pnpm", ["dev", "--port", String(port)], {
+          childProcess = spawn("pnpm", ["dev"], {
             cwd: projectPath,
             shell: true,
+            env: { ...process.env, PORT: String(port), VITE_PORT: String(port) },
           });
 
           childProcess.stdout.on("data", (data: any) => {

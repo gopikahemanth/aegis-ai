@@ -842,9 +842,10 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
-        // Fix 13.11: Dual export shim for React components (TS2614 / TS2652)
+        // Fix 13.11: Dual export shim for React components (TS2614 / TS2652) - Frontend ONLY
         const baseComp = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "";
-        if (baseComp && /^[A-Z]/.test(baseComp) && (rel.includes("Component") || rel.includes("component") || rel.includes("shared") || rel.includes("ui") || rel.includes("design-system") || rel.includes("features"))) {
+        const isFrontend = rel.startsWith("src/") || rel.startsWith("src\\");
+        if (isFrontend && baseComp && /^[A-Z]/.test(baseComp) && (rel.includes("Component") || rel.includes("component") || rel.includes("shared") || rel.includes("ui") || rel.includes("design-system") || rel.includes("features"))) {
           const hasExplicitDefault = content.includes("export default");
           const hasNamedExport = new RegExp(`export\\s+(const|let|var|function|class|type|interface|enum)\\s+${baseComp}\\b`).test(content) && !new RegExp(`export\\s+default\\s+(function|class)\\s+${baseComp}\\b`).test(content);
 

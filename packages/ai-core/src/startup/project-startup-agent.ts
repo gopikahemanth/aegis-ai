@@ -867,11 +867,11 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           const hasExplicitDefault = content.includes("export default");
           const hasNamedExport = new RegExp(`export\\s+(const|let|var|function|class|type|interface|enum)\\s+${baseComp}\\b`).test(content) && !new RegExp(`export\\s+default\\s+(function|class)\\s+${baseComp}\\b`).test(content);
 
-          if (hasExplicitDefault && !hasNamedExport) {
+          if (hasExplicitDefault && !hasNamedExport && !content.includes(`export { ${baseComp} }`)) {
             content += `\nexport { ${baseComp} };\n`;
             changed = true;
           }
-          if (hasNamedExport && !hasExplicitDefault) {
+          if (hasNamedExport && !hasExplicitDefault && !content.includes(`_compDef_${baseComp}`)) {
             content += `\nconst _compDef_${baseComp}: any = (props: any) => <div className="${baseComp.toLowerCase()}-shim" {...props}>{props?.children}</div>;\nexport default _compDef_${baseComp};\n`;
             changed = true;
           }
@@ -908,15 +908,15 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           const hasApi = /\b(export\s+(const|let|var|function|class))\s+api\b/.test(content);
           const hasApiClient = /\b(export\s+(const|let|var|function|class))\s+apiClient\b/.test(content);
 
-          if (!hasApi) {
+          if (!hasApi && !content.includes("export const api:")) {
             content += `\nexport const api: any = (globalThis as any).api || (globalThis as any).apiClient || {};\n`;
             changed = true;
           }
-          if (!hasApiClient) {
+          if (!hasApiClient && !content.includes("export const apiClient:")) {
             content += `\nexport const apiClient: any = (globalThis as any).apiClient || (globalThis as any).api || {};\n`;
             changed = true;
           }
-          if (!hasDefault) {
+          if (!hasDefault && !content.includes("_apiDefaultShim")) {
             content += `\nconst _apiDefaultShim = (globalThis as any).api || (globalThis as any).apiClient || {};\nexport default _apiDefaultShim;\n`;
             changed = true;
           }

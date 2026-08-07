@@ -877,6 +877,12 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
+        // Fix 20: Auto-inject import React from 'react' when React namespace is referenced (TS2503)
+        if (content.includes("React.") && !content.includes("import React") && !content.includes("import * as React")) {
+          content = `import React from 'react';\n` + content;
+          changed = true;
+        }
+
         // Fix 13.12: TS2559 Type '{ children }' has no properties in common with type 'IntrinsicAttributes'
         if (rel.includes("Layout") || rel.includes("Shell") || rel.includes("Card") || rel.includes("Container") || rel.includes("/components/")) {
           if (content.includes("React.FC") && !content.includes("children?:") && !content.includes("React.FC<any>")) {

@@ -744,7 +744,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         // Fix 1.8: Empty/minimal/sparse component stub replacement or domain mismatch purge
         const spec = SpecificationNormalizer.normalize(dir, { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" });
         const hasDomainMismatch = spec.forbiddenPatterns.some(pat => content.includes(pat));
-        if (hasDomainMismatch || content.length < 100) {
+        if (!rel.endsWith(".d.ts") && (hasDomainMismatch || content.length < 100)) {
           const compName = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Dashboard";
           content = DomainAwareFallbackGenerator.generateFallbackComponent(spec, compName, rel);
           changed = true;

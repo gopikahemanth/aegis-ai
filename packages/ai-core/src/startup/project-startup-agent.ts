@@ -834,13 +834,13 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
-        // Fix 13.9: AuthState / AuthContext property shims (isAuthenticated, login, logout, user, token)
+        // Fix 13.9: AuthState / AuthContext property shims (isAuthenticated, isLoading, login, logout, user, token)
         if (rel.includes("auth") || rel.includes("Auth") || rel.includes("Protected") || rel.includes("context") || rel.includes("Context")) {
           if (content.includes("isAuthenticated") && content.includes("AuthState") && !content.includes("isAuthenticated?:")) {
-            content = content.replace(/(interface\s+AuthState\s*\{)/, "$1\n  isAuthenticated?: boolean;\n  user?: any;\n  token?: string;");
+            content = content.replace(/(interface\s+AuthState\s*\{)/, "$1\n  isAuthenticated?: boolean;\n  isLoading?: boolean;\n  user?: any;\n  token?: string;");
             changed = true;
           }
-          if (content.includes("useAuth()") && !content.includes("isAuthenticated")) {
+          if (content.includes("useAuth()")) {
             content = content.replace(/const\s*\{([^}]+)\}\s*=\s*useAuth\(\)/g, "const { $1 } = (useAuth() as any) || {}");
             changed = true;
           }
@@ -851,11 +851,11 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           const hasDefault = content.includes("export default");
           const hasNamed = content.includes("export const useAuth") || content.includes("export function useAuth");
           if (hasDefault && !hasNamed) {
-            content += `\nexport const useAuth: any = (globalThis as any).useAuth || (exports as any)?.default || (() => ({ user: null, isAuthenticated: true, login: () => {}, logout: () => {} }));\n`;
+            content += `\nexport const useAuth: any = (globalThis as any).useAuth || (exports as any)?.default || (() => ({ user: null, isAuthenticated: true, isLoading: false, login: () => {}, logout: () => {} }));\n`;
             changed = true;
           }
           if (hasNamed && !hasDefault) {
-            content += `\nconst _useAuthDef = (globalThis as any).useAuth || (() => ({ user: null, isAuthenticated: true, login: () => {}, logout: () => {} }));\nexport default _useAuthDef;\n`;
+            content += `\nconst _useAuthDef = (globalThis as any).useAuth || (() => ({ user: null, isAuthenticated: true, isLoading: false, login: () => {}, logout: () => {} }));\nexport default _useAuthDef;\n`;
             changed = true;
           }
         }

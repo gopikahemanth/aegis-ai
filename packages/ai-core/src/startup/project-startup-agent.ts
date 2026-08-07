@@ -252,7 +252,7 @@ if (existsSync("prisma/schema.prisma")) {
 }
 
 const server = spawn("npx", ["tsx", "${serverPath}"], { stdio: "inherit", shell: true });
-const vite = spawn("npx", ["vite"], { stdio: "inherit", shell: true });
+const vite = spawn("npx", ["vite", "--host", "0.0.0.0", "--port", "5173"], { stdio: "inherit", shell: true });
 
 process.on("SIGINT", () => { server.kill(); vite.kill(); process.exit(); });
 process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
@@ -263,8 +263,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         scripts.dev = `node scripts/dev.js`;
         patches.push(`Configured fullstack server script (${serverPath}) & native dev.js runner`);
       } else if (!scripts.dev) {
-        scripts.dev = "vite";
-        patches.push('Added script: "dev": "vite"');
+        scripts.dev = "vite --host 0.0.0.0 --port 5173";
+        patches.push('Added script: "dev": "vite --host 0.0.0.0 --port 5173"');
       }
 
       if (!scripts.build) {
@@ -420,7 +420,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
     const vitePath = join(dir, "vite.config.ts");
     if (!existsSync(vitePath)) {
-      writeFileSync(vitePath, `import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\nimport path from 'path'\n\nexport default defineConfig({\n  plugins: [react()],\n  resolve: {\n    alias: {\n      '@': path.resolve(__dirname, './src')\n    }\n  },\n  server: {\n    port: 5173,\n    open: false,\n    proxy: {\n      '/api': {\n        target: 'http://localhost:5000',\n        changeOrigin: true\n      }\n    }\n  },\n})\n`, "utf8");
+      writeFileSync(vitePath, `import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\nimport path from 'path'\n\nexport default defineConfig({\n  plugins: [react()],\n  resolve: {\n    alias: {\n      '@': path.resolve(__dirname, './src')\n    }\n  },\n  server: {\n    host: '0.0.0.0',\n    port: 5173,\n    strictPort: true,\n    open: false,\n    proxy: {\n      '/api': {\n        target: 'http://localhost:5000',\n        changeOrigin: true\n      }\n    }\n  },\n})\n`, "utf8");
       patches.push("Created vite.config.ts with @ path alias");
     }
 

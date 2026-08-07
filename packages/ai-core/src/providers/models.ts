@@ -1,9 +1,9 @@
 export const Models = {
   cerebras: {
-    default: "gpt-oss-120b",
-    strong: "gpt-oss-120b",
-    fast: "gemma-4-31b",
-    balanced: "gpt-oss-120b",
+    default: "llama3.3-70b",
+    strong: "llama3.3-70b",
+    fast: "llama3.1-8b",
+    balanced: "llama3.3-70b",
   },
 
   groq: {
@@ -49,9 +49,9 @@ export const Models = {
   },
 
   openrouter: {
-    default: "deepseek/deepseek-chat",
-    strong: "deepseek/deepseek-chat",
-    fast: "deepseek/deepseek-chat",
-    balanced: "deepseek/deepseek-chat",
+    default: "meta-llama/llama-3.3-70b-instruct:free",
+    strong: "meta-llama/llama-3.3-70b-instruct:free",
+    fast: "qwen/qwen-2.5-coder-32b-instruct:free",
+    balanced: "google/gemini-2.0-flash-lite-preview-02-05:free",
   },
 } as const;

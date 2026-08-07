@@ -548,9 +548,15 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
       patches.push("Created src/index.css");
     }
 
-    // Create vite-env.d.ts if missing
+    // Ensure vite-env.d.ts is clean and never corrupted with JSX
     const envDtsPath = join(dir, "src", "vite-env.d.ts");
-    if (!existsSync(envDtsPath)) {
+    if (existsSync(envDtsPath)) {
+      const envContent = readFileSync(envDtsPath, "utf8");
+      if (envContent.includes("<div") || envContent.includes("return (") || envContent.length > 500) {
+        writeFileSync(envDtsPath, `/// <reference types="vite/client" />\n`, "utf8");
+        patches.push("Reset corrupted src/vite-env.d.ts");
+      }
+    } else {
       writeFileSync(envDtsPath, `/// <reference types="vite/client" />\n`, "utf8");
       patches.push("Created src/vite-env.d.ts");
     }

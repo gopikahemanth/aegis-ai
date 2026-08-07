@@ -850,8 +850,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           const hasExplicitDefault = content.includes("export default");
           const hasNamedExport = new RegExp(`export\\s+(const|let|var|function|class|type|interface|enum)\\s+${baseComp}\\b`).test(content) && !new RegExp(`export\\s+default\\s+(function|class)\\s+${baseComp}\\b`).test(content);
 
-          if (hasExplicitDefault && !hasNamedExport && !content.includes(`const ${baseComp}`) && !content.includes(`function ${baseComp}`)) {
-            content += `\nexport const ${baseComp}: any = (props: any) => <div className="${baseComp.toLowerCase()}-shim" {...props}>{props?.children}</div>;\n`;
+          if (hasExplicitDefault && !hasNamedExport) {
+            content += `\nexport { ${baseComp} };\n`;
             changed = true;
           }
           if (hasNamedExport && !hasExplicitDefault) {

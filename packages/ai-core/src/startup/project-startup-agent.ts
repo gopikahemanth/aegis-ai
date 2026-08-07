@@ -46,6 +46,17 @@ export class ProjectStartupAgent {
 
     // ── 2. Patch or Create package.json ──────────────────────────────────────
     const pkgPath = join(outputDirectory, "package.json");
+    // Refine framework detection if it fell back to "html" — check for vite.config.ts or tsconfig.json
+    const resolvedFramework = framework !== "html" ? framework : (() => {
+      const hasViteConfig = existsSync(join(outputDirectory, "vite.config.ts")) || existsSync(join(outputDirectory, "vite.config.js"));
+      const hasTsConfig = existsSync(join(outputDirectory, "tsconfig.json"));
+      const hasSrcDir = existsSync(join(outputDirectory, "src"));
+      if (hasViteConfig || (hasTsConfig && hasSrcDir)) return "react-vite";
+      return "html";
+    })();
+    if (resolvedFramework !== framework) {
+      console.log(`[Startup] Refined framework detection from "${framework}" to "${resolvedFramework}" using config file heuristics.`);
+    }
     if (!existsSync(pkgPath)) {
       console.warn("[Startup] package.json not found — constructing fresh package.json");
       writeFileSync(pkgPath, JSON.stringify({
@@ -54,20 +65,32 @@ export class ProjectStartupAgent {
         version: "0.0.1",
         type: "module",
         scripts: {
-          "dev": "vite",
+          "dev": "vite --host 0.0.0.0 --port 5173",
           "build": "tsc && vite build",
           "preview": "vite preview"
         },
-        dependencies: {},
-        devDependencies: {}
+        dependencies: {
+          "react": "^18.3.1",
+          "react-dom": "^18.3.1"
+        },
+        devDependencies: {
+          "vite": "^6.3.5",
+          "@vitejs/plugin-react": "^4.3.4",
+          "typescript": "^5.7.3",
+          "@types/react": "^18.3.23",
+          "@types/react-dom": "^18.3.7",
+          "tailwindcss": "^3.4.17",
+          "autoprefixer": "^10.4.21",
+          "postcss": "^8.5.3"
+        }
       }, null, 2), "utf8");
       patches.push("Constructed fresh package.json");
     }
-    const patched = this.patchPackageJson(pkgPath, framework, outputDirectory);
+    const patched = this.patchPackageJson(pkgPath, resolvedFramework, outputDirectory);
     patches.push(...patched);
 
     // ── 3. Patch missing config files ────────────────────────────────────────
-    const configPatches = this.ensureConfigFiles(outputDirectory, framework);
+    const configPatches = this.ensureConfigFiles(outputDirectory, resolvedFramework);
     patches.push(...configPatches);
 
     // ── 4. Fix src/main.tsx CSS import if broken ─────────────────────────────
@@ -97,7 +120,7 @@ export class ProjectStartupAgent {
     }
 
     // ── 6. Verify required packages are present ──────────────────────────────
-    if (framework === "react-vite") {
+    if (resolvedFramework === "react-vite") {
       const missingPkg = this.checkMissingPackages(outputDirectory, ["react", "react-dom", "vite"]);
       if (missingPkg.length > 0) {
         console.log(`[Startup] Installing missing core packages: ${missingPkg.join(", ")}`);

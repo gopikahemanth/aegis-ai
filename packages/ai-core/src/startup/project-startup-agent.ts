@@ -592,11 +592,30 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
     try {
       let schema = readFileSync(schemaPath, "utf8");
 
+      let schemaModified = false;
       if (schema.includes('provider = "postgresql"') || schema.includes("provider = 'postgresql'")) {
         schema = schema.replace(/provider\s*=\s*["']postgresql["']/g, 'provider = "sqlite"');
         schema = schema.replace(/url\s*=\s*env\("DATABASE_URL"\)/g, 'url = "file:./dev.db"');
-        writeFileSync(schemaPath, schema, "utf8");
+        schemaModified = true;
         patches.push("Converted Prisma schema to local SQLite (provider = 'sqlite')");
+      }
+
+      // Fix 19: Missing Prisma model stubs when referenced in relations (TS error P1012)
+      if (schema.includes("Transaction[]") && !schema.includes("model Transaction")) {
+        schema += `\nmodel Transaction {\n  id String @id @default(uuid())\n  description String\n  amount Float\n  category String\n  date DateTime @default(now())\n  userId String\n  user User @relation(fields: [userId], references: [id], onDelete: Cascade)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n`;
+        schemaModified = true;
+      }
+      if (schema.includes("Budget[]") && !schema.includes("model Budget")) {
+        schema += `\nmodel Budget {\n  id String @id @default(uuid())\n  category String\n  amount Float\n  period String @default("monthly")\n  userId String\n  user User @relation(fields: [userId], references: [id], onDelete: Cascade)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n`;
+        schemaModified = true;
+      }
+      if (schema.includes("Category[]") && !schema.includes("model Category")) {
+        schema += `\nmodel Category {\n  id String @id @default(uuid())\n  name String\n  color String?\n  userId String\n  user User @relation(fields: [userId], references: [id], onDelete: Cascade)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n`;
+        schemaModified = true;
+      }
+
+      if (schemaModified) {
+        writeFileSync(schemaPath, schema, "utf8");
       }
 
       const envPath = join(dir, ".env");

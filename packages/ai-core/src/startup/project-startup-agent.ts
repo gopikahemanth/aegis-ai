@@ -842,12 +842,14 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
-        // Fix 17: Prisma create/update data payload type cast (Without<UncheckedCreateInput, CreateInput> TS error)
-        if (rel.includes("server") || rel.includes("controller") || rel.includes("routes")) {
-          if (content.includes("prisma.") && (content.includes(".create({") || content.includes(".update({"))) {
-            content = content.replace(/data:\s*\{([^}]+)\}/g, "data: { $1 } as any");
-            changed = true;
-          }
+        // Fix 18: TS1005 type declaration syntax fix (export type Foo : ... -> export type Foo = ...)
+        if (content.includes("type ") && /export\s+type\s+[A-Za-z0-9_$]+\s*:/.test(content)) {
+          content = content.replace(/(export\s+type\s+[A-Za-z0-9_$]+)\s*:/g, "$1 =");
+          changed = true;
+        }
+        if (content.includes("type ") && /type\s+[A-Za-z0-9_$]+\s*:/.test(content)) {
+          content = content.replace(/(type\s+[A-Za-z0-9_$]+)\s*:/g, "$1 =");
+          changed = true;
         }
 
         // Fix 13.8: apiClient named & default export shim (TS2614 / TS2613 / TS2451)

@@ -79,24 +79,18 @@ export class ProjectStartupAgent {
     const hasNodeModules = existsSync(nodeModulesPath);
     const hasNewDeps = patched.some(p => p.toLowerCase().includes("added dependency") || p.toLowerCase().includes("added devdependency") || p.toLowerCase().includes("installed missing"));
     if (!hasNodeModules || hasNewDeps) {
-      console.log("[Startup] Installing newly added dependencies via pnpm...");
+      console.log("[Startup] Installing dependencies for generated project...");
       try {
-        execSync("pnpm install --no-frozen-lockfile --silent", {
+        execSync("npm install --legacy-peer-deps --silent", {
           cwd: outputDirectory,
           stdio: "pipe",
           timeout: 300_000,
         });
-        patches.push("✓ Newly added dependencies installed successfully.");
-        console.log("[Startup] ✓ Newly added dependencies installed successfully.");
+        patches.push("✓ Dependencies installed successfully.");
+        console.log("[Startup] ✓ Dependencies installed successfully.");
       } catch (installErr: unknown) {
-        try {
-          execSync("npm install --legacy-peer-deps --silent", {
-            cwd: outputDirectory,
-            stdio: "pipe",
-            timeout: 300_000,
-          });
-          patches.push("✓ Newly added dependencies installed via npm.");
-        } catch { /* non-fatal */ }
+        const msg = installErr instanceof Error ? installErr.message : String(installErr);
+        console.warn(`[Startup] Warning: npm install failed: ${msg}`);
       }
     } else {
       console.log("[Startup] ✓ node_modules already present — skipping install.");

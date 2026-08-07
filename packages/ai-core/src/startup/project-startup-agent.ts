@@ -296,6 +296,10 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         "@tanstack/react-query": "^5.51.1",
         "zustand": "^4.5.4",
         "react-lazy-load-image-component": "^1.6.2",
+        "express": "^4.19.2",
+        "cors": "^2.8.5",
+        "jsonwebtoken": "^9.0.2",
+        "bcryptjs": "^2.4.3",
       };
       const requiredDevDeps: Record<string, string> = {
         "prisma": "^6.19.3",

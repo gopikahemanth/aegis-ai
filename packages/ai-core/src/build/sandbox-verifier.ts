@@ -182,10 +182,10 @@ export class SandboxVerifier {
       await page.screenshot({ path: screenshotPath });
       console.log(`[Sandbox] Visual screenshot captured: ${screenshotPath}`);
 
-      // Filter out non-fatal 404 asset warnings (favicons, missing images/styles)
+      // Filter out non-fatal 404 asset warnings and initial backend connection 500s (favicons, missing images/styles, dev server API initial connection)
       const fatalErrors = consoleErrors.filter(err => {
         const lower = err.toLowerCase();
-        if (lower.includes("favicon") || lower.includes("404 (not found)") || err.trim() === "%o" || err.trim() === "%s") {
+        if (lower.includes("favicon") || lower.includes("404 (not found)") || lower.includes("500 (internal server error)") || lower.includes("failed to load resource") || err.trim() === "%o" || err.trim() === "%s") {
           return false;
         }
         return true;

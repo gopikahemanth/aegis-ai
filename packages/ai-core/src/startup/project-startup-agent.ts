@@ -941,11 +941,11 @@ export default DataTable;\n`;
           const hasApi = /\b(export\s+(const|let|var|function|class))\s+api\b/.test(content);
           const hasApiClient = /\b(export\s+(const|let|var|function|class))\s+apiClient\b/.test(content);
 
-          if (!hasApi && !content.includes("export const api:")) {
+          if (!hasApi && !content.includes("export const api")) {
             content += `\nexport const api: any = (globalThis as any).api || (globalThis as any).apiClient || {};\n`;
             changed = true;
           }
-          if (!hasApiClient && !content.includes("export const apiClient:")) {
+          if (!hasApiClient && !content.includes("export const apiClient")) {
             content += `\nexport const apiClient: any = (globalThis as any).apiClient || (globalThis as any).api || {};\n`;
             changed = true;
           }

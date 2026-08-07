@@ -89,6 +89,14 @@ export class SandboxVerifier {
           port = isNext ? 3000 : 5173;
           targetUrl = `http://localhost:${port}`;
 
+          console.log(`[Sandbox] Cleaning up stale ports before spawning dev server...`);
+          try {
+            if (process.platform === "win32") {
+              execSync(`wmic process where "name='node.exe' and commandline like '%5173%'" call terminate`, { stdio: "ignore" });
+              execSync(`wmic process where "name='node.exe' and commandline like '%5000%'" call terminate`, { stdio: "ignore" });
+            }
+          } catch {}
+
           console.log(`[Sandbox] Spawning dev server via 'pnpm dev' on port ${port}...`);
           childProcess = spawn("pnpm", ["dev", "--port", String(port)], {
             cwd: projectPath,

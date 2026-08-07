@@ -938,15 +938,25 @@ export default DataTable;\n`;
         const relNorm = rel.replace(/\\/g, "/").toLowerCase();
         if (relNorm.includes("apiclient") || relNorm.includes("api-client") || relNorm.endsWith("/api.ts") || relNorm.endsWith("/api.tsx") || relNorm.endsWith("/api/index.ts")) {
           const hasDefault = content.includes("export default");
-          const hasApi = /\b(export\s+(const|let|var|function|class))\s+api\b/.test(content);
-          const hasApiClient = /\b(export\s+(const|let|var|function|class))\s+apiClient\b/.test(content);
+          const hasAnyApi = /\b(const|let|var|function|class)\s+api\b/.test(content);
+          const hasExportApi = /\b(export\s+(const|let|var|function|class))\s+api\b/.test(content) || content.includes("export { api");
+          const hasAnyApiClient = /\b(const|let|var|function|class)\s+apiClient\b/.test(content);
+          const hasExportApiClient = /\b(export\s+(const|let|var|function|class))\s+apiClient\b/.test(content) || content.includes("export { apiClient");
 
-          if (!hasApi && !content.includes("export const api")) {
-            content += `\nexport const api: any = (globalThis as any).api || (globalThis as any).apiClient || {};\n`;
+          if (!hasExportApi) {
+            if (hasAnyApi) {
+              content += `\nexport { api };\n`;
+            } else {
+              content += `\nexport const api: any = (globalThis as any).api || (globalThis as any).apiClient || {};\n`;
+            }
             changed = true;
           }
-          if (!hasApiClient && !content.includes("export const apiClient")) {
-            content += `\nexport const apiClient: any = (globalThis as any).apiClient || (globalThis as any).api || {};\n`;
+          if (!hasExportApiClient) {
+            if (hasAnyApiClient) {
+              content += `\nexport { apiClient };\n`;
+            } else {
+              content += `\nexport const apiClient: any = (globalThis as any).apiClient || (globalThis as any).api || {};\n`;
+            }
             changed = true;
           }
           if (!hasDefault && !content.includes("_apiDefaultShim")) {

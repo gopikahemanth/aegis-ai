@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, renameSync, unlinkSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { join, relative, resolve, dirname } from "node:path";
 import { execSync, spawn } from "node:child_process";
 import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
 import { SpecificationNormalizer } from "../spec/canonical-spec.js";
@@ -144,9 +144,17 @@ export class ProjectStartupAgent {
       console.warn(`[Startup] ⚠️ Detected truncated AI output (needs regeneration, not patched): ${truncatedFiles.join(", ")}`);
     }
 
-    const url = framework === "react-vite" || framework === "next"
+    // ── 8. Resolve missing local imports (create stubs for unresolved @/ and relative imports) ──
+    try {
+      this.resolveMissingLocalImports(outputDirectory);
+    } catch (scanErr: unknown) {
+      const msg = scanErr instanceof Error ? scanErr.message : String(scanErr);
+      console.warn(`[Startup] Pre-build import scan warning: ${msg}`);
+    }
+
+    const url = resolvedFramework === "react-vite" || resolvedFramework === "next"
       ? "http://localhost:5173"
-      : framework === "express"
+      : resolvedFramework === "express"
         ? "http://localhost:3000"
         : "http://localhost:5173";
 
@@ -155,7 +163,7 @@ export class ProjectStartupAgent {
       for (const p of patches) console.log(`  ✓ ${p}`);
     }
 
-    return { success: true, url, framework, patchesApplied: patches };
+    return { success: true, url, framework: resolvedFramework, patchesApplied: patches };
   }
 
   // ── Framework Detection ────────────────────────────────────────────────────
@@ -1129,5 +1137,76 @@ export default DataTable;\n`;
     };
     walk(srcDir);
     return [...packages];
+  }
+
+  private resolveMissingLocalImports(outputDirectory: string): void {
+    const getAllProjectFiles = (dir: string): { fullPath: string; relPath: string; content: string }[] => {
+      const results: { fullPath: string; relPath: string; content: string }[] = [];
+      if (!existsSync(dir)) return results;
+      for (const entry of readdirSync(dir)) {
+        if (entry === "node_modules" || entry === ".git" || entry === "dist") continue;
+        const full = join(dir, entry);
+        try {
+          if (statSync(full).isDirectory()) {
+            results.push(...getAllProjectFiles(full));
+          } else if (/\.(ts|tsx|js|jsx)$/.test(entry)) {
+            results.push({ fullPath: full, relPath: relative(outputDirectory, full), content: readFileSync(full, "utf8") });
+          }
+        } catch { /* skip */ }
+      }
+      return results;
+    };
+
+    const allDiskFiles = getAllProjectFiles(outputDirectory);
+
+    for (const diskFile of allDiskFiles) {
+      if (diskFile.fullPath.endsWith(".d.ts")) continue;
+      const fileDir = dirname(diskFile.fullPath);
+      const importMatches = diskFile.content.matchAll(/(?:import\s+(?:[\s\S]*?\s+from\s+)?|import\s*\(\s*)['\"]((?:\.|@\/)[^'"]+)['"]/g);
+      for (const m of importMatches) {
+        const rawImportPath = m[1];
+        let targetPath = rawImportPath.startsWith("@/")
+          ? join(outputDirectory, "src", rawImportPath.slice(2))
+          : resolve(fileDir, rawImportPath);
+
+        let targetFileExists = false;
+        for (const ext of ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"]) {
+          if (existsSync(targetPath + ext)) {
+            try {
+              if (!statSync(targetPath + ext).isDirectory()) { targetFileExists = true; break; }
+            } catch {}
+          }
+        }
+
+        if (!targetFileExists) {
+          const isUiTarget = /[\/\\](pages|components|views|ui|features|shared)[\/\\]/i.test(targetPath) ||
+                            /(button|card|component|page|container|navbar|spinner|dashboard|header|footer|modal|drawer|form|input)/i.test(targetPath);
+          const stubExt = isUiTarget ? ".tsx" : ".ts";
+          const fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
+          const componentName = fullStubPath.split(/[\/\\]/).pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Component";
+
+          // Check fuzzy match on disk
+          const lowerComp = componentName.toLowerCase();
+          const matchingDiskFile = allDiskFiles.find(f => {
+            const bName = f.relPath.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "";
+            if (f.fullPath === fullStubPath) return false;
+            return bName.toLowerCase() === lowerComp;
+          });
+
+          mkdirSync(dirname(fullStubPath), { recursive: true });
+          if (matchingDiskFile) {
+            let relImport = relative(dirname(fullStubPath), matchingDiskFile.fullPath).replace(/\\/g, "/");
+            if (!relImport.startsWith(".")) relImport = "./" + relImport;
+            relImport = relImport.replace(/\.(ts|tsx|js|jsx)$/, "");
+            writeFileSync(fullStubPath, `import * as Mod from '${relImport}';\nexport * from '${relImport}';\nconst _default = (Mod as any).default || Mod;\nexport default _default;\n`, "utf8");
+          } else if (isUiTarget) {
+            writeFileSync(fullStubPath, `import React from 'react';\n\nexport function ${componentName}({ children, className }: { children?: React.ReactNode; className?: string }) {\n  return <div className={className}>{children}</div>;\n}\n\nexport default ${componentName};\n`, "utf8");
+          } else {
+            writeFileSync(fullStubPath, `// Auto-generated stub for missing module: ${componentName}\nexport default {};\n`, "utf8");
+          }
+          console.log(`[Startup] Created missing import stub: ${relative(outputDirectory, fullStubPath)}`);
+        }
+      }
+    }
   }
 }

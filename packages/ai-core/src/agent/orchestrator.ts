@@ -1471,8 +1471,8 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               if (f.fullPath === fullStubPath) return false;
               if (lowerBName === lowerComp) return true;
               if (lowerComp.endsWith("page") && lowerBName === lowerComp.replace("page", "")) return true;
-              if (lowerBName.endsWith("page") && lowerComp === lowerBName.replace("page", "")) return true;
-              if (lowerComp.endsWith("dashboard") && lowerBName === lowerComp.replace("dashboard", "admin")) return true;
+              if (lowerComp.endsWith("dashboard") && lowerBName.includes("dashboard")) return true;
+              if (lowerBName.includes(lowerComp) || lowerComp.includes(lowerBName)) return true;
               return false;
             });
 

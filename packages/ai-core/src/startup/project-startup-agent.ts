@@ -895,19 +895,23 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
-        // Fix 13.8: apiClient named & default export shim (TS2614 / TS2613 / TS2451)
-        if (rel.toLowerCase().includes("apiclient") || rel.toLowerCase().includes("api-client") || rel.toLowerCase().endsWith("/api.ts") || rel.toLowerCase().endsWith("/api.tsx")) {
+        // Fix 13.8: api / apiClient named & default export shim (TS2614 / TS2613 / TS2451)
+        const relNorm = rel.replace(/\\/g, "/").toLowerCase();
+        if (relNorm.includes("apiclient") || relNorm.includes("api-client") || relNorm.endsWith("/api.ts") || relNorm.endsWith("/api.tsx") || relNorm.endsWith("/api/index.ts")) {
           const hasDefault = content.includes("export default");
-          const hasAnyApiClient = /\b(const|let|var|function|type|interface|export)\s+apiClient\b/.test(content);
-          const hasAxios = content.includes("import axios");
+          const hasApi = /\b(export\s+(const|let|var|function|class))\s+api\b/.test(content);
+          const hasApiClient = /\b(export\s+(const|let|var|function|class))\s+apiClient\b/.test(content);
 
-          if (!hasAnyApiClient) {
-            content += `\nexport const apiClient: any = (globalThis as any).apiClient || {};\n`;
+          if (!hasApi) {
+            content += `\nexport const api: any = (globalThis as any).api || (globalThis as any).apiClient || {};\n`;
+            changed = true;
+          }
+          if (!hasApiClient) {
+            content += `\nexport const apiClient: any = (globalThis as any).apiClient || (globalThis as any).api || {};\n`;
             changed = true;
           }
           if (!hasDefault) {
-            const axiosImport = hasAxios ? "" : "import axios from 'axios';\n";
-            content += `\n${axiosImport}const _apiDefault = (globalThis as any).apiClient || {};\nexport default _apiDefault;\n`;
+            content += `\nconst _apiDefaultShim = (globalThis as any).api || (globalThis as any).apiClient || {};\nexport default _apiDefaultShim;\n`;
             changed = true;
           }
         }

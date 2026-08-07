@@ -882,7 +882,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         }
 
         // Fix 20: Auto-inject import React from 'react' when React namespace is referenced (TS2503)
-        if (content.includes("React.") && !content.includes("import React") && !content.includes("import * as React")) {
+        if (content.includes("React.") && !/import\s+.*React/.test(content)) {
           content = `import React from 'react';\n` + content;
           changed = true;
         }
@@ -947,11 +947,12 @@ export default DataTable;\n`;
           const hasAnyApiClient = /\b(const|let|var|function|class)\s+apiClient\b/.test(content);
           const hasExportApiClient = /\b(export\s+(const|let|var|function|class))\s+apiClient\b/.test(content) || content.includes("export { apiClient");
 
+          const mockHttp = `{ get: async () => ({ data: [] }), post: async () => ({ data: {} }), put: async () => ({ data: {} }), delete: async () => ({ data: {} }), patch: async () => ({ data: {} }) }`;
           if (!hasExportApi) {
             if (hasAnyApi) {
               content += `\nexport { api };\n`;
             } else {
-              content += `\nexport const api: any = (globalThis as any).api || (globalThis as any).apiClient || {};\n`;
+              content += `\nexport const api: any = (globalThis as any).api || (globalThis as any).apiClient || ${mockHttp};\n`;
             }
             changed = true;
           }
@@ -959,12 +960,12 @@ export default DataTable;\n`;
             if (hasAnyApiClient) {
               content += `\nexport { apiClient };\n`;
             } else {
-              content += `\nexport const apiClient: any = (globalThis as any).apiClient || (globalThis as any).api || {};\n`;
+              content += `\nexport const apiClient: any = (globalThis as any).apiClient || (globalThis as any).api || ${mockHttp};\n`;
             }
             changed = true;
           }
           if (!hasDefault && !content.includes("_apiDefaultShim")) {
-            content += `\nconst _apiDefaultShim = (globalThis as any).api || (globalThis as any).apiClient || {};\nexport default _apiDefaultShim;\n`;
+            content += `\nconst _apiDefaultShim = (globalThis as any).api || (globalThis as any).apiClient || ${mockHttp};\nexport default _apiDefaultShim;\n`;
             changed = true;
           }
         }

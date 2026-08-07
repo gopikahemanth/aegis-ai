@@ -836,11 +836,11 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
         // Fix 13.9: AuthState / AuthContext property shims (isAuthenticated, isLoading, login, logout, user, token)
         if (rel.includes("auth") || rel.includes("Auth") || rel.includes("Protected") || rel.includes("context") || rel.includes("Context")) {
-          if (content.includes("isAuthenticated") && content.includes("AuthState") && !content.includes("isAuthenticated?:")) {
-            content = content.replace(/(interface\s+AuthState\s*\{)/, "$1\n  isAuthenticated?: boolean;\n  isLoading?: boolean;\n  user?: any;\n  token?: string;");
+          if (content.includes("AuthState") && !content.includes("_authStateShim") && !content.includes("isAuthenticated?:")) {
+            content = content.replace(/(interface\s+AuthState\s*\{)/, "$1 /* _authStateShim */\n  isAuthenticated?: boolean;\n  isLoading?: boolean;\n  user?: any;\n  token?: string;");
             changed = true;
           }
-          if (content.includes("useAuth()")) {
+          if (content.includes("useAuth()") && !content.includes("as any")) {
             content = content.replace(/const\s*\{([^}]+)\}\s*=\s*useAuth\(\)/g, "const { $1 } = (useAuth() as any) || {}");
             changed = true;
           }

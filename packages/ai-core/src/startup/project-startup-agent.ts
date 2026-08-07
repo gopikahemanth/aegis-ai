@@ -300,6 +300,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         "cors": "^2.8.5",
         "jsonwebtoken": "^9.0.2",
         "bcryptjs": "^2.4.3",
+        "clsx": "^2.1.1",
+        "tailwind-merge": "^2.4.0",
       };
       const requiredDevDeps: Record<string, string> = {
         "prisma": "^6.19.3",
@@ -307,6 +309,10 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         "@types/react-lazy-load-image-component": "^1.6.3",
         "@types/react": "^18.3.3",
         "@types/react-dom": "^18.3.0",
+        "@types/express": "^4.17.21",
+        "@types/cors": "^2.8.17",
+        "@types/jsonwebtoken": "^9.0.6",
+        "@types/bcryptjs": "^2.4.6",
         "@types/node": "^22.0.0",
         "@vitejs/plugin-react": "^4.3.1",
         "autoprefixer": "^10.4.20",
@@ -657,7 +663,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         const absSchema = resolve(schemaPath);
         const schemaRelativePath = relative(absDir, absSchema);
 
-        const prismaBin = "npx prisma@6";
+        const localPrismaBin = join(absDir, "node_modules", ".bin", "prisma");
+        const prismaBin = existsSync(localPrismaBin) ? `"${localPrismaBin}"` : "npx --yes prisma@6";
 
         execSync(`${prismaBin} db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: absDir, stdio: "pipe" });
         execSync(`${prismaBin} generate --schema="${schemaRelativePath}"`, { cwd: absDir, stdio: "pipe" });

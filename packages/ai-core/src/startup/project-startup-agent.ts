@@ -846,17 +846,21 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
-        // Fix 13.10: Dual export shim for useAuth hook (TS2614 Module has no exported member 'useAuth')
-        if (rel.includes("useAuth") || rel.includes("use-auth")) {
-          const hasDefault = content.includes("export default");
-          const hasNamed = content.includes("export const useAuth") || content.includes("export function useAuth");
-          if (hasDefault && !hasNamed) {
-            content += `\nexport const useAuth: any = (globalThis as any).useAuth || (exports as any)?.default || (() => ({ user: null, isAuthenticated: true, isLoading: false, login: () => {}, logout: () => {} }));\n`;
-            changed = true;
-          }
-          if (hasNamed && !hasDefault) {
-            content += `\nconst _useAuthDef = (globalThis as any).useAuth || (() => ({ user: null, isAuthenticated: true, isLoading: false, login: () => {}, logout: () => {} }));\nexport default _useAuthDef;\n`;
-            changed = true;
+        // Fix 13.10: Dual export shim for custom React hooks (useAuth, useTheme, etc.) (TS2614 Module has no exported member 'useHook')
+        const baseHook = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "";
+        if (rel.startsWith("src/") || rel.startsWith("src\\")) {
+          if (/^use[A-Z]/.test(baseHook)) {
+            const hasDefault = content.includes("export default");
+            const hasNamed = new RegExp(`export\\s+(const|let|var|function)\\s+${baseHook}\\b`).test(content) || content.includes(`export { ${baseHook}`);
+
+            if (hasDefault && !hasNamed) {
+              content += `\nexport { ${baseHook} };\n`;
+              changed = true;
+            }
+            if (hasNamed && !hasDefault && !content.includes(`_hookDef_${baseHook}`)) {
+              content += `\nconst _hookDef_${baseHook} = (globalThis as any).${baseHook} || (typeof ${baseHook} !== 'undefined' ? ${baseHook} : (() => ({})));\nexport default _hookDef_${baseHook};\n`;
+              changed = true;
+            }
           }
         }
 

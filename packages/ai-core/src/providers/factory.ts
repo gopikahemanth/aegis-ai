@@ -32,12 +32,16 @@ export class ProviderFactory {
       providers.push(new GitHubProvider());
     }
 
-    // Primary Gemini key 1 & key 2
+    // Dynamic Gemini keys (GEMINI_API_KEY, GEMINI_API_KEY_2, GEMINI_API_KEY_3, etc.)
+    const envRecord = env as Record<string, string | undefined>;
     if (env.GEMINI_API_KEY) {
       providers.push(new GeminiProvider(env.GEMINI_API_KEY, "gemini"));
     }
-    if (env.GEMINI_API_KEY_2) {
-      providers.push(new GeminiProvider(env.GEMINI_API_KEY_2, "gemini-2"));
+    for (let i = 2; i <= 10; i++) {
+      const k = envRecord[`GEMINI_API_KEY_${i}`] || process.env[`GEMINI_API_KEY_${i}`];
+      if (k) {
+        providers.push(new GeminiProvider(k, `gemini-${i}`));
+      }
     }
 
     // OpenRouter fallback provider

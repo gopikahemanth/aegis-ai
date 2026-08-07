@@ -30,13 +30,16 @@ const schema = z.object({
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_MODEL: z.string().optional(),
   CEREBRAS_API_KEY: z.string().optional(),
+  GITHUB_TOKEN: z.string().optional(),
+  GITHUB_API_KEY: z.string().optional(),
   AI_PROVIDER: z
     .enum([
       "cerebras",
       "gemini",
       "groq",
       "openrouter",
+      "github",
     ])
-    .default("cerebras"),
+    .default("gemini"),
 });
 export const env = schema.parse(process.env);

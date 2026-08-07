@@ -10,4 +10,5 @@ export * from "./failover.js";
 export * from "./ollama.js";
 export * from "./openrouter.js";
 export * from "./cerebras.js";
+export * from "./github.js";
 export * from "./metrics-tracker.js";

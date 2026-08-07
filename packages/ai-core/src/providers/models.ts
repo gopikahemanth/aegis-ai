@@ -54,4 +54,11 @@ export const Models = {
     fast: "qwen/qwen-2.5-coder-32b-instruct:free",
     balanced: "google/gemini-2.0-flash-lite-preview-02-05:free",
   },
+
+  github: {
+    default: "gpt-4o-mini",
+    strong: "gpt-4o",
+    fast: "gpt-4o-mini",
+    balanced: "gpt-4o-mini",
+  },
 } as const;

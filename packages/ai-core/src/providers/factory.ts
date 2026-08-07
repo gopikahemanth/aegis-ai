@@ -3,6 +3,7 @@ import { ProviderRegistry } from "./registry.js";
 import { GeminiProvider } from "./gemini.js";
 import { OpenRouterProvider } from "./openrouter.js";
 import { CerebrasProvider } from "./cerebras.js";
+import { GitHubProvider } from "./github.js";
 import { FailoverProvider } from "./failover.js";
 import { OllamaProvider } from "./ollama.js";
 import { env } from "../utils/env.js";
@@ -16,6 +17,7 @@ export class ProviderFactory {
     registry.register(new GeminiProvider());
     registry.register(new OpenRouterProvider());
     registry.register(new CerebrasProvider());
+    registry.register(new GitHubProvider());
     registry.register(new OllamaProvider());
 
     return registry;
@@ -24,6 +26,11 @@ export class ProviderFactory {
   static createDefaultProvider(): AIProvider {
     const providers: AIProvider[] = [];
     const preferred = env.AI_PROVIDER;
+
+    // GitHub Models provider
+    if (process.env.GITHUB_TOKEN || process.env.GITHUB_API_KEY || env.OPENAI_API_KEY) {
+      providers.push(new GitHubProvider());
+    }
 
     // Primary Gemini key 1 & key 2
     if (env.GEMINI_API_KEY) {

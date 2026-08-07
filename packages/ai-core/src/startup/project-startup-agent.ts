@@ -901,14 +901,16 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
-        // Fix 18: TS1005 type declaration syntax fix (export type Foo : ... -> export type Foo = ...)
-        if (content.includes("type ") && /export\s+type\s+[A-Za-z0-9_$]+\s*:/.test(content)) {
-          content = content.replace(/(export\s+type\s+[A-Za-z0-9_$]+)\s*:/g, "$1 =");
-          changed = true;
-        }
-        if (content.includes("type ") && /type\s+[A-Za-z0-9_$]+\s*:/.test(content)) {
-          content = content.replace(/(type\s+[A-Za-z0-9_$]+)\s*:/g, "$1 =");
-          changed = true;
+        // Fix 22: react-hook-form zodResolver type mismatch (TS2345 / TS2322)
+        if (content.includes("useForm") || content.includes("zodResolver")) {
+          if (content.includes("zodResolver(") && !content.includes("as any")) {
+            content = content.replace(/zodResolver\(([^)]+)\)/g, "zodResolver($1) as any");
+            changed = true;
+          }
+          if (content.includes("handleSubmit(") && !content.includes("data: any")) {
+            content = content.replace(/handleSubmit\(\s*\(([^)]+)\)\s*=>/g, "handleSubmit(($1: any) =>");
+            changed = true;
+          }
         }
 
         // Fix 21: TanStack Table TS2724 auto-fallback shim

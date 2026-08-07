@@ -1,39 +1,39 @@
-# Architecture: Aegis-Expense-Tracker
+# Architecture.md: AegisExpenseTracker
 
 ## 1. System Overview
-Aegis-Expense-Tracker is a high-performance React application designed for real-time financial tracking and expense categorization. It leverages a modular component architecture to ensure maintainability, scalability, and a reactive user experience.
+AegisExpenseTracker is a high-performance React-based financial management application designed for real-time expense tracking and budget visualization. The system utilizes a modular, component-driven architecture to ensure maintainability, scalability, and a responsive user experience across devices.
 
 ## 2. Folder Structure
 ```text
-src/
-├── assets/          # Static assets (images, global styles)
-├── components/      # Reusable UI primitives (Buttons, Inputs, Cards)
-├── features/        # Feature-based modules (Dashboard, Expenses, Auth)
+/src
+├── assets/          # Static assets (images, global CSS)
+├── components/      # Reusable UI primitives (Button, Input, Card)
+├── features/        # Domain-specific modules (Dashboard, ExpenseList, Auth)
 ├── hooks/           # Custom React hooks for shared logic
-├── services/        # API clients and external service integrations
-├── store/           # Global state configuration (Redux/Zustand)
+├── services/        # API integration and external data handling
+├── store/           # Global state configuration (Redux/Zustand slices)
 ├── utils/           # Helper functions and constants
-└── App.jsx          # Root component and application routing
+└── App.jsx          # Main entry point and routing configuration
 ```
 
 ## 3. Key Design Decisions
-*   **Feature-First Directory Pattern:** Organizes code by functional domain rather than file type to reduce context switching and improve modularity.
-*   **Zustand for State:** Chosen over Redux for its minimal boilerplate, high performance, and ease of use in managing transient application state.
-*   **Tailwind CSS:** Utilized for utility-first styling to ensure design consistency and reduce bundle size compared to traditional CSS-in-JS solutions.
-*   **Axios with Interceptors:** Centralizes HTTP request logic to handle authentication tokens and global error logging consistently.
+*   **React (Vite):** Chosen for rapid development, optimized build times, and a rich ecosystem of libraries.
+*   **Feature-First Organization:** Folders are organized by domain (e.g., `features/ExpenseList`) rather than technical type to improve code locality and developer velocity.
+*   **Axios:** Used for HTTP client capabilities due to robust interceptor support for authentication headers and error handling.
+*   **Tailwind CSS:** Selected for utility-first styling to ensure design consistency and reduced CSS bundle sizes.
 
 ## 4. Data Flow
-1.  **User Action:** An interaction (e.g., submitting an expense) triggers a handler in a feature component.
-2.  **Service Layer:** The handler invokes a method from the `services/` layer, which communicates with the backend API.
-3.  **State Update:** Upon successful response, the local or global state (Zustand) is updated.
-4.  **Re-render:** React detects the state mutation and triggers a re-render of the relevant components to reflect the new data.
+1.  **User Action:** User submits an expense form via a component in `features/`.
+2.  **State Update:** The component triggers an action that updates the local state via a custom hook or store dispatcher.
+3.  **Persistence:** The `services/` layer sends an asynchronous request to the backend API.
+4.  **Revalidation:** Upon success, the store is updated with the new dataset, triggering a re-render of observer components to reflect the current balance.
 
 ## 5. State Management Approach
-The application employs a two-tier state strategy:
-*   **Server State:** Managed via `TanStack Query` (React Query) to handle caching, background refetching, and synchronization of remote API data.
-*   **UI/Global State:** Managed via `Zustand` for non-server state (e.g., theme toggle, sidebar visibility, user preferences) to keep the global store lean and performant.
+*   **Global State:** Managed via [Zustand/Redux Toolkit] for cross-feature accessibility (e.g., user authentication, global transaction list).
+*   **Server State:** Handled via React Query (TanStack Query) to manage caching, background fetching, and synchronization between the client and server.
+*   **Local State:** Restricted to component-level concerns (e.g., form inputs, dropdown toggles) using `useState` and `useReducer`.
 
 ## 6. Error Handling Strategy
-*   **Boundary Layers:** React Error Boundaries are implemented at the route level to prevent entire application crashes during component-specific failures.
-*   **Global Interceptors:** Axios interceptors catch 4xx/5xx status codes and redirect to an error logging service or display user-friendly Toast notifications.
-*   **Validation:** Schema validation is enforced using `Zod` on all form inputs and API responses to ensure data integrity before state processing.
+*   **API Layer:** Centralized interceptors in the `services/` layer catch HTTP 4xx/5xx responses to log errors and trigger global alerts.
+*   **UI Layer:** Implementation of `ErrorBoundary` components wrapped around major features to prevent white-screen crashes.
+*   **User Feedback:** Toast notifications and inline validation feedback are used to provide immediate, actionable context for failed operations or invalid inputs.

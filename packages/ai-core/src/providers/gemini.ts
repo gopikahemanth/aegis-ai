@@ -47,54 +47,74 @@ export class GeminiProvider implements AIProvider {
           )
           .join("\n\n");
 
-      let timeoutId: NodeJS.Timeout | undefined;
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error("Gemini request timed out")), 90000);
-      });
+      const geminiFreeModels = [
+        options?.model ?? Models.gemini.default,
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
+        "gemini-1.5-flash"
+      ];
+      // Deduplicate
+      const uniqueModels = [...new Set(geminiFreeModels)];
+      let lastGeminiError: any = null;
 
-      try {
-        const contentParts: any[] = [prompt];
-        if (options?.image) {
-          contentParts.push({
-            inlineData: {
-              mimeType: options.image.mimeType,
-              data: options.image.data
-            }
-          });
+      for (const targetModel of uniqueModels) {
+        let timeoutId: NodeJS.Timeout | undefined;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error("Gemini request timed out")), 90000);
+        });
+
+        try {
+          const contentParts: any[] = [prompt];
+          if (options?.image) {
+            contentParts.push({
+              inlineData: {
+                mimeType: options.image.mimeType,
+                data: options.image.data
+              }
+            });
+          }
+
+          const response = await Promise.race([
+            this.client.models.generateContent({
+              model: targetModel,
+              contents: contentParts,
+              config: {
+                maxOutputTokens: options?.maxTokens ?? 8192,
+              },
+            }),
+            timeoutPromise,
+          ]);
+          if (timeoutId) clearTimeout(timeoutId);
+
+          if (response.usageMetadata) {
+            const promptCount = response.usageMetadata.promptTokenCount || 0;
+            const completionCount = response.usageMetadata.candidatesTokenCount || 0;
+            MetricsTracker.getInstance().logUsage(promptCount, completionCount);
+          }
+
+          const finishReason = response.candidates?.[0]?.finishReason;
+          if (finishReason === "MAX_TOKENS") {
+            throw new ProviderError(
+              "Gemini response was truncated (MAX_TOKENS) — output incomplete.",
+              2
+            );
+          }
+
+          return response.text ?? "";
+        } catch (err: any) {
+          if (timeoutId) clearTimeout(timeoutId);
+          lastGeminiError = err;
+          const msg = String(err?.message ?? err);
+          const isRateLimit = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("resource_exhausted");
+          if (isRateLimit && targetModel !== uniqueModels[uniqueModels.length - 1]) {
+            console.warn(`[Gemini:${this.name}] Rate limit on model "${targetModel}". Falling back to next free Gemini model...`);
+            continue;
+          }
+          throw err;
         }
-
-        const response = await Promise.race([
-          this.client.models.generateContent({
-            model:
-              options?.model ??
-              Models.gemini.default,
-            contents: contentParts,
-            config: {
-              maxOutputTokens: options?.maxTokens ?? 8192,
-            },
-          }),
-          timeoutPromise,
-        ]);
-        if (timeoutId) clearTimeout(timeoutId);
-
-        if (response.usageMetadata) {
-          const prompt = response.usageMetadata.promptTokenCount || 0;
-          const completion = response.usageMetadata.candidatesTokenCount || 0;
-          MetricsTracker.getInstance().logUsage(prompt, completion);
-        }
-
-        const finishReason = response.candidates?.[0]?.finishReason;
-        if (finishReason === "MAX_TOKENS") {
-          throw new ProviderError(
-            "Gemini response was truncated (MAX_TOKENS) — output incomplete.",
-            2
-          );
-        }
-
-        return response.text ?? "";
-      } finally {
-        if (timeoutId) clearTimeout(timeoutId);
       }
+      throw lastGeminiError;
     } catch (error: any) {
       const msg = String(error?.message ?? error ?? "Provider request failed.");
       const isRateLimit = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate limit") || msg.toLowerCase().includes("resource_exhausted") || msg.toLowerCase().includes("overloaded");

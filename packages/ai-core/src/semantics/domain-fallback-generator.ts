@@ -69,21 +69,21 @@ export default function ${safeCompName}() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <span className="text-xs text-slate-400 font-semibold uppercase">Total Monthly Spent</span>
-          <h2 className="text-2xl font-bold text-emerald-400 mt-1">$2,450.00</h2>
+          <span className="text-xs text-slate-400 font-semibold uppercase">Total Activity Volume</span>
+          <h2 className="text-2xl font-bold text-emerald-400 mt-1">2,450 Units</h2>
           <div className="w-full bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
             <div className="bg-emerald-500 h-full w-[65%]"></div>
           </div>
         </div>
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <span className="text-xs text-slate-400 font-semibold uppercase">Monthly Budget Limit</span>
-          <h2 className="text-2xl font-bold text-white mt-1">$3,800.00</h2>
-          <span className="text-xs text-slate-500 mt-2 block">$1,350.00 remaining</span>
+          <span className="text-xs text-slate-400 font-semibold uppercase">Target Goal Metric</span>
+          <h2 className="text-2xl font-bold text-white mt-1">3,800 Goal</h2>
+          <span className="text-xs text-slate-500 mt-2 block">1,350 remaining</span>
         </div>
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <span className="text-xs text-slate-400 font-semibold uppercase">Category Compliance</span>
+          <span className="text-xs text-slate-400 font-semibold uppercase">Performance Compliance</span>
           <h2 className="text-2xl font-bold text-indigo-400 mt-1">100% On Track</h2>
-          <span className="text-xs text-slate-500 mt-2 block">4 Active Category Budgets</span>
+          <span className="text-xs text-slate-500 mt-2 block">4 Active Categories</span>
         </div>
       </div>
 
@@ -238,21 +238,21 @@ export default function ${safeCompName}() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <span className="text-xs text-slate-400 font-semibold uppercase">Total Monthly Spent</span>
-          <h2 className="text-2xl font-bold text-emerald-400 mt-1">$2,450.00</h2>
+          <span className="text-xs text-slate-400 font-semibold uppercase">Total Activity Volume</span>
+          <h2 className="text-2xl font-bold text-emerald-400 mt-1">2,450 Units</h2>
           <div className="w-full bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
             <div className="bg-emerald-500 h-full w-[65%]"></div>
           </div>
         </div>
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <span className="text-xs text-slate-400 font-semibold uppercase">Monthly Budget Limit</span>
-          <h2 className="text-2xl font-bold text-white mt-1">$3,800.00</h2>
-          <span className="text-xs text-slate-500 mt-2 block">$1,350.00 remaining</span>
+          <span className="text-xs text-slate-400 font-semibold uppercase">Target Goal Metric</span>
+          <h2 className="text-2xl font-bold text-white mt-1">3,800 Goal</h2>
+          <span className="text-xs text-slate-500 mt-2 block">1,350 remaining</span>
         </div>
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <span className="text-xs text-slate-400 font-semibold uppercase">Category Compliance</span>
+          <span className="text-xs text-slate-400 font-semibold uppercase">Performance Compliance</span>
           <h2 className="text-2xl font-bold text-indigo-400 mt-1">100% On Track</h2>
-          <span className="text-xs text-slate-500 mt-2 block">4 Active Category Budgets</span>
+          <span className="text-xs text-slate-500 mt-2 block">4 Active Categories</span>
         </div>
       </div>
 

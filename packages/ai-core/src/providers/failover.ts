@@ -191,8 +191,8 @@ export class FailoverProvider implements AIProvider {
           if (is429) {
             const isDailyQuota = error.message?.includes("GenerateRequestsPerDay") || error.message?.includes("limit: 500") || error.message?.includes("PerDay");
             if (isDailyQuota) {
-              console.warn(`[FailoverProvider] Daily quota exceeded on provider "${provider.name}". Disabling for 24h and failing over to next provider immediately.`);
-              this.disabledUntil.set(provider.name, Date.now() + 86400000);
+              console.warn(`[FailoverProvider] Quota rate limit on provider "${provider.name}". Disabling for 60s cooldown and failing over to next provider.`);
+              this.disabledUntil.set(provider.name, Date.now() + 60000); // 60s cooldown instead of 24h
               break;
             }
 

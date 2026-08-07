@@ -901,6 +901,39 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
+        // Fix 21: TanStack Table TS2724 auto-fallback shim
+        if (content.includes("@tanstack/react-table") && (content.includes("getCoreRowModel") || content.includes("useReactTable"))) {
+          content = `import React from 'react';\n
+export function DataTable({ data = [], columns = [] }: any) {
+  if (!data || !data.length) return <div className="p-4 text-center text-slate-400">No records found.</div>;
+  return (
+    <div className="w-full overflow-x-auto border border-slate-800 rounded-lg">
+      <table className="w-full text-sm text-left text-slate-200">
+        <thead className="bg-slate-900 uppercase text-xs text-slate-400 border-b border-slate-800">
+          <tr>
+            {columns.map((col: any, idx: number) => (
+              <th key={idx} className="px-6 py-4">{typeof col.header === 'string' ? col.header : (col.accessorKey || 'Column')}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800">
+          {data.map((row: any, rIdx: number) => (
+            <tr key={rIdx} className="hover:bg-slate-900/50">
+              {columns.map((col: any, cIdx: number) => {
+                const val = col.accessorKey ? row[col.accessorKey] : (col.cell ? col.cell({ row: { original: row } }) : null);
+                return <td key={cIdx} className="px-6 py-4">{val ?? row[Object.keys(row)[cIdx]] ?? '-'}</td>;
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+export default DataTable;\n`;
+          changed = true;
+        }
+
         // Fix 13.8: api / apiClient named & default export shim (TS2614 / TS2613 / TS2451)
         const relNorm = rel.replace(/\\/g, "/").toLowerCase();
         if (relNorm.includes("apiclient") || relNorm.includes("api-client") || relNorm.endsWith("/api.ts") || relNorm.endsWith("/api.tsx") || relNorm.endsWith("/api/index.ts")) {

@@ -1,39 +1,39 @@
-# Architecture.md: AegisExpenseTracker
+# Architecture: AegisFitnessTracker
 
 ## 1. System Overview
-AegisExpenseTracker is a high-performance React-based financial management application designed for real-time expense tracking and budget visualization. The system utilizes a modular, component-driven architecture to ensure maintainability, scalability, and a responsive user experience across devices.
+AegisFitnessTracker is a React-based performance monitoring application designed for real-time tracking of fitness metrics and historical analytics. The architecture leverages a modular component structure to ensure high reusability, maintainability, and a seamless user experience across dashboard and data-logging views.
 
 ## 2. Folder Structure
 ```text
-/src
-├── assets/          # Static assets (images, global CSS)
-├── components/      # Reusable UI primitives (Button, Input, Card)
-├── features/        # Domain-specific modules (Dashboard, ExpenseList, Auth)
-├── hooks/           # Custom React hooks for shared logic
-├── services/        # API integration and external data handling
-├── store/           # Global state configuration (Redux/Zustand slices)
-├── utils/           # Helper functions and constants
-└── App.jsx          # Main entry point and routing configuration
+src/
+├── assets/         # Static assets (images, fonts, global styles)
+├── components/     # Reusable UI primitives (Buttons, Inputs, Cards)
+├── features/       # Domain-specific logic (e.g., workout-tracking, user-profile)
+├── hooks/          # Shared custom React hooks for side-effects and data fetching
+├── layouts/        # Global page shells and navigation containers
+├── services/       # API clients and external integration configurations
+├── store/          # Global state management configuration
+├── utils/          # Pure helper functions and constants
+└── types/          # Global TypeScript interfaces and type definitions
 ```
 
 ## 3. Key Design Decisions
-*   **React (Vite):** Chosen for rapid development, optimized build times, and a rich ecosystem of libraries.
-*   **Feature-First Organization:** Folders are organized by domain (e.g., `features/ExpenseList`) rather than technical type to improve code locality and developer velocity.
-*   **Axios:** Used for HTTP client capabilities due to robust interceptor support for authentication headers and error handling.
-*   **Tailwind CSS:** Selected for utility-first styling to ensure design consistency and reduced CSS bundle sizes.
+*   **React (Vite):** Selected for rapid development, optimal build performance, and an extensive ecosystem of performance-monitoring libraries.
+*   **TypeScript:** Enforced throughout the codebase to ensure type safety, reduce runtime errors, and improve developer velocity through robust IDE intellisense.
+*   **TanStack Query:** Chosen for data synchronization to manage server state, caching, and background revalidation without complex boilerplate.
+*   **Tailwind CSS:** Utilized for utility-first styling to ensure a consistent design system while minimizing bundle size compared to traditional CSS-in-JS libraries.
 
 ## 4. Data Flow
-1.  **User Action:** User submits an expense form via a component in `features/`.
-2.  **State Update:** The component triggers an action that updates the local state via a custom hook or store dispatcher.
-3.  **Persistence:** The `services/` layer sends an asynchronous request to the backend API.
-4.  **Revalidation:** Upon success, the store is updated with the new dataset, triggering a re-render of observer components to reflect the current balance.
+1.  **User Action:** User interacts with a component (e.g., submits a workout log).
+2.  **Service Call:** The component triggers a function in `services/`, which interacts with the backend API.
+3.  **State Mutation:** On success, the TanStack Query mutation invalidates relevant queries, triggering a background fetch of updated data.
+4.  **UI Update:** The React state reacts to the cache invalidation, re-rendering components with the latest data from the API.
 
 ## 5. State Management Approach
-*   **Global State:** Managed via [Zustand/Redux Toolkit] for cross-feature accessibility (e.g., user authentication, global transaction list).
-*   **Server State:** Handled via React Query (TanStack Query) to manage caching, background fetching, and synchronization between the client and server.
-*   **Local State:** Restricted to component-level concerns (e.g., form inputs, dropdown toggles) using `useState` and `useReducer`.
+*   **Server State:** Managed exclusively via **TanStack Query** (React Query) to handle caching, loading states, and error retries.
+*   **Client State:** Local component-level state is managed via `useState`. Global UI state (e.g., theme, sidebar toggles) is managed via **Zustand** due to its minimal footprint and lack of boilerplate compared to Redux.
 
 ## 6. Error Handling Strategy
-*   **API Layer:** Centralized interceptors in the `services/` layer catch HTTP 4xx/5xx responses to log errors and trigger global alerts.
-*   **UI Layer:** Implementation of `ErrorBoundary` components wrapped around major features to prevent white-screen crashes.
-*   **User Feedback:** Toast notifications and inline validation feedback are used to provide immediate, actionable context for failed operations or invalid inputs.
+*   **Boundary Layer:** `ErrorBoundary` components wrap major feature modules to prevent cascading application crashes.
+*   **API Layer:** Centralized Axios interceptors handle global HTTP error codes (401, 403, 500) and trigger appropriate toast notifications or redirection.
+*   **Validation Layer:** Zod is used for schema validation on all form inputs and API responses, ensuring data integrity before processing.

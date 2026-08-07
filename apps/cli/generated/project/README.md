@@ -1,34 +1,34 @@
 # Aegis-Expense-Tracker
 
-A comprehensive full-stack personal finance management application designed to track spending habits, manage category budgets, and visualize monthly financial analytics.
+A high-performance, full-stack personal finance management application designed for streamlined expense tracking, category-based budgeting, and data-driven spending analytics.
 
 ## Features
 
-*   **Transaction Management:** Create, read, update, and delete expenses with custom labels, dates, and amounts.
-*   **Budgeting:** Set and monitor monthly spending limits per category to maintain financial health.
-*   **Analytics Dashboard:** Visualize spending trends and category distribution through interactive charts.
-*   **Theme Support:** Seamless toggle between light and dark modes for optimal viewing in any environment.
-*   **Type-Safe Architecture:** Full TypeScript integration from the database schema to the frontend components.
-*   **Persistent Storage:** Reliable data management using SQLite via Prisma ORM.
+*   **Transaction Management:** Create, read, update, and delete expenses with support for custom categories and transaction notes.
+*   **Budgeting System:** Define and track monthly spending limits per category with real-time progress visualization.
+*   **Spending Analytics:** Interactive charts providing monthly breakdowns and visual summaries of financial habits.
+*   **Responsive UI:** A clean, mobile-friendly interface supporting both Light and Dark mode themes.
+*   **Type-Safe Architecture:** Full-stack TypeScript implementation ensuring end-to-end data integrity.
+*   **Persistent Storage:** Reliable local data management powered by SQLite and Prisma ORM.
 
 ## Tech Stack
 
 | Technology | Purpose |
 | :--- | :--- |
-| React | Frontend UI library |
-| Express | Backend API server |
-| Prisma | ORM for database management |
-| SQLite | Relational database storage |
-| TypeScript | Type safety across the stack |
-| Tailwind CSS | Styling and theme management |
-| Recharts | Data visualization and analytics |
+| **React** | Frontend UI library |
+| **Express** | Backend API server |
+| **Prisma** | ORM for database schema and query management |
+| **SQLite** | Lightweight, file-based relational database |
+| **TypeScript** | Static typing for both client and server |
+| **Tailwind CSS** | Utility-first CSS framework for styling |
+| **Recharts** | Composable charting library for analytics |
 
 ## Getting Started
 
 ### Prerequisites
 
-*   Node.js (v18.0.0 or higher)
-*   npm (v9.0.0 or higher) or yarn
+*   **Node.js:** v18.0.0 or higher
+*   **npm:** v9.0.0 or higher (or equivalent yarn/pnpm version)
 
 ### Installation
 
@@ -38,47 +38,55 @@ A comprehensive full-stack personal finance management application designed to t
    cd aegis-expense-tracker
    ```
 
-2. Install dependencies for both client and server:
+2. Install dependencies:
    ```bash
    npm install
    ```
 
 ### Environment Setup
 
-1. Copy the example environment file:
+1. Copy the example environment file to create your local configuration:
    ```bash
    cp .env.example .env
    ```
-2. Open the `.env` file and configure the `DATABASE_URL` and `PORT` variables as required by your local setup.
 
-### Running Locally
+2. Open the `.env` file and configure your settings (e.g., `DATABASE_URL` and `PORT`).
 
-1. Run the database migration to initialize the schema:
+3. Run the database migration to initialize the SQLite database:
    ```bash
    npx prisma migrate dev
    ```
 
-2. Start the development servers:
-   ```bash
-   npm run dev
-   ```
-   The application will be accessible at `http://localhost:3000`.
+### Running Locally
+
+To start both the backend and frontend development servers concurrently:
+```bash
+npm run dev
+```
+
+The application will be accessible at `http://localhost:3000`.
 
 ## Available Scripts
 
-*   `npm run dev`: Starts the development server for both frontend and backend.
+*   `npm run dev`: Starts the development server with hot-reloading for both client and server.
 *   `npm run build`: Compiles the application for production deployment.
-*   `npm run lint`: Runs ESLint to identify and fix code quality issues.
-*   `npm run test`: Executes the test suite via Jest.
-*   `npx prisma studio`: Opens the visual database management tool for SQLite.
+*   `npm run lint`: Executes ESLint to verify code quality and consistency.
+*   `npm run test`: Runs the test suite using the configured testing framework.
 
 ## Project Structure
 
-*   `/prisma`: Contains the schema.prisma file and migration history.
-*   `/src/server`: Express.js backend logic, API routes, and controllers.
-*   `/src/client`: React frontend source code, including components, hooks, and pages.
-*   `/src/types`: Shared TypeScript interfaces and utility types.
-*   `/public`: Static assets, icons, and index.html.
+```text
+aegis-expense-tracker/
+├── prisma/            # Database schema and migration files
+├── src/
+│   ├── api/           # Express server routes and controllers
+│   ├── components/    # Reusable React UI components
+│   ├── hooks/         # Custom React hooks for data fetching/logic
+│   ├── store/         # State management configuration
+│   └── utils/         # Shared helper functions and types
+├── public/            # Static assets
+└── package.json       # Project dependencies and script definitions
+```
 
 ## License
 

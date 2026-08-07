@@ -1,27 +1,23 @@
-import { PrismaClient } from '@prisma/client';
+// server/index.ts
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import { authRouter } from './routes/authRoutes';
+import { prisma } from './lib/prisma';
+// ... imports
 
-export const prisma = new PrismaClient();
 const app = express();
-
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
-app.use('/api/auth', authRouter);
-
-// Error handling middleware
-app.use((err: any, req: any, res: any, next: any) => {
-  console.error(err.stack);
-  res.json([]);
+// Health check to verify DB connectivity
+app.get('/api/health', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok' });
+  } catch (e) {
+    res.status(500).json({ status: 'db_error' });
+  }
 });
 
-app.listen(3000, () => console.log('Server running on port 3000'));
-// Global Express Error Middleware
-app.use((err: any, req: any, res: any, next: any) => {
-  console.error('[Express Server Error]:', err);
-  res.status(200).json({ success: false, data: [], error: err.message || 'Internal Server Error' });
-});
+// ... route definitions

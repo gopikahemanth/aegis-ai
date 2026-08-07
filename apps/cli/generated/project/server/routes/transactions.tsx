@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function db() {
+export default function transactions() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   

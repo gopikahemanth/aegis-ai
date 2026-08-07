@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function authRoutes() {
+export default function transaction.routes() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   

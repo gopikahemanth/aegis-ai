@@ -3,28 +3,22 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export const getDashboardAnalytics = async (req: Request, res: Response) => {
-  const userId = (req as any).user.id;
-  const { month, year } = req.query;
-
+export const createTransaction = async (req: Request, res: Response) => {
   try {
-    const transactions = await prisma.transaction.findMany({
-      where: { 
-        userId,
-        date: {
-          gte: new Date(Number(year), Number(month) - 1, 1),
-          lt: new Date(Number(year), Number(month), 1)
-        }
-      }
+    const { amount, description, category, type } = req.body;
+    const userId = (req as any).user.id;
+    
+    const transaction = await prisma.transaction.create({
+      data: { amount, description, category, type, userId }
     });
-
-    const summary = transactions.reduce((acc, curr) => {
-      acc[curr.type] += Number(curr.amount);
-      return acc;
-    }, { income: 0, expense: 0 });
-
-    res.json({ summary, transactions });
+    res.status(201).json(transaction);
   } catch (error) {
-    res.json([]);
+    res.status(500).json({ error: 'Failed to create transaction' });
   }
+};
+
+export const getTransactions = async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const transactions = await prisma.transaction.findMany({ where: { userId } });
+  res.json(transactions);
 };

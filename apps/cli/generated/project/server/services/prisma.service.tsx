@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function auth() {
+export default function prisma.service() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   

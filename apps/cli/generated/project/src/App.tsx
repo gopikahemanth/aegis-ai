@@ -1,22 +1,10 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider } from './context/ThemeContext';
-import Dashboard from './pages/Dashboard';
-import Login from './pages/Login';
+import React from "react";
+import { AppRoutes } from "./routes";
 
-const App: React.FC = () => {
+export default function App() {
   return (
-    <ThemeProvider>
-      <Router>
-        <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Dashboard />} />
-          </Routes>
-        </div>
-      </Router>
-    </ThemeProvider>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <AppRoutes />
+    </div>
   );
-};
-
-export default App;
+}

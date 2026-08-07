@@ -1,8 +1,7 @@
 import axios from 'axios';
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: 'http://localhost:3000/api',
 });
 
 apiClient.interceptors.request.use((config) => {
@@ -10,5 +9,3 @@ apiClient.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
-const _apiDefault = (globalThis as any).apiClient || {};
-export default _apiDefault;

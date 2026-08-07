@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function auth.middleware() {
+export default function LoadingSpinner() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   

@@ -37,6 +37,85 @@ export default ${safeCompName};
 `;
     }
 
+    if (domain === "workout-fitness") {
+      return `import React, { useState } from 'react';
+
+export default function ${safeCompName}() {
+  const [search, setSearch] = useState('');
+  const workouts = [
+    { id: 1, name: 'Bench Press', category: 'Chest', weight: '185 lbs', sets: 4, reps: 10 },
+    { id: 2, name: 'Barbell Squat', category: 'Legs', weight: '225 lbs', sets: 4, reps: 8 },
+    { id: 3, name: 'Deadlift', category: 'Back', weight: '275 lbs', sets: 3, reps: 5 },
+    { id: 4, name: 'Overhead Press', category: 'Shoulders', weight: '115 lbs', sets: 3, reps: 10 }
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
+      <header className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8 border-b border-slate-800 pb-6">
+        <div>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">Workout & Fitness Tracker</h1>
+          <p className="text-slate-400 text-sm mt-1">Log workouts, track volume analytics, and monitor weekly progress.</p>
+        </div>
+        <input
+          type="text"
+          placeholder="Search exercises..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+          <span className="text-xs text-slate-400 font-semibold uppercase">Weekly Training Volume</span>
+          <h2 className="text-2xl font-bold text-emerald-400 mt-1">14,250 lbs</h2>
+          <div className="w-full bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
+            <div className="bg-emerald-500 h-full w-[80%]"></div>
+          </div>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+          <span className="text-xs text-slate-400 font-semibold uppercase">Active Workout Streak</span>
+          <h2 className="text-2xl font-bold text-white mt-1">5 Days 🔥</h2>
+          <span className="text-xs text-slate-500 mt-2 block">Personal Best Streak</span>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+          <span className="text-xs text-slate-400 font-semibold uppercase">Muscle Group Targets</span>
+          <h2 className="text-2xl font-bold text-indigo-400 mt-1">4 Groups</h2>
+          <span className="text-xs text-slate-500 mt-2 block">Chest, Legs, Back, Shoulders</span>
+        </div>
+      </div>
+
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <h2 className="text-lg font-bold text-white mb-4">Workout Log</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-300">
+            <thead className="bg-slate-950 text-slate-400 text-xs uppercase border-b border-slate-800">
+              <tr>
+                <th className="py-3 px-4">Exercise</th>
+                <th className="py-3 px-4">Muscle Group</th>
+                <th className="py-3 px-4">Sets & Reps</th>
+                <th className="py-3 px-4 text-right">Weight</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {workouts.filter(w => !search || w.name.toLowerCase().includes(search.toLowerCase())).map((w) => (
+                <tr key={w.id} className="hover:bg-slate-850">
+                  <td className="py-3.5 px-4 font-semibold text-white">{w.name}</td>
+                  <td className="py-3.5 px-4"><span className="bg-slate-800 text-indigo-300 px-2.5 py-1 rounded-full text-xs">{w.category}</span></td>
+                  <td className="py-3.5 px-4 text-slate-400">{w.sets} sets × {w.reps} reps</td>
+                  <td className="py-3.5 px-4 text-right font-bold text-emerald-400">{w.weight}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+`;
+    }
+
     if (domain === "expense-tracker") {
       return `import React, { useState } from 'react';
 

@@ -1,7 +1,7 @@
 import { ProjectSpecification } from "../architect/specification.js";
 
 export interface CanonicalProjectSpecification extends ProjectSpecification {
-  domainCategory: "expense-tracker" | "task-manager" | "art-gallery" | "ecommerce" | "blog" | "general-dashboard";
+  domainCategory: "expense-tracker" | "task-manager" | "workout-fitness" | "art-gallery" | "ecommerce" | "blog" | "general-dashboard";
   lockedStack: {
     frontend: string;
     backend: string;
@@ -21,7 +21,9 @@ export class SpecificationNormalizer {
     
     // 1. Detect Domain Category
     let domainCategory: CanonicalProjectSpecification["domainCategory"] = "general-dashboard";
-    if (promptLower.includes("expense") || promptLower.includes("spending") || promptLower.includes("budget") || promptLower.includes("transaction") || promptLower.includes("finance")) {
+    if (promptLower.includes("workout") || promptLower.includes("fitness") || promptLower.includes("gym") || promptLower.includes("exercise")) {
+      domainCategory = "workout-fitness";
+    } else if (promptLower.includes("expense") || promptLower.includes("spending") || promptLower.includes("budget") || promptLower.includes("transaction") || promptLower.includes("finance")) {
       domainCategory = "expense-tracker";
     } else if (promptLower.includes("kanban") || promptLower.includes("task") || promptLower.includes("project management") || promptLower.includes("todo")) {
       domainCategory = "task-manager";

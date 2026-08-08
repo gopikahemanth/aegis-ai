@@ -1,28 +1,21 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Navbar } from '@/shared/components/Navbar';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const DashboardPage = React.lazy(() => import('./features/dashboard/DashboardPage'));
-const UploadPage = React.lazy(() => import('./features/upload/UploadPage'));
+const Dashboard = lazy(() => import('./features/dashboard/DashboardPage'));
+const queryClient = new QueryClient();
 
-export const App: React.FC<any> = () => (
-  <BrowserRouter>
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-      <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <Suspense fallback={
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-          </div>
-        }>
+export default function App(props: any) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
           <Routes>
-            <Route path="/" element={<UploadPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/" element={<Dashboard />} />
           </Routes>
         </Suspense>
-      </main>
-    </div>
-  </BrowserRouter>
-);
-
-export default App;
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
+export { App };

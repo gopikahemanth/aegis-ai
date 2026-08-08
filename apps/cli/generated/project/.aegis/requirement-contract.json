@@ -1,33 +1,35 @@
 {
-  "id": "req_1786201515961",
-  "createdAt": "2026-08-08T15:05:15.961Z",
+  "id": "req_1786202153332",
+  "createdAt": "2026-08-08T15:15:53.332Z",
   "prompt": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
   "immutableRequirements": {
     "frontend": "React",
     "backend": "Express",
-    "database": "mongodb",
+    "database": "PostgreSQL",
     "language": "TypeScript",
     "styling": "tailwindcss",
     "auth": "JWT",
     "packageManager": "pnpm",
     "features": [
-      "pdf-parsing",
-      "keyword-analysis",
+      "upload",
+      "parsing",
+      "nlp",
+      "scoring",
       "dashboard",
-      "history-persistence",
-      "ui-components"
+      "export",
+      "auth"
     ],
     "userFlows": [
       "upload-resume-and-job-description",
-      "analyze-keyword-match",
-      "view-dashboard-results",
-      "browse-application-history"
+      "process-semantic-keyword-match",
+      "view-historical-scan-results",
+      "download-analysis-pdf-report"
     ],
     "dataModels": [
       "User",
-      "AnalysisResult",
-      "Resume",
-      "JobDescription"
+      "ScanResult",
+      "JobDescription",
+      "Resume"
     ]
   }
 }

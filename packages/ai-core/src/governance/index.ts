@@ -8,4 +8,5 @@ export * from "./fast-sanitizer.js";
 export * from "./safe-patch-system.js";
 export * from "./root-cause-classifier.js";
 export * from "./empty-app-detector.js";
+export * from "./api-contract-registry.js";
 export * from "./execution-report-generator.js";

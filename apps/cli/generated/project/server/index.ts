@@ -1,26 +1,27 @@
 import { PrismaClient } from '@prisma/client';
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
-import analysisRoutes from './routes/analysis';
+import dotenv from 'dotenv';
+import multer from 'multer';
+import { analyzeResume } from './controllers/scanController';
+import { errorHandler } from './middleware/errorHandler';
+
+dotenv.config();
 
 export const prisma = new PrismaClient();
 const app = express();
+const upload = multer({ storage: multer.memoryStorage() });
 
-app.use(helmet());
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-
-// Health Check
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.use(express.json());
 
 // Routes
-app.use('/api/analysis', analysisRoutes);
+app.post('/api/analyze', upload.single('resume'), analyzeResume);
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.use(errorHandler);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 // Global Express Error Middleware
 app.use((err: any, req: any, res: any, next: any) => {
   console.error('[Express Server Error]:', err);

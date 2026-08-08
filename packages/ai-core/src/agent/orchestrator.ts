@@ -55,7 +55,8 @@ import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-gener
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
 import { TransactionalRepairSystem } from "../healing/index.js";
-import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, ExecutionReportGenerator } from "../governance/index.js";
+import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator } from "../governance/index.js";
+import { ProjectPathResolver } from "../utils/path-resolver.js";
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
   "express",
@@ -313,7 +314,15 @@ export class Orchestrator {
         "utf8"
       );
       writeFileSync(join(aegisDir, "prompt.txt"), request, "utf8");
-      console.log("[DataArchitecture] ✓ Saved data architecture definition in project builder.");
+      if (dataArch && Array.isArray(dataArch.apis)) {
+        ApiContractRegistry.registerContract(dataArch.apis.map(a => ({
+          path: a.path,
+          method: a.method,
+          description: a.description,
+          requestFields: a.requestBodySchema ? { schema: a.requestBodySchema } : undefined,
+          responseFields: a.responseBodySchema ? { schema: a.responseBodySchema } : undefined
+        })));
+      }
 
       const dataContext = `
 ═══════════════════════════════════════════════════════

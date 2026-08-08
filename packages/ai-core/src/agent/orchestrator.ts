@@ -54,7 +54,7 @@ import { SpecificationNormalizer } from "../spec/canonical-spec.js";
 import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-generator.js";
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
-import { ArchitectureContractManager, ExecutionReportGenerator } from "../governance/index.js";
+import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, ExecutionReportGenerator } from "../governance/index.js";
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
   "express",
@@ -283,11 +283,13 @@ export class Orchestrator {
     }
     writeFileSync(join(aegisDir, "prompt.txt"), request, "utf8");
 
+    const resolvedContract = ArchitectureResolver.resolve(request, specification, canonicalSpec);
+    ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
     const archContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
 
     auditTrail.logEvent({
       agentRole: "Architect",
-      action: `Completed requirements mapping & locked Architecture Contract. Framework: ${canonicalSpec.type}, Database: ${canonicalSpec.database || "None"}, Features: [${(canonicalSpec.features ?? []).join(", ")}]`,
+      action: `Completed requirements mapping & locked Architecture Contract. Frontend: ${resolvedContract.frontend.framework}, Backend: ${resolvedContract.backend.framework}, DB: ${resolvedContract.database.provider} (${resolvedContract.database.orm})`,
       status: "SUCCESS"
     });
 
@@ -1326,20 +1328,28 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.warn(`[GitEngine] Warning: Git commit and PR audit operations failed: ${gitErr.message}`);
     }
 
-    // ── Generate Execution Governance Report ─────────────────────────────
+    // ── Generate Execution Governance Report & Audit Architecture ──────────
+    const loadedContract = ArchitectureResolver.loadContract(outputDirectory);
+    const actualArch = ArchitectureAuditor.audit(outputDirectory);
+    const archDiff = ArchitectureDiff.compare(loadedContract, actualArch);
+    ArchitectureDiff.writeDiffReport(outputDirectory, archDiff);
+
     const archContract = ArchitectureContractManager.loadContract(outputDirectory);
     const finalReport = ExecutionReportGenerator.generateReport(
       outputDirectory,
       request,
       archContract,
-      dodPassed && build.success ? "SUCCESS" : "FAILED",
+      loadedContract ? "PASS" : "FAIL",
+      archDiff.status === "PASS" ? "PASS" : "FAIL",
+      archDiff.violations.map(v => `${v.field}: expected '${v.expected}', got '${v.actual}'`),
+      dodPassed && build.success && archDiff.status === "PASS" ? "SUCCESS" : "FAILED",
       dodResult?.score ?? 0,
       (dodResult?.criteria ?? []).filter((c: any) => c.passed).map((c: any) => c.name),
       (dodResult?.criteria ?? []).filter((c: any) => !c.passed).map((c: any) => c.name),
       {
-        requested: archContract?.stack.database || "SQLite",
-        configured: archContract?.stack.database || "SQLite",
-        isSynced: true
+        requested: loadedContract?.database.provider || "SQLite",
+        configured: actualArch.databaseProvider,
+        isSynced: actualArch.databaseProvider.toLowerCase() === (loadedContract?.database.provider.toLowerCase() || "sqlite")
       },
       {
         typeCheck: build.success,

@@ -2,20 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: dark;
-}
-
-html, body, #root {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  background-color: #020617; /* Slate 950 */
-}
-
-/* Ensure layout containers fill space */
-.app-container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+@layer base {
+  body {
+    @apply bg-zinc-950 text-zinc-100 antialiased;
+  }
 }

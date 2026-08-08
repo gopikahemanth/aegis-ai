@@ -40,6 +40,9 @@ import { ValidationStateManager } from "./validation-state.js";
 
 import { EmptyAppDetector } from "../governance/empty-app-detector.js";
 import { ArchitectureContractManager } from "../governance/architecture-contract.js";
+import { ArchitectureResolver } from "../governance/architecture-resolver.js";
+import { ArchitectureAuditor } from "../governance/architecture-auditor.js";
+import { ArchitectureDiff } from "../governance/architecture-diff.js";
 
 export class DefinitionOfDone {
   private readonly sourceExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".vue", ".svelte"]);
@@ -54,7 +57,9 @@ export class DefinitionOfDone {
     }).join("\n");
 
     const emptyAppCheck = EmptyAppDetector.inspectProjectSource(projectDirectory);
-    const archContract = ArchitectureContractManager.loadContract(projectDirectory);
+    const archContract = ArchitectureResolver.loadContract(projectDirectory);
+    const actualArch = ArchitectureAuditor.audit(projectDirectory);
+    const archDiff = ArchitectureDiff.compare(archContract, actualArch);
 
     const criteria: DodCriterion[] = [
       {
@@ -73,7 +78,13 @@ export class DefinitionOfDone {
         id: "architecture-contract",
         name: "Architecture Contract Verification",
         passed: archContract !== null,
-        detail: archContract !== null ? `Architecture Contract verified (Stack: ${archContract.stack.frontend}/${archContract.stack.database})` : "Architecture contract file missing",
+        detail: archContract !== null ? `Architecture Contract verified (Stack: ${archContract.frontend.framework}/${archContract.database.provider})` : "Architecture contract file missing",
+      },
+      {
+        id: "architecture-consistency",
+        name: "Architecture Consistency Verification",
+        passed: archDiff.status === "PASS",
+        detail: archDiff.status === "PASS" ? "Generated architecture is consistent with contract — 0 stack drift violations" : `Architecture drift detected: ${archDiff.violations.map(v => `${v.field} expected '${v.expected}', got '${v.actual}'`).join("; ")}`,
       },
       this.checkNoHardcodedData(allSource),
       this.checkFormValidation(allSource),
@@ -129,6 +140,7 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
       "build-success",
       "non-empty-app",
       "architecture-contract",
+      "architecture-consistency",
       "no-hardcoded-data",
       "error-states",
       "loading-states",

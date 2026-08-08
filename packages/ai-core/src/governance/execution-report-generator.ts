@@ -6,6 +6,9 @@ export interface ExecutionReportData {
   timestamp: string;
   userPrompt: string;
   architectureContract: ArchitectureContractData | null;
+  architectureContractStatus: "PASS" | "FAIL";
+  architectureConsistencyStatus: "PASS" | "FAIL";
+  architectureViolations: string[];
   status: "SUCCESS" | "FAILED" | "BLOCKED";
   dodScore: number;
   completedFeatures: string[];
@@ -31,6 +34,9 @@ export class ExecutionReportGenerator {
     outputDirectory: string,
     prompt: string,
     archContract: ArchitectureContractData | null,
+    archContractStatus: "PASS" | "FAIL",
+    archConsistencyStatus: "PASS" | "FAIL",
+    archViolations: string[],
     status: "SUCCESS" | "FAILED" | "BLOCKED",
     dodScore: number,
     completedFeatures: string[],
@@ -49,6 +55,9 @@ export class ExecutionReportGenerator {
       timestamp: new Date().toISOString(),
       userPrompt: prompt,
       architectureContract: archContract,
+      architectureContractStatus: archContractStatus,
+      architectureConsistencyStatus: archConsistencyStatus,
+      architectureViolations: archViolations,
       status,
       dodScore,
       completedFeatures,

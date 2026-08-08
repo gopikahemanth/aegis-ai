@@ -8,27 +8,20 @@ datasource db {
 }
 
 model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
+  id            String         @id @default(uuid())
+  email         String         @unique
   passwordHash  String
-  createdAt     DateTime @default(now())
-  scans         Scan[]
+  createdAt     DateTime       @default(now())
+  scans         ScanResult[]
 }
 
-model Scan {
-  id                 Int      @id @default(autoincrement())
-  user               User     @relation(fields: [userId], references: [id])
-  userId             Int
-  compatibilityScore Int
-  createdAt          DateTime @default(now())
-  report             AnalysisReport?
-}
-
-model AnalysisReport {
-  id              Int      @id @default(autoincrement())
-  scan            Scan     @relation(fields: [scanId], references: [id])
-  scanId          Int      @unique
-  matchedKeywords String[]
-  missingKeywords String[]
-  suggestions     String[]
+model ScanResult {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  jobTitle        String
+  matchScore      Int
+  keywordCoverage Json
+  aiInsights      String?
+  createdAt       DateTime @default(now())
 }

@@ -1,17 +1,42 @@
 import React from 'react';
-import { DashboardPage } from './features/dashboard/DashboardPage';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import DashboardPage from './features/dashboard/DashboardPage';
+import AuthPage from './features/auth/AuthPage';
 
-const App = () => {
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+const App: React.FC<any> = () => {
+  const isAuthenticated = !!localStorage.getItem('token');
+
   return (
-    <main className="app-container">
-      <header className="p-6 border-b border-slate-800">
-        <h1 className="text-xl font-bold tracking-tight text-white">Aegis Optimizer</h1>
-      </header>
-      <section className="flex-1 overflow-auto">
-        <DashboardPage />
-      </section>
-    </main>
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <Routes>
+          <Route 
+            path="/login" 
+            element={isAuthenticated ? <Navigate to="/dashboard" /> : <AuthPage />} 
+          />
+          <Route 
+            path="/dashboard" 
+            element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/" 
+            element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} 
+          />
+        </Routes>
+      </Router>
+    </QueryClientProvider>
   );
 };
 
 export default App;
+export { App };

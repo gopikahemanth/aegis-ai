@@ -1,42 +1,38 @@
-# Architecture: Aegis Resume Optimizer
+# Architecture: resume-keyword-scanner
 
 ## 1. System Overview
-Aegis Resume Optimizer is a React-based single-page application (SPA) designed to parse, analyze, and improve user resumes against specific job descriptions. The system leverages client-side processing for file extraction and backend integration for AI-driven optimization, providing real-time feedback to users.
+The `resume-keyword-scanner` is a full-stack web application designed to parse resumes and extract relevant keywords against job descriptions. It utilizes a React-based frontend for user interaction and a Node/Express backend to orchestrate document analysis and authentication-protected user sessions.
 
 ## 2. Folder Structure
 ```text
-src/
-├── assets/          # Static assets (icons, fonts, images)
-├── components/      # Atomic UI components (Buttons, Inputs, Cards)
-├── hooks/           # Shared custom React hooks (useAuth, useResume)
-├── services/        # API clients and external integration logic
-├── store/           # Global state definitions (Zustand/Context)
-├── utils/           # Helper functions (parsing logic, validators)
-├── views/           # Page-level components
-└── App.tsx          # Application entry point and routing
+├── server/
+│   ├── controllers/      # Business logic (auth, analysis)
+│   ├── middleware/       # Request interception (JWT validation)
+│   └── routes/           # API endpoint definitions
+├── src/
+│   ├── components/       # UI building blocks
+│   └── App.tsx           # Root component & routing entry
+└── package.json
 ```
 
 ## 3. Key Design Decisions
-*   **React (Vite):** Chosen for fast development cycles and high-performance Hot Module Replacement (HMR).
-*   **Zustand:** Selected over Redux for state management due to its minimal boilerplate and superior performance for localized state updates.
-*   **Axios:** Used for robust HTTP request handling with built-in interceptors for JWT injection.
-*   **Tailwind CSS:** Enables rapid UI development and ensures design consistency via a utility-first approach.
+*   **React (Frontend):** Selected for its component-based architecture, enabling modular UI development for file uploads and analysis result visualization.
+*   **Express (Backend):** Chosen for its minimalist, non-opinionated structure, allowing rapid development of RESTful endpoints to bridge the frontend and NLP analysis services.
+*   **JWT-based Auth:** Implemented via `auth.middleware.ts` to ensure stateless authentication, allowing the API to remain scalable across distributed instances.
+*   **Controller-Route Separation:** Business logic is decoupled from routing (using the controller pattern) to improve unit testability and maintainability.
 
 ## 4. Data Flow
-1.  **Input:** User uploads a PDF/DOCX via the `UploadComponent`.
-2.  **Processing:** File is sent to the `services/resumeService`, which handles multi-part form data transmission to the backend.
-3.  **Persistence:** The backend processes the file, returns optimized data, and updates the database.
-4.  **Retrieval:** The frontend receives a JSON response; the application state is updated, triggering a re-render of the `AnalysisView`.
-5.  **Synchronization:** Local state is periodically synced with the backend to ensure data integrity.
+1.  **Request Initiation:** The user uploads a resume file via `App.tsx`.
+2.  **Authorization:** The request hits `analysis.routes.tsx`, passing through `auth.middleware.ts` to verify the user token.
+3.  **Processing:** `analysis.controller.ts` receives the file, triggers the parsing logic, and extracts keywords.
+4.  **Persistence/Response:** Processed results are returned to the frontend; if applicable, session-specific metadata is persisted to the database.
+5.  **Rendering:** The frontend receives the JSON payload and updates the UI state to display the keyword analysis.
 
 ## 5. State Management Approach
-The application utilizes a **hybrid state strategy**:
-*   **Global State (Zustand):** Used for cross-component data such as `userSession`, `currentResumeData`, and `optimizationResults`.
-*   **Local State (React `useState`/`useQuery`):** Used for ephemeral UI states, such as form inputs, loading spinners, and component-specific toggle states.
-*   **Server State (TanStack Query):** Handles caching, background refetching, and stale-while-revalidate patterns for resume optimization results.
+*   **Local State:** React `useState` and `useReducer` hooks are utilized for ephemeral UI states (loading spinners, form inputs, and validation messages).
+*   **Server State:** React Query (or similar fetch-based caching) is recommended to manage asynchronous server state, ensuring cache invalidation and reduced redundant API calls for analysis results.
 
 ## 6. Error Handling Strategy
-*   **Boundary Layers:** Global `ErrorBoundary` components prevent application-wide crashes during rendering failures.
-*   **API Layer:** Axios interceptors catch 4xx/5xx responses, mapping them to human-readable error messages displayed via a centralized Toast notification system.
-*   **Validation:** Client-side Zod schemas validate user inputs before requests are dispatched, preventing malformed data from hitting the API.
-*   **Logging:** Errors are captured and reported via Sentry for post-mortem analysis.
+*   **Middleware Catch-all:** A global error-handling middleware in the Express server captures unhandled exceptions and standardizes error responses (status code + error message).
+*   **Frontend Interceptors:** API calls are wrapped in `try/catch` blocks (or async/await wrappers) to catch network failures or 4xx/5xx responses.
+*   **Graceful Degradation:** Users are notified via Toast notifications or UI-embedded error messages when an analysis process fails or authentication expires.

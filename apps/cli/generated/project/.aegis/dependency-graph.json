@@ -11,10 +11,37 @@
       "server/routes/analysis.routes.tsx"
     ]
   },
-  "server/controllers/AnalysisController.ts": {
-    "path": "server/controllers/AnalysisController.ts",
+  "server/controllers/auth.controller.ts": {
+    "path": "server/controllers/auth.controller.ts",
     "imports": [],
     "importedBy": []
+  },
+  "server/controllers/exportController.ts": {
+    "path": "server/controllers/exportController.ts",
+    "imports": [
+      "server/lib/prisma.tsx"
+    ],
+    "importedBy": []
+  },
+  "server/controllers/scanController.ts": {
+    "path": "server/controllers/scanController.ts",
+    "imports": [
+      "server/lib/prisma.tsx"
+    ],
+    "importedBy": []
+  },
+  "server/controllers/uploadController.ts": {
+    "path": "server/controllers/uploadController.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "server/lib/prisma.tsx": {
+    "path": "server/lib/prisma.tsx",
+    "imports": [],
+    "importedBy": [
+      "server/controllers/exportController.ts",
+      "server/controllers/scanController.ts"
+    ]
   },
   "server/middleware/auth.middleware.ts": {
     "path": "server/middleware/auth.middleware.ts",
@@ -26,29 +53,34 @@
   "server/routes/analysis.routes.tsx": {
     "path": "server/routes/analysis.routes.tsx",
     "imports": [
-      "server/controllers/analysis.controller.ts",
-      "server/middleware/auth.middleware.ts"
+      "server/middleware/auth.middleware.ts",
+      "server/controllers/analysis.controller.ts"
     ],
-    "importedBy": []
-  },
-  "server/services/AnalysisService.ts": {
-    "path": "server/services/AnalysisService.ts",
-    "imports": [],
     "importedBy": []
   },
   "src/App.tsx": {
     "path": "src/App.tsx",
     "imports": [
-      "src/features/dashboard/DashboardPage.tsx"
+      "src/features/dashboard/DashboardPage.tsx",
+      "src/features/auth/AuthPage.tsx"
     ],
     "importedBy": [
       "src/main.tsx"
     ]
   },
+  "src/components/Layout.tsx": {
+    "path": "src/components/Layout.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/features/dashboard/DashboardPage.tsx"
+    ]
+  },
   "src/design-system/components/Button.tsx": {
     "path": "src/design-system/components/Button.tsx",
     "imports": [],
-    "importedBy": []
+    "importedBy": [
+      "src/shared/components/Button.tsx"
+    ]
   },
   "src/design-system/components/EmptyState.tsx": {
     "path": "src/design-system/components/EmptyState.tsx",
@@ -58,16 +90,12 @@
   "src/design-system/components/GlassCard.tsx": {
     "path": "src/design-system/components/GlassCard.tsx",
     "imports": [],
-    "importedBy": [
-      "src/shared/components/ui/Card.tsx"
-    ]
+    "importedBy": []
   },
   "src/design-system/components/Skeleton.tsx": {
     "path": "src/design-system/components/Skeleton.tsx",
     "imports": [],
-    "importedBy": [
-      "src/shared/components/ui/Skeleton.tsx"
-    ]
+    "importedBy": []
   },
   "src/design-system/index.ts": {
     "path": "src/design-system/index.ts",
@@ -79,29 +107,67 @@
     "imports": [],
     "importedBy": []
   },
-  "src/features/analysis/hooks/useAnalysis.ts": {
-    "path": "src/features/analysis/hooks/useAnalysis.ts",
+  "src/features/auth/AuthPage.tsx": {
+    "path": "src/features/auth/AuthPage.tsx",
     "imports": [],
-    "importedBy": []
+    "importedBy": [
+      "src/App.tsx"
+    ]
   },
-  "src/features/dashboard/components/CompatibilityGauge.tsx": {
-    "path": "src/features/dashboard/components/CompatibilityGauge.tsx",
+  "src/features/dashboard/components/DashboardMetrics.tsx": {
+    "path": "src/features/dashboard/components/DashboardMetrics.tsx",
     "imports": [],
-    "importedBy": []
+    "importedBy": [
+      "src/features/dashboard/components/pages/Dashboard.tsx"
+    ]
   },
-  "src/features/dashboard/components/DashboardView.tsx": {
-    "path": "src/features/dashboard/components/DashboardView.tsx",
-    "imports": [],
+  "src/features/dashboard/components/MetricCard.tsx": {
+    "path": "src/features/dashboard/components/MetricCard.tsx",
+    "imports": [
+      "src/shared/components/Card.tsx"
+    ],
+    "importedBy": [
+      "src/features/dashboard/DashboardPage.tsx"
+    ]
+  },
+  "src/features/dashboard/components/pages/Dashboard.tsx": {
+    "path": "src/features/dashboard/components/pages/Dashboard.tsx",
+    "imports": [
+      "src/features/dashboard/components/DashboardMetrics.tsx"
+    ],
     "importedBy": []
   },
   "src/features/dashboard/DashboardPage.tsx": {
     "path": "src/features/dashboard/DashboardPage.tsx",
     "imports": [
-      "src/shared/components/ui/Card.tsx",
-      "src/shared/components/ui/Skeleton.tsx"
+      "src/components/Layout.tsx",
+      "src/features/dashboard/components/MetricCard.tsx",
+      "src/features/history/components/ScanHistoryTable.tsx"
     ],
     "importedBy": [
       "src/App.tsx"
+    ]
+  },
+  "src/features/history/components/ScanHistoryTable.tsx": {
+    "path": "src/features/history/components/ScanHistoryTable.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/features/dashboard/DashboardPage.tsx"
+    ]
+  },
+  "src/features/reporting/components/ExportButton.tsx": {
+    "path": "src/features/reporting/components/ExportButton.tsx",
+    "imports": [
+      "src/shared/components/Button.tsx",
+      "src/features/reporting/services/exportService.ts"
+    ],
+    "importedBy": []
+  },
+  "src/features/reporting/services/exportService.ts": {
+    "path": "src/features/reporting/services/exportService.ts",
+    "imports": [],
+    "importedBy": [
+      "src/features/reporting/components/ExportButton.tsx"
     ]
   },
   "src/main.tsx": {
@@ -111,22 +177,20 @@
     ],
     "importedBy": []
   },
-  "src/shared/components/ui/Card.tsx": {
-    "path": "src/shared/components/ui/Card.tsx",
+  "src/shared/components/Button.tsx": {
+    "path": "src/shared/components/Button.tsx",
     "imports": [
-      "src/design-system/components/GlassCard.tsx"
+      "src/design-system/components/Button.tsx"
     ],
     "importedBy": [
-      "src/features/dashboard/DashboardPage.tsx"
+      "src/features/reporting/components/ExportButton.tsx"
     ]
   },
-  "src/shared/components/ui/Skeleton.tsx": {
-    "path": "src/shared/components/ui/Skeleton.tsx",
-    "imports": [
-      "src/design-system/components/Skeleton.tsx"
-    ],
+  "src/shared/components/Card.tsx": {
+    "path": "src/shared/components/Card.tsx",
+    "imports": [],
     "importedBy": [
-      "src/features/dashboard/DashboardPage.tsx"
+      "src/features/dashboard/components/MetricCard.tsx"
     ]
   },
   "src/utils/cn.ts": {

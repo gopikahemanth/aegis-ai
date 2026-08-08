@@ -770,7 +770,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         // Fix 1: ThemeContext/ThemeProvider not exported
         if (rel.toLowerCase().includes("theme") || rel.toLowerCase().includes("darkmode")) {
           if (!content.includes("ThemeProvider") && (content.includes("ThemeContext") || content.includes("createContext"))) {
-            content += `\nexport const ThemeProvider: React.FC<{ children: any }> = ({ children }) => <ThemeContext.Provider value={{ isDarkMode: true, toggleDarkMode: () => {}, isDark: true, toggle: () => {} } as any}>{children}</ThemeContext.Provider>;\nexport default ThemeProvider;\n`;
+            const hasDefault = content.includes("export default");
+            content += `\nexport const ThemeProvider: React.FC<{ children: any }> = ({ children }) => <ThemeContext.Provider value={{ isDarkMode: true, toggleDarkMode: () => {}, isDark: true, toggle: () => {} } as any}>{children}</ThemeContext.Provider>;\n${hasDefault ? "" : "export default ThemeProvider;\n"}`;
             changed = true;
           }
         }
@@ -787,7 +788,11 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         const hasDomainMismatch = spec.forbiddenPatterns.some(pat => content.includes(pat));
         if (!rel.endsWith(".d.ts") && (hasDomainMismatch || content.length < 100)) {
           const compName = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Dashboard";
-          content = DomainAwareFallbackGenerator.generateFallbackComponent(spec, compName, rel);
+          if (rel.toLowerCase().includes("context")) {
+            content = `import React, { createContext, useContext } from 'react';\nexport const ${compName} = createContext<any>({ isDarkMode: true, toggleDarkMode: () => {} });\nexport const ${compName}Provider: React.FC<{ children?: any }> = ({ children }) => <${compName}.Provider value={{ isDarkMode: true, toggleDarkMode: () => {} }}>{children}</${compName}.Provider>;\nexport default ${compName}Provider;\n`;
+          } else {
+            content = DomainAwareFallbackGenerator.generateFallbackComponent(spec, compName, rel);
+          }
           changed = true;
           fixed.push(`Replaced truncated/empty/mismatched stub in ${rel} with domain-aware fallback UI`);
         }

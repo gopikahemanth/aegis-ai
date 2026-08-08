@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "System user with authentication credentials",
+      "description": "Authenticated system user",
       "persistence": "database",
       "fields": [
         {
@@ -12,7 +12,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "UUID identifier"
+          "description": "Primary identifier"
         },
         {
           "name": "email",
@@ -30,22 +30,13 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Bcrypt hashed password"
-        },
-        {
-          "name": "resumes",
-          "type": "customType",
-          "isId": false,
-          "isNullable": true,
-          "isUnique": false,
-          "relationTo": "Resume",
-          "description": "List of uploaded resumes"
+          "description": "Encrypted credentials"
         }
       ]
     },
     {
-      "name": "Resume",
-      "description": "User uploaded PDF document metadata and extracted content",
+      "name": "AnalysisResult",
+      "description": "Stores the outcome of a resume-to-job matching session",
       "persistence": "database",
       "fields": [
         {
@@ -55,7 +46,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Resume ID"
+          "description": "Primary identifier"
         },
         {
           "name": "userId",
@@ -64,111 +55,16 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": "User",
-          "description": "Owner of the resume"
+          "description": "Owner of the analysis"
         },
         {
-          "name": "content",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Extracted raw text from PDF"
-        },
-        {
-          "name": "analysisResults",
-          "type": "customType",
-          "isId": false,
-          "isNullable": true,
-          "isUnique": false,
-          "relationTo": "AnalysisResult",
-          "description": "Associated analysis outcomes"
-        }
-      ]
-    },
-    {
-      "name": "JobDescription",
-      "description": "Target job description details",
-      "persistence": "database",
-      "fields": [
-        {
-          "name": "id",
-          "type": "string",
-          "isId": true,
-          "isNullable": false,
-          "isUnique": true,
-          "relationTo": null,
-          "description": "Job ID"
-        },
-        {
-          "name": "title",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Job role title"
-        },
-        {
-          "name": "content",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Job description body"
-        },
-        {
-          "name": "analysisResults",
-          "type": "customType",
-          "isId": false,
-          "isNullable": true,
-          "isUnique": false,
-          "relationTo": "AnalysisResult",
-          "description": "Associated analysis outcomes"
-        }
-      ]
-    },
-    {
-      "name": "AnalysisResult",
-      "description": "Final score and gap breakdown",
-      "persistence": "database",
-      "fields": [
-        {
-          "name": "id",
-          "type": "string",
-          "isId": true,
-          "isNullable": false,
-          "isUnique": true,
-          "relationTo": null,
-          "description": "Result ID"
-        },
-        {
-          "name": "resumeId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": "Resume",
-          "description": "Source resume"
-        },
-        {
-          "name": "jobDescriptionId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": "JobDescription",
-          "description": "Target job description"
-        },
-        {
-          "name": "score",
+          "name": "matchScore",
           "type": "number",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Calculated match percentage"
+          "description": "Percentage similarity"
         },
         {
           "name": "missingKeywords",
@@ -177,51 +73,74 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "JSON array of missing required skills"
+          "description": "List of missing skills"
         },
         {
-          "name": "presentKeywords",
-          "type": "Json",
+          "name": "resumeText",
+          "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "JSON array of matched skills"
+          "description": "Parsed resume content"
+        },
+        {
+          "name": "jobDescription",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Target job description"
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Timestamp"
         }
       ]
     }
   ],
-  "databaseSchema": "generator client { provider = \"prisma-client-js\" } datasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") } model User { id String @id @default(uuid()) email String @unique passwordHash String resumes Resume[] } model Resume { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) content String analysisResults AnalysisResult[] } model JobDescription { id String @id @default(uuid()) title String content String analysisResults AnalysisResult[] } model AnalysisResult { id String @id @default(uuid()) resumeId String resume Resume @relation(fields: [resumeId], references: [id]) jobDescriptionId String job JobDescription @relation(fields: [jobDescriptionId], references: [id]) score Float missingKeywords Json presentKeywords Json }",
+  "databaseSchema": "generator client { provider = \"prisma-client-js\" }\ndatasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") }\n\nmodel User {\n  id           String           @id @default(uuid())\n  email        String           @unique\n  passwordHash String\n  results      AnalysisResult[]\n}\n\nmodel AnalysisResult {\n  id              String   @id @default(uuid())\n  userId          String\n  user            User     @relation(fields: [userId], references: [id])\n  matchScore      Float\n  missingKeywords Json\n  resumeText      String\n  jobDescription  String\n  createdAt       DateTime @default(now())\n}",
   "apis": [
     {
       "path": "/api/v1/analyze",
       "method": "POST",
-      "description": "Perform gap analysis on uploaded resume and job description",
-      "requestBodySchema": "{ resumeId: string, jobDescriptionId: string }",
-      "responseBodySchema": "{ score: number, missing: string[], present: string[] }"
+      "description": "Upload resume, parse text, and perform semantic keyword matching",
+      "requestBodySchema": "{ \"resume\": \"File\", \"jobDescription\": \"string\" }",
+      "responseBodySchema": "{ \"id\": \"string\", \"score\": \"number\", \"missingKeywords\": \"string[]\" }"
     },
     {
-      "path": "/api/v1/resume/upload",
-      "method": "POST",
-      "description": "Upload PDF and parse content",
-      "requestBodySchema": "FormData (multipart/form-data)",
-      "responseBodySchema": "{ resumeId: string, extractedText: string }"
+      "path": "/api/v1/history",
+      "method": "GET",
+      "description": "Retrieve historical analysis results for the user",
+      "responseBodySchema": "AnalysisResult[]"
+    },
+    {
+      "path": "/api/v1/history/:id",
+      "method": "DELETE",
+      "description": "Delete a specific historical scan",
+      "responseBodySchema": "{ \"success\": \"boolean\" }"
     }
   ],
   "hooks": [
     {
-      "name": "useAnalysis",
+      "name": "useAnalyzeResume",
       "type": "mutation",
       "endpoint": "/api/v1/analyze",
-      "params": "resumeId: string, jobDescriptionId: string",
+      "params": "formData",
       "returns": "AnalysisResult"
     },
     {
-      "name": "useUploadResume",
-      "type": "mutation",
-      "endpoint": "/api/v1/resume/upload",
-      "params": "file: File",
-      "returns": "{ resumeId: string }"
+      "name": "useHistory",
+      "type": "query",
+      "endpoint": "/api/v1/history",
+      "params": "void",
+      "returns": "AnalysisResult[]"
     }
   ]
 }

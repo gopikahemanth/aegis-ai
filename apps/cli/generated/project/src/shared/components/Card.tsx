@@ -1,8 +1,5 @@
-import React from 'react';
-
-export const Card = (props: any) => (
-  <div className={`bg-white border border-slate-200 rounded-lg shadow-sm p-6 ${className}`}>
-    {children}
-  </div>
-);
-export default Card;
+import * as Mod from '../../design-system/components/GlassCard';
+export * from '../../design-system/components/GlassCard';
+const _default = (Mod as any).default || Mod;
+export const Card = _default;
+export default _default;

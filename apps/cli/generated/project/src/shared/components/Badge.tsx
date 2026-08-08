@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function AnimatedMatchScoreGauge(props: any) {
+export default function Badge(props: any) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   
@@ -76,4 +76,4 @@ export default function AnimatedMatchScoreGauge(props: any) {
   );
 }
 
-export { AnimatedMatchScoreGauge };
+export { Badge };

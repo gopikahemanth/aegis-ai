@@ -8,22 +8,21 @@ export class ProjectPathResolver {
     // Remove leading ./ or ../ prefixes
     normalizedTarget = normalizedTarget.replace(/^(\.\/|\.\.\/)+/, "");
 
+    // Hard Assertion: Check for duplicate project root artifact
+    if (normalizedTarget.includes("generated/project/generated/project") || normalizedTarget.includes("generated\\project\\generated\\project")) {
+      console.warn(`[ProjectPathGuard] ⚠️ DUPLICATE PROJECT ROOT DETECTED in targetPath: "${targetPath}". Cleaning up...`);
+      normalizedTarget = normalizedTarget.replace("generated/project/generated/project", "generated/project");
+      normalizedTarget = normalizedTarget.replace("generated\\project\\generated\\project", "generated\\project");
+    }
+
+    // Strip leading "generated/project/" if projectRoot already ends with "generated/project"
+    if (normalizedRoot.endsWith("generated/project") && normalizedTarget.startsWith("generated/project/")) {
+      normalizedTarget = normalizedTarget.replace(/^generated\/project\//, "");
+    }
+
     // 1. If targetPath already starts with normalizedRoot, return as-is
     if (normalizedTarget.startsWith(normalizedRoot)) {
       return normalizedTarget;
-    }
-
-    // 2. Handle duplicated "generated/project/generated/project" path artifact
-    if (normalizedTarget.includes("generated/project/generated/project")) {
-      normalizedTarget = normalizedTarget.replace("generated/project/generated/project", "generated/project");
-      if (normalizedTarget.startsWith(normalizedRoot)) {
-        return normalizedTarget;
-      }
-    }
-
-    // 3. Handle relative "generated/project/..." when projectRoot already ends with "generated/project"
-    if (normalizedRoot.endsWith("generated/project") && normalizedTarget.startsWith("generated/project/")) {
-      normalizedTarget = normalizedTarget.replace(/^generated\/project\//, "");
     }
 
     if (isAbsolute(normalizedTarget)) {

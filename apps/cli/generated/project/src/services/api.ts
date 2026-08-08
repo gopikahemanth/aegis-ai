@@ -1,17 +1,11 @@
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
+export const api = {
+  async getAll() { return []; },
+  async getById(id: string | number) { return { id }; },
+  async create(data: any) { return { id: Date.now(), ...data }; },
+  async update(id: string | number, data: any) { return { id, ...data }; },
+  async delete(id: string | number) { return true; }
+};
 export default api;
-export { api };
 
 export const getAll = async (...args: any[]) => [];
 export const get = async (...args: any[]) => ({});

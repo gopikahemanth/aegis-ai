@@ -1,47 +1,41 @@
 import { Request, Response } from 'express';
-import { prisma } from '../lib/prisma';
-import { extractTextFromPDF } from '../services/pdfExtractor';
-import { analyzeKeywords } from '../services/nlpProcessor';
-import { calculateScore } from '../services/scoreCalculator';
+import { PrismaClient } from '@prisma/client';
+import { ResumeParserService } from '../services/ResumeParserService';
+import { KeywordMatcherEngine } from '../services/KeywordMatcherEngine';
 
-export const analyzeResume = async (req: Request, res: Response) => {
-  const { jobDescription } = req.body;
-  const file = req.file;
+const prisma = new PrismaClient();
 
-  if (!file || !jobDescription) {
-    return res.status(400).json({ error: 'Missing file or job description' });
-  }
+export class AnalysisController {
+  public static async createAnalysis(req: Request, res: Response) {
+    try {
+      const { jobDescriptionText, userId } = req.body;
+      
+      if (!req.file || !jobDescriptionText) {
+        return res.status(400).json({ error: 'Missing file or job description' });
+      }
 
-  try {
-    // 1. Parse
-    const rawText = await extractTextFromPDF(file.buffer);
-    
-    // 2. Analyze
-    const { skills, density } = await analyzeKeywords(rawText, jobDescription);
-    
-    // 3. Score
-    const { score, missing } = calculateScore(skills, jobDescription);
+      // 1. Parse Resume
+      const parsedResume = await ResumeParserService.parsePDFBuffer(req.file.buffer);
+      
+      // 2. Compute Match
+      const matchData = KeywordMatcherEngine.calculateMatch(
+        parsedResume.text, 
+        jobDescriptionText
+      );
 
-    // 4. Persist
-    const result = await prisma.resume.create({
-      data: {
-        userId: req.user.id,
-        fileName: file.originalname,
-        rawContent: rawText,
-        parsedSkills: skills,
-        analysis: {
-          create: {
-            score,
-            missingSkills: missing,
-            keywordDensity: density as any
-          }
+      // 3. Persist Result
+      const result = await prisma.analysisResult.create({
+        data: {
+          userId,
+          matchScore: matchData.score,
+          matchedKeywords: matchData.matchedKeywords,
+          missingKeywords: matchData.missingKeywords,
         }
-      },
-      include: { analysis: true }
-    });
+      });
 
-    res.json(result);
-  } catch (error) {
-    res.json([]);
+      res.status(201).json(result);
+    } catch (error) {
+      res.json([]);
+    }
   }
-};
+}

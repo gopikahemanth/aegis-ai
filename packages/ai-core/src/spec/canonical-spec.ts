@@ -33,7 +33,9 @@ export class SpecificationNormalizer {
 
     // 1. Detect Domain Category
     let domainCategory: CanonicalProjectSpecification["domainCategory"] = "general-dashboard";
-    if (promptLower.includes("workout") || promptLower.includes("fitness") || promptLower.includes("gym") || promptLower.includes("exercise")) {
+    if (promptLower.includes("resume") || promptLower.includes("cv") || promptLower.includes("keyword scanner") || promptLower.includes("match score")) {
+      domainCategory = "resume-scanner" as any;
+    } else if (promptLower.includes("workout") || promptLower.includes("fitness") || promptLower.includes("gym") || promptLower.includes("exercise")) {
       domainCategory = "workout-fitness";
     } else if (promptLower.includes("expense") || promptLower.includes("spending") || promptLower.includes("budget") || promptLower.includes("transaction") || promptLower.includes("finance")) {
       domainCategory = "expense-tracker";
@@ -109,6 +111,16 @@ export class SpecificationNormalizer {
     domainCategory: string
   ): DomainVocabulary {
     switch (domainCategory) {
+      case "resume-scanner": {
+        return {
+          entityName: "ResumeScan",
+          entityPlural: "ResumeScans",
+          primaryMetrics: ["Match Score", "Matched Keywords", "Missing Skills Count"],
+          actionVerbs: ["Upload Resume", "Upload Job Description", "Analyze Match", "Export Report"],
+          domainPrefix: "scan"
+        };
+      }
+
       case "expense-tracker": {
         const primaryMetrics: string[] = [];
         if (promptLower.includes("income") || promptLower.includes("revenue")) primaryMetrics.push("Total Income");

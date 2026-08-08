@@ -6,6 +6,7 @@ import { ArchitectureAuditor } from "../../governance/architecture-auditor.js";
 import { ArchitectureDiff } from "../../governance/architecture-diff.js";
 import { PlannerArchitectureGuard } from "../../governance/planner-guard.js";
 import { ArchitectureContractNormalizer } from "../../governance/contract-normalizer.js";
+import { SpecificationNormalizer } from "../../spec/canonical-spec.js";
 import { FastDeterministicSanitizer } from "../../governance/fast-sanitizer.js";
 import { ProjectPathResolver } from "../../utils/path-resolver.js";
 import { DefinitionOfDone } from "../../validation/definition-of-done.js";
@@ -295,5 +296,16 @@ describe("Architecture Drift Governance Suite", () => {
     expect(() => {
       ProjectPathResolver.resolveProjectFile(testDir, "generated/project/generated/project/server/index.ts");
     }).toThrow();
+  });
+
+  it("TEST 25: ArchitectureResolver enforces User Prompt precedence (Next.js + PostgreSQL + Prisma)", () => {
+    const prompt = "Build a Next.js 14 app with PostgreSQL and Prisma for resume keyword scanning.";
+    const rawSpec = { name: "app", type: "fullstack", frontend: "React-Vite", database: "MongoDB" };
+    const canonical = SpecificationNormalizer.normalize(prompt, rawSpec as any);
+    const contract = ArchitectureResolver.resolve(prompt, rawSpec as any, canonical);
+
+    expect(contract.frontend.framework).toBe("Next.js");
+    expect(contract.database.provider).toBe("PostgreSQL");
+    expect(contract.database.orm).toBe("Prisma");
   });
 });

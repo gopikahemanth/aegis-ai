@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "System users for history tracking",
+      "description": "Authenticated system user",
       "persistence": "database",
       "fields": [
         {
@@ -12,7 +12,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Unique identifier"
+          "description": "Primary identifier"
         },
         {
           "name": "email",
@@ -21,7 +21,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "User email address"
+          "description": "User login email"
         },
         {
           "name": "password",
@@ -31,21 +31,12 @@
           "isUnique": false,
           "relationTo": null,
           "description": "Hashed password"
-        },
-        {
-          "name": "createdAt",
-          "type": "DateTime",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Creation timestamp"
         }
       ]
     },
     {
-      "name": "AnalysisReport",
-      "description": "Stores final analysis results",
+      "name": "ScanResult",
+      "description": "Historical record of a resume analysis",
       "persistence": "database",
       "fields": [
         {
@@ -55,7 +46,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Unique identifier"
+          "description": "Primary identifier"
         },
         {
           "name": "userId",
@@ -64,7 +55,7 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": "User",
-          "description": "Owner of the report"
+          "description": "Owner of the scan"
         },
         {
           "name": "matchScore",
@@ -73,34 +64,25 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Calculated percentage"
+          "description": "Calculated percentage score"
         },
         {
-          "name": "resumeText",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Raw resume text"
-        },
-        {
-          "name": "jobDescriptionText",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Raw JD text"
-        },
-        {
-          "name": "skillGaps",
+          "name": "matchedKeywords",
           "type": "Json",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Structured JSON of missing skills"
+          "description": "Array of strings found in both"
+        },
+        {
+          "name": "missingKeywords",
+          "type": "Json",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Array of missing required skills"
         },
         {
           "name": "createdAt",
@@ -109,49 +91,41 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Analysis timestamp"
+          "description": "Timestamp"
         }
       ]
     }
   ],
-  "databaseSchema": "model User { id String @id @default(uuid()) email String @unique password String createdAt DateTime @default(now()) reports AnalysisReport[] } model AnalysisReport { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) matchScore Float resumeText String jobDescriptionText String skillGaps Json createdAt DateTime @default(now()) }",
+  "databaseSchema": "generator client { provider = \"prisma-client-js\" } datasource db { provider = \"sqlite\" url = \"file:./dev.db\" } model User { id String @id @default(uuid()) email String @unique password String scans ScanResult[] } model ScanResult { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) matchScore Float matchedKeywords String missingKeywords String createdAt DateTime @default(now()) }",
   "apis": [
     {
-      "path": "/api/v1/auth/register",
+      "path": "/api/v1/scan",
       "method": "POST",
-      "description": "Registers new user",
-      "requestBodySchema": "{ email: string, password: string }",
-      "responseBodySchema": "{ userId: string, token: string }"
+      "description": "Uploads files and triggers the analysis engine",
+      "requestBodySchema": "FormData: { resume: File, jobDescription: string }",
+      "responseBodySchema": "{ id: string, matchScore: number, matchedKeywords: string[], missingKeywords: string[] }"
     },
     {
-      "path": "/api/v1/analysis",
-      "method": "POST",
-      "description": "Uploads data and performs NLP analysis",
-      "requestBodySchema": "{ resumeFile: File, jobDescription: string }",
-      "responseBodySchema": "{ reportId: string, matchScore: number, skillGaps: any }"
-    },
-    {
-      "path": "/api/v1/analysis/history",
+      "path": "/api/v1/history",
       "method": "GET",
-      "description": "Fetches user analysis reports",
-      "requestBodySchema": "null",
-      "responseBodySchema": "AnalysisReport[]"
+      "description": "Retrieves historical scan results for current user",
+      "responseBodySchema": "ScanResult[]"
     }
   ],
   "hooks": [
     {
-      "name": "useAnalysisHistory",
-      "type": "query",
-      "endpoint": "/api/v1/analysis/history",
-      "params": "void",
-      "returns": "AnalysisReport[]"
+      "name": "useAnalyzeResume",
+      "type": "mutation",
+      "endpoint": "/api/v1/scan",
+      "params": "formData: FormData",
+      "returns": "ScanResult"
     },
     {
-      "name": "usePerformAnalysis",
-      "type": "mutation",
-      "endpoint": "/api/v1/analysis",
-      "params": "formData: FormData",
-      "returns": "{ reportId: string, matchScore: number }"
+      "name": "useScanHistory",
+      "type": "query",
+      "endpoint": "/api/v1/history",
+      "params": "none",
+      "returns": "ScanResult[]"
     }
   ]
 }

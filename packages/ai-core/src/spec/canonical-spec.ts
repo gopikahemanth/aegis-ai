@@ -49,27 +49,31 @@ export class SpecificationNormalizer {
       domainCategory = "blog";
     }
 
-    // 2. Lock Stack based on explicit user directives
-    let frontend = rawSpec.frontend || "React";
-    if (promptLower.includes("react")) frontend = "React";
+    // 2. Lock Stack based on explicit user directives (Prompt > Spec > Defaults)
+    let frontend = "React-Vite";
     if (promptLower.includes("next.js") || promptLower.includes("nextjs")) frontend = "Next.js";
-    if (promptLower.includes("vite")) frontend = "React-Vite";
+    else if (promptLower.includes("vite") || promptLower.includes("react")) frontend = "React-Vite";
+    else if (rawSpec.frontend) frontend = rawSpec.frontend;
 
-    let backend = rawSpec.backend || "Express";
-    if (promptLower.includes("express")) backend = "Express";
+    let backend = "Express";
     if (promptLower.includes("next.js api") || promptLower.includes("next api")) backend = "Next.js API Routes";
+    else if (promptLower.includes("express")) backend = "Express";
+    else if (rawSpec.backend) backend = rawSpec.backend;
 
-    let database = rawSpec.database || "SQLite";
-    if (promptLower.includes("sqlite")) database = "SQLite";
+    let database = "PostgreSQL";
     if (promptLower.includes("postgres") || promptLower.includes("postgresql")) database = "PostgreSQL";
+    else if (promptLower.includes("mongo") || promptLower.includes("mongodb")) database = "MongoDB";
+    else if (promptLower.includes("sqlite")) database = "SQLite";
+    else if (rawSpec.database) database = rawSpec.database;
 
     let orm = "Prisma";
-    if (promptLower.includes("prisma")) orm = "Prisma";
     if (promptLower.includes("drizzle")) orm = "Drizzle";
+    else if (promptLower.includes("mongoose")) orm = "Mongoose";
+    else if (promptLower.includes("prisma")) orm = "Prisma";
 
-    let auth = rawSpec.auth || "JWT";
-    if (promptLower.includes("jwt")) auth = "JWT";
-    if (promptLower.includes("nextauth")) auth = "NextAuth.js";
+    let auth = "JWT";
+    if (promptLower.includes("nextauth") || promptLower.includes("next-auth")) auth = "NextAuth.js";
+    else if (promptLower.includes("jwt")) auth = "JWT";
 
     // 3. Define Forbidden Domain Patterns
     const forbiddenPatterns: string[] = [];

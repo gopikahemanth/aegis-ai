@@ -1,10 +1,10 @@
 {
-  "contractId": "req_1786204395019",
-  "lockedAt": "2026-08-08T15:53:15.019Z",
+  "contractId": "req_1786205179015",
+  "lockedAt": "2026-08-08T16:06:19.016Z",
   "stack": {
     "frontend": "React",
     "backend": "Express",
-    "database": "postgresql",
+    "database": "mongodb",
     "orm": "Prisma",
     "auth": "JWT",
     "language": "TypeScript",
@@ -12,22 +12,21 @@
     "packageManager": "pnpm"
   },
   "features": [
-    "pdf-parsing-engine",
-    "nlp-module",
-    "interactive-analysis-dashboard",
-    "user-history-persistence",
+    "parser",
+    "analyzer",
+    "dashboard",
+    "history",
     "auth"
   ],
   "userFlows": [
     "upload-resume-and-job-description",
-    "perform-semantic-analysis",
-    "view-match-dashboard",
-    "manage-analysis-history"
+    "parse-and-analyze-content",
+    "view-match-results-dashboard",
+    "track-scan-history-over-time"
   ],
   "dataModels": [
     "User",
-    "AnalysisReport",
-    "SkillGap",
+    "ScanResult",
     "Resume",
     "JobDescription"
   ],

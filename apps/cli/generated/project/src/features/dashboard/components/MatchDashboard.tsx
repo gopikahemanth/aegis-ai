@@ -1,36 +1,42 @@
 import React, { useMemo } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { Card } from '../../../shared/components/Card';
+import { ProgressBar } from '../../../shared/components/ProgressBar';
 
-interface Props {
+interface MatchDashboardProps {
+  className?: string;
+  children?: any;
+  onClick?: any;
+  [key: string]: any;
+
   score: number;
+  matched: string[];
+  missing: string[];
 }
 
-export const MatchDashboard: React.FC<any> = ({ score }) => {
-  const data = useMemo(() => [
-    { name: 'Match', value: score },
-    { name: 'Gap', value: 100 - score }
-  ], [score]);
-
+export const MatchDashboard: React.FC<any> = ({ score, matched, missing }) => {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl">
-      <h2 className="text-lg font-semibold text-zinc-100 mb-4">Analysis Result</h2>
-      <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie data={data} innerRadius={60} outerRadius={80} dataKey="value">
-              <Cell fill="#8b5cf6" />
-              <Cell fill="#27272a" />
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="text-center">
-        <span className="text-4xl font-bold text-violet-500">{score}%</span>
-        <p className="text-zinc-400 text-sm mt-1">Match Score</p>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <Card title="Match Score">
+        <div className="flex flex-col gap-4">
+          <div className="text-4xl font-bold text-violet-500">{score}%</div>
+          <ProgressBar value={score} max={100} />
+        </div>
+      </Card>
+      <div className="grid grid-cols-2 gap-4">
+        <Card title="Matched Skills">
+          <ul className="text-sm text-zinc-400 space-y-1">
+            {matched.slice(0, 5).map(k => <li key={k}>✓ {k}</li>)}
+          </ul>
+        </Card>
+        <Card title="Missing Skills">
+          <ul className="text-sm text-red-400 space-y-1">
+            {missing.slice(0, 5).map(k => <li key={k}>× {k}</li>)}
+          </ul>
+        </Card>
       </div>
     </div>
   );
 };
 export default MatchDashboard;
 
-export type { Props };
+export type { MatchDashboardProps };

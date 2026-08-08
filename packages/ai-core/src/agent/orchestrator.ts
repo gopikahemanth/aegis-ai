@@ -1105,6 +1105,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
           let repairedFiles = this.parser.parse(repairResponse);
           if (repairedFiles.length === 0) {
+            // Fallback 1: JSON repair schema
             try {
               const jsonMatch = repairResponse.match(/\{[\s\S]*"repairs"[\s\S]*\}/);
               if (jsonMatch) {
@@ -1117,6 +1118,19 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
                 }
               }
             } catch {}
+
+            // Fallback 2: Markdown header formats like **File: `src/path.tsx`** or File: src/path.tsx
+            if (repairedFiles.length === 0) {
+              const fileHeaderRegex = /(?:\*{0,2}File:\s*`?([a-zA-Z0-9_\-\/\\\.]+?)`?\*{0,2})[\s\S]*?```(?:tsx|ts|jsx|js)?[\r\n]+([\s\S]*?)```/gi;
+              let match: RegExpExecArray | null;
+              while ((match = fileHeaderRegex.exec(repairResponse)) !== null) {
+                const filePath = match[1].trim();
+                const fileContent = match[2].trim();
+                if (filePath && fileContent) {
+                  repairedFiles.push({ path: filePath, content: fileContent });
+                }
+              }
+            }
           }
 
           if (repairedFiles.length > 0) {

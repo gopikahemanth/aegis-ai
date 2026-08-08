@@ -3,24 +3,34 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  email     String   @unique
-  password  String
-  scans     Scan[]
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  resumes      Resume[]
+  createdAt    DateTime @default(now())
 }
 
-model Scan {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId       String   @db.ObjectId
-  user         User     @relation(fields: [userId], references: [id])
-  matchScore   Int
-  matchedSkills String[]
-  missingSkills String[]
-  createdAt    DateTime @default(now())
+model Resume {
+  id              String           @id @default(uuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  rawContent      String
+  parsedSkills    String[]
+  analysisResults AnalysisResult[]
+  createdAt       DateTime         @default(now())
+}
+
+model AnalysisResult {
+  id              String   @id @default(uuid())
+  resumeId        String
+  resume          Resume   @relation(fields: [resumeId], references: [id])
+  score           Int
+  missingSkills   String[]
+  keywordDensity  Json
+  createdAt       DateTime @default(now())
 }

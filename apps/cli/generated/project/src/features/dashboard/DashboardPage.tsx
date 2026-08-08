@@ -1,44 +1,36 @@
 import React, { Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Layout } from '../../shared/components/Layout';
-import { ScoreGauge } from '../../shared/components/ScoreGauge';
+import { AnimatedMatchScoreGauge } from '../../components/AnimatedMatchScoreGauge';
 
-const DashboardPage: React.FC<any> = () => {
+export default function DashboardPage(props: any) {
+  const { data: history, isLoading } = useQuery({
+    queryKey: ['resume-history'],
+    queryFn: () => fetch('/api/resumes').then(res => res.json())
+  });
+
+  if (isLoading) return <div className="animate-pulse space-y-4" />;
+
   return (
-    <Layout>
-      <div className="p-8 max-w-7xl mx-auto">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">Analysis Overview</h1>
-          <p className="text-slate-500">Track your career alignment and skill gap trends.</p>
-        </header>
+    <div className="max-w-7xl mx-auto p-8 space-y-8">
+      <header>
+        <h1 className="text-3xl font-bold text-slate-900">Your Resume Insights</h1>
+      </header>
 
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {history?.map((item: any) => (
           <motion.div 
+            key={item.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm"
+            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"
           >
-            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Total Scans</h3>
-            <p className="text-4xl font-bold mt-2 text-indigo-600">12</p>
+            <h3 className="font-semibold">{item.fileName}</h3>
+            <AnimatedMatchScoreGauge score={item.analysis.score} />
           </motion.div>
-          
-          <div className="md:col-span-2 p-6 bg-white border border-slate-200 rounded-xl shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Latest Match Score</h3>
-            <ScoreGauge score={78} />
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-             {/* DataTable implementation here */}
-             <div className="p-8 text-center text-slate-500">No recent scan history available.</div>
-          </div>
-        </section>
-      </div>
-    </Layout>
+        ))}
+      </section>
+    </div>
   );
-};
-
-export default DashboardPage;
+}
 export { DashboardPage };

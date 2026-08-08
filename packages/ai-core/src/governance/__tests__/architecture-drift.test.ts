@@ -7,6 +7,7 @@ import { ArchitectureDiff } from "../../governance/architecture-diff.js";
 import { PlannerArchitectureGuard } from "../../governance/planner-guard.js";
 import { ArchitectureContractNormalizer } from "../../governance/contract-normalizer.js";
 import { FastDeterministicSanitizer } from "../../governance/fast-sanitizer.js";
+import { ProjectPathResolver } from "../../utils/path-resolver.js";
 import { DefinitionOfDone } from "../../validation/definition-of-done.js";
 import { TransactionalRepairSystem } from "../../healing/transactional-repair.js";
 import { ValidationContextManager } from "../../validation/validation-context.js";
@@ -267,5 +268,16 @@ describe("Architecture Drift Governance Suite", () => {
 
     const glassCode = readFileSync(join(testDir, "src", "GlassCard.tsx"), "utf8");
     expect(glassCode).not.toContain('React.FC<any>>');
+  });
+
+  it("TEST 22: ProjectPathResolver.resolveProjectFile eliminates generated/project path duplication", () => {
+    const root = "C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/apps/cli/generated/project";
+    const path1 = ProjectPathResolver.resolveProjectFile(root, "server/index.ts");
+    const path2 = ProjectPathResolver.resolveProjectFile(root, "C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/apps/cli/generated/project/server/index.ts");
+    const path3 = ProjectPathResolver.resolveProjectFile(root, "generated/project/server/index.ts");
+
+    expect(path1).toBe("C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/apps/cli/generated/project/server/index.ts");
+    expect(path2).toBe("C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/apps/cli/generated/project/server/index.ts");
+    expect(path3).toBe("C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/apps/cli/generated/project/server/index.ts");
   });
 });

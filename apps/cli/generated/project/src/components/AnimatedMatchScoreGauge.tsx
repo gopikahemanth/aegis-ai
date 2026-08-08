@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Layout() {
+export default function AnimatedMatchScoreGauge(props: any) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   
@@ -75,3 +75,5 @@ export default function Layout() {
     </div>
   );
 }
+
+export { AnimatedMatchScoreGauge };

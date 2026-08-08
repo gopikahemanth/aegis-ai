@@ -668,32 +668,21 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         } catch {}
       }
 
-      if (!schema.includes("datasource db")) {
-        const defaultProvider = allowSqliteFallback ? "sqlite" : "postgresql";
-        const defaultUrl = allowSqliteFallback ? '"file:./dev.db"' : 'env("DATABASE_URL")';
-        schema = `datasource db {\n  provider = "${defaultProvider}"\n  url      = ${defaultUrl}\n}\n\n` + schema;
-        schemaModified = true;
-        patches.push(`Added missing ${defaultProvider} datasource block to Prisma schema`);
-      }
-      if (allowSqliteFallback && (schema.includes('provider = "postgresql"') || schema.includes("provider = 'postgresql'"))) {
-        schema = schema.replace(/provider\s*=\s*["']postgresql["']/g, 'provider = "sqlite"');
-        schema = schema.replace(/url\s*=\s*env\("DATABASE_URL"\)/g, 'url = "file:./dev.db"');
-        schemaModified = true;
-        patches.push("Converted Prisma schema to local SQLite (provider = 'sqlite')");
+      let dbProvider = "postgresql";
+      const archContractPath = join(dir, ".aegis", "architecture-contract.json");
+      if (existsSync(archContractPath)) {
+        try {
+          const arch = JSON.parse(readFileSync(archContractPath, "utf8"));
+          dbProvider = (arch.database?.provider || "postgresql").toLowerCase();
+        } catch {}
       }
 
-      // Fix 19: Missing Prisma model stubs when referenced in relations (TS error P1012)
-      if (schema.includes("Transaction[]") && !schema.includes("model Transaction")) {
-        schema += `\nmodel Transaction {\n  id String @id @default(uuid())\n  description String\n  amount Float\n  category String\n  date DateTime @default(now())\n  userId String\n  user User @relation(fields: [userId], references: [id], onDelete: Cascade)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n`;
+      if (!schema.includes("datasource db")) {
+        const defaultUrl = dbProvider.includes("mongo") ? 'env("DATABASE_URL")' : dbProvider.includes("sqlite") ? '"file:./dev.db"' : 'env("DATABASE_URL")';
+        const prismaProvider = dbProvider.includes("mongo") ? "mongodb" : dbProvider.includes("sqlite") ? "sqlite" : "postgresql";
+        schema = `datasource db {\n  provider = "${prismaProvider}"\n  url      = ${defaultUrl}\n}\n\n` + schema;
         schemaModified = true;
-      }
-      if (schema.includes("Budget[]") && !schema.includes("model Budget")) {
-        schema += `\nmodel Budget {\n  id String @id @default(uuid())\n  category String\n  amount Float\n  period String @default("monthly")\n  userId String\n  user User @relation(fields: [userId], references: [id], onDelete: Cascade)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n`;
-        schemaModified = true;
-      }
-      if (schema.includes("Category[]") && !schema.includes("model Category")) {
-        schema += `\nmodel Category {\n  id String @id @default(uuid())\n  name String\n  color String?\n  userId String\n  user User @relation(fields: [userId], references: [id], onDelete: Cascade)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n`;
-        schemaModified = true;
+        patches.push(`Added missing ${prismaProvider} datasource block to Prisma schema`);
       }
 
       if (schemaModified) {
@@ -702,8 +691,13 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
       const envPath = join(dir, ".env");
       if (!existsSync(envPath)) {
-        writeFileSync(envPath, 'PORT=5000\nDATABASE_URL="file:./dev.db"\n', "utf8");
-        patches.push("Created default .env file with local SQLite DATABASE_URL");
+        const defaultDbUrl = dbProvider.includes("mongo")
+          ? 'mongodb://localhost:27017/aegis_app'
+          : dbProvider.includes("sqlite")
+          ? 'file:./dev.db'
+          : 'postgresql://postgres:postgres@localhost:5432/aegis_app';
+        writeFileSync(envPath, `PORT=5000\nDATABASE_URL="${defaultDbUrl}"\n`, "utf8");
+        patches.push(`Created .env file with canonical ${dbProvider} DATABASE_URL`);
       }
 
       // Remove conflicting Prisma 7 prisma.config.ts if present so Prisma 6 operates cleanly

@@ -915,16 +915,16 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         // Fix 13.11: Dual export shim for React components, entities, & types (TS2614 / TS2652) - Frontend ONLY
         const baseComp = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "";
         const isFrontend = rel.startsWith("src/") || rel.startsWith("src\\");
-        if (isFrontend && baseComp && /^[A-Z]/.test(baseComp)) {
-          const hasExplicitDefault = content.includes("export default");
-          const hasNamedExport = new RegExp(`export\\s+(const|let|var|function|class|type|interface|enum)\\s+${baseComp}\\b`).test(content) && !new RegExp(`export\\s+default\\s+(function|class)\\s+${baseComp}\\b`).test(content);
+        if (isFrontend && baseComp && /^[A-Z]/.test(baseComp) && !rel.endsWith(".d.ts")) {
+          const hasDefault = content.includes("export default");
+          const hasNamedExport = new RegExp(`export\\s+(const|let|var|function|class|type|interface|enum)\\s+${baseComp}\\b`).test(content) || content.includes(`export { ${baseComp}`);
 
-          if (hasExplicitDefault && !hasNamedExport && !content.includes(`export { ${baseComp} }`)) {
-            content += `\nexport { ${baseComp} };\n`;
+          if (!hasNamedExport) {
+            content += `\ntry { (globalThis as any).${baseComp} = ${baseComp}; } catch {}\nexport { ${baseComp} };\n`;
             changed = true;
           }
-          if (hasNamedExport && !hasExplicitDefault && !content.includes(`_compDef_${baseComp}`)) {
-            content += `\nconst _compDef_${baseComp}: any = (props: any) => <div className="${baseComp.toLowerCase()}-shim" {...props}>{props?.children}</div>;\nexport default _compDef_${baseComp};\n`;
+          if (!hasDefault) {
+            content += `\nconst _default_${baseComp} = typeof ${baseComp} !== 'undefined' ? ${baseComp} : ((props: any) => <div className="${baseComp.toLowerCase()}-shim" {...props}>{props?.children}</div>);\nexport default _default_${baseComp};\n`;
             changed = true;
           }
         }

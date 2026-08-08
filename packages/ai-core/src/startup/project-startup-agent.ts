@@ -807,6 +807,17 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
+        // Fix 37: Ensure vite.config.ts configures path alias "@" -> path.resolve(__dirname, "./src")
+        if (rel === "vite.config.ts" || rel.endsWith("/vite.config.ts")) {
+          if (!content.includes("resolve:") || !content.includes("@")) {
+            if (!content.includes("import path from 'path';") && !content.includes('import path from "path";')) {
+              content = `import path from "path";\n` + content;
+            }
+            content = content.replace(/(defineConfig\(\{)/, `$1\n  resolve: {\n    alias: {\n      "@": path.resolve(__dirname, "./src"),\n    },\n  },`);
+            changed = true;
+          }
+        }
+
         // Fix 1: ThemeContext/ThemeProvider not exported
         if (rel.toLowerCase().includes("theme") || rel.toLowerCase().includes("darkmode")) {
           if (!content.includes("ThemeProvider") && (content.includes("ThemeContext") || content.includes("createContext"))) {

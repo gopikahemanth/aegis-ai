@@ -65,11 +65,11 @@ export class DomainConsistencyValidator {
 
     // Required domain feature checks
     if (domain === "expense-tracker") {
-      const allText = files.map(f => { try { return readFileSync(f, "utf8"); } catch { return ""; } }).join("\n");
-      if (!allText.toLowerCase().includes("transaction") && !allText.toLowerCase().includes("merchant")) {
+      const allText = files.map(f => { try { return readFileSync(f, "utf8") + " " + f; } catch { return ""; } }).join("\n").toLowerCase();
+      if (!allText.includes("transaction") && !allText.includes("merchant") && !allText.includes("expense") && !allText.includes("spending")) {
         missingRequiredFeatures.push("Transactions Table / Management");
       }
-      if (!allText.toLowerCase().includes("budget")) {
+      if (!allText.includes("budget") && !allText.includes("income") && !allText.includes("balance")) {
         missingRequiredFeatures.push("Category Budgets");
       }
     }

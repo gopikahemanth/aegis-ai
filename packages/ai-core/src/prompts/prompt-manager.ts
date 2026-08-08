@@ -42,7 +42,14 @@ Return ONLY valid JSON matching this schema exactly — no extra text, no markdo
   "dataModels": string[],
   "featureDescriptions": { [featureName: string]: string },
   "auth": string | null,
-  "deployment": string | null
+  "deployment": string | null,
+  "domainVocabulary": {
+    "entityName": string,
+    "entityPlural": string,
+    "primaryMetrics": string[],
+    "actionVerbs": string[],
+    "domainPrefix": string
+  }
 }
 
 Rules for each field:
@@ -53,6 +60,12 @@ Rules for each field:
 - "featureDescriptions": One sentence per feature describing what it does and what files it needs.
 - "auth": Authentication strategy inferred from the request (e.g. "JWT", "OAuth2", "session", "none").
 - "deployment": Deployment target inferred from the request (e.g. "vercel", "docker", "railway", "none").
+- "domainVocabulary": Extract the real domain-specific vocabulary from the user request:
+    - "entityName": The singular noun for the primary data entity (e.g. "Transaction", "Task", "Workout", "Product").
+    - "entityPlural": The plural form (e.g. "Transactions", "Tasks", "Workouts").
+    - "primaryMetrics": REAL metric names for KPI cards, derived from the domain (e.g. ["Total Expenses", "Monthly Budget", "Remaining Balance"] NOT ["Total Activity Volume", "Goal Metric"]).
+    - "actionVerbs": Domain-specific CTA labels (e.g. ["Add Expense", "Edit", "Export CSV"] NOT ["Submit", "Process", "Execute"]).
+    - "domainPrefix": Lowercase prefix for CSS/routes (e.g. "expense", "task", "workout").
 
 Never output markdown backticks or extra text. Return only the raw JSON object.`;
   }
@@ -317,6 +330,31 @@ Before writing the final output, mentally verify each page against these:
 ═══════════════════════════════════════════════════════
 NO MOCK DATA POLICY — STRICTLY ENFORCED
 ═══════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════
+DOMAIN CONSISTENCY — NON-NEGOTIABLE
+═══════════════════════════════════════════════════════
+Every UI label, KPI card title, metric name, table column header, page title,
+button label, and chart title MUST use the exact domain vocabulary from the user's request.
+
+FORBIDDEN — Generic AI placeholder labels (will cause build rejection):
+  ✗ "Total Activity Volume"     → use "Total Expenses" / "Total Workouts" / "Total Tasks"
+  ✗ "Target Goal Metric"        → use "Monthly Budget" / "Daily Goal" / "Target Weight"
+  ✗ "Performance Compliance"    → use "Budget Compliance" / "Goal Achievement" / "Completion Rate"
+  ✗ "Activity Overview"         → use the actual domain name (e.g. "Expense Overview", "Workout Summary")
+  ✗ "2,450 Units" as a value    → use actual domain units ("$2,450", "12 reps", "5 tasks")
+  ✗ "Generic Metric", "KPI Value", "Dashboard Stats" as card titles
+  ✗ Table headers: "Name", "Value", "Data" when domain-specific terms exist
+
+REQUIRED — Domain-derived labels ONLY:
+  ✓ For expense/budget apps: "Total Expenses", "Monthly Budget", "Remaining Balance", "Top Category", "Income"
+  ✓ For task/project apps: "Total Tasks", "Completed", "In Progress", "Overdue", "Due Today"
+  ✓ For fitness apps: "Workouts This Week", "Calories Burned", "Personal Best", "Current Streak"
+  ✓ For ecommerce: "Total Revenue", "Orders Today", "Avg. Order Value", "Low Stock Items"
+  ✓ Currency values must use $ / £ / € symbols — never raw numbers labeled "Units"
+  ✓ Every KPI card must display a metric that is COMPUTED from real backend/state data
+  ✓ Table headers must use domain terminology from the request
+═══════════════════════════════════════════════════════
+
 A feature is COMPLETE only when ALL of the following are true:
   ✓ UI is implemented and interactive
   ✓ Business logic is fully implemented (not simulated)
@@ -335,6 +373,9 @@ STRICTLY FORBIDDEN — these will cause build rejection:
   ✗ const data = [10, 20, 30, 40]  (hardcoded chart data that never updates)
   ✗ Placeholder text like "Your score will appear here" with no implementation
   ✗ Demo-only onclick handlers that show an alert() instead of real logic
+  ✗ KPI card titles like "Total Activity Volume", "Performance Compliance", "Target Goal Metric"
+  ✗ Metric values displayed as "Units", "Goal", "Points" without domain-specific units
+  ✗ Table columns labeled "Name" / "Value" / "Data" when domain names are available
 
 FEATURE CONTRACTS — each feature must satisfy:
   File Upload   → must use real onChange/onDrop handler reading e.target.files

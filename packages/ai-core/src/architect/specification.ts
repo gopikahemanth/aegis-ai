@@ -1,3 +1,19 @@
+/** Domain-specific vocabulary extracted from user request — used to ensure
+ *  all UI labels, KPI titles, and metric names reflect the actual domain.
+ */
+export interface DomainVocabulary {
+  /** Singular noun for the main entity (e.g. "Transaction", "Task", "Workout") */
+  entityName: string;
+  /** Plural form (e.g. "Transactions", "Tasks", "Workouts") */
+  entityPlural: string;
+  /** Real KPI metric titles derived from the domain (e.g. ["Total Expenses", "Monthly Budget", "Remaining Balance"]) */
+  primaryMetrics: string[];
+  /** Domain-specific action verbs (e.g. ["Add Expense", "Edit", "Delete", "Export", "Filter"]) */
+  actionVerbs: string[];
+  /** Domain prefix for CSS class names / route naming (e.g. "expense", "task", "workout") */
+  domainPrefix: string;
+}
+
 export interface ProjectSpecification {
   name: string;
 
@@ -41,6 +57,9 @@ export interface ProjectSpecification {
 
   /** Deployment target (e.g. "vercel", "docker", "railway", "none") */
   deployment?: string;
+
+  /** Domain vocabulary extracted from user request — must be threaded through all agent prompts */
+  domainVocabulary?: DomainVocabulary;
 }
 
 export interface DbTable {

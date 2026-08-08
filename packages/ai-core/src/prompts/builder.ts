@@ -62,6 +62,31 @@ ${intelEngine.formatAsMarkdown(index)}
 
     const mergedContext = `${fullContext}\n${workspaceSummary}`;
 
+    // Thread domain vocabulary explicitly into the prompt context
+    let domainVocabBlock = "";
+    if ((spec as any).domainVocabulary) {
+      const dv = (spec as any).domainVocabulary;
+      domainVocabBlock = `
+═══════════════════════════════════════════════════════
+DOMAIN VOCABULARY CONTRACT (use EXACTLY these terms in all UI)
+═══════════════════════════════════════════════════════
+Entity (singular): ${dv.entityName}
+Entity (plural):   ${dv.entityPlural}
+Domain prefix:     ${dv.domainPrefix}
+
+KPI Card Titles (use ONLY these — no generic placeholders):
+${dv.primaryMetrics.map((m: string) => `  • ${m}`).join("\n")}
+
+Action Labels (buttons, CTAs, menu items):
+${dv.actionVerbs.map((v: string) => `  • ${v}`).join("\n")}
+
+CRITICAL: Every KPI card title MUST come from the list above.
+FORBIDDEN: "Total Activity Volume", "Target Goal Metric", "Performance Compliance",
+           "Units" as a measurement, any generic dashboard placeholder label.
+═══════════════════════════════════════════════════════
+`;
+    }
+
     const framework =
   this.frameworkFactory.get(
     this.detectFramework(spec),
@@ -76,7 +101,7 @@ return this.templates.projectGeneration(
   execution,
   architecture,
   architectureDetails,
-  mergedContext,
+  mergedContext + domainVocabBlock,
   framework,
   user,
   rules,

@@ -4,55 +4,47 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url = "file:./dev.db"
+  url      = "file:./dev.db"
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  tasks     Task[]
-  createdAt DateTime @default(now())
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+  categories   Category[]
+  budgets      Budget[]
 }
 
-model Board {
-  id      String   @id @default(uuid())
-  title   String
-  userId  String
-  user    User     @relation(fields: [userId], references: [id])
-  columns Column[]
+model Category {
+  id           String        @id @default(uuid())
+  name         String
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+  budgets      Budget[]
 }
 
-model Column {
-  id      String @id @default(uuid())
-  title   String
-  order   Int
-  boardId String
-  board   Board  @relation(fields: [boardId], references: [id])
-  tasks   Task[]
-}
-
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  DONE
-}
-
-enum TaskPriority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-model Task {
-  id          String       @id @default(uuid())
-  title       String
-  description String?
-  status      TaskStatus   @default(TODO)
-  priority    TaskPriority @default(MEDIUM)
-  columnId    String
-  column      Column       @relation(fields: [columnId], references: [id])
+model Transaction {
+  id          String   @id @default(uuid())
+  amount      Float
+  description String
+  date        DateTime
+  type        String   // 'income' | 'expense'
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
   userId      String
-  user        User         @relation(fields: [userId], references: [id])
-  createdAt   DateTime     @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  amount     Float
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  month      Int
+  year       Int
 }

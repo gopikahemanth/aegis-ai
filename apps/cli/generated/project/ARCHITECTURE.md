@@ -1,40 +1,44 @@
-# ARCHITECTURE.md: AegisKanban
+# ARCHITECTURE.md: Aegis-Expense-Tracker
 
 ## 1. System Overview
-AegisKanban is a high-performance task management platform built with React, leveraging Prisma for type-safe data access. The system is architected for modularity and scalability, utilizing a unidirectional data flow to ensure consistent UI state across complex Kanban board operations.
+Aegis-Expense-Tracker is a high-performance financial management dashboard built with React and Vite. The system utilizes a modular architecture to ensure separation of concerns between the client-side presentation layer and the Node/Express backend, providing secure expense tracking and analytics.
 
 ## 2. Folder Structure
 ```text
-/src
-  /components     # Atomic design patterns (atoms, molecules, organisms)
-  /hooks          # Custom business logic hooks (e.g., useBoard, useDrag)
-  /services       # API clients and external service adapters
-  /store          # Global state definitions (Zustand)
-  /types          # TypeScript interface definitions
-  /utils          # Pure utility functions and formatters
-/prisma
-  schema.prisma   # Source of truth for data models and relations
+/
+├── client/              # React/Vite Frontend
+│   ├── src/
+│   │   ├── components/  # Atomic UI components
+│   │   ├── hooks/       # Custom state/API logic
+│   │   ├── store/       # State management configuration
+│   │   └── services/    # API interaction layer
+├── server/              # Node.js Backend
+│   ├── index.ts         # Express server entry point
+│   ├── routes/          # API endpoint definitions
+│   └── controllers/     # Business logic layer
+└── shared/              # TypeScript interfaces/types
 ```
 
 ## 3. Key Design Decisions
-*   **React:** Chosen for its component-based architecture and mature ecosystem, facilitating rapid development of dynamic UI elements like drag-and-drop boards.
-*   **Prisma:** Selected as the ORM to provide end-to-end type safety, ensuring the frontend interfaces remain strictly synced with database schemas.
-*   **Zustand:** Chosen over Redux for state management due to its minimal boilerplate, high performance, and simple API, which reduces cognitive load in the codebase.
-*   **Atomic Design:** Implemented to enforce reusability and prevent "prop drilling" by encouraging the creation of small, isolated components.
+*   **React + Vite:** Chosen for rapid HMR (Hot Module Replacement) and optimized production builds via Rollup.
+*   **TypeScript:** Enforced across the full stack to ensure type safety and reduce runtime errors in financial calculations.
+*   **Express (Node.js):** Provides a lightweight, scalable middleware layer for handling RESTful API requests.
+*   **Axios:** Used for consistent HTTP client configuration, including interceptors for authentication tokens.
 
 ## 4. Data Flow
-1.  **Action:** User triggers an event (e.g., moving a task card).
-2.  **Optimistic Update:** The UI state is updated immediately via the store to ensure 0ms latency perception.
-3.  **Sync:** A service module dispatches an API request to the backend.
-4.  **Storage:** Prisma translates the request into SQL, updating the PostgreSQL database.
-5.  **Reconciliation:** Upon success, the UI reconciles with the server response; upon failure, the store rolls back the optimistic update and triggers an error notification.
+1.  **Initiation:** User interacts with the UI, triggering an action (e.g., submitting an expense).
+2.  **Dispatch:** Frontend state (Zustand/Context) triggers an async service call.
+3.  **Transmission:** Axios sends the request to the `server/index.ts` endpoint.
+4.  **Processing:** Controller validates the payload, performs business logic, and interacts with the database.
+5.  **Response:** Server returns a JSON response; the frontend updates the local state, triggering a reactive UI re-render.
 
 ## 5. State Management Approach
-The application utilizes a **split-state strategy**:
-*   **Global State (Zustand):** Used for shared domain data (boards, tasks, user session) that must persist across page reloads and cross-component boundaries.
-*   **Local State (useState/useReducer):** Used for ephemeral UI logic such as form inputs, dropdown toggles, and animation states to keep the global store lean.
+*   **Global State:** Managed via **Zustand** for lightweight, boilerplate-free state updates.
+*   **Server State:** Handled via **TanStack Query (React Query)** to manage caching, background re-fetching, and loading/error states for API data.
+*   **Local State:** Standard `useState` and `useReducer` hooks for component-specific ephemeral UI state.
 
 ## 6. Error Handling Strategy
-*   **Boundary Layers:** React Error Boundaries wrap major functional zones (Board, Sidebar) to prevent total application crashes from localized component failures.
-*   **API Interceptors:** All service calls are wrapped in a global axios/fetch interceptor to catch 4xx/5xx status codes.
-*   **User Feedback:** Standardized `Toast` notification system to provide immediate context-aware feedback for all failed persistence operations.
+*   **Backend:** Global Express error-handling middleware catches uncaught exceptions and returns standardized ` { error: string, code: number }` responses.
+*   **Frontend:**
+    *   **Boundary:** React Error Boundaries wrap critical UI sections to prevent full-app crashes.
+    *   **API:** Axios interceptors catch 4xx/5xx status codes, logging telemetry and triggering global notification toasts via the UI layer.

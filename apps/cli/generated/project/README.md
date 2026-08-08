@@ -1,87 +1,80 @@
-# AegisKanban
+# Aegis Expense Tracker
 
-AegisKanban is a high-performance, full-stack project management application designed for streamlined task tracking and collaborative team workflows.
+Aegis Expense Tracker is a high-performance, full-stack SaaS application designed for streamlined personal finance management, featuring real-time expense logging, visual budget analytics, and a modern glassmorphism user interface.
 
-## Features
+## Key Features
 
-*   **Interactive Kanban Board:** Intuitive drag-and-drop interface for seamless task transition between "To Do," "In Progress," and "Done" states.
-*   **Dynamic Task Management:** Create, edit, and delete tasks with custom priority levels (Low, Medium, High).
-*   **Team Collaboration:** Modal-based assignment system to delegate tasks to specific team members.
-*   **Advanced Filtering:** Real-time filtering capabilities to isolate tasks by project status or priority.
-*   **Dark Mode UI:** Optimized interface with native dark mode support for improved accessibility and reduced eye strain.
-*   **Type-Safe Architecture:** Full TypeScript implementation from frontend to database for robust, bug-resistant code.
+*   **Smart Logging:** Interactive income and expense tracking with dynamic category tagging.
+*   **Budget Intelligence:** Real-time monthly budget progress tracking via visual progress bars.
+*   **Financial Analytics:** Interactive pie charts providing instant visual breakdowns of spending habits.
+*   **Data Portability:** Seamless export capabilities for transaction data in CSV and PDF formats.
+*   **Advanced Filtering:** Granular transaction management with filtering by custom date ranges and expense categories.
+*   **CRUD Operations:** Intuitive modal-based interface for effortless editing and deletion of records.
+*   **Modern UI/UX:** Responsive glassmorphism-inspired design with built-in dark mode support.
 
 ## Tech Stack
 
 | Technology | Purpose |
 | :--- | :--- |
-| React | Frontend UI Library |
-| TypeScript | Type-safe programming |
-| PostgreSQL | Relational Database |
-| Prisma | ORM and Database Schema Management |
-| Tailwind CSS | Utility-first styling |
-| Node.js | Runtime Environment |
+| React 18 | Frontend UI library |
+| Vite | Build tool and development environment |
+| Express.js | Backend API server |
+| Prisma | Type-safe ORM for database operations |
+| SQLite | Lightweight, file-based relational database |
+| TypeScript | Type safety and enhanced developer experience |
+| Tailwind CSS | Styling and glassmorphism UI components |
 
 ## Getting Started
 
 ### Prerequisites
 
-*   **Node.js:** v18.0.0 or higher
-*   **npm/yarn/pnpm:** Current stable release
-*   **PostgreSQL:** A running instance (local or remote)
+*   Node.js (v18.0.0 or higher)
+*   npm (v9.0.0 or higher) or yarn (v1.22.0 or higher)
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/aegis-kanban.git
-   cd aegis-kanban
+   git clone https://github.com/your-username/aegis-expense-tracker.git
+   cd aegis-expense-tracker
    ```
 
-2. Install dependencies:
+2. Install dependencies for both server and client:
    ```bash
    npm install
+   cd client && npm install && cd ../server && npm install
    ```
 
 ### Environment Setup
 
-1. Copy the example environment file:
+1. Copy the example environment file in the `server` directory:
    ```bash
-   cp .env.example .env
+   cp server/.env.example server/.env
    ```
-
-2. Open the `.env` file and provide your database connection string:
-   ```text
-   DATABASE_URL="postgresql://user:password@localhost:5432/aegis_db"
-   ```
-
-3. Run database migrations:
-   ```bash
-   npx prisma migrate dev
-   ```
+2. Open `server/.env` and configure your database connection string and any necessary API keys.
 
 ### Running Locally
 
-Start the development server:
+To start the development environment, run the following command from the root directory:
+
 ```bash
 npm run dev
 ```
-The application will be available at `http://localhost:3000`.
+
+The application will be accessible at `http://localhost:5173` (Frontend) and the API will be running on `http://localhost:3000` (Backend).
 
 ## Available Scripts
 
-*   `npm run dev`: Starts the development server with hot-reloading.
-*   `npm run build`: Compiles the application for production deployment.
-*   `npm run lint`: Runs ESLint to identify code quality issues.
-*   `npm run test`: Executes the test suite using the configured test runner.
+*   `npm run dev`: Starts both the client and server in development mode.
+*   `npm run build`: Compiles the project for production deployment.
+*   `npm run lint`: Executes ESLint to verify code quality and consistency.
+*   `npm run test`: Runs the integrated test suite.
 
 ## Project Structure
 
-*   `/prisma`: Contains the schema definitions and migration history.
-*   `/src/components`: Reusable React components (modals, task cards, UI elements).
-*   `/src/hooks`: Custom React hooks for state management and data fetching.
-*   `/src/lib`: Utility functions and database client configuration.
-*   `/src/types`: TypeScript interface and type definitions.
+*   `/client`: Contains the React/Vite frontend source code, components, and hooks.
+*   `/server`: Contains the Express API logic, Prisma schema, and database configuration.
+*   `/prisma`: Holds the database schema definitions and migration history.
 *   `/public`: Static assets, including icons and global images.
 
 ## License

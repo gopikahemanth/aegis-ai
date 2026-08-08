@@ -4,29 +4,28 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.js",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "npx tsx server/index.ts"
   },
   "dependencies": {
-    "@dnd-kit/core": "latest",
-    "@dnd-kit/sortable": "latest",
     "@hookform/resolvers": "^3.9.0",
     "@prisma/client": "^6.19.3",
     "@tanstack/react-query": "latest",
-    "bcryptjs": "^2.4.3",
+    "axios": "latest",
+    "bcryptjs": "latest",
     "clsx": "latest",
     "cors": "^2.8.5",
     "dompurify": "^3.1.6",
-    "express": "^4.19.2",
-    "framer-motion": "latest",
+    "express": "latest",
     "fuse.js": "^7.0.0",
-    "jsonwebtoken": "^9.0.2",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "latest",
     "jspdf": "^2.5.1",
-    "lucide-react": "^0.438.0",
+    "lucide-react": "latest",
     "marked": "^14.0.0",
-    "next": "latest",
-    "prisma": "^6.2.1",
+    "morgan": "^1.11.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "latest",
@@ -34,16 +33,17 @@
     "react-is": "^18.3.1",
     "react-lazy-load-image-component": "^1.6.2",
     "react-router-dom": "^6.26.0",
+    "recharts": "latest",
     "tailwind-merge": "latest",
     "zod": "latest",
     "zustand": "latest"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
+    "@types/bcryptjs": "latest",
     "@types/cors": "^2.8.17",
     "@types/dompurify": "^3.0.5",
-    "@types/express": "^4.17.21",
-    "@types/jsonwebtoken": "^9.0.6",
+    "@types/express": "latest",
+    "@types/jsonwebtoken": "latest",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
@@ -56,6 +56,6 @@
     "tailwindcss": "^3.4.10",
     "tsx": "^4.19.0",
     "typescript": "^5.5.3",
-    "vite": "^5.4.21"
+    "vite": "^5.4.1"
   }
 }

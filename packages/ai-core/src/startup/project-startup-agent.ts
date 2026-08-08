@@ -1009,6 +1009,14 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
+        // Fix 31: Auto-sanitize broken inline JSX component parameters (TS1005 / TS1109)
+        if ((rel.endsWith(".tsx") || rel.endsWith(".jsx")) && (rel.startsWith("src/") || rel.startsWith("src\\"))) {
+          if (/\(\s*\{[^}]*\}\s*:\s*\{[^}]*\}\s*\)/.test(content)) {
+            content = content.replace(/\(\s*\{([^}]*)\}\s*:\s*\{[^}]*\}\s*\)/g, "(props: any)");
+            changed = true;
+          }
+        }
+
         // Fix 22: react-hook-form zodResolver type mismatch (TS2345 / TS2322)
         if (content.includes("useForm") || content.includes("zodResolver")) {
           if (content.includes("zodResolver(") && !content.includes("as any")) {

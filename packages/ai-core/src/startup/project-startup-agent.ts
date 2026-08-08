@@ -989,8 +989,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
-        // Fix 30: Ensure all interface/type declarations in src/types/ or *.types.ts are explicitly exported (TS2614)
-        if (rel.includes("type") || rel.includes("types") || rel.includes("entity") || rel.includes("entities") || rel.includes("model") || rel.includes("models")) {
+        // Fix 30: Ensure all interface/type declarations across all TS files are explicitly exported (TS2614)
+        if (rel.endsWith(".ts") || rel.endsWith(".tsx")) {
           const typeMatches = content.matchAll(/(?:type|interface)\s+([A-Z]\w+)\b/g);
           for (const tm of typeMatches) {
             const tName = tm[1];
@@ -1013,6 +1013,28 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         if ((rel.endsWith(".tsx") || rel.endsWith(".jsx")) && (rel.startsWith("src/") || rel.startsWith("src\\"))) {
           if (/\(\s*\{[^}]*\}\s*:\s*\{[^}]*\}\s*\)/.test(content)) {
             content = content.replace(/\(\s*\{([^}]*)\}\s*:\s*\{[^}]*\}\s*\)/g, "(props: any)");
+            changed = true;
+          }
+        }
+
+        // Fix 32: Value used as type shim (TS2749)
+        if (rel.endsWith(".ts") || rel.endsWith(".tsx")) {
+          const valueMatches = content.matchAll(/(?:const|let|var|class|function)\s+([A-Z]\w+)\b/g);
+          for (const vm of valueMatches) {
+            const vName = vm[1];
+            if (new RegExp(`:\\s*${vName}\\b|Promise<\\s*${vName}\\b|Array<\\s*${vName}\\b|<\\s*${vName}\\s*[\\[\\]]*>`).test(content)) {
+              if (!new RegExp(`(?:type|interface)\\s+${vName}\\b`).test(content) && !content.includes(`type ${vName} =`)) {
+                content += `\ntype ${vName} = any;\n`;
+                changed = true;
+              }
+            }
+          }
+        }
+
+        // Fix 33: Untyped function calls accepting type arguments (TS2347)
+        if (rel.endsWith(".ts") || rel.endsWith(".tsx")) {
+          if (content.includes("axios.") || content.includes("api.") || content.includes("http.")) {
+            content = content.replace(/(axios|api|http)\.(get|post|put|delete|patch)<[^>]+>\s*\(/g, "($1.$2 as any)(");
             changed = true;
           }
         }

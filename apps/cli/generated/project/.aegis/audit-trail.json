@@ -1,32 +1,20 @@
 [
   {
-    "timestamp": "2026-08-08T14:10:06.186Z",
+    "timestamp": "2026-08-08T14:21:23.645Z",
     "agentRole": "CEO Agent",
-    "action": "Initiated application implementation for request: \"Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.\"",
+    "action": "Initiated project generation path for prompt: \"Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.\"",
     "status": "SUCCESS"
   },
   {
-    "timestamp": "2026-08-08T14:10:08.534Z",
+    "timestamp": "2026-08-08T14:21:34.121Z",
     "agentRole": "Inference Engine",
-    "action": "Expanded prompt. Inferred features: PDF Parsing Engine, Semantic Keyword Matching, Dashboard & Analytics View, History & Export Service",
+    "action": "Expanded prompt. Features: [PDF Parsing Service, NLP Keyword Analyzer, Interactive Score Dashboard, History & Authentication] Libraries: [pdf-parse, multer, natural, compromise, recharts, framer-motion, mongoose, jsonwebtoken, bcryptjs, axios, react-query]",
     "status": "SUCCESS"
   },
   {
-    "timestamp": "2026-08-08T14:10:20.731Z",
+    "timestamp": "2026-08-08T14:21:38.949Z",
     "agentRole": "Architect",
-    "action": "Completed requirements mapping & locked Architecture Contract. Frontend: React-Vite, Backend: Express, DB: mongodb (Prisma)",
-    "status": "SUCCESS"
-  },
-  {
-    "timestamp": "2026-08-08T14:10:24.215Z",
-    "agentRole": "Data Architecture Agent",
-    "action": "Designed data flow models. Persisted models count: 2, APIs: 3",
-    "status": "SUCCESS"
-  },
-  {
-    "timestamp": "2026-08-08T14:12:40.480Z",
-    "agentRole": "Project Startup Agent",
-    "action": "Pre-verification setup applied 5 fix(es): Added missing core React/Vite dependencies; Created pnpm-workspace.yaml (workspace isolation); Created src/utils/cn.ts helper; ✓ Dependencies installed successfully.; Auto-fixed TypeScript patterns in: server/controllers/analysisController.ts, server/routes/analysis.ts, src/App.tsx, src/design-system/components/Button.tsx, src/design-system/components/EmptyState.tsx, src/design-system/components/GlassCard.tsx, src/design-system/components/Skeleton.tsx, src/features/dashboard/components/ScanDashboard.tsx, src/features/dashboard/components/ScannerDashboard.tsx, src/features/dashboard/components/ScoreCard.tsx, src/shared/components/Button.tsx, vite.config.ts",
+    "action": "Completed requirements mapping & locked Architecture Contract. Frontend: React-Vite, Backend: Express, DB: PostgreSQL with Prisma (Prisma)",
     "status": "SUCCESS"
   }
 ]

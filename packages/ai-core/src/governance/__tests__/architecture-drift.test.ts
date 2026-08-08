@@ -150,4 +150,31 @@ describe("Architecture Drift Governance Suite", () => {
     expect(check.hasConflict).toBe(true);
     expect(check.detectedTechnology).toContain("MongoDB");
   });
+
+  it("TEST 13: ValidationContextManager.assertArchitectureContext verifies complete architecture contract", () => {
+    const contract = ArchitectureResolver.resolve("Build React-Vite app with Express, PostgreSQL and Prisma", { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" }, {} as any);
+    const valCtx = ValidationContextManager.createInitialContext(testDir, contract, {} as any);
+
+    expect(() => {
+      ValidationContextManager.assertArchitectureContext(valCtx);
+    }).not.toThrow();
+
+    expect(valCtx.framework).toBe("React-Vite");
+    expect(valCtx.database).toBe("PostgreSQL");
+    expect(valCtx.orm).toBe("Prisma");
+  });
+
+  it("TEST 14: ValidationContextManager.assertArchitectureContext throws ARCHITECTURE_CONTEXT_INVALID when framework is missing", () => {
+    const invalidContext: any = {
+      architecture: {
+        frontend: {},
+        backend: { framework: "Express" },
+        database: { provider: "PostgreSQL", orm: "Prisma" }
+      }
+    };
+
+    expect(() => {
+      ValidationContextManager.assertArchitectureContext(invalidContext);
+    }).toThrow("ARCHITECTURE_CONTEXT_INVALID");
+  });
 });

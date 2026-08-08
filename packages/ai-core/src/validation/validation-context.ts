@@ -68,4 +68,25 @@ export class ValidationContextManager {
       dodResult: null
     };
   }
+
+  public static assertArchitectureContext(context: GenerationValidationContext | null | undefined): asserts context is GenerationValidationContext {
+    if (!context) {
+      throw new Error(`ARCHITECTURE_CONTEXT_INVALID: GenerationValidationContext is undefined or null.`);
+    }
+    if (!context.architecture) {
+      throw new Error(`ARCHITECTURE_CONTEXT_INVALID: ArchitectureSnapshot missing from context.`);
+    }
+    if (!context.architecture.frontend || !context.architecture.frontend.framework) {
+      throw new Error(`ARCHITECTURE_CONTEXT_INVALID: Architecture frontend.framework missing from context.`);
+    }
+    if (!context.architecture.backend || !context.architecture.backend.framework) {
+      throw new Error(`ARCHITECTURE_CONTEXT_INVALID: Architecture backend.framework missing from context.`);
+    }
+    if (!context.architecture.database || !context.architecture.database.provider) {
+      throw new Error(`ARCHITECTURE_CONTEXT_INVALID: Architecture database.provider missing from context.`);
+    }
+    if (!context.architecture.database || !context.architecture.database.orm) {
+      throw new Error(`ARCHITECTURE_CONTEXT_INVALID: Architecture database.orm missing from context.`);
+    }
+  }
 }

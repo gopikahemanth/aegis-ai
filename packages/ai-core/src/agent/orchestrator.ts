@@ -55,7 +55,7 @@ import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-gener
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
 import { TransactionalRepairSystem } from "../healing/index.js";
-import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator } from "../governance/index.js";
+import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate } from "../governance/index.js";
 import { ProjectPathResolver } from "../utils/path-resolver.js";
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
@@ -288,6 +288,15 @@ export class Orchestrator {
     const resolvedContract = ArchitectureResolver.resolve(request, specification, canonicalSpec);
     ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
     const archContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
+
+    // ── MANDATORY CONTRACT GATE — Stop pipeline if contract is invalid ─────
+    const contractGateResult = ContractGate.verify(resolvedContract);
+    if (!contractGateResult.valid) {
+      throw new Error(
+        `CONTRACT_GATE_FAILED: Architecture contract is invalid. Errors: ${contractGateResult.errors.join("; ")}. ` +
+        `Pipeline stopped. Fix the architecture contract before proceeding.`
+      );
+    }
 
     // Force specification normalization against locked contract
     const normalizedSpec = ArchitectureContractNormalizer.normalizeSpecification(specification, resolvedContract);
@@ -578,6 +587,15 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
     const appArchContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
 
+    // ── MANDATORY CONTRACT GATE — Stop pipeline if contract is invalid ─────
+    const appContractGateResult = ContractGate.verify(resolvedContract);
+    if (!appContractGateResult.valid) {
+      throw new Error(
+        `CONTRACT_GATE_FAILED: Architecture contract is invalid for generateApplication. ` +
+        `Errors: ${appContractGateResult.errors.join("; ")}. Pipeline stopped.`
+      );
+    }
+
     // Force specification normalization against locked contract
     const normalizedAppSpec = ArchitectureContractNormalizer.normalizeSpecification(specification, resolvedContract);
     specification = normalizedAppSpec;
@@ -587,6 +605,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       action: `Completed requirements mapping & locked Architecture Contract. Frontend: ${resolvedContract.frontend.framework}, Backend: ${resolvedContract.backend.framework}, DB: ${resolvedContract.database.provider} (${resolvedContract.database.orm})`,
       status: "SUCCESS"
     });
+
 
     // ─── Design System ───────────────────────────────────────────────────────
     console.log("[DesignSystem] Generating design tokens and base components...");
@@ -1032,6 +1051,25 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
       console.error("======================================\n");
 
+      const fullDiagnosticsPreCheck = [build.stdout || "", build.stderr || ""].filter(Boolean).join("\n");
+
+      // ── Self-Healing Skip Gate ───────────────────────────────────────────
+      // Architecture/environment errors CANNOT be fixed by AI code repair.
+      // These must be fixed upstream in the architecture contract or environment config.
+      const isArchitectureFailure = (
+        fullDiagnosticsPreCheck.includes("ARCHITECTURE_CONFLICT") ||
+        fullDiagnosticsPreCheck.includes("CONTRACT_CONFLICT") ||
+        fullDiagnosticsPreCheck.includes("DATABASE_CONFIGURATION_CONFLICT") ||
+        fullDiagnosticsPreCheck.includes("ORM_INCOMPATIBILITY") ||
+        fullDiagnosticsPreCheck.includes("DUPLICATE_PROJECT_ROOT")
+      );
+
+      if (isArchitectureFailure) {
+        console.error("[Self-Healing] ❌ BLOCKING: Build failure is classified as an ARCHITECTURE or DATABASE_CONFIGURATION error.");
+        console.error("[Self-Healing] Self-healer will NOT run — these errors cannot be fixed by code repair.");
+        console.error("[Self-Healing] Fix the architecture contract upstream and re-run generation.");
+        // Fall through to final success check without running repair
+      } else {
       const initialHadCleanCompilation = !build.stderr?.includes("error TS") && !build.stderr?.includes("ELIFECYCLE");
 
       while (attempts < maxRepairAttempts) {
@@ -1210,7 +1248,8 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
           console.error(`[Self-Healing] Error occurred during repair attempt ${attempts}:`, error.message);
           break;
         }
-      }
+      } // end while repair attempts
+      } // end else (!isArchitectureFailure)
     }
 
     if (!build.success) {

@@ -4,6 +4,7 @@ export * from "./architecture-auditor.js";
 export * from "./architecture-diff.js";
 export * from "./planner-guard.js";
 export * from "./contract-normalizer.js";
+export * from "./contract-gate.js";
 export * from "./fast-sanitizer.js";
 export * from "./safe-patch-system.js";
 export * from "./root-cause-classifier.js";

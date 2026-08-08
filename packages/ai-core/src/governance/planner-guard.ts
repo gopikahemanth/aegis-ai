@@ -1,5 +1,6 @@
 import { ArchitectureContractV1 } from "./architecture-resolver.js";
 import { Task } from "../planner/task.js";
+import { createHash } from "node:crypto";
 
 export interface PlannerConflictResult {
   hasConflict: boolean;
@@ -93,6 +94,45 @@ export class PlannerArchitectureGuard {
           reason: `Planner generated Drizzle ORM task for locked ${contract.database.orm} contract.`
         };
       }
+      // Mongoose/Sequelize are incompatible with Prisma
+      if (taskText.includes("mongoose") || taskText.includes("mongoose schema") || taskText.includes("mongoose model")) {
+        return {
+          hasConflict: true,
+          taskId: task.id,
+          taskTitle: task.title,
+          expectedArchitecture: contract.database.orm,
+          detectedTechnology: "Mongoose",
+          reason: `Planner generated Mongoose task but locked ORM is ${contract.database.orm}.`
+        };
+      }
+      if (taskText.includes("sequelize")) {
+        return {
+          hasConflict: true,
+          taskId: task.id,
+          taskTitle: task.title,
+          expectedArchitecture: contract.database.orm,
+          detectedTechnology: "Sequelize",
+          reason: `Planner generated Sequelize task but locked ORM is ${contract.database.orm}.`
+        };
+      }
+    }
+
+    // 5. Domain model guard: reject tasks introducing unauthorized models (e.g. Task, Item for resume scanner)
+    const unauthorizedModels = ["task model", "kanban", "todo list", "shopping cart", "blog post model"];
+    const contractModelNames = (contract.requiredModels || []).map(m => m.toLowerCase());
+    const isGenericTaskModel = (
+      taskText.includes("task model") ||
+      (taskText.includes("create model") && taskText.includes("task") && !contractModelNames.some(m => m.includes("task")))
+    );
+    if (isGenericTaskModel && contractModelNames.length > 0) {
+      return {
+        hasConflict: true,
+        taskId: task.id,
+        taskTitle: task.title,
+        expectedArchitecture: contract.requiredModels.join(", "),
+        detectedTechnology: "Generic Task model",
+        reason: `UNAUTHORIZED_DOMAIN_MODEL: Task introduces a generic 'Task' model not in contract.requiredModels [${contract.requiredModels.join(", ")}].`
+      };
     }
 
     return { hasConflict: false };
@@ -151,15 +191,42 @@ export class PlannerArchitectureGuard {
       throw new Error(`ARCHITECTURE_CONTRACT_MISSING: PlannerArchitectureGuard received undefined contract.`);
     }
 
+    // Compute architecture hash for task metadata injection
+    const archHash = createHash("sha256").update(JSON.stringify({
+      frontend: contract.frontend?.framework,
+      backend: contract.backend?.framework,
+      database: contract.database?.provider,
+      orm: contract.database?.orm
+    })).digest("hex").slice(0, 12);
+
     const validatedTasks: Task[] = [];
 
     for (const rawTask of tasks) {
       const initialCheck = this.validateTask(rawTask, contract);
 
       if (!initialCheck.hasConflict) {
-        validatedTasks.push(rawTask);
+        // Inject contract metadata into validated task
+        validatedTasks.push({
+          ...rawTask,
+          contractVersion: 1,
+          architectureHash: archHash,
+          allowedTechnologies: [
+            contract.frontend.framework,
+            contract.backend.framework,
+            contract.database.provider,
+            contract.database.orm,
+            contract.language
+          ]
+        } as Task);
       } else {
         console.warn(`[PlannerGuard] ⚠️ Architecture conflict detected in task #${rawTask.id} "${rawTask.title}": ${initialCheck.reason}`);
+
+        // UNAUTHORIZED_DOMAIN_MODEL: Do not attempt adaptation — reject outright
+        if (initialCheck.reason?.includes("UNAUTHORIZED_DOMAIN_MODEL")) {
+          console.error(`[PlannerGuard] ❌ Skipping task #${rawTask.id} — unauthorized domain model detected. Task will not be executed.`);
+          continue;
+        }
+
         console.log(`[PlannerGuard] 🔄 Regenerating task #${rawTask.id} to conform to locked ${contract.frontend.framework} + ${contract.backend.framework} + ${contract.database.provider} architecture...`);
         
         // Attempt task adaptation / regeneration to conform to locked contract
@@ -168,7 +235,18 @@ export class PlannerArchitectureGuard {
 
         if (!recheck.hasConflict) {
           console.log(`[PlannerGuard] ✓ Task #${adaptedTask.id} successfully regenerated: "${adaptedTask.title}"`);
-          validatedTasks.push(adaptedTask);
+          validatedTasks.push({
+            ...adaptedTask,
+            contractVersion: 1,
+            architectureHash: archHash,
+            allowedTechnologies: [
+              contract.frontend.framework,
+              contract.backend.framework,
+              contract.database.provider,
+              contract.database.orm,
+              contract.language
+            ]
+          } as Task);
         } else {
           console.error(`[PlannerGuard] ❌ Regeneration failed for task #${rawTask.id}: Still conflicts with architecture (${recheck.reason})`);
           throw new Error(`PLANNING_FAILED: Task #${rawTask.id} "${rawTask.title}" could not be adapted to locked ${contract.frontend.framework} + ${contract.backend.framework} contract.`);

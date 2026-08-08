@@ -3,9 +3,12 @@ import { join } from "node:path";
 import { CanonicalProjectSpecification } from "../spec/canonical-spec.js";
 import { ProjectSpecification } from "../architect/specification.js";
 
+export type ProvenanceSource = "user" | "default" | "inferred";
+
 export interface ArchitectureContractV1 {
   version: 1;
   status: "locked";
+  /** Overall provenance of this contract */
   source: "user_prompt" | "canonical_spec" | "system_default";
   confidence: number;
   reason: string;
@@ -13,19 +16,23 @@ export interface ArchitectureContractV1 {
   inferred: boolean;
   overridden: boolean;
   frontend: {
-    framework: string; // e.g. "Next.js" | "React-Vite" | "HTML"
+    framework: string;
+    provenance: ProvenanceSource;
   };
   backend: {
-    framework: string; // e.g. "Next.js API Routes" | "Express" | "Fastify" | "None"
+    framework: string;
+    provenance: ProvenanceSource;
   };
   database: {
-    provider: string; // e.g. "PostgreSQL" | "SQLite" | "MongoDB" | "MySQL"
-    orm: string; // e.g. "Prisma" | "Drizzle" | "TypeORM" | "Mongoose" | "None"
+    provider: string;
+    orm: string;
+    provenance: ProvenanceSource;
+    ormProvenance: ProvenanceSource;
   };
-  language: string; // e.g. "TypeScript" | "JavaScript"
-  styling: string; // e.g. "TailwindCSS" | "CSS Modules"
+  language: string;
+  styling: string;
   packageManager: "pnpm" | "npm" | "yarn";
-  authentication: string; // e.g. "NextAuth.js" | "JWT" | "Session" | "none"
+  authentication: string;
   requiredLibraries: string[];
   requiredFeatures: string[];
   requiredRoutes: string[];
@@ -40,43 +47,131 @@ export class ArchitectureResolver {
     canonicalSpec: CanonicalProjectSpecification
   ): ArchitectureContractV1 {
     const promptLower = userPrompt.toLowerCase();
-    const userSpecified = promptLower.length > 0;
 
-    // Single source of truth resolution rules with provenance metadata
-    let frontendFramework = canonicalSpec.lockedStack?.frontend || rawSpec.frontend || "React-Vite";
-    if (promptLower.includes("next.js") || promptLower.includes("nextjs")) frontendFramework = "Next.js";
-    else if (promptLower.includes("vite") || promptLower.includes("react")) frontendFramework = "React-Vite";
+    // ── FRONTEND resolution with provenance ─────────────────────────────────
+    let frontendFramework = "React-Vite";
+    let frontendProvenance: ProvenanceSource = "default";
 
-    let backendFramework = canonicalSpec.lockedStack?.backend || rawSpec.backend || "Express";
-    if (promptLower.includes("next.js api") || promptLower.includes("next api")) backendFramework = "Next.js API Routes";
-    else if (promptLower.includes("express")) backendFramework = "Express";
+    if (promptLower.includes("next.js") || promptLower.includes("nextjs")) {
+      frontendFramework = "Next.js";
+      frontendProvenance = "user";
+    } else if (promptLower.includes("vite") || promptLower.includes("react")) {
+      frontendFramework = "React-Vite";
+      frontendProvenance = "user";
+    } else if (canonicalSpec.lockedStack?.frontend) {
+      frontendFramework = canonicalSpec.lockedStack.frontend;
+      frontendProvenance = "inferred";
+    } else if (rawSpec.frontend) {
+      frontendFramework = rawSpec.frontend;
+      frontendProvenance = "inferred";
+    }
 
-    let dbProvider = canonicalSpec.lockedStack?.database || rawSpec.database || "PostgreSQL";
-    if (promptLower.includes("postgres") || promptLower.includes("postgresql")) dbProvider = "PostgreSQL";
-    else if (promptLower.includes("mongo") || promptLower.includes("mongodb")) dbProvider = "MongoDB";
-    else if (promptLower.includes("sqlite")) dbProvider = "SQLite";
+    // ── BACKEND resolution with provenance ──────────────────────────────────
+    let backendFramework = "Express";
+    let backendProvenance: ProvenanceSource = "default";
 
-    let orm = canonicalSpec.lockedStack?.orm || "Prisma";
-    if (promptLower.includes("drizzle")) orm = "Drizzle";
-    else if (promptLower.includes("mongoose")) orm = "Mongoose";
-    else if (promptLower.includes("prisma")) orm = "Prisma";
+    if (promptLower.includes("next.js api") || promptLower.includes("next api")) {
+      backendFramework = "Next.js API Routes";
+      backendProvenance = "user";
+    } else if (promptLower.includes("express")) {
+      backendFramework = "Express";
+      backendProvenance = "user";
+    } else if (promptLower.includes("fastify")) {
+      backendFramework = "Fastify";
+      backendProvenance = "user";
+    } else if (promptLower.includes("nestjs") || promptLower.includes("nest.js")) {
+      backendFramework = "NestJS";
+      backendProvenance = "user";
+    } else if (canonicalSpec.lockedStack?.backend) {
+      backendFramework = canonicalSpec.lockedStack.backend;
+      backendProvenance = "inferred";
+    } else if (rawSpec.backend) {
+      backendFramework = rawSpec.backend;
+      backendProvenance = "inferred";
+    }
 
-    let auth = canonicalSpec.lockedStack?.auth || rawSpec.auth || "none";
+    // ── DATABASE resolution with provenance ─────────────────────────────────
+    // CRITICAL: Default is PostgreSQL (source: "default").
+    // ONLY the user's explicit prompt keywords can change this.
+    // LLM-inferred values from rawSpec/canonicalSpec MUST NOT override it.
+    let dbProvider = "PostgreSQL";
+    let dbProvenance: ProvenanceSource = "default";
+
+    if (promptLower.includes("postgres") || promptLower.includes("postgresql")) {
+      dbProvider = "PostgreSQL";
+      dbProvenance = "user";
+    } else if (promptLower.includes("mongodb") || promptLower.includes("mongo")) {
+      dbProvider = "MongoDB";
+      dbProvenance = "user";
+    } else if (promptLower.includes("sqlite")) {
+      dbProvider = "SQLite";
+      dbProvenance = "user";
+    } else if (promptLower.includes("mysql")) {
+      dbProvider = "MySQL";
+      dbProvenance = "user";
+    }
+    // NOTE: We intentionally do NOT fall through to canonicalSpec.lockedStack.database
+    // or rawSpec.database. Those values come from LLM inference and MUST NOT silently
+    // change the configured default database.
+
+    // ── ORM resolution with provenance ──────────────────────────────────────
+    let orm = "Prisma";
+    let ormProvenance: ProvenanceSource = "default";
+
+    if (promptLower.includes("drizzle")) {
+      orm = "Drizzle";
+      ormProvenance = "user";
+    } else if (promptLower.includes("mongoose")) {
+      orm = "Mongoose";
+      ormProvenance = "user";
+    } else if (promptLower.includes("prisma")) {
+      orm = "Prisma";
+      ormProvenance = "user";
+    } else if (promptLower.includes("typeorm")) {
+      orm = "TypeORM";
+      ormProvenance = "user";
+    }
+
+    // ── ORM / DB compatibility enforcement ──────────────────────────────────
+    // Mongoose is only valid for MongoDB. Enforce this without user override.
+    if (orm === "Mongoose" && dbProvider !== "MongoDB") {
+      console.warn(
+        `[ArchitectureResolver] ⚠️ ORM conflict: "Mongoose" is incompatible with database "${dbProvider}". Overriding ORM to "Prisma".`
+      );
+      orm = "Prisma";
+      ormProvenance = "inferred";
+    }
+
+    // ── AUTH resolution ─────────────────────────────────────────────────────
+    let auth = canonicalSpec.lockedStack?.auth || rawSpec.auth || "JWT";
     if (promptLower.includes("nextauth") || promptLower.includes("next-auth")) auth = "NextAuth.js";
     else if (promptLower.includes("jwt")) auth = "JWT";
+
+    const hasUserInput = frontendProvenance === "user" || backendProvenance === "user" || dbProvenance === "user";
 
     return Object.freeze({
       version: 1,
       status: "locked",
-      source: userSpecified ? "user_prompt" : "canonical_spec",
-      confidence: userSpecified ? 1.0 : 0.9,
-      reason: "Single-source of truth locked by ArchitectureResolver based on user prompt and spec precedence",
-      userSpecified,
-      inferred: !userSpecified,
+      source: hasUserInput ? "user_prompt" : "canonical_spec",
+      confidence: (frontendProvenance === "user" && backendProvenance === "user") ? 1.0 : 0.85,
+      reason: `Contract locked by ArchitectureResolver. Frontend(${frontendProvenance}), Backend(${backendProvenance}), DB(${dbProvenance}), ORM(${ormProvenance})`,
+      userSpecified: hasUserInput,
+      inferred: !hasUserInput,
       overridden: false,
-      frontend: Object.freeze({ framework: frontendFramework }),
-      backend: Object.freeze({ framework: backendFramework }),
-      database: Object.freeze({ provider: dbProvider, orm }),
+      frontend: Object.freeze({
+        framework: frontendFramework,
+        provenance: frontendProvenance,
+      }),
+      backend: Object.freeze({
+        framework: backendFramework,
+        provenance: backendProvenance,
+      }),
+      database: Object.freeze({
+        provider: dbProvider,
+        orm,
+        provenance: dbProvenance,
+        ormProvenance,
+      }),
       language: canonicalSpec.lockedStack?.language || rawSpec.language || "TypeScript",
       styling: canonicalSpec.lockedStack?.styling || rawSpec.styling || "TailwindCSS",
       packageManager: canonicalSpec.lockedStack?.packageManager || rawSpec.packageManager || "pnpm",
@@ -99,7 +194,15 @@ export class ArchitectureResolver {
       mkdirSync(aegisDir, { recursive: true });
     }
     writeFileSync(join(aegisDir, "architecture-contract.json"), JSON.stringify(contract, null, 2), "utf8");
-    console.log(`[ArchitectureResolver] 🔒 Locked Single-Source Architecture Contract: ${contract.frontend.framework} + ${contract.backend.framework} + ${contract.database.provider} (${contract.database.orm}) [source: ${contract.source}]`);
+    console.log(
+      `[ArchitectureResolver] 🔒 Locked Architecture Contract:\n` +
+      `  Frontend:  ${contract.frontend.framework} [${contract.frontend.provenance}]\n` +
+      `  Backend:   ${contract.backend.framework} [${contract.backend.provenance}]\n` +
+      `  Database:  ${contract.database.provider} [${contract.database.provenance}]\n` +
+      `  ORM:       ${contract.database.orm} [${contract.database.ormProvenance}]\n` +
+      `  Auth:      ${contract.authentication}\n` +
+      `  Language:  ${contract.language}`
+    );
   }
 
   public static loadContract(outputDirectory: string): ArchitectureContractV1 | null {
@@ -112,3 +215,4 @@ export class ArchitectureResolver {
     }
   }
 }
+

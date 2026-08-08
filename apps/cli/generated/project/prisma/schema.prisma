@@ -1,0 +1,27 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  password  String
+  scans     Scan[]
+  createdAt DateTime @default(now())
+}
+
+model Scan {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @db.ObjectId
+  user            User     @relation(fields: [userId], references: [id])
+  resumeName      String
+  matchScore      Int
+  foundKeywords   String[]
+  missingKeywords String[]
+  createdAt       DateTime @default(now())
+}

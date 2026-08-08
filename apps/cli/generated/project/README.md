@@ -1,91 +1,90 @@
-# Resume Oracle AI
+# ResuMatch AI
 
-An intelligent full-stack application for parsing resumes and analyzing keyword alignment against job descriptions using AI-driven scoring.
+ResuMatch AI is a full-stack web application that leverages natural language processing to analyze resumes against job descriptions, providing instant match scores and actionable keyword optimization insights.
 
 ## Features
 
-*   **PDF Parsing Engine:** Securely extracts text from uploaded PDF resumes using high-performance parsing libraries.
-*   **AI-Powered Scoring:** Calculates a match percentage between candidate qualifications and job requirements.
-*   **Keyword Extraction:** Automatically identifies essential skills, technologies, and certifications from both resume and job description inputs.
-*   **Gap Analysis:** Provides a detailed breakdown of missing keywords required to improve resume alignment.
-*   **Resume Database:** Persistent storage of parsed resume data and analysis history using PostgreSQL.
-*   **Responsive Dashboard:** A clean, intuitive React interface for managing uploads and viewing real-time analytics.
+*   **Intelligent Resume Parsing**: Securely extracts text from PDF uploads using server-side processing.
+*   **Real-time Match Scoring**: Calculates percentage-based similarity scores between resumes and job descriptions using vector-based keyword comparison.
+*   **Gap Analysis**: Identifies missing critical keywords and skill sets required by the target job description.
+*   **Detailed Breakdown**: Provides a side-by-side comparison of found vs. missing keywords to optimize resume content.
+*   **Search History**: Persists previous scans in MongoDB for users to track their application progress over time.
+*   **Responsive UI**: Built with React and Tailwind CSS for a seamless experience across devices.
 
 ## Tech Stack
 
 | Technology | Purpose |
 | :--- | :--- |
-| **React** | Frontend UI and component state management |
-| **TypeScript** | Type-safe development across the entire stack |
-| **Express** | RESTful API server |
-| **PostgreSQL** | Relational database for storing user data and resumes |
-| **Prisma** | ORM for database schema management and type-safe queries |
-| **OpenAI API** | Natural language processing for keyword analysis |
-| **Multer** | Middleware for handling multipart/form-data (file uploads) |
+| React | Frontend UI library |
+| TypeScript | Type safety and architectural consistency |
+| Express.js | Backend REST API server |
+| MongoDB | Document database for storing scan history |
+| Mongoose | ODM for data modeling |
+| PDF.js / pdf-parse | PDF extraction and text parsing |
+| Tailwind CSS | Utility-first styling |
 
 ## Getting Started
 
 ### Prerequisites
 
 *   Node.js (v18.x or higher)
-*   npm (v9.x or higher)
-*   PostgreSQL (v15.x or higher)
+*   npm (v9.x or higher) or yarn (v1.22+)
+*   MongoDB instance (Local or Atlas)
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/username/resume-oracle-ai.git
-   cd resume-oracle-ai
+   git clone https://github.com/username/resumatch-ai.git
+   cd resumatch-ai
    ```
 
 2. Install dependencies for both client and server:
    ```bash
    npm install
+   cd client && npm install && cd ../server && npm install
    ```
 
-3. Environment Setup:
-   - Copy the example environment file:
-     ```bash
-     cp .env.example .env
-     ```
-   - Open the `.env` file and provide your configuration:
-     - `DATABASE_URL`: Connection string for your PostgreSQL instance.
-     - `OPENAI_API_KEY`: Your unique API key from OpenAI.
-     - `PORT`: Preferred server port (default 3000).
+### Environment Setup
 
-4. Database Migration:
+1. Copy the example environment files in both `client/` and `server/` directories:
    ```bash
-   npx prisma migrate dev
+   cp .env.example .env
    ```
+
+2. Update the `server/.env` file with your configuration:
+   * `PORT`: Server port (default: 5000)
+   * `MONGO_URI`: Your MongoDB connection string
+   * `JWT_SECRET`: Secure string for authentication
 
 ### Running Locally
 
-To run the client and server concurrently in development mode:
+To start the development environment concurrently, run the following from the root directory:
+
 ```bash
 npm run dev
 ```
 
 ## Available Scripts
 
-*   `npm run dev`: Starts the development server with hot reloading.
-*   `npm run build`: Compiles the application for production deployment.
-*   `npm run test`: Executes the test suite using Vitest/Jest.
-*   `npm run lint`: Runs ESLint to identify code quality issues.
-*   `npm run start`: Starts the production server build.
+*   `npm run dev`: Starts both client and server in development mode.
+*   `npm run build`: Compiles the React frontend and compiles TypeScript server files.
+*   `npm run test`: Executes the Jest test suite for backend logic.
+*   `npm run lint`: Runs ESLint to identify code quality issues across the codebase.
 
 ## Project Structure
 
 ```text
+/
 ├── client/           # React frontend application
-│   ├── src/          # Components, hooks, and pages
+│   ├── src/          # Components, hooks, and services
 │   └── public/       # Static assets
 ├── server/           # Express backend API
-│   ├── src/          # Controllers, routes, and services
-│   └── prisma/       # Database schema and migration files
-├── shared/           # Shared TypeScript interfaces
-├── .env.example      # Environment variables template
-└── package.json      # Dependencies and workspace scripts
+│   ├── controllers/  # Request handlers
+│   ├── models/       # MongoDB schemas
+│   ├── routes/       # API route definitions
+│   └── utils/        # PDF parsing and NLP logic
+└── package.json      # Root workspace configuration
 ```
 
 ## License

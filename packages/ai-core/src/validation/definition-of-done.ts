@@ -78,7 +78,7 @@ export class DefinitionOfDone {
         id: "architecture-contract",
         name: "Architecture Contract Verification",
         passed: archContract !== null,
-        detail: archContract !== null ? `Architecture Contract verified (Stack: ${archContract.frontend.framework}/${archContract.database.provider})` : "Architecture contract file missing",
+        detail: archContract !== null ? `Architecture Contract verified (Stack: ${archContract.frontend?.framework || "Unknown"}/${archContract.database?.provider || "Unknown"})` : "Architecture contract file missing",
       },
       {
         id: "architecture-consistency",

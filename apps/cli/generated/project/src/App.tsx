@@ -1,20 +1,21 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Spinner } from './shared/components/Spinner';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Layout } from './shared/components/Layout';
+import DashboardPage from './features/dashboard/DashboardPage';
 
-const Dashboard = React.lazy(() => import('./features/dashboard/DashboardPage'));
-const Auth = React.lazy(() => import('./features/auth/AuthPage'));
+const queryClient = new QueryClient();
 
-export default function App(props: any) {
+export default function App() {
   return (
-    <BrowserRouter>
-      <Suspense fallback={<div className="flex h-screen items-center justify-center"><Spinner /></div>}>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/auth" element={<Auth />} />
+          <Route path="/" element={<Layout />}>
+            <Route index element={<DashboardPage />} />
+          </Route>
         </Routes>
-      </Suspense>
-    </BrowserRouter>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
-export { App };

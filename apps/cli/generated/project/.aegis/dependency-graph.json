@@ -4,22 +4,60 @@
     "imports": [],
     "importedBy": []
   },
-  "server/controllers/ScanController.ts": {
-    "path": "server/controllers/ScanController.ts",
+  "scripts/dev.js": {
+    "path": "scripts/dev.js",
     "imports": [],
     "importedBy": []
   },
-  "server/routes/scan.ts": {
-    "path": "server/routes/scan.ts",
+  "server/index.ts": {
+    "path": "server/index.ts",
+    "imports": [
+      "server/routes/auth.ts",
+      "server/routes/scan.ts",
+      "server/middleware/errorHandler.ts"
+    ],
+    "importedBy": []
+  },
+  "server/middleware/auth.ts": {
+    "path": "server/middleware/auth.ts",
     "imports": [],
     "importedBy": [
-      "src/features/dashboard/services/scanService.tsx"
+      "server/routes/scan.ts"
+    ]
+  },
+  "server/middleware/errorHandler.ts": {
+    "path": "server/middleware/errorHandler.ts",
+    "imports": [],
+    "importedBy": [
+      "server/index.ts"
+    ]
+  },
+  "server/models/index.tsx": {
+    "path": "server/models/index.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "server/routes/auth.ts": {
+    "path": "server/routes/auth.ts",
+    "imports": [],
+    "importedBy": [
+      "server/index.ts"
+    ]
+  },
+  "server/routes/scan.ts": {
+    "path": "server/routes/scan.ts",
+    "imports": [
+      "server/middleware/auth.ts"
+    ],
+    "importedBy": [
+      "server/index.ts"
     ]
   },
   "src/App.tsx": {
     "path": "src/App.tsx",
     "imports": [
-      "src/shared/components/Spinner.tsx"
+      "src/shared/components/Layout.tsx",
+      "src/features/dashboard/DashboardPage.tsx"
     ],
     "importedBy": [
       "src/main.tsx"
@@ -55,42 +93,41 @@
     "imports": [],
     "importedBy": []
   },
-  "src/features/auth/AuthPage.tsx": {
-    "path": "src/features/auth/AuthPage.tsx",
-    "imports": [],
-    "importedBy": []
-  },
-  "src/features/dashboard/components/ScanWorkflow.tsx": {
-    "path": "src/features/dashboard/components/ScanWorkflow.tsx",
-    "imports": [
-      "src/features/dashboard/services/scanService.tsx",
-      "src/features/dashboard/components/ScoreCard.tsx"
-    ],
-    "importedBy": []
-  },
-  "src/features/dashboard/components/ScoreCard.tsx": {
-    "path": "src/features/dashboard/components/ScoreCard.tsx",
+  "src/features/analyzer/services/api.ts": {
+    "path": "src/features/analyzer/services/api.ts",
     "imports": [],
     "importedBy": [
-      "src/features/dashboard/components/ScanWorkflow.tsx"
+      "src/features/dashboard/components/UploadSection.tsx"
+    ]
+  },
+  "src/features/dashboard/components/MatchScoreCard.tsx": {
+    "path": "src/features/dashboard/components/MatchScoreCard.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/features/dashboard/DashboardPage.tsx"
+    ]
+  },
+  "src/features/dashboard/components/UploadSection.tsx": {
+    "path": "src/features/dashboard/components/UploadSection.tsx",
+    "imports": [
+      "src/features/analyzer/services/api.ts"
+    ],
+    "importedBy": [
+      "src/features/dashboard/DashboardPage.tsx"
     ]
   },
   "src/features/dashboard/DashboardPage.tsx": {
     "path": "src/features/dashboard/DashboardPage.tsx",
-    "imports": [],
-    "importedBy": []
-  },
-  "src/features/dashboard/services/scanService.tsx": {
-    "path": "src/features/dashboard/services/scanService.tsx",
     "imports": [
-      "server/routes/scan.ts"
+      "src/features/dashboard/components/MatchScoreCard.tsx",
+      "src/features/dashboard/components/UploadSection.tsx"
     ],
     "importedBy": [
-      "src/features/dashboard/components/ScanWorkflow.tsx"
+      "src/App.tsx"
     ]
   },
-  "src/features/parser/services/scanService.ts": {
-    "path": "src/features/parser/services/scanService.ts",
+  "src/features/uploader/components/FileDropzone.tsx": {
+    "path": "src/features/uploader/components/FileDropzone.tsx",
     "imports": [],
     "importedBy": []
   },
@@ -101,13 +138,8 @@
     ],
     "importedBy": []
   },
-  "src/shared/components/Card.tsx": {
-    "path": "src/shared/components/Card.tsx",
-    "imports": [],
-    "importedBy": []
-  },
-  "src/shared/components/Spinner.tsx": {
-    "path": "src/shared/components/Spinner.tsx",
+  "src/shared/components/Layout.tsx": {
+    "path": "src/shared/components/Layout.tsx",
     "imports": [],
     "importedBy": [
       "src/App.tsx"

@@ -5,6 +5,8 @@ import { ArchitectureResolver } from "../../governance/architecture-resolver.js"
 import { ArchitectureAuditor } from "../../governance/architecture-auditor.js";
 import { ArchitectureDiff } from "../../governance/architecture-diff.js";
 import { DefinitionOfDone } from "../../validation/definition-of-done.js";
+import { TransactionalRepairSystem } from "../../healing/transactional-repair.js";
+import { ValidationContextManager } from "../../validation/validation-context.js";
 
 describe("Architecture Drift Governance Suite", () => {
   const testDir = join(process.cwd(), "temp_test_governance");
@@ -111,5 +113,22 @@ describe("Architecture Drift Governance Suite", () => {
     expect(existsSync(proposalPath)).toBe(true);
     const proposal = JSON.parse(readFileSync(proposalPath, "utf8"));
     expect(proposal.approved).toBe(false);
+  });
+
+  it("TEST 9: TransactionalRepairSystem rollback restores original file on repair failure", () => {
+    const filePath = join("src", "App.tsx");
+    writeFileSync(join(testDir, filePath), "const original = 1;", "utf8");
+
+    const checkpointId = TransactionalRepairSystem.createCheckpoint(testDir, [filePath]);
+    writeFileSync(join(testDir, filePath), "const broken = 2;", "utf8");
+
+    TransactionalRepairSystem.rollback(testDir, checkpointId, "Repair validation failed");
+    expect(readFileSync(join(testDir, filePath), "utf8")).toBe("const original = 1;");
+  });
+
+  it("TEST 10: GenerationValidationContext throws error when instantiated with invalid architecture", () => {
+    expect(() => {
+      ValidationContextManager.createInitialContext(testDir, null as any, {} as any);
+    }).toThrow("Invalid Architecture Contract");
   });
 });

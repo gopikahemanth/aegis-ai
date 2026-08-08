@@ -1,39 +1,43 @@
-# ARCHITECTURE.md: resume-oracle-ai
+# Architecture Documentation: ResuMatch AI
 
 ## 1. System Overview
-Resume-oracle-ai is a React-based SPA designed to parse, analyze, and optimize user resumes using LLM-driven insights. The system provides a reactive interface for document ingestion, real-time feedback loops, and structured data visualization to improve candidate competitiveness.
+ResuMatch AI is a React-based web application designed to optimize job application processes by matching user resumes against specific job descriptions. The system leverages a client-side heavy architecture with a secure API integration layer to perform AI-driven analysis and document parsing.
 
 ## 2. Folder Structure
 ```text
-/src
-├── assets/          # Static assets (images, global CSS)
-├── components/      # Atomic UI components (Buttons, Inputs, Cards)
-├── hooks/           # Custom React hooks for business logic
-├── services/        # API clients and LLM integration modules
-├── store/           # Global state management slices
-├── types/           # TypeScript interfaces and shared schemas
-├── utils/           # Pure helper functions and validators
-└── views/           # Page-level components (Dashboard, Upload, Analysis)
+src/
+├── assets/           # Static resources (images, global styles)
+├── components/       # Reusable UI primitives (buttons, inputs)
+├── features/         # Domain-specific modules (ResumeUpload, JobMatcher)
+│   ├── auth/         # Authentication and user session logic
+│   └── matcher/      # Core logic for resume/job parsing
+├── hooks/            # Custom React hooks for API and state logic
+├── services/         # Axios/Fetch instances and API layer
+├── store/            # Global state management (Zustand)
+├── utils/            # Shared helper functions and constants
+└── App.tsx           # Main entry point and provider wrapping
 ```
 
 ## 3. Key Design Decisions
-*   **React (Vite):** Selected for high development velocity, robust ecosystem, and efficient DOM updates via Virtual DOM.
-*   **TypeScript:** Enforced for type safety across complex data shapes (resume objects) to reduce runtime errors during parsing.
-*   **Tailwind CSS:** Used for utility-first styling to ensure a consistent design system and optimized bundle size.
-*   **Axios:** Chosen as the HTTP client for its interceptor support, enabling centralized handling of auth tokens and error formatting.
+*   **React (Vite):** Selected for rapid development, HMR support, and a robust ecosystem for complex form handling.
+*   **Zustand:** Chosen over Redux for a minimalist, boilerplate-free state management approach that reduces bundle size.
+*   **Tailwind CSS:** Utilized for utility-first styling to ensure consistent UI scaling and improved design velocity.
+*   **React Query (TanStack Query):** Implemented for server-state caching, automatic background refetching, and simplified loading/error states.
 
 ## 4. Data Flow
-1.  **Ingestion:** User uploads a resume via `UploadView`, which triggers an `UploadService` call to the backend.
-2.  **Processing:** The backend streams the document through an extraction pipeline; the UI polls or listens via WebSockets for the parsed JSON payload.
-3.  **Synchronization:** Upon receipt, the parsed data is dispatched to the `AppStore`, updating the reactive state.
-4.  **Feedback:** User interactions (e.g., "optimize section") trigger `Service` calls that send partial updates to the LLM, returning a delta that merges with the current state.
+1.  **Input:** User uploads resume (PDF/DOCX) via `ResumeUpload` component.
+2.  **Processing:** Client-side validation occurs before triggering a `useMutation` hook.
+3.  **Transit:** Data is sent to the backend API via the `services/` layer with JWT authentication headers.
+4.  **Storage:** The AI service parses the data and returns structured JSON; the client updates the Zustand store.
+5.  **View:** Components subscribed to the store trigger a re-render to display match metrics.
 
 ## 5. State Management Approach
-The application utilizes a **Redux Toolkit (RTK)** slice-based architecture. 
-*   **Global State:** Resume data, user profile, and session status are stored in the Redux store to ensure consistency across views.
-*   **Local State:** Component-specific UI states (e.g., form input, dropdown toggles) are managed via `useState` or `useReducer` to minimize store overhead.
+*   **Server State:** Managed by **TanStack Query** to handle API caching, loading states, and error retries.
+*   **Client Global State:** Managed by **Zustand** for non-persistent UI configuration (e.g., active step in a wizard, current theme, or filtered resume states).
+*   **Local State:** Kept within individual components using `useState` or `useReducer` for ephemeral inputs (e.g., form field keystrokes).
 
 ## 6. Error Handling Strategy
-*   **Centralized Interceptors:** Axios interceptors globally catch 4xx/5xx status codes to trigger toast notifications.
-*   **ErrorBoundary:** Top-level React Error Boundaries prevent application-wide crashes, providing a fallback UI for component failures.
-*   **Form Validation:** Schema validation (via Zod) ensures that parsed data adheres to strict structural requirements before being injected into the state store.
+*   **Boundary Layers:** Global `ErrorBoundary` components catch React rendering crashes to prevent blank screens.
+*   **API Interceptors:** Axios response interceptors handle global 401 (re-authentication) and 500-series (server-side) errors.
+*   **User Feedback:** Toast notifications (via `react-hot-toast`) provide immediate visual feedback for failed operations or invalid file uploads.
+*   **Graceful Degradation:** Feature-flagging/conditional rendering ensures essential UI elements remain functional even if auxiliary AI features experience latency.

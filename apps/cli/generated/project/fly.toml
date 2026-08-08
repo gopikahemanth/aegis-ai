@@ -1,4 +1,4 @@
-app = "resume-oracle-ai"
+app = "resumatchai"
 primary_region = "bos"
 
 [http_service]

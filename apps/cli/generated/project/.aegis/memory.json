@@ -11,30 +11,30 @@
   "tasks": [
     {
       "id": 1,
-      "title": "Database Schema and ORM Setup",
-      "description": "Initialize Prisma with postgresql and define User, Resume, JobDescription, and ScanResult models.",
+      "title": "Define Mongoose Schemas",
+      "description": "Establish MongoDB data models for User, Resume, JobDescription, and AnalysisResult with strict validation using Mongoose and Zod.",
       "completed": true,
       "stage": "DataModeling",
       "priority": 1,
       "dependencies": [],
-      "estimatedComplexity": 3
+      "estimatedComplexity": 2
     },
     {
       "id": 2,
-      "title": "Backend API Infrastructure",
-      "description": "Implement Express server with JWT auth, Multer for PDF uploads, and OCR/NLP processing services.",
+      "title": "Backend Infrastructure and Auth",
+      "description": "Implement Express server, JWT authentication middleware, and secure file upload handling using Multer.",
       "completed": true,
       "stage": "Backend",
       "priority": 2,
       "dependencies": [
         1
       ],
-      "estimatedComplexity": 8
+      "estimatedComplexity": 3
     },
     {
       "id": 3,
-      "title": "NLP Processing Logic",
-      "description": "Develop core logic using natural and compromise for resume-to-job keyword matching and semantic scoring.",
+      "title": "Core Logic Implementation",
+      "description": "Develop PDF parsing engine (pdf-parse/tesseract) and semantic matching algorithms using natural language processing libraries.",
       "completed": true,
       "stage": "Backend",
       "priority": 3,
@@ -45,38 +45,37 @@
     },
     {
       "id": 4,
-      "title": "React Frontend Development",
-      "description": "Build UI with Tailwind, React-Query for state, Recharts for dashboard analytics, and jsPDF for export.",
+      "title": "API Routes Development",
+      "description": "Expose RESTful endpoints for authentication, document processing, analysis retrieval, and history management.",
       "completed": true,
-      "stage": "Frontend",
+      "stage": "ApiDesign",
       "priority": 4,
       "dependencies": [
-        2
+        3
       ],
-      "estimatedComplexity": 8
+      "estimatedComplexity": 3
     },
     {
       "id": 5,
-      "title": "System Integration and Validation",
-      "description": "Connect frontend flows with backend endpoints, verify JWT authentication, and run end-to-end unit tests.",
+      "title": "Frontend Development",
+      "description": "Build React dashboard with Tailwind CSS, Recharts for analytics, and React-Query for efficient API state management.",
       "completed": true,
-      "stage": "Validation",
+      "stage": "Frontend",
       "priority": 5,
       "dependencies": [
-        3,
         4
       ],
-      "estimatedComplexity": 4
+      "estimatedComplexity": 5
     }
   ],
   "history": [
     {
-      "timestamp": "2026-08-08T13:42:24.722Z",
+      "timestamp": "2026-08-08T13:55:13.763Z",
       "request": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
       "stage": "Initialization"
     },
     {
-      "timestamp": "2026-08-08T13:47:47.694Z",
+      "timestamp": "2026-08-08T14:00:45.293Z",
       "request": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
       "stage": "ExecutionComplete"
     }

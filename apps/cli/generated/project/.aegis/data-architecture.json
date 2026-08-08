@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "System users for authentication and history management",
+      "description": "System user with authentication credentials",
       "persistence": "database",
       "fields": [
         {
@@ -12,7 +12,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Primary key"
+          "description": "Primary identifier"
         },
         {
           "name": "email",
@@ -21,7 +21,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Unique email address"
+          "description": "User email address"
         },
         {
           "name": "password",
@@ -35,8 +35,8 @@
       ]
     },
     {
-      "name": "ScanResult",
-      "description": "Stores the outcome of an AI resume analysis",
+      "name": "AnalysisResult",
+      "description": "Historical record of a resume-job description scan",
       "persistence": "database",
       "fields": [
         {
@@ -46,7 +46,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Primary key"
+          "description": "Analysis ID"
         },
         {
           "name": "userId",
@@ -55,43 +55,43 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": "User",
-          "description": "Owner of the scan"
+          "description": "Owner of the analysis"
         },
         {
-          "name": "jobTitle",
+          "name": "resumeContent",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Target job role"
+          "description": "Extracted text"
         },
         {
-          "name": "matchPercentage",
+          "name": "jobDescription",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Target JD"
+        },
+        {
+          "name": "matchScore",
           "type": "number",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Calculated score"
+          "description": "Calculated ATS score"
         },
         {
-          "name": "missingKeywords",
+          "name": "keywordDensity",
           "type": "Json",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Array of strings for gaps"
-        },
-        {
-          "name": "rawResumeText",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Extracted text content"
+          "description": "Detailed frequency map"
         },
         {
           "name": "createdAt",
@@ -105,43 +105,44 @@
       ]
     }
   ],
-  "databaseSchema": "model User {\n  id        String       @id @default(uuid())\n  email     String       @unique\n  password  String\n  scans     ScanResult[]\n}\n\nmodel ScanResult {\n  id              String   @id @default(uuid())\n  userId          String\n  user            User     @relation(fields: [userId], references: [id])\n  jobTitle        String\n  matchPercentage Float\n  missingKeywords Json\n  rawResumeText   String   @db.Text\n  createdAt       DateTime @default(now())\n}",
+  "databaseSchema": "model User { id String @id @default(uuid()) email String @unique password String analyses AnalysisResult[] }\n\nmodel AnalysisResult { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) resumeContent String jobDescription String matchScore Float keywordDensity Json createdAt DateTime @default(now()) }",
   "apis": [
     {
       "path": "/api/v1/auth/register",
       "method": "POST",
-      "description": "Register a new user",
-      "requestBodySchema": "{ email: string, password: string }",
-      "responseBodySchema": "{ token: string }"
+      "description": "Register new user",
+      "requestBodySchema": "{ \"email\": \"string\", \"password\": \"string\" }",
+      "responseBodySchema": "{ \"token\": \"string\" }"
     },
     {
-      "path": "/api/v1/analyze",
+      "path": "/api/v1/scan",
       "method": "POST",
-      "description": "Upload PDF and run NLP analysis",
-      "requestBodySchema": "Multipart form data with 'resume' file and 'jobDescription' text",
-      "responseBodySchema": "{ id: string, matchPercentage: number, missingKeywords: string[] }"
+      "description": "Upload resume, parse, and score against JD",
+      "requestBodySchema": "{ \"file\": \"Buffer\", \"jobDescription\": \"string\" }",
+      "responseBodySchema": "{ \"score\": \"number\", \"keywords\": \"object\" }"
     },
     {
       "path": "/api/v1/history",
       "method": "GET",
-      "description": "Fetch user scan history",
-      "responseBodySchema": "ScanResult[]"
+      "description": "Retrieve past analysis results",
+      "requestBodySchema": null,
+      "responseBodySchema": "AnalysisResult[]"
     }
   ],
   "hooks": [
     {
-      "name": "useScanHistory",
-      "type": "query",
-      "endpoint": "/api/v1/history",
-      "params": "void",
-      "returns": "ScanResult[]"
+      "name": "useScanAnalysis",
+      "type": "mutation",
+      "endpoint": "/api/v1/scan",
+      "params": "formData: FormData",
+      "returns": "AnalysisResult"
     },
     {
-      "name": "useAnalyzeResume",
-      "type": "mutation",
-      "endpoint": "/api/v1/analyze",
-      "params": "formData: FormData",
-      "returns": "{ id: string, matchPercentage: number, missingKeywords: string[] }"
+      "name": "useHistory",
+      "type": "query",
+      "endpoint": "/api/v1/history",
+      "params": "userId: string",
+      "returns": "AnalysisResult[]"
     }
   ]
 }

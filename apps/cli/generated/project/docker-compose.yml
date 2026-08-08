@@ -7,21 +7,17 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://aegis:aegis_secure_password@db:5432/app_db
+      - DATABASE_URL=
     restart: always
     depends_on:
       - db
   db:
-    image: postgres:15-alpine
+    image: mongo:6-jammy
     restart: always
-    environment:
-      POSTGRES_USER: aegis
-      POSTGRES_PASSWORD: aegis_secure_password
-      POSTGRES_DB: app_db
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mongodata:/data/db
 
 volumes:
-  pgdata:
+  mongodata:

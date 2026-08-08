@@ -23,6 +23,55 @@ export default apiClient;
 `;
     }
 
+    if (lowerRel.includes("hook") || lowerRel.includes("/hooks/") || safeCompName.startsWith("use")) {
+      return `import { useState, useEffect } from 'react';
+
+export function ${safeCompName}(initialData?: any) {
+  const [data, setData] = useState<any>(initialData || []);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<any>(null);
+
+  useEffect(() => {
+    setIsLoading(false);
+  }, []);
+
+  return { data, isLoading, error, refetch: () => {}, mutate: () => {} };
+}
+export default ${safeCompName};
+`;
+    }
+
+    if (lowerRel.includes("context")) {
+      return `import React, { createContext, useContext, useState } from 'react';
+
+const ${safeCompName}Context = createContext<any>({});
+
+export const ${safeCompName}Provider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [state, setState] = useState<any>({});
+  return (
+    <${safeCompName}Context.Provider value={{ state, setState }}>
+      {children}
+    </${safeCompName}Context.Provider>
+  );
+};
+
+export const use${safeCompName} = () => useContext(${safeCompName}Context);
+export default ${safeCompName}Provider;
+`;
+    }
+
+    if (lowerRel.includes("service")) {
+      return `export const ${safeCompName} = {
+  async getAll() { return []; },
+  async getById(id: string | number) { return { id }; },
+  async create(data: any) { return { id: Date.now(), ...data }; },
+  async update(id: string | number, data: any) { return { id, ...data }; },
+  async delete(id: string | number) { return true; }
+};
+export default ${safeCompName};
+`;
+    }
+
     if (lowerRel.includes("type") || lowerRel.includes("model") || lowerRel.includes("entity")) {
       return `export interface ${safeCompName} {
   id: string | number;

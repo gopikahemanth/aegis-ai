@@ -1,20 +1,17 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ErrorBoundary } from './shared/components/ErrorBoundary';
 
-const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
+const Dashboard = lazy(() => import('./features/dashboard/DashboardPage'));
 
-export default function App(props: any) {
-  return (
-    <BrowserRouter>
-      <ErrorBoundary>
-        <Suspense fallback={<div className="p-8 text-center text-zinc-500">Loading Application...</div>}>
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-          </Routes>
-        </Suspense>
-      </ErrorBoundary>
-    </BrowserRouter>
-  );
-}
+const App = () => (
+  <BrowserRouter>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+      <Routes>
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </Suspense>
+  </BrowserRouter>
+);
+
+export default App;
 export { App };

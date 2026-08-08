@@ -308,4 +308,17 @@ describe("Architecture Drift Governance Suite", () => {
     expect(contract.database.provider).toBe("PostgreSQL");
     expect(contract.database.orm).toBe("Prisma");
   });
+
+  it("TEST 26: ProjectPathResolver.resolveProjectFile eliminates single-root duplicate path segments", () => {
+    const root = "generated/project";
+    const path = ProjectPathResolver.resolveProjectFile(root, "generated/project/server/controllers/authController.ts");
+    expect(path).not.toContain("generated/project/generated/project");
+    expect(path).toContain("server/controllers/authController.ts");
+  });
+
+  it("TEST 27: ProjectPathResolver throws DuplicateProjectRootError on generated/project/generated/project", () => {
+    expect(() => {
+      ProjectPathResolver.resolveProjectFile("generated/project", "generated/project/generated/project/server/controllers/authController.ts");
+    }).toThrow();
+  });
 });

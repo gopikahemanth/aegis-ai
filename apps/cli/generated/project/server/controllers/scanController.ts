@@ -1,31 +1,29 @@
 import { Request, Response } from 'express';
-import { ScanResult } from '../models/ScanResult';
+import pdf from 'pdf-parse';
+import natural from 'natural';
 
-export const analyzeResume = async (req: Request, res: Response): Promise<void> => {
+export const analyzeResume = async (req: Request, res: Response) => {
   try {
-    const { jobDescription, extractedText } = req.body;
-    const userId = (req as any).user?.id;
+    const { jobDescription } = req.body;
+    if (!req.file || !jobDescription) {
+      return res.status(400).json({ error: 'Missing file or job description' });
+    }
 
-    // Core keyword matching logic (simplified for brevity, should use natural library)
-    const keywords = jobDescription.split(/[\s,]+/);
-    const matchedKeywords = keywords.filter((k: string) => 
-      extractedText.toLowerCase().includes(k.toLowerCase())
-    );
-    const missingKeywords = keywords.filter((k: string) => 
-      !extractedText.toLowerCase().includes(k.toLowerCase())
-    );
+    const pdfData = await pdf(req.file.buffer);
+    const resumeText = pdfData.text.toLowerCase();
     
-    const matchScore = Math.round((matchedKeywords.length / keywords.length) * 100);
+    // Simple Keyword Extraction Logic
+    const keywords = jobDescription.toLowerCase().split(/[ ,]+/);
+    const matchedKeywords = keywords.filter((k: string) => resumeText.includes(k) && k.length > 3);
+    const missingSkills = keywords.filter((k: string) => !resumeText.includes(k) && k.length > 3);
+    
+    const score = Math.round((matchedKeywords.length / (keywords.length || 1)) * 100);
 
-    const result = await ScanResult.create({
-      userId,
-      matchScore,
-      matchedKeywords,
-      missingKeywords,
-      createdAt: new Date()
+    res.json({
+      score,
+      matchedKeywords: [...new Set(matchedKeywords)],
+      missingSkills: [...new Set(missingSkills)]
     });
-
-    res.status(200).json({ success: true, data: result });
   } catch (error) {
     res.json([]);
   }

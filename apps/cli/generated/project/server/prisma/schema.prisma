@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  scans        Scan[]
+}
+
+model Scan {
+  id                 Int             @id @default(autoincrement())
+  userId             Int
+  user               User            @relation(fields: [userId], references: [id])
+  compatibilityScore Int
+  createdAt          DateTime        @default(now())
+  resume             Resume?
+  jobDescription     JobDescription?
+  report             AnalysisReport?
+}
+
+model Resume {
+  id       Int    @id @default(autoincrement())
+  scanId   Int    @unique
+  scan     Scan   @relation(fields: [scanId], references: [id])
+  fileName String
+  rawText  String @db.Text
+}
+
+model JobDescription {
+  id          Int    @id @default(autoincrement())
+  scanId      Int    @unique
+  scan        Scan   @relation(fields: [scanId], references: [id])
+  companyName String
+  roleTitle   String
+  rawText     String @db.Text
+}
+
+model AnalysisReport {
+  id              Int      @id @default(autoincrement())
+  scanId          Int      @unique
+  scan            Scan     @relation(fields: [scanId], references: [id])
+  matchedKeywords String[]
+  missingKeywords String[]
+  suggestions     String[]
+}

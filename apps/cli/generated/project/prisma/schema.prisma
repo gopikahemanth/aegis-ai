@@ -4,33 +4,31 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url = "file:./dev.db"
 }
 
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  passwordHash String
-  transactions Transaction[]
-  budgets      Budget[]
-  createdAt    DateTime      @default(now())
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  passwordHash  String
+  createdAt     DateTime @default(now())
+  scans         Scan[]
 }
 
-model Transaction {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  amount      Float
-  type        String   // "INCOME" or "EXPENSE"
-  category    String
-  description String
-  date        DateTime @default(now())
+model Scan {
+  id                 Int      @id @default(autoincrement())
+  user               User     @relation(fields: [userId], references: [id])
+  userId             Int
+  compatibilityScore Int
+  createdAt          DateTime @default(now())
+  report             AnalysisReport?
 }
 
-model Budget {
-  id         String @id @default(uuid())
-  userId     String
-  user       User   @relation(fields: [userId], references: [id])
-  category   String
-  limit      Float
+model AnalysisReport {
+  id              Int      @id @default(autoincrement())
+  scan            Scan     @relation(fields: [scanId], references: [id])
+  scanId          Int      @unique
+  matchedKeywords String[]
+  missingKeywords String[]
+  suggestions     String[]
 }

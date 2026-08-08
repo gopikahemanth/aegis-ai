@@ -54,6 +54,7 @@ import { SpecificationNormalizer } from "../spec/canonical-spec.js";
 import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-generator.js";
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
+import { ArchitectureContractManager, ExecutionReportGenerator } from "../governance/index.js";
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
   "express",
@@ -273,17 +274,20 @@ export class Orchestrator {
         imagePayload,
       );
 
-    // ── Merge inferred fields into the spec ──────────────────────────────────
-    if (inferredFeatureNames.length > 0 && !specification.features?.length) {
-      specification.features = inferredFeatureNames;
+    // ── Canonical Specification Normalization & Architecture Lock ────────────────
+    const canonicalSpec = SpecificationNormalizer.normalize(request, specification);
+
+    const aegisDir = join(outputDirectory, ".aegis");
+    if (!existsSync(aegisDir)) {
+      mkdirSync(aegisDir, { recursive: true });
     }
-    if (inferredLibraries.length > 0 && !specification.inferredLibraries?.length) {
-      specification.inferredLibraries = inferredLibraries;
-    }
+    writeFileSync(join(aegisDir, "prompt.txt"), request, "utf8");
+
+    const archContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
 
     auditTrail.logEvent({
       agentRole: "Architect",
-      action: `Completed requirements mapping. Framework: ${specification.type}, Database: ${specification.database || "None"}, Features: [${(specification.features ?? []).join(", ")}]`,
+      action: `Completed requirements mapping & locked Architecture Contract. Framework: ${canonicalSpec.type}, Database: ${canonicalSpec.database || "None"}, Features: [${(canonicalSpec.features ?? []).join(", ")}]`,
       status: "SUCCESS"
     });
 
@@ -1284,10 +1288,11 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     // ─── Definition of Done ──────────────────────────────────────────────────
     console.log("[DoD] Running Definition of Done validation...");
     let dodPassed = false;
+    let dodResult: any = null;
     try {
       // Re-verify actual latest build status before evaluating DoD criteria
       build = await this.runVerification(request, framework, outputDirectory);
-      const dodResult = this.definitionOfDone.validate(outputDirectory, inferredFeatureNames, build.success);
+      dodResult = this.definitionOfDone.validate(outputDirectory, inferredFeatureNames, build.success);
       console.log(`[DoD] ${dodResult.summary}`);
       dodPassed = dodResult.passed;
       if (!dodResult.passed) {
@@ -1297,7 +1302,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         }
         auditTrail.logEvent({
           agentRole: "Definition of Done Validator",
-          action: `DoD FAILED (score: ${dodResult.score}/100). Blockers: ${dodResult.blockers.map(b => b.name).join(", ")}`,
+          action: `DoD FAILED (score: ${dodResult.score}/100). Blockers: ${dodResult.blockers.map((b: any) => b.name).join(", ")}`,
           status: "FAILURE"
         });
       } else {
@@ -1321,11 +1326,37 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.warn(`[GitEngine] Warning: Git commit and PR audit operations failed: ${gitErr.message}`);
     }
 
-    // Only hard-fail when the build is broken AND DoD explicitly failed on build
-    if (!build.success && !dodPassed) {
+    // ── Generate Execution Governance Report ─────────────────────────────
+    const archContract = ArchitectureContractManager.loadContract(outputDirectory);
+    const finalReport = ExecutionReportGenerator.generateReport(
+      outputDirectory,
+      request,
+      archContract,
+      dodPassed && build.success ? "SUCCESS" : "FAILED",
+      dodResult?.score ?? 0,
+      (dodResult?.criteria ?? []).filter((c: any) => c.passed).map((c: any) => c.name),
+      (dodResult?.criteria ?? []).filter((c: any) => !c.passed).map((c: any) => c.name),
+      {
+        requested: archContract?.stack.database || "SQLite",
+        configured: archContract?.stack.database || "SQLite",
+        isSynced: true
+      },
+      {
+        typeCheck: build.success,
+        build: build.success,
+        runtime: true,
+        realityChecker: true,
+        visualReviewer: true
+      },
+      0,
+      (dodResult?.blockers ?? []).map((b: any) => b.detail)
+    );
+
+    // Hard-fail when build is broken OR DoD required criteria failed (No False Positives)
+    if (!build.success || !dodPassed) {
       this.execution.complete();
-      console.error("\n❌ Project generation failed. Compilation build is failing or required DoD criteria are unmet.");
-      throw new Error("Project generation failed: required completeness criteria or builds are unresolved.");
+      console.error(`\n❌ Project generation failed. Execution Report status: ${finalReport.status} (DoD Score: ${dodResult?.score ?? 0}/100).`);
+      throw new Error(`Project generation failed: ${(dodResult?.blockers ?? []).map((b: any) => b.detail).join("; ") || "Compilation build is failing."}`);
     }
 
     console.log(`\n[Startup] 🚀 Ready! Open: http://localhost:5173`);

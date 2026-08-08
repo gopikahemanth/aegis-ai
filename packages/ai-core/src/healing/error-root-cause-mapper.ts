@@ -17,6 +17,8 @@ export type ErrorClass =
   | "type-mismatch"             // Wrong type passed (e.g. sync vs async)
   | "missing-module"            // Cannot find module / missing package
   | "missing-property"          // Property doesn't exist on type
+  | "database"                  // Prisma schema / database query error
+  | "dependency"                // Missing npm dependency
   | "generic-ts-error";         // Fallback
 
 export interface ClassifiedError {

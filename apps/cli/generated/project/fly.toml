@@ -1,4 +1,4 @@
-app = "aegis-expense-tracker"
+app = "aegisresumeoptimizer"
 primary_region = "bos"
 
 [http_service]

@@ -1,6 +1,6 @@
 {
   "projectName": "project",
-  "lastRequest": "Build a fullstack SaaS Expense Tracker & Budgeting web application with Express backend, Prisma SQLite database, React 18 with Vite frontend, interactive income and expense logging with category badges, monthly budget progress bars, category breakdown pie charts, downloadable CSV/PDF export, transaction filter by date range and category, edit/delete transaction modals, and dark mode glassmorphism UI theme.",
+  "lastRequest": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
   "createdFiles": [
     "Dockerfile",
     ".dockerignore",
@@ -11,44 +11,44 @@
   "tasks": [
     {
       "id": 1,
-      "title": "Prisma Data Modeling and SQLite Setup",
-      "description": "Initialize Prisma with SQLite and define User, Transaction, Category, and Budget schemas with relational integrity.",
+      "title": "Database Schema Definition",
+      "description": "Initialize Prisma and define PostgreSQL schema for User, Resume, JobDescription, and AnalysisReport models.",
       "completed": true,
-      "stage": "DataModeling",
+      "stage": "Database",
       "priority": 1,
       "dependencies": [],
-      "estimatedComplexity": 2
+      "estimatedComplexity": 3
     },
     {
       "id": 2,
-      "title": "Backend Express Infrastructure",
-      "description": "Implement Express server with JWT authentication middleware, Zod validation, and RESTful route controllers.",
+      "title": "Backend Infrastructure & Auth",
+      "description": "Setup Express server with JWT authentication, Multer file handling, and validation middleware.",
       "completed": true,
       "stage": "Backend",
       "priority": 2,
       "dependencies": [
         1
       ],
-      "estimatedComplexity": 3
+      "estimatedComplexity": 5
     },
     {
       "id": 3,
-      "title": "API Implementation and Business Logic",
-      "description": "Develop transaction CRUD, analytics aggregation, and report generation endpoints protected by JWT strategy.",
+      "title": "NLP and Analysis Services",
+      "description": "Implement PDF parsing logic and integrate OpenAI/natural processing services for resume-JD compatibility scoring.",
       "completed": true,
-      "stage": "ApiDesign",
+      "stage": "Backend",
       "priority": 3,
       "dependencies": [
         2
       ],
-      "estimatedComplexity": 4
+      "estimatedComplexity": 8
     },
     {
       "id": 4,
-      "title": "Frontend Development with React-Vite",
-      "description": "Build UI components using Tailwind CSS, React-Hook-Form, and Recharts, integrating with the Express backend via Axios.",
+      "title": "API Controller Layer",
+      "description": "Develop RESTful endpoints for scan submission, history retrieval, and result analysis persistence.",
       "completed": true,
-      "stage": "Frontend",
+      "stage": "ApiDesign",
       "priority": 4,
       "dependencies": [
         3
@@ -57,26 +57,26 @@
     },
     {
       "id": 5,
-      "title": "Integration, Validation, and Final Review",
-      "description": "Verify system-wide end-to-end flows, performance, and security headers to ensure production readiness.",
+      "title": "Frontend Implementation",
+      "description": "Build React dashboard with Recharts visualizations, file upload handling via React-Dropzone, and React-Query integration.",
       "completed": true,
-      "stage": "Validation",
+      "stage": "Frontend",
       "priority": 5,
       "dependencies": [
         4
       ],
-      "estimatedComplexity": 2
+      "estimatedComplexity": 8
     }
   ],
   "history": [
     {
-      "timestamp": "2026-08-08T07:48:16.662Z",
-      "request": "Build a fullstack SaaS Expense Tracker & Budgeting web application with Express backend, Prisma SQLite database, React 18 with Vite frontend, interactive income and expense logging with category badges, monthly budget progress bars, category breakdown pie charts, downloadable CSV/PDF export, transaction filter by date range and category, edit/delete transaction modals, and dark mode glassmorphism UI theme.",
+      "timestamp": "2026-08-08T13:12:15.807Z",
+      "request": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
       "stage": "Initialization"
     },
     {
-      "timestamp": "2026-08-08T07:51:35.772Z",
-      "request": "Build a fullstack SaaS Expense Tracker & Budgeting web application with Express backend, Prisma SQLite database, React 18 with Vite frontend, interactive income and expense logging with category badges, monthly budget progress bars, category breakdown pie charts, downloadable CSV/PDF export, transaction filter by date range and category, edit/delete transaction modals, and dark mode glassmorphism UI theme.",
+      "timestamp": "2026-08-08T13:19:59.980Z",
+      "request": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
       "stage": "ExecutionComplete"
     }
   ]

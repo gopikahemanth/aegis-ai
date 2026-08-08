@@ -1,15 +1,17 @@
 {
   "buildHistory": [
     {
-      "timestamp": "2026-08-08T07:51:35.776Z",
-      "success": true,
+      "timestamp": "2026-08-08T13:20:00.806Z",
+      "success": false,
       "durationMs": 3000,
-      "errors": []
+      "errors": [
+        "Visual layout review failed with high-severity layout issues:\n[Visual Issue] in 'Main content container': The primary interaction area is completely empty, missing the required PDF upload interface, job description input, and scanner controls specified in the application requirements. (severity: high)\n\nPlease fix the css files, html files, or container spacing to align with standard styling guidelines."
+      ]
     }
   ],
   "telemetry": {
-    "totalTokensUsed": 58784,
-    "estimatedCostUsd": 0.00717,
+    "totalTokensUsed": 67833,
+    "estimatedCostUsd": 0.008089,
     "healingAttempts": 0,
     "sandboxRuns": 1
   }

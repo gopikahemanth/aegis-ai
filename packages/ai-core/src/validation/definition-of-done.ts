@@ -38,6 +38,9 @@ export interface DefinitionOfDoneResult {
  */
 import { ValidationStateManager } from "./validation-state.js";
 
+import { EmptyAppDetector } from "../governance/empty-app-detector.js";
+import { ArchitectureContractManager } from "../governance/architecture-contract.js";
+
 export class DefinitionOfDone {
   private readonly sourceExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".vue", ".svelte"]);
 
@@ -50,12 +53,27 @@ export class DefinitionOfDone {
       try { return readFileSync(f, "utf8"); } catch { return ""; }
     }).join("\n");
 
+    const emptyAppCheck = EmptyAppDetector.inspectProjectSource(projectDirectory);
+    const archContract = ArchitectureContractManager.loadContract(projectDirectory);
+
     const criteria: DodCriterion[] = [
       {
         id: "build-success",
         name: "Build Verification",
         passed: effectiveBuildSuccess,
         detail: effectiveBuildSuccess ? "Project compiled and built successfully" : "Project build is failing compilation errors",
+      },
+      {
+        id: "non-empty-app",
+        name: "Empty Application Detector",
+        passed: !emptyAppCheck.isEmpty,
+        detail: emptyAppCheck.isEmpty ? `Application is empty: ${emptyAppCheck.reasons.join(", ")}` : "Source application structure verified non-empty",
+      },
+      {
+        id: "architecture-contract",
+        name: "Architecture Contract Verification",
+        passed: archContract !== null,
+        detail: archContract !== null ? `Architecture Contract verified (Stack: ${archContract.stack.frontend}/${archContract.stack.database})` : "Architecture contract file missing",
       },
       this.checkNoHardcodedData(allSource),
       this.checkFormValidation(allSource),
@@ -109,6 +127,8 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
   private isRequired(criterionId: string): boolean {
     const required = new Set([
       "build-success",
+      "non-empty-app",
+      "architecture-contract",
       "no-hardcoded-data",
       "error-states",
       "loading-states",

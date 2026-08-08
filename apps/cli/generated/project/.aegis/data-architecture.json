@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "System user with authentication credentials",
+      "description": "System user authentication and profile storage",
       "persistence": "database",
       "fields": [
         {
@@ -21,22 +21,22 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Email address"
+          "description": "User email address"
         },
         {
-          "name": "password",
+          "name": "passwordHash",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Hashed password"
+          "description": "Encrypted password"
         }
       ]
     },
     {
-      "name": "Transaction",
-      "description": "Financial record of income or expense",
+      "name": "ScanResult",
+      "description": "Container for a single resume analysis event",
       "persistence": "database",
       "fields": [
         {
@@ -55,168 +55,92 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": "User",
-          "description": "Owner of the transaction"
+          "description": "Owner of the scan"
         },
         {
-          "name": "amount",
-          "type": "number",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Financial amount"
-        },
-        {
-          "name": "type",
+          "name": "resumeText",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "INCOME or EXPENSE"
+          "description": "Extracted resume content"
         },
         {
-          "name": "date",
+          "name": "jobDescriptionText",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Target job description"
+        },
+        {
+          "name": "matchScore",
+          "type": "number",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Calculated compatibility percentage"
+        },
+        {
+          "name": "analysisData",
+          "type": "Json",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Structured breakdown of keywords and gaps"
+        },
+        {
+          "name": "createdAt",
           "type": "DateTime",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Transaction date"
-        },
-        {
-          "name": "categoryId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": "Category",
-          "description": "Associated category"
-        }
-      ]
-    },
-    {
-      "name": "Category",
-      "description": "Tagging classification for transactions",
-      "persistence": "database",
-      "fields": [
-        {
-          "name": "id",
-          "type": "string",
-          "isId": true,
-          "isNullable": false,
-          "isUnique": true,
-          "relationTo": null,
-          "description": "Unique identifier"
-        },
-        {
-          "name": "name",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Category name"
-        },
-        {
-          "name": "userId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": "User",
-          "description": "User specific category"
-        }
-      ]
-    },
-    {
-      "name": "Budget",
-      "description": "Monthly spending limit per category",
-      "persistence": "database",
-      "fields": [
-        {
-          "name": "id",
-          "type": "string",
-          "isId": true,
-          "isNullable": false,
-          "isUnique": true,
-          "relationTo": null,
-          "description": "Unique identifier"
-        },
-        {
-          "name": "userId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": "User",
-          "description": "Owner"
-        },
-        {
-          "name": "limit",
-          "type": "number",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Budget ceiling"
-        },
-        {
-          "name": "categoryId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": "Category",
-          "description": "Target category"
+          "description": "Timestamp of creation"
         }
       ]
     }
   ],
-  "databaseSchema": "generator client { provider = \"prisma-client-js\" } datasource db { provider = \"sqlite\" url = \"file:./dev.db\" } model User { id String @id @default(uuid()) email String @unique password String transactions Transaction[] categories Category[] budgets Budget[] } model Transaction { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) amount Float type String date DateTime categoryId String category Category @relation(fields: [categoryId], references: [id]) } model Category { id String @id @default(uuid()) name String userId String user User @relation(fields: [userId], references: [id]) transactions Transaction[] budgets Budget[] } model Budget { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) limit Float categoryId String category Category @relation(fields: [categoryId], references: [id]) }",
+  "databaseSchema": "model User { id String @id @default(uuid()) email String @unique passwordHash String scans ScanResult[] }\n\nmodel ScanResult { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) resumeText String jobDescriptionText String matchScore Float analysisData Json createdAt DateTime @default(now()) }",
   "apis": [
     {
-      "path": "/api/v1/transactions",
-      "method": "GET",
-      "description": "Retrieve all transactions for the authenticated user",
-      "responseBodySchema": "Transaction[]"
-    },
-    {
-      "path": "/api/v1/transactions",
+      "path": "/api/v1/scans",
       "method": "POST",
-      "description": "Create a new transaction",
-      "requestBodySchema": "{ amount: number, type: string, categoryId: string, date: string }",
-      "responseBodySchema": "Transaction"
+      "description": "Upload resume/JD, trigger parsing and analysis",
+      "requestBodySchema": "{ \"resume\": \"File\", \"jobDescription\": \"string\" }",
+      "responseBodySchema": "{ \"id\": \"string\", \"matchScore\": \"number\", \"analysis\": \"object\" }"
     },
     {
-      "path": "/api/v1/auth/login",
-      "method": "POST",
-      "description": "Authenticate user and set cookie",
-      "requestBodySchema": "{ email: string, password: string }",
-      "responseBodySchema": "{ token: string }"
-    },
-    {
-      "path": "/api/v1/reports/export",
+      "path": "/api/v1/scans",
       "method": "GET",
-      "description": "Generate and download financial report",
-      "requestBodySchema": "null",
-      "responseBodySchema": "Blob"
+      "description": "Fetch user scan history",
+      "responseBodySchema": "ScanResult[]"
+    },
+    {
+      "path": "/api/v1/scans/:id",
+      "method": "DELETE",
+      "description": "Remove a specific scan record",
+      "responseBodySchema": "{ \"success\": \"boolean\" }"
     }
   ],
   "hooks": [
     {
-      "name": "useTransactions",
-      "type": "query",
-      "endpoint": "/api/v1/transactions",
-      "params": "filter: { dateRange: string, categoryId: string }",
-      "returns": "Transaction[]"
+      "name": "useCreateScan",
+      "type": "mutation",
+      "endpoint": "/api/v1/scans",
+      "params": "formData (resume, jobDescription)",
+      "returns": "ScanResult"
     },
     {
-      "name": "useCreateTransaction",
-      "type": "mutation",
-      "endpoint": "/api/v1/transactions",
-      "params": "data: TransactionInput",
-      "returns": "Transaction"
+      "name": "useScanHistory",
+      "type": "query",
+      "endpoint": "/api/v1/scans",
+      "params": "none",
+      "returns": "ScanResult[]"
     }
   ]
 }

@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "System user with authentication credentials",
+      "description": "Authenticated system user",
       "persistence": "database",
       "fields": [
         {
@@ -36,7 +36,7 @@
     },
     {
       "name": "AnalysisResult",
-      "description": "Historical record of a resume-job description scan",
+      "description": "Stores the result of a resume versus job description scan",
       "persistence": "database",
       "fields": [
         {
@@ -46,7 +46,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Analysis ID"
+          "description": "Primary identifier"
         },
         {
           "name": "userId",
@@ -58,13 +58,13 @@
           "description": "Owner of the analysis"
         },
         {
-          "name": "resumeContent",
+          "name": "resumeFileName",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Extracted text"
+          "description": "Original file name"
         },
         {
           "name": "jobDescription",
@@ -73,25 +73,34 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Target JD"
+          "description": "Target job text"
         },
         {
-          "name": "matchScore",
+          "name": "matchPercentage",
           "type": "number",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Calculated ATS score"
+          "description": "Calculated score"
         },
         {
-          "name": "keywordDensity",
+          "name": "missingSkills",
           "type": "Json",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Detailed frequency map"
+          "description": "List of missing keywords"
+        },
+        {
+          "name": "suggestions",
+          "type": "Json",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Actionable improvements"
         },
         {
           "name": "createdAt",
@@ -105,40 +114,38 @@
       ]
     }
   ],
-  "databaseSchema": "model User { id String @id @default(uuid()) email String @unique password String analyses AnalysisResult[] }\n\nmodel AnalysisResult { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) resumeContent String jobDescription String matchScore Float keywordDensity Json createdAt DateTime @default(now()) }",
+  "databaseSchema": "datasource db { provider = \"sqlite\" url = \"file:./dev.db\" } generator client { provider = \"prisma-client-js\" } model User { id String @id @default(uuid()) email String @unique password String analyses AnalysisResult[] } model AnalysisResult { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) resumeFileName String jobDescription String matchPercentage Float missingSkills String suggestions String createdAt DateTime @default(now()) }",
   "apis": [
     {
-      "path": "/api/v1/auth/register",
+      "path": "/api/v1/analyze",
       "method": "POST",
-      "description": "Register new user",
-      "requestBodySchema": "{ \"email\": \"string\", \"password\": \"string\" }",
-      "responseBodySchema": "{ \"token\": \"string\" }"
-    },
-    {
-      "path": "/api/v1/scan",
-      "method": "POST",
-      "description": "Upload resume, parse, and score against JD",
-      "requestBodySchema": "{ \"file\": \"Buffer\", \"jobDescription\": \"string\" }",
-      "responseBodySchema": "{ \"score\": \"number\", \"keywords\": \"object\" }"
+      "description": "Uploads resume and job description to perform NLP analysis",
+      "requestBodySchema": "{ \"resumeBase64\": \"string\", \"jobDescription\": \"string\" }",
+      "responseBodySchema": "{ \"matchPercentage\": \"number\", \"missingSkills\": \"string[]\", \"suggestions\": \"string[]\" }"
     },
     {
       "path": "/api/v1/history",
       "method": "GET",
-      "description": "Retrieve past analysis results",
-      "requestBodySchema": null,
+      "description": "Retrieves scan history for the authenticated user",
       "responseBodySchema": "AnalysisResult[]"
+    },
+    {
+      "path": "/api/v1/history/:id",
+      "method": "DELETE",
+      "description": "Deletes a specific analysis record",
+      "responseBodySchema": "{ \"message\": \"string\" }"
     }
   ],
   "hooks": [
     {
-      "name": "useScanAnalysis",
+      "name": "useAnalyzeResume",
       "type": "mutation",
-      "endpoint": "/api/v1/scan",
-      "params": "formData: FormData",
+      "endpoint": "/api/v1/analyze",
+      "params": "none",
       "returns": "AnalysisResult"
     },
     {
-      "name": "useHistory",
+      "name": "useScanHistory",
       "type": "query",
       "endpoint": "/api/v1/history",
       "params": "userId: string",

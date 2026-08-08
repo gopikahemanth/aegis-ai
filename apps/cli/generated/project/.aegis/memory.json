@@ -11,8 +11,8 @@
   "tasks": [
     {
       "id": 1,
-      "title": "Define Mongoose Schemas",
-      "description": "Establish MongoDB data models for User, Resume, JobDescription, and AnalysisResult with strict validation using Mongoose and Zod.",
+      "title": "Define MongoDB Schema with Prisma",
+      "description": "Initialize Prisma with MongoDB connector and define User, Resume, JobDescription, and AnalysisResult models.",
       "completed": true,
       "stage": "DataModeling",
       "priority": 1,
@@ -21,61 +21,61 @@
     },
     {
       "id": 2,
-      "title": "Backend Infrastructure and Auth",
-      "description": "Implement Express server, JWT authentication middleware, and secure file upload handling using Multer.",
+      "title": "Develop Express Backend Services",
+      "description": "Implement authentication via JWT, file upload middleware, PDF parsing logic, and NLP matching engine.",
       "completed": true,
       "stage": "Backend",
       "priority": 2,
       "dependencies": [
         1
       ],
-      "estimatedComplexity": 3
+      "estimatedComplexity": 5
     },
     {
       "id": 3,
-      "title": "Core Logic Implementation",
-      "description": "Develop PDF parsing engine (pdf-parse/tesseract) and semantic matching algorithms using natural language processing libraries.",
+      "title": "Implement REST API Endpoints",
+      "description": "Create routes for authentication, resume processing, job description input, history retrieval, and report export.",
       "completed": true,
-      "stage": "Backend",
+      "stage": "ApiDesign",
       "priority": 3,
       "dependencies": [
         2
       ],
-      "estimatedComplexity": 5
+      "estimatedComplexity": 3
     },
     {
       "id": 4,
-      "title": "API Routes Development",
-      "description": "Expose RESTful endpoints for authentication, document processing, analysis retrieval, and history management.",
+      "title": "Build React Frontend Application",
+      "description": "Develop UI with Tailwind CSS, integrating react-query for state, framer-motion for animations, and recharts for analytics.",
       "completed": true,
-      "stage": "ApiDesign",
+      "stage": "Frontend",
       "priority": 4,
       "dependencies": [
         3
       ],
-      "estimatedComplexity": 3
+      "estimatedComplexity": 5
     },
     {
       "id": 5,
-      "title": "Frontend Development",
-      "description": "Build React dashboard with Tailwind CSS, Recharts for analytics, and React-Query for efficient API state management.",
+      "title": "Integration and Validation",
+      "description": "Perform end-to-end testing of user flows, including file upload to result generation, and verify JWT security.",
       "completed": true,
-      "stage": "Frontend",
+      "stage": "Validation",
       "priority": 5,
       "dependencies": [
         4
       ],
-      "estimatedComplexity": 5
+      "estimatedComplexity": 3
     }
   ],
   "history": [
     {
-      "timestamp": "2026-08-08T13:55:13.763Z",
+      "timestamp": "2026-08-08T14:10:06.184Z",
       "request": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
       "stage": "Initialization"
     },
     {
-      "timestamp": "2026-08-08T14:00:45.293Z",
+      "timestamp": "2026-08-08T14:15:42.371Z",
       "request": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
       "stage": "ExecutionComplete"
     }

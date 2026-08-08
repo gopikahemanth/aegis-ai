@@ -4,60 +4,29 @@
     "imports": [],
     "importedBy": []
   },
-  "scripts/dev.js": {
-    "path": "scripts/dev.js",
-    "imports": [],
-    "importedBy": []
-  },
-  "server/index.ts": {
-    "path": "server/index.ts",
-    "imports": [
-      "server/routes/auth.ts",
-      "server/routes/scan.ts",
-      "server/middleware/errorHandler.ts"
-    ],
-    "importedBy": []
-  },
-  "server/middleware/auth.ts": {
-    "path": "server/middleware/auth.ts",
+  "server/controllers/analysisController.ts": {
+    "path": "server/controllers/analysisController.ts",
     "imports": [],
     "importedBy": [
       "server/routes/scan.ts"
     ]
   },
-  "server/middleware/errorHandler.ts": {
-    "path": "server/middleware/errorHandler.ts",
-    "imports": [],
-    "importedBy": [
-      "server/index.ts"
-    ]
-  },
-  "server/models/index.tsx": {
-    "path": "server/models/index.tsx",
+  "server/routes/analysis.ts": {
+    "path": "server/routes/analysis.ts",
     "imports": [],
     "importedBy": []
-  },
-  "server/routes/auth.ts": {
-    "path": "server/routes/auth.ts",
-    "imports": [],
-    "importedBy": [
-      "server/index.ts"
-    ]
   },
   "server/routes/scan.ts": {
     "path": "server/routes/scan.ts",
     "imports": [
-      "server/middleware/auth.ts"
+      "server/controllers/analysisController.ts"
     ],
-    "importedBy": [
-      "server/index.ts"
-    ]
+    "importedBy": []
   },
   "src/App.tsx": {
     "path": "src/App.tsx",
     "imports": [
-      "src/shared/components/Layout.tsx",
-      "src/features/dashboard/DashboardPage.tsx"
+      "src/features/dashboard/components/ScoreCard.tsx"
     ],
     "importedBy": [
       "src/main.tsx"
@@ -76,7 +45,9 @@
   "src/design-system/components/GlassCard.tsx": {
     "path": "src/design-system/components/GlassCard.tsx",
     "imports": [],
-    "importedBy": []
+    "importedBy": [
+      "src/shared/components/Card.tsx"
+    ]
   },
   "src/design-system/components/Skeleton.tsx": {
     "path": "src/design-system/components/Skeleton.tsx",
@@ -93,43 +64,29 @@
     "imports": [],
     "importedBy": []
   },
-  "src/features/analyzer/services/api.ts": {
-    "path": "src/features/analyzer/services/api.ts",
-    "imports": [],
-    "importedBy": [
-      "src/features/dashboard/components/UploadSection.tsx"
-    ]
-  },
-  "src/features/dashboard/components/MatchScoreCard.tsx": {
-    "path": "src/features/dashboard/components/MatchScoreCard.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/features/dashboard/DashboardPage.tsx"
-    ]
-  },
-  "src/features/dashboard/components/UploadSection.tsx": {
-    "path": "src/features/dashboard/components/UploadSection.tsx",
+  "src/features/dashboard/components/ScanDashboard.tsx": {
+    "path": "src/features/dashboard/components/ScanDashboard.tsx",
     "imports": [
-      "src/features/analyzer/services/api.ts"
+      "src/shared/components/Card.tsx",
+      "src/shared/components/Button.tsx"
     ],
-    "importedBy": [
-      "src/features/dashboard/DashboardPage.tsx"
-    ]
+    "importedBy": []
   },
-  "src/features/dashboard/DashboardPage.tsx": {
-    "path": "src/features/dashboard/DashboardPage.tsx",
+  "src/features/dashboard/components/ScannerDashboard.tsx": {
+    "path": "src/features/dashboard/components/ScannerDashboard.tsx",
     "imports": [
-      "src/features/dashboard/components/MatchScoreCard.tsx",
-      "src/features/dashboard/components/UploadSection.tsx"
+      "src/shared/components/Button.tsx"
+    ],
+    "importedBy": []
+  },
+  "src/features/dashboard/components/ScoreCard.tsx": {
+    "path": "src/features/dashboard/components/ScoreCard.tsx",
+    "imports": [
+      "src/shared/utils/pdfExport.ts"
     ],
     "importedBy": [
       "src/App.tsx"
     ]
-  },
-  "src/features/uploader/components/FileDropzone.tsx": {
-    "path": "src/features/uploader/components/FileDropzone.tsx",
-    "imports": [],
-    "importedBy": []
   },
   "src/main.tsx": {
     "path": "src/main.tsx",
@@ -138,11 +95,28 @@
     ],
     "importedBy": []
   },
-  "src/shared/components/Layout.tsx": {
-    "path": "src/shared/components/Layout.tsx",
+  "src/shared/components/Button.tsx": {
+    "path": "src/shared/components/Button.tsx",
     "imports": [],
     "importedBy": [
-      "src/App.tsx"
+      "src/features/dashboard/components/ScanDashboard.tsx",
+      "src/features/dashboard/components/ScannerDashboard.tsx"
+    ]
+  },
+  "src/shared/components/Card.tsx": {
+    "path": "src/shared/components/Card.tsx",
+    "imports": [
+      "src/design-system/components/GlassCard.tsx"
+    ],
+    "importedBy": [
+      "src/features/dashboard/components/ScanDashboard.tsx"
+    ]
+  },
+  "src/shared/utils/pdfExport.ts": {
+    "path": "src/shared/utils/pdfExport.ts",
+    "imports": [],
+    "importedBy": [
+      "src/features/dashboard/components/ScoreCard.tsx"
     ]
   },
   "src/utils/cn.ts": {

@@ -54,7 +54,8 @@ import { SpecificationNormalizer } from "../spec/canonical-spec.js";
 import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-generator.js";
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
-import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, ExecutionReportGenerator } from "../governance/index.js";
+import { TransactionalRepairSystem } from "../healing/index.js";
+import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ExecutionReportGenerator } from "../governance/index.js";
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
   "express",
@@ -341,10 +342,15 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       ExecutionPhase.Planning,
     );
 
-    const tasks =
+    let tasks =
       await this.plannerAgent.execute(
         specification,
       );
+
+    const activeContract = ArchitectureResolver.loadContract(outputDirectory);
+    if (activeContract) {
+      tasks = PlannerArchitectureGuard.filterTasks(tasks, activeContract);
+    }
 
     console.log(
       "Implementation Tasks:",
@@ -1086,20 +1092,14 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
               continue;
             }
 
-            console.log(`[Self-Healing] Parsed ${repairedFiles.length} corrected file(s). Writing to ${outputDirectory}...`);
-            this.writer.write(repairedFiles, outputDirectory);
-            this.resolveMissingLocalImports(outputDirectory);
+            // Transactional Repair: Create checkpoint before writing repair files
+            const repairFilePaths = repairedFiles.map(rf => rf.path);
+            const repairCheckpointId = TransactionalRepairSystem.createCheckpoint(outputDirectory, repairFilePaths);
 
             const validatedRepairedFiles = this.validate(framework, repairedFiles);
-
-            // Create rollback backup in case this repair attempt causes a build regression
-            const backupFiles = new Map<string, string | null>();
-            for (const rFile of validatedRepairedFiles) {
-              const fullPath = join(outputDirectory, rFile.path);
-              backupFiles.set(rFile.path, existsSync(fullPath) ? readFileSync(fullPath, "utf8") : null);
-            }
-
             this.write(validatedRepairedFiles, outputDirectory);
+            this.resolveMissingLocalImports(outputDirectory);
+
             for (const rFile of validatedRepairedFiles) {
               const fullPath = join(outputDirectory, rFile.path);
               const diskContent = existsSync(fullPath) ? readFileSync(fullPath, "utf8") : "";
@@ -1130,21 +1130,16 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
             if (nextBuild.success) {
               console.log("[Self-Healing] ✓ Build succeeded after automatic repair!");
+              TransactionalRepairSystem.commit(repairCheckpointId);
               build = nextBuild;
               break;
             } else if (build.success || initialHadCleanCompilation) {
-              console.warn("[Self-Healing] ⚠️ Repair attempt introduced a build regression. Rolling back to last working state...");
-              for (const [relPath, origContent] of backupFiles.entries()) {
-                const fullPath = join(outputDirectory, relPath);
-                if (origContent !== null) {
-                  writeFileSync(fullPath, origContent, "utf8");
-                } else if (existsSync(fullPath)) {
-                  try { unlinkSync(fullPath); } catch {}
-                }
-              }
+              console.warn("[Self-Healing] ⚠️ Repair attempt introduced a build regression. Rolling back checkpoint...");
+              TransactionalRepairSystem.rollback(outputDirectory, repairCheckpointId, "Repair attempt caused build regression");
               // Re-run verification to confirm working state restored
               build = await this.runVerification(request, framework, outputDirectory);
             } else {
+              TransactionalRepairSystem.rollback(outputDirectory, repairCheckpointId, "Repair attempt failed to resolve build errors");
               build = nextBuild;
             }
           } else {
@@ -1163,7 +1158,9 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
     if (!build.success) {
       console.log();
-      console.log("❌ Self-Healing: Build is still failing after maximum repair attempts.");
+      console.error("❌ Self-Healing: Build is still failing after maximum repair attempts. Halting pipeline execution.");
+      this.execution.complete();
+      throw new Error(`Project generation failed: Maximum self-healing attempts reached. Build error: ${build.stderr || "Compilation failed."}`);
     }
 
     console.log("Generating deployment configurations...");
@@ -1273,30 +1270,11 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.warn(`[Startup] Warning: Startup agent failed: ${startupErr.message}`);
     }
 
-    // ─── Documentation (always generate BEFORE DoD validation) ─────────────
-    console.log("[Lifecycle] Generating project documentation (README, ARCHITECTURE, .env.example)...");
-    try {
-      const docFiles = await this.docsGeneratorAgent.generate(
-        specification,
-        request,
-        files.map(f => f.path),
-        outputDirectory,
-      );
-      this.write(
-        this.validator.validate(framework ?? "html", docFiles),
-        outputDirectory,
-      );
-      console.log("[Lifecycle] ✓ Documentation generated.");
-    } catch (docErr: any) {
-      console.warn(`[Lifecycle] Warning: Documentation generation failed: ${docErr.message}`);
-    }
-
-    // ─── Definition of Done ──────────────────────────────────────────────────
+    // ─── Definition of Done Hard Gate ───────────────────────────────────────
     console.log("[DoD] Running Definition of Done validation...");
     let dodPassed = false;
     let dodResult: any = null;
     try {
-      // Re-verify actual latest build status before evaluating DoD criteria
       build = await this.runVerification(request, framework, outputDirectory);
       dodResult = this.definitionOfDone.validate(outputDirectory, inferredFeatureNames, build.success);
       console.log(`[DoD] ${dodResult.summary}`);
@@ -1320,16 +1298,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
     } catch (dodErr: any) {
       console.warn(`[DoD] Warning: Definition of Done check failed: ${dodErr.message}`);
-      dodPassed = true;
-    }
-
-    // Commit changes and create PR report template
-    try {
-      gitEngine.commitChanges(outputDirectory, request);
-      console.log("[Lifecycle] Running PR Generator & Regression Auditor Agent...");
-      await this.prGeneratorAgent.execute(outputDirectory, request);
-    } catch (gitErr: any) {
-      console.warn(`[GitEngine] Warning: Git commit and PR audit operations failed: ${gitErr.message}`);
+      dodPassed = false;
     }
 
     // ── Generate Execution Governance Report & Audit Architecture ──────────
@@ -1366,11 +1335,37 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       (dodResult?.blockers ?? []).map((b: any) => b.detail)
     );
 
-    // Hard-fail when build is broken OR DoD required criteria failed (No False Positives)
-    if (!build.success || !dodPassed) {
+    // Hard-fail when build is broken OR DoD required criteria failed (NO GIT COMMIT / NO DOCUMENTATION GENERATION / NO FALSE POSITIVE)
+    if (!build.success || !dodPassed || archDiff.status !== "PASS") {
       this.execution.complete();
       console.error(`\n❌ Project generation failed. Execution Report status: ${finalReport.status} (DoD Score: ${dodResult?.score ?? 0}/100).`);
-      throw new Error(`Project generation failed: ${(dodResult?.blockers ?? []).map((b: any) => b.detail).join("; ") || "Compilation build is failing."}`);
+      throw new Error(`Project generation failed: ${(dodResult?.blockers ?? []).map((b: any) => b.detail).join("; ") || "Compilation build or DoD validation is failing."}`);
+    }
+
+    // ─── Documentation & Git Commit (executed ONLY ON FINAL SUCCESS) ───────
+    console.log("[Lifecycle] Generating project documentation (README, ARCHITECTURE, .env.example)...");
+    try {
+      const docFiles = await this.docsGeneratorAgent.generate(
+        specification,
+        request,
+        files.map(f => f.path),
+        outputDirectory,
+      );
+      this.write(
+        this.validator.validate(framework ?? "html", docFiles),
+        outputDirectory,
+      );
+      console.log("[Lifecycle] ✓ Documentation generated.");
+    } catch (docErr: any) {
+      console.warn(`[Lifecycle] Warning: Documentation generation failed: ${docErr.message}`);
+    }
+
+    try {
+      gitEngine.commitChanges(outputDirectory, request);
+      console.log("[Lifecycle] Running PR Generator & Regression Auditor Agent...");
+      await this.prGeneratorAgent.execute(outputDirectory, request);
+    } catch (gitErr: any) {
+      console.warn(`[GitEngine] Warning: Git commit and PR audit operations failed: ${gitErr.message}`);
     }
 
     console.log(`\n[Startup] 🚀 Ready! Open: http://localhost:5173`);

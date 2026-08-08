@@ -1,4 +1,4 @@
-app = "resumatchai"
+app = "resume-keyword-scanner"
 primary_region = "bos"
 
 [http_service]

@@ -1,43 +1,39 @@
-# Architecture Documentation: ResuMatch AI
+# Architecture: resume-keyword-scanner
 
 ## 1. System Overview
-ResuMatch AI is a React-based web application designed to optimize job application processes by matching user resumes against specific job descriptions. The system leverages a client-side heavy architecture with a secure API integration layer to perform AI-driven analysis and document parsing.
+The `resume-keyword-scanner` is a React-based SPA designed to parse uploaded resumes, extract meaningful entities, and match them against job description requirements. The system prioritizes local processing for privacy and performance, utilizing client-side extraction logic before optionally syncing results to a persistent store.
 
 ## 2. Folder Structure
 ```text
 src/
-├── assets/           # Static resources (images, global styles)
-├── components/       # Reusable UI primitives (buttons, inputs)
-├── features/         # Domain-specific modules (ResumeUpload, JobMatcher)
-│   ├── auth/         # Authentication and user session logic
-│   └── matcher/      # Core logic for resume/job parsing
-├── hooks/            # Custom React hooks for API and state logic
-├── services/         # Axios/Fetch instances and API layer
-├── store/            # Global state management (Zustand)
-├── utils/            # Shared helper functions and constants
-└── App.tsx           # Main entry point and provider wrapping
+├── assets/          # Static files (icons, fonts)
+├── components/      # Atomic UI components (Button, Input, FileUploader)
+├── hooks/           # Custom React hooks (useScanner, useParser)
+├── services/        # External API wrappers & logic (PDF-parser, OCR)
+├── store/           # Global state definitions (Zustand)
+├── utils/           # Helper functions (text-normalization, regex)
+└── types/           # TypeScript interface definitions
 ```
 
 ## 3. Key Design Decisions
-*   **React (Vite):** Selected for rapid development, HMR support, and a robust ecosystem for complex form handling.
-*   **Zustand:** Chosen over Redux for a minimalist, boilerplate-free state management approach that reduces bundle size.
-*   **Tailwind CSS:** Utilized for utility-first styling to ensure consistent UI scaling and improved design velocity.
-*   **React Query (TanStack Query):** Implemented for server-state caching, automatic background refetching, and simplified loading/error states.
+*   **React (Vite):** Selected for rapid HMR and lightweight production builds suitable for browser-based utility tools.
+*   **Zustand:** Chosen for state management over Redux due to minimal boilerplate and high performance for transient state (like parsed keyword lists).
+*   **Web Workers:** Offloads CPU-intensive PDF parsing/text extraction to background threads to prevent UI blocking during file processing.
+*   **Tailwind CSS:** Utilized for utility-first styling to maintain a consistent design system with low bundle size overhead.
 
 ## 4. Data Flow
-1.  **Input:** User uploads resume (PDF/DOCX) via `ResumeUpload` component.
-2.  **Processing:** Client-side validation occurs before triggering a `useMutation` hook.
-3.  **Transit:** Data is sent to the backend API via the `services/` layer with JWT authentication headers.
-4.  **Storage:** The AI service parses the data and returns structured JSON; the client updates the Zustand store.
-5.  **View:** Components subscribed to the store trigger a re-render to display match metrics.
+1.  **Input:** User uploads a file via `FileUploader`.
+2.  **Processing:** The `useScanner` hook triggers a Web Worker to convert the blob into raw text.
+3.  **Extraction:** Text is passed through `ParserService` which applies regex/NLP rules to extract keywords.
+4.  **State Update:** The resulting keyword array is committed to the Zustand store.
+5.  **Output:** Components react to store changes to render the analysis dashboard.
 
 ## 5. State Management Approach
-*   **Server State:** Managed by **TanStack Query** to handle API caching, loading states, and error retries.
-*   **Client Global State:** Managed by **Zustand** for non-persistent UI configuration (e.g., active step in a wizard, current theme, or filtered resume states).
-*   **Local State:** Kept within individual components using `useState` or `useReducer` for ephemeral inputs (e.g., form field keystrokes).
+The application employs **Zustand** as a central store. 
+*   **UI State:** Stored locally within specific components using `useState` (e.g., toggle states, dropdown values).
+*   **Application State:** Global data (parsed keywords, resume metadata, scan history) resides in the Zustand store to facilitate cross-component access without prop-drilling.
 
 ## 6. Error Handling Strategy
-*   **Boundary Layers:** Global `ErrorBoundary` components catch React rendering crashes to prevent blank screens.
-*   **API Interceptors:** Axios response interceptors handle global 401 (re-authentication) and 500-series (server-side) errors.
-*   **User Feedback:** Toast notifications (via `react-hot-toast`) provide immediate visual feedback for failed operations or invalid file uploads.
-*   **Graceful Degradation:** Feature-flagging/conditional rendering ensures essential UI elements remain functional even if auxiliary AI features experience latency.
+*   **Boundary Layers:** React `ErrorBoundary` components wrap the main dashboard to prevent white-screen crashes on parsing failures.
+*   **Input Validation:** The `FileUploader` enforces strict MIME-type checks and file size limits before processing begins.
+*   **Graceful Degradation:** Parsing errors are caught via `try/catch` within service hooks, dispatching an error payload to the store to display user-friendly toast notifications rather than failing silently.

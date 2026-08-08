@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { ArchitectureResolver } from "../../governance/architecture-resolver.js";
 import { ArchitectureAuditor } from "../../governance/architecture-auditor.js";
 import { ArchitectureDiff } from "../../governance/architecture-diff.js";
+import { PlannerArchitectureGuard } from "../../governance/planner-guard.js";
 import { DefinitionOfDone } from "../../validation/definition-of-done.js";
 import { TransactionalRepairSystem } from "../../healing/transactional-repair.js";
 import { ValidationContextManager } from "../../validation/validation-context.js";
@@ -130,5 +131,23 @@ describe("Architecture Drift Governance Suite", () => {
     expect(() => {
       ValidationContextManager.createInitialContext(testDir, null as any, {} as any);
     }).toThrow("Invalid Architecture Contract");
+  });
+
+  it("TEST 11: PlannerArchitectureGuard blocks Next.js task when contract is React-Vite", () => {
+    const contract = ArchitectureResolver.resolve("Build React-Vite app with Express", { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" }, {} as any);
+    const task = { id: 1, title: "Create Next.js App Router layout and Server Actions", description: "Use App Router", completed: false, priority: 1, stage: "frontend", dependencies: [], estimatedComplexity: 3 } as any;
+    
+    const check = PlannerArchitectureGuard.validateTask(task, contract);
+    expect(check.hasConflict).toBe(true);
+    expect(check.detectedTechnology).toContain("Next.js");
+  });
+
+  it("TEST 12: PlannerArchitectureGuard blocks MongoDB task when contract is PostgreSQL", () => {
+    const contract = ArchitectureResolver.resolve("Build app with PostgreSQL and Prisma", { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" }, {} as any);
+    const task = { id: 2, title: "Connect to MongoDB Atlas using Mongoose schema", description: "Setup MongoDB", completed: false, priority: 1, stage: "backend", dependencies: [], estimatedComplexity: 3 } as any;
+
+    const check = PlannerArchitectureGuard.validateTask(task, contract);
+    expect(check.hasConflict).toBe(true);
+    expect(check.detectedTechnology).toContain("MongoDB");
   });
 });

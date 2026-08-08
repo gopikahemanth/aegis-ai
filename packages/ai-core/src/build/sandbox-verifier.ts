@@ -92,8 +92,16 @@ export class SandboxVerifier {
           console.log(`[Sandbox] Cleaning up stale ports before spawning dev server...`);
           try {
             if (process.platform === "win32") {
-              execSync(`wmic process where "name='node.exe' and commandline like '%5173%'" call terminate`, { stdio: "ignore" });
-              execSync(`wmic process where "name='node.exe' and commandline like '%5000%'" call terminate`, { stdio: "ignore" });
+              const out5173 = execSync("netstat -ano | findstr :5173", { stdio: "pipe" }).toString();
+              const pid5173 = out5173.trim().split(/\s+/).pop();
+              if (pid5173 && /^\d+$/.test(pid5173)) execSync(`taskkill /F /PID ${pid5173}`, { stdio: "ignore" });
+            }
+          } catch {}
+          try {
+            if (process.platform === "win32") {
+              const out5000 = execSync("netstat -ano | findstr :5000", { stdio: "pipe" }).toString();
+              const pid5000 = out5000.trim().split(/\s+/).pop();
+              if (pid5000 && /^\d+$/.test(pid5000)) execSync(`taskkill /F /PID ${pid5000}`, { stdio: "ignore" });
             }
           } catch {}
 

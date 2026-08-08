@@ -1,36 +1,33 @@
 {
-  "contractId": "req_1786202153332",
-  "lockedAt": "2026-08-08T15:15:53.332Z",
+  "contractId": "req_1786202897193",
+  "lockedAt": "2026-08-08T15:28:17.193Z",
   "stack": {
     "frontend": "React",
     "backend": "Express",
-    "database": "PostgreSQL",
+    "database": "mongodb",
     "orm": "Prisma",
     "auth": "JWT",
     "language": "TypeScript",
-    "styling": "tailwindcss",
+    "styling": "tailwind",
     "packageManager": "pnpm"
   },
   "features": [
-    "upload",
-    "parsing",
-    "nlp",
-    "scoring",
+    "pdf-parsing",
+    "keyword-extraction",
+    "match-scoring",
     "dashboard",
-    "export",
-    "auth"
+    "history-persistence"
   ],
   "userFlows": [
     "upload-resume-and-job-description",
-    "process-semantic-keyword-match",
-    "view-historical-scan-results",
-    "download-analysis-pdf-report"
+    "view-match-analysis",
+    "view-skill-gaps",
+    "track-scan-history"
   ],
   "dataModels": [
     "User",
     "ScanResult",
-    "JobDescription",
-    "Resume"
+    "KeywordAnalysis"
   ],
   "allowedRoutePrefixes": [
     "/api",

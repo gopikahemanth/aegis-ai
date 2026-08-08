@@ -1,21 +1,12 @@
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-const Dashboard = lazy(() => import('./features/dashboard/DashboardPage'));
-const queryClient = new QueryClient();
+import React from "react";
+import { AppRoutes } from "./routes";
 
 export default function App(props: any) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <AppRoutes />
+    </div>
   );
 }
+
 export { App };

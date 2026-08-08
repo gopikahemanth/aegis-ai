@@ -1103,7 +1103,22 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
             }
           }
 
-          const repairedFiles = this.parser.parse(repairResponse);
+          let repairedFiles = this.parser.parse(repairResponse);
+          if (repairedFiles.length === 0) {
+            try {
+              const jsonMatch = repairResponse.match(/\{[\s\S]*"repairs"[\s\S]*\}/);
+              if (jsonMatch) {
+                const parsedObj = JSON.parse(jsonMatch[0]);
+                if (Array.isArray(parsedObj.repairs)) {
+                  repairedFiles = parsedObj.repairs.map((r: any) => ({
+                    path: r.path || r.filePath,
+                    content: r.content || r.newContent || r.patch || ""
+                  })).filter((f: any) => f.path && f.content);
+                }
+              }
+            } catch {}
+          }
+
           if (repairedFiles.length > 0) {
             const previousAttemptHashes = (this as any)._previousAttemptHashes || new Map<string, string>();
             (this as any)._previousAttemptHashes = previousAttemptHashes;

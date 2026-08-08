@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function prisma() {
+export default function Layout() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   
@@ -75,8 +75,3 @@ export default function prisma() {
     </div>
   );
 }
-
-import { PrismaClient } from '@prisma/client';
-export const prisma = (globalThis as any).prisma || new PrismaClient();
-export default prisma;
-export const db = prisma;

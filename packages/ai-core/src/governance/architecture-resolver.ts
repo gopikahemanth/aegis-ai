@@ -44,12 +44,14 @@ export class ArchitectureResolver {
     if (promptLower.includes("next.js api") || promptLower.includes("next api")) backendFramework = "Next.js API Routes";
     else if (promptLower.includes("express")) backendFramework = "Express";
 
-    let dbProvider = canonicalSpec.lockedStack?.database || rawSpec.database || "SQLite";
+    let dbProvider = canonicalSpec.lockedStack?.database || rawSpec.database || "PostgreSQL";
     if (promptLower.includes("postgres") || promptLower.includes("postgresql")) dbProvider = "PostgreSQL";
+    else if (promptLower.includes("mongo") || promptLower.includes("mongodb")) dbProvider = "MongoDB";
     else if (promptLower.includes("sqlite")) dbProvider = "SQLite";
 
     let orm = canonicalSpec.lockedStack?.orm || "Prisma";
     if (promptLower.includes("drizzle")) orm = "Drizzle";
+    else if (promptLower.includes("mongoose")) orm = "Mongoose";
     else if (promptLower.includes("prisma")) orm = "Prisma";
 
     let auth = canonicalSpec.lockedStack?.auth || rawSpec.auth || "none";

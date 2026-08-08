@@ -163,23 +163,46 @@ export class FastDeterministicSanitizer {
   }
 
   private static validateDatabaseUrl(root: string): boolean {
+    const aegisDir = join(root, ".aegis");
+    const contractPath = join(aegisDir, "architecture-contract.json");
+    let provider = "postgresql";
+
+    if (existsSync(contractPath)) {
+      try {
+        const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+        provider = (contract.database?.provider || "postgresql").toLowerCase();
+      } catch {}
+    }
+
     const envPath = join(root, ".env");
+    let expectedUrl = 'DATABASE_URL="postgresql://postgres:postgres@localhost:5432/aegis_app"\n';
+    let validPrefixes = ["postgresql://", "postgres://"];
+
+    if (provider.includes("mongo")) {
+      expectedUrl = 'DATABASE_URL="mongodb://localhost:27017/aegis_app"\n';
+      validPrefixes = ["mongodb://", "mongodb+srv://"];
+    } else if (provider.includes("sqlite")) {
+      expectedUrl = 'DATABASE_URL="file:./dev.db"\n';
+      validPrefixes = ["file:"];
+    }
+
     if (existsSync(envPath)) {
       const content = readFileSync(envPath, "utf8");
       if (content.includes("DATABASE_URL")) {
         const match = content.match(/DATABASE_URL=["']?([^"'\r\n]+)["']?/);
         if (match && match[1]) {
           const url = match[1];
-          if (!url.startsWith("postgresql://") && !url.startsWith("postgres://")) {
-            console.warn(`[DatabaseValidator] ⚠️ Invalid DATABASE_URL protocol for PostgreSQL: "${url}". Setting canonical PostgreSQL URL...`);
-            const fixed = content.replace(/DATABASE_URL=.*(\r?\n|$)/, 'DATABASE_URL="postgresql://postgres:postgres@localhost:5432/aegis_app"\n');
+          const isValid = validPrefixes.some(prefix => url.startsWith(prefix));
+          if (!isValid) {
+            console.warn(`[DatabaseValidator] ⚠️ Invalid DATABASE_URL protocol for locked provider ${provider}: "${url}". Setting canonical URL...`);
+            const fixed = content.replace(/DATABASE_URL=.*(\r?\n|$)/, expectedUrl);
             writeFileSync(envPath, fixed, "utf8");
             return false;
           }
         }
       }
     } else {
-      writeFileSync(envPath, 'DATABASE_URL="postgresql://postgres:postgres@localhost:5432/aegis_app"\n', "utf8");
+      writeFileSync(envPath, expectedUrl, "utf8");
     }
     return true;
   }

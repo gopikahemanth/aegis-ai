@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "System users with authentication credentials",
+      "description": "System user account for authentication and history tracking",
       "persistence": "database",
       "fields": [
         {
@@ -24,19 +24,19 @@
           "description": "User email address"
         },
         {
-          "name": "password",
+          "name": "passwordHash",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Hashed password"
+          "description": "Secure password hash"
         }
       ]
     },
     {
       "name": "ScanResult",
-      "description": "Historical analysis results for a resume against a job description",
+      "description": "Stores the result of a resume versus job description analysis",
       "persistence": "database",
       "fields": [
         {
@@ -58,31 +58,22 @@
           "description": "Owner of the scan"
         },
         {
-          "name": "jobTitle",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Title of the target role"
-        },
-        {
           "name": "matchScore",
           "type": "number",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Percentage fit score"
+          "description": "Calculated percentage score"
         },
         {
-          "name": "keywords",
+          "name": "missingSkills",
           "type": "Json",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Identified skill set"
+          "description": "List of identified gaps"
         },
         {
           "name": "createdAt",
@@ -91,42 +82,41 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Timestamp of scan"
+          "description": "Scan timestamp"
         }
       ]
     }
   ],
-  "databaseSchema": "generator client { provider = \"prisma-client-js\" }\n\ndatasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") }\n\nmodel User {\n  id        String       @id @default(uuid())\n  email     String       @unique\n  password  String\n  scans     ScanResult[]\n}\n\nmodel ScanResult {\n  id         String   @id @default(uuid())\n  userId     String\n  user       User     @relation(fields: [userId], references: [id])\n  jobTitle   String\n  matchScore Float\n  keywords   Json\n  createdAt  DateTime @default(now())\n}",
+  "databaseSchema": "datasource db { provider = \"sqlite\" url = \"file:./dev.db\" } generator client { provider = \"prisma-client-js\" } model User { id String @id @default(uuid()) email String @unique passwordHash String scans ScanResult[] } model ScanResult { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) matchScore Float missingSkills Json createdAt DateTime @default(now()) }",
   "apis": [
     {
       "path": "/api/v1/scan",
       "method": "POST",
-      "description": "Processes resume upload and job description to calculate match",
-      "requestBodySchema": "{ resumeFile: File, jobDescription: string, jobTitle: string }",
-      "responseBodySchema": "{ id: string, matchScore: number, keywords: string[] }"
+      "description": "Uploads resume and job description to perform NLP analysis and score match",
+      "requestBodySchema": "{ resume: File, jobDescription: string }",
+      "responseBodySchema": "{ scanId: string, matchScore: number, missingSkills: string[] }"
     },
     {
-      "path": "/api/v1/scans",
+      "path": "/api/v1/scan/history",
       "method": "GET",
-      "description": "Retrieves user scan history",
-      "requestBodySchema": "null",
-      "responseBodySchema": "ScanResult[]"
+      "description": "Retrieves the historical list of scan results for the authenticated user",
+      "responseBodySchema": "{ scans: Array<{id: string, matchScore: number, createdAt: string}> }"
     }
   ],
   "hooks": [
     {
-      "name": "useScanHistory",
-      "type": "query",
-      "endpoint": "/api/v1/scans",
-      "params": "none",
-      "returns": "ScanResult[]"
-    },
-    {
-      "name": "usePerformScan",
+      "name": "useAnalyzeResume",
       "type": "mutation",
       "endpoint": "/api/v1/scan",
       "params": "formData",
-      "returns": "{ id: string, matchScore: number }"
+      "returns": "{ data: { matchScore: number, missingSkills: string[] } }"
+    },
+    {
+      "name": "useScanHistory",
+      "type": "query",
+      "endpoint": "/api/v1/scan/history",
+      "params": "none",
+      "returns": "ScanResult[]"
     }
   ]
 }

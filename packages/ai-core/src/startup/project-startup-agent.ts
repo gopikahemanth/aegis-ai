@@ -989,6 +989,18 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           changed = true;
         }
 
+        // Fix 30: Ensure all interface/type declarations in src/types/ or *.types.ts are explicitly exported (TS2614)
+        if (rel.includes("type") || rel.includes("types") || rel.includes("entity") || rel.includes("entities") || rel.includes("model") || rel.includes("models")) {
+          const typeMatches = content.matchAll(/(?:type|interface)\s+([A-Z]\w+)\b/g);
+          for (const tm of typeMatches) {
+            const tName = tm[1];
+            if (!new RegExp(`export\\s+(?:type|interface)\\s+${tName}\\b`).test(content) && !content.includes(`export type { ${tName}`) && !content.includes(`export { ${tName}`)) {
+              content += `\nexport type { ${tName} };\n`;
+              changed = true;
+            }
+          }
+        }
+
         // Fix 13.12: TS2322 / TS2559 Type '{ ... }' has no properties in common with type 'IntrinsicAttributes'
         if ((rel.endsWith(".tsx") || rel.endsWith(".jsx")) && (rel.startsWith("src/") || rel.startsWith("src\\"))) {
           if (content.includes("React.FC") && !content.includes("React.FC<any>")) {

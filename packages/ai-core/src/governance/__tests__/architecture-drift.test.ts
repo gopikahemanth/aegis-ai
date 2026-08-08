@@ -177,4 +177,36 @@ describe("Architecture Drift Governance Suite", () => {
       ValidationContextManager.assertArchitectureContext(invalidContext);
     }).toThrow("ARCHITECTURE_CONTEXT_INVALID");
   });
+
+  it("TEST 15: PlannerArchitectureGuard throws ARCHITECTURE_CONTRACT_MISSING when contract is undefined", () => {
+    expect(() => {
+      PlannerArchitectureGuard.validateTask({ id: 1, title: "Valid task" } as any, undefined as any);
+    }).toThrow("ARCHITECTURE_CONTRACT_MISSING");
+  });
+
+  it("TEST 16: PlannerArchitectureGuard allows valid React + Express + Prisma tasks", () => {
+    const contract = ArchitectureResolver.resolve("Build React-Vite app with Express, PostgreSQL and Prisma", { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" }, {} as any);
+    
+    const validTasks = [
+      { id: 1, title: "Implement Express JWT authentication using bcrypt and PostgreSQL/Prisma", description: "Auth setup" },
+      { id: 2, title: "Implement Express PDF upload endpoint using multer and pdf-parse", description: "PDF handler" },
+      { id: 3, title: "Implement React dashboard with Recharts", description: "UI component" }
+    ] as any[];
+
+    for (const t of validTasks) {
+      const check = PlannerArchitectureGuard.validateTask(t, contract);
+      expect(check.hasConflict).toBe(false);
+    }
+  });
+
+  it("TEST 17: PlannerArchitectureGuard adapts/regenerates Next.js task to React/Express REST", () => {
+    const contract = ArchitectureResolver.resolve("Build React-Vite app with Express, PostgreSQL and Prisma", { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" }, {} as any);
+    
+    const nextTask = { id: 1, title: "Implement NextAuth authentication", description: "Use NextAuth" } as any;
+    const filtered = PlannerArchitectureGuard.filterTasks([nextTask], contract);
+
+    expect(filtered.length).toBe(1);
+    expect(filtered[0].title).toBe("Implement Express JWT Auth authentication");
+    expect(filtered[0].description).toContain("Express middleware");
+  });
 });

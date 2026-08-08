@@ -24,19 +24,19 @@
           "description": "User email address"
         },
         {
-          "name": "pairings",
-          "type": "customType",
+          "name": "createdAt",
+          "type": "DateTime",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "relationTo": "Pairing",
-          "description": "User's saved resume-job pairings"
+          "relationTo": null,
+          "description": "Account creation timestamp"
         }
       ]
     },
     {
-      "name": "Resume",
-      "description": "Uploaded resume data and extracted text",
+      "name": "Analysis",
+      "description": "Record of a resume versus job description analysis session",
       "persistence": "database",
       "fields": [
         {
@@ -55,145 +55,101 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": "User",
-          "description": "Owner ID"
+          "description": "Owner of the analysis"
         },
         {
-          "name": "rawText",
+          "name": "resumeText",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Extracted text content"
+          "description": "Extracted resume content"
         },
         {
-          "name": "fileUrl",
+          "name": "jobDescription",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Storage path to PDF"
-        }
-      ]
-    },
-    {
-      "name": "JobDescription",
-      "description": "Target job description content",
-      "persistence": "database",
-      "fields": [
-        {
-          "name": "id",
-          "type": "string",
-          "isId": true,
-          "isNullable": false,
-          "isUnique": true,
-          "relationTo": null,
-          "description": "Unique identifier"
+          "description": "Target job description text"
         },
         {
-          "name": "title",
-          "type": "string",
+          "name": "relevanceScore",
+          "type": "number",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Job title"
+          "description": "Calculated score 0-100"
         },
         {
-          "name": "content",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Job text requirements"
-        }
-      ]
-    },
-    {
-      "name": "Pairing",
-      "description": "Historical link between a resume and a job description with analysis",
-      "persistence": "database",
-      "fields": [
-        {
-          "name": "id",
-          "type": "string",
-          "isId": true,
-          "isNullable": false,
-          "isUnique": true,
-          "relationTo": null,
-          "description": "Unique identifier"
-        },
-        {
-          "name": "userId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": "User",
-          "description": "Owner ID"
-        },
-        {
-          "name": "resumeId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": "Resume",
-          "description": "Related resume"
-        },
-        {
-          "name": "jobId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": "JobDescription",
-          "description": "Related job"
-        },
-        {
-          "name": "analysis",
+          "name": "missingKeywords",
           "type": "Json",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "JSON object containing match scores, keyword gaps, and metadata"
+          "description": "Array of missing high-value keywords"
+        },
+        {
+          "name": "suggestions",
+          "type": "Json",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Actionable feedback from LLM"
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Timestamp of analysis"
         }
       ]
     }
   ],
-  "databaseSchema": "generator client { provider = \"prisma-client-js\" } datasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") } model User { id String @id @default(uuid()) email String @unique pairings Pairing[] } model Resume { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) rawText String fileUrl String pairings Pairing[] } model JobDescription { id String @id @default(uuid()) title String content String pairings Pairing[] } model Pairing { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) resumeId String resume Resume @relation(fields: [resumeId], references: [id]) jobId String job JobDescription @relation(fields: [jobId], references: [id]) analysis Json createdAt DateTime @default(now()) }",
+  "databaseSchema": "generator client { provider = \"prisma-client-js\" } datasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") } model User { id String @id @default(cuid()) email String @unique createdAt DateTime @default(now()) analyses Analysis[] } model Analysis { id String @id @default(cuid()) userId String user User @relation(fields: [userId], references: [id]) resumeText String jobDescription String relevanceScore Float missingKeywords Json suggestions Json createdAt DateTime @default(now()) }",
   "apis": [
     {
-      "path": "/api/v1/pairings",
+      "path": "/api/v1/analyses",
       "method": "POST",
-      "description": "Analyze resume against job description and create a pairing record",
-      "requestBodySchema": "{ \"resumeId\": string, \"jobContent\": string, \"jobTitle\": string }",
-      "responseBodySchema": "{ \"pairingId\": string, \"matchScore\": number, \"analysis\": object }"
+      "description": "Uploads PDF and JD to generate analysis",
+      "requestBodySchema": "{ \"pdfBuffer\": \"base64\", \"jobDescription\": \"string\" }",
+      "responseBodySchema": "{ \"id\": \"string\", \"relevanceScore\": \"number\", \"missingKeywords\": \"string[]\", \"suggestions\": \"object\" }"
     },
     {
-      "path": "/api/v1/pairings",
+      "path": "/api/v1/analyses",
       "method": "GET",
-      "description": "Retrieve user's pairing history",
-      "responseBodySchema": "Pairing[]"
+      "description": "Retrieves analysis history for authenticated user",
+      "responseBodySchema": "Analysis[]"
+    },
+    {
+      "path": "/api/v1/analyses/:id",
+      "method": "GET",
+      "description": "Retrieves single analysis result",
+      "responseBodySchema": "Analysis"
     }
   ],
   "hooks": [
     {
-      "name": "useAnalyzeResume",
+      "name": "useCreateAnalysis",
       "type": "mutation",
-      "endpoint": "/api/v1/pairings",
-      "params": "resumeId: string, jobContent: string, jobTitle: string",
-      "returns": "AnalysisResult"
+      "endpoint": "/api/v1/analyses",
+      "params": "none",
+      "returns": "Analysis"
     },
     {
-      "name": "usePairingHistory",
+      "name": "useAnalysisHistory",
       "type": "query",
-      "endpoint": "/api/v1/pairings",
+      "endpoint": "/api/v1/analyses",
       "params": "none",
-      "returns": "Pairing[]"
+      "returns": "Analysis[]"
     }
   ]
 }

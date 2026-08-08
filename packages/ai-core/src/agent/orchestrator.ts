@@ -347,10 +347,11 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         specification,
       );
 
-    const activeContract = ArchitectureResolver.loadContract(outputDirectory);
-    if (activeContract) {
-      tasks = PlannerArchitectureGuard.filterTasks(tasks, activeContract);
+    const activeContract = resolvedContract || ArchitectureResolver.loadContract(outputDirectory);
+    if (!activeContract) {
+      throw new Error(`ARCHITECTURE_CONTRACT_MISSING: No architecture contract found for projectPath: ${outputDirectory}`);
     }
+    tasks = PlannerArchitectureGuard.filterTasks(tasks, activeContract);
 
     console.log(
       "Implementation Tasks:",
@@ -638,10 +639,16 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     console.log("\n[Coordinator] Coordinating Dynamic AI Specialist Team for this project:");
     console.table(activeTeam.map(member => ({ Role: member.role, Description: member.description })));
 
-    const tasks =
+    let tasks =
       await this.plannerAgent.execute(
         specification,
       );
+
+    const activeContractApp = resolvedContract || ArchitectureResolver.loadContract(outputDirectory);
+    if (!activeContractApp) {
+      throw new Error(`ARCHITECTURE_CONTRACT_MISSING: No architecture contract found in generateApplication for projectPath: ${outputDirectory}`);
+    }
+    tasks = PlannerArchitectureGuard.filterTasks(tasks, activeContractApp);
 
     this.execution.enter(
       ExecutionPhase.Architecture,
@@ -654,6 +661,8 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       ExecutionPhase.Planning,
     );
 
+    console.log("[DEBUG] resolvedContract prior to framework access:", JSON.stringify(resolvedContract));
+    console.log("[DEBUG] architecture prior to framework fallback access:", JSON.stringify(architecture));
     const framework = resolvedContract?.frontend?.framework || this.selector.select(architecture);
 
     console.log("Framework:", framework);

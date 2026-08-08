@@ -1,14 +1,14 @@
 {
-  "id": "req_1786199238877",
-  "createdAt": "2026-08-08T14:27:18.877Z",
+  "id": "req_1786199799762",
+  "createdAt": "2026-08-08T14:36:39.762Z",
   "prompt": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
   "immutableRequirements": {
     "frontend": "React",
     "backend": "Express",
-    "database": "PostgreSQL",
+    "database": "PostgreSQL with Prisma ORM",
     "language": "TypeScript",
-    "styling": "TailwindCSS",
-    "auth": "OAuth2",
+    "styling": "TailwindCSS and ShadcnUI",
+    "auth": "NextAuth.js (Credentials/OAuth)",
     "packageManager": "pnpm",
     "features": [
       "auth",
@@ -16,24 +16,20 @@
       "parsing",
       "analysis",
       "dashboard",
-      "history",
-      "export"
+      "history"
     ],
     "userFlows": [
       "user-authentication",
-      "resume-upload-process",
-      "job-description-input",
-      "semantic-analysis-execution",
-      "view-match-dashboard",
-      "manage-pairing-history",
-      "export-report"
+      "upload-resume-and-job-description",
+      "generate-relevance-analysis",
+      "view-analysis-history",
+      "download-suggestions-report"
     ],
     "dataModels": [
       "User",
       "Resume",
       "JobDescription",
-      "AnalysisResult",
-      "Pairing"
+      "AnalysisResult"
     ]
   }
 }

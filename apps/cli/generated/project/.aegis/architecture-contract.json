@@ -1,14 +1,14 @@
 {
-  "contractId": "req_1786199238877",
-  "lockedAt": "2026-08-08T14:27:18.877Z",
+  "contractId": "req_1786199799762",
+  "lockedAt": "2026-08-08T14:36:39.762Z",
   "stack": {
     "frontend": "React",
     "backend": "Express",
-    "database": "PostgreSQL",
+    "database": "PostgreSQL with Prisma ORM",
     "orm": "Prisma",
-    "auth": "OAuth2",
+    "auth": "NextAuth.js (Credentials/OAuth)",
     "language": "TypeScript",
-    "styling": "TailwindCSS",
+    "styling": "TailwindCSS and ShadcnUI",
     "packageManager": "pnpm"
   },
   "features": [
@@ -17,24 +17,20 @@
     "parsing",
     "analysis",
     "dashboard",
-    "history",
-    "export"
+    "history"
   ],
   "userFlows": [
     "user-authentication",
-    "resume-upload-process",
-    "job-description-input",
-    "semantic-analysis-execution",
-    "view-match-dashboard",
-    "manage-pairing-history",
-    "export-report"
+    "upload-resume-and-job-description",
+    "generate-relevance-analysis",
+    "view-analysis-history",
+    "download-suggestions-report"
   ],
   "dataModels": [
     "User",
     "Resume",
     "JobDescription",
-    "AnalysisResult",
-    "Pairing"
+    "AnalysisResult"
   ],
   "allowedRoutePrefixes": [
     "/api",

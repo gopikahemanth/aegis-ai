@@ -1,35 +1,36 @@
-# Aegis Expense Tracker
+# Aegis-Expense-Tracker
 
-Aegis Expense Tracker is a high-performance, full-stack SaaS application designed for streamlined personal finance management, featuring real-time expense logging, visual budget analytics, and a modern glassmorphism user interface.
+A high-performance, full-stack expense tracking and budgeting application featuring an intuitive glassmorphism UI designed for personal financial management.
 
-## Key Features
+## Features
 
-*   **Smart Logging:** Interactive income and expense tracking with dynamic category tagging.
-*   **Budget Intelligence:** Real-time monthly budget progress tracking via visual progress bars.
-*   **Financial Analytics:** Interactive pie charts providing instant visual breakdowns of spending habits.
-*   **Data Portability:** Seamless export capabilities for transaction data in CSV and PDF formats.
-*   **Advanced Filtering:** Granular transaction management with filtering by custom date ranges and expense categories.
-*   **CRUD Operations:** Intuitive modal-based interface for effortless editing and deletion of records.
-*   **Modern UI/UX:** Responsive glassmorphism-inspired design with built-in dark mode support.
+*   **Financial Logging:** Create, edit, and delete income and expense entries with customizable categorization.
+*   **Budget Management:** Real-time monthly budget progress tracking with visual indicators.
+*   **Data Visualization:** Interactive pie charts providing category-based breakdowns of spending habits.
+*   **Advanced Filtering:** Filter transactions dynamically by date range and specific expense categories.
+*   **Export Functionality:** Generate and download financial reports in CSV and PDF formats.
+*   **Glassmorphism UI:** A modern, visually immersive design system supporting full dark mode.
+*   **Robust Backend:** Type-safe API layer built with Express, Prisma ORM, and SQLite.
 
 ## Tech Stack
 
 | Technology | Purpose |
 | :--- | :--- |
 | React 18 | Frontend UI library |
-| Vite | Build tool and development environment |
-| Express.js | Backend API server |
-| Prisma | Type-safe ORM for database operations |
+| Vite | Build tool and development server |
+| TypeScript | Type-safe application logic |
+| Express.js | Backend RESTful API server |
+| Prisma | ORM for SQLite database management |
 | SQLite | Lightweight, file-based relational database |
-| TypeScript | Type safety and enhanced developer experience |
-| Tailwind CSS | Styling and glassmorphism UI components |
+| Tailwind CSS | Utility-first styling for glassmorphism |
+| Recharts | Interactive financial data visualization |
 
 ## Getting Started
 
 ### Prerequisites
 
 *   Node.js (v18.0.0 or higher)
-*   npm (v9.0.0 or higher) or yarn (v1.22.0 or higher)
+*   npm (v9.0.0 or higher)
 
 ### Installation
 
@@ -39,43 +40,47 @@ Aegis Expense Tracker is a high-performance, full-stack SaaS application designe
    cd aegis-expense-tracker
    ```
 
-2. Install dependencies for both server and client:
+2. Install dependencies:
    ```bash
    npm install
-   cd client && npm install && cd ../server && npm install
    ```
 
 ### Environment Setup
 
-1. Copy the example environment file in the `server` directory:
+1. Copy the example environment file:
    ```bash
-   cp server/.env.example server/.env
+   cp .env.example .env
    ```
-2. Open `server/.env` and configure your database connection string and any necessary API keys.
+2. Open the `.env` file and configure your database connection string and application port.
+
+3. Run Prisma migrations to initialize the database:
+   ```bash
+   npx prisma migrate dev
+   ```
 
 ### Running Locally
 
-To start the development environment, run the following command from the root directory:
+To start both the backend server and the Vite development server concurrently:
 
 ```bash
 npm run dev
 ```
 
-The application will be accessible at `http://localhost:5173` (Frontend) and the API will be running on `http://localhost:3000` (Backend).
-
 ## Available Scripts
 
-*   `npm run dev`: Starts both the client and server in development mode.
-*   `npm run build`: Compiles the project for production deployment.
-*   `npm run lint`: Executes ESLint to verify code quality and consistency.
-*   `npm run test`: Runs the integrated test suite.
+*   `npm run dev`: Starts the development environment for frontend and backend.
+*   `npm run build`: Compiles the React frontend and prepares the backend for production.
+*   `npm run lint`: Executes ESLint to check for code quality and style violations.
+*   `npm run test`: Runs the integrated test suite using Vitest.
 
 ## Project Structure
 
-*   `/client`: Contains the React/Vite frontend source code, components, and hooks.
-*   `/server`: Contains the Express API logic, Prisma schema, and database configuration.
-*   `/prisma`: Holds the database schema definitions and migration history.
-*   `/public`: Static assets, including icons and global images.
+*   `/src/client`: React frontend components, hooks, and state management.
+*   `/src/server`: Express application routes, middleware, and controllers.
+*   `/prisma`: Database schema definitions and migration files.
+*   `/public`: Static assets, including images and fonts.
+*   `/types`: Global TypeScript interface and type definitions.
+*   `/dist`: Output directory for production-ready builds.
 
 ## License
 

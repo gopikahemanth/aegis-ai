@@ -1,0 +1,222 @@
+{
+  "models": [
+    {
+      "name": "User",
+      "description": "System user with authentication credentials",
+      "persistence": "database",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "isId": true,
+          "isNullable": false,
+          "isUnique": true,
+          "relationTo": null,
+          "description": "Unique identifier"
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": true,
+          "relationTo": null,
+          "description": "Email address"
+        },
+        {
+          "name": "password",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Hashed password"
+        }
+      ]
+    },
+    {
+      "name": "Transaction",
+      "description": "Financial record of income or expense",
+      "persistence": "database",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "isId": true,
+          "isNullable": false,
+          "isUnique": true,
+          "relationTo": null,
+          "description": "Unique identifier"
+        },
+        {
+          "name": "userId",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": "User",
+          "description": "Owner of the transaction"
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Financial amount"
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "INCOME or EXPENSE"
+        },
+        {
+          "name": "date",
+          "type": "DateTime",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Transaction date"
+        },
+        {
+          "name": "categoryId",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": "Category",
+          "description": "Associated category"
+        }
+      ]
+    },
+    {
+      "name": "Category",
+      "description": "Tagging classification for transactions",
+      "persistence": "database",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "isId": true,
+          "isNullable": false,
+          "isUnique": true,
+          "relationTo": null,
+          "description": "Unique identifier"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Category name"
+        },
+        {
+          "name": "userId",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": "User",
+          "description": "User specific category"
+        }
+      ]
+    },
+    {
+      "name": "Budget",
+      "description": "Monthly spending limit per category",
+      "persistence": "database",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "isId": true,
+          "isNullable": false,
+          "isUnique": true,
+          "relationTo": null,
+          "description": "Unique identifier"
+        },
+        {
+          "name": "userId",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": "User",
+          "description": "Owner"
+        },
+        {
+          "name": "limit",
+          "type": "number",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Budget ceiling"
+        },
+        {
+          "name": "categoryId",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": "Category",
+          "description": "Target category"
+        }
+      ]
+    }
+  ],
+  "databaseSchema": "generator client { provider = \"prisma-client-js\" } datasource db { provider = \"sqlite\" url = \"file:./dev.db\" } model User { id String @id @default(uuid()) email String @unique password String transactions Transaction[] categories Category[] budgets Budget[] } model Transaction { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) amount Float type String date DateTime categoryId String category Category @relation(fields: [categoryId], references: [id]) } model Category { id String @id @default(uuid()) name String userId String user User @relation(fields: [userId], references: [id]) transactions Transaction[] budgets Budget[] } model Budget { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) limit Float categoryId String category Category @relation(fields: [categoryId], references: [id]) }",
+  "apis": [
+    {
+      "path": "/api/v1/transactions",
+      "method": "GET",
+      "description": "Retrieve all transactions for the authenticated user",
+      "responseBodySchema": "Transaction[]"
+    },
+    {
+      "path": "/api/v1/transactions",
+      "method": "POST",
+      "description": "Create a new transaction",
+      "requestBodySchema": "{ amount: number, type: string, categoryId: string, date: string }",
+      "responseBodySchema": "Transaction"
+    },
+    {
+      "path": "/api/v1/auth/login",
+      "method": "POST",
+      "description": "Authenticate user and set cookie",
+      "requestBodySchema": "{ email: string, password: string }",
+      "responseBodySchema": "{ token: string }"
+    },
+    {
+      "path": "/api/v1/reports/export",
+      "method": "GET",
+      "description": "Generate and download financial report",
+      "requestBodySchema": "null",
+      "responseBodySchema": "Blob"
+    }
+  ],
+  "hooks": [
+    {
+      "name": "useTransactions",
+      "type": "query",
+      "endpoint": "/api/v1/transactions",
+      "params": "filter: { dateRange: string, categoryId: string }",
+      "returns": "Transaction[]"
+    },
+    {
+      "name": "useCreateTransaction",
+      "type": "mutation",
+      "endpoint": "/api/v1/transactions",
+      "params": "data: TransactionInput",
+      "returns": "Transaction"
+    }
+  ]
+}

@@ -1,0 +1,177 @@
+{
+  "postcss.config.js": {
+    "path": "postcss.config.js",
+    "imports": [],
+    "importedBy": []
+  },
+  "scripts/dev.js": {
+    "path": "scripts/dev.js",
+    "imports": [],
+    "importedBy": []
+  },
+  "server/controllers/authController.ts": {
+    "path": "server/controllers/authController.ts",
+    "imports": [],
+    "importedBy": [
+      "server/middleware/auth.ts",
+      "server/routes/auth.ts"
+    ]
+  },
+  "server/index.ts": {
+    "path": "server/index.ts",
+    "imports": [
+      "server/routes/auth.ts",
+      "server/routes/transactions.ts"
+    ],
+    "importedBy": []
+  },
+  "server/middleware/auth.ts": {
+    "path": "server/middleware/auth.ts",
+    "imports": [
+      "server/controllers/authController.ts"
+    ],
+    "importedBy": [
+      "server/routes/transactions.ts"
+    ]
+  },
+  "server/routes/auth.ts": {
+    "path": "server/routes/auth.ts",
+    "imports": [
+      "server/controllers/authController.ts"
+    ],
+    "importedBy": [
+      "server/index.ts"
+    ]
+  },
+  "server/routes/transactions.ts": {
+    "path": "server/routes/transactions.ts",
+    "imports": [
+      "server/middleware/auth.ts"
+    ],
+    "importedBy": [
+      "server/index.ts"
+    ]
+  },
+  "src/app/router.tsx": {
+    "path": "src/app/router.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/App.tsx": {
+    "path": "src/App.tsx",
+    "imports": [
+      "src/routes.tsx"
+    ],
+    "importedBy": [
+      "src/main.tsx"
+    ]
+  },
+  "src/design-system/components/Button.tsx": {
+    "path": "src/design-system/components/Button.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/components/EmptyState.tsx": {
+    "path": "src/design-system/components/EmptyState.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/components/GlassCard.tsx": {
+    "path": "src/design-system/components/GlassCard.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/components/Skeleton.tsx": {
+    "path": "src/design-system/components/Skeleton.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/index.ts": {
+    "path": "src/design-system/index.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/tokens.ts": {
+    "path": "src/design-system/tokens.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/features/auth/services/authService.ts": {
+    "path": "src/features/auth/services/authService.ts",
+    "imports": [
+      "src/features/auth/types.ts"
+    ],
+    "importedBy": []
+  },
+  "src/features/auth/types.ts": {
+    "path": "src/features/auth/types.ts",
+    "imports": [],
+    "importedBy": [
+      "src/features/auth/services/authService.ts"
+    ]
+  },
+  "src/features/auth/types.tsx": {
+    "path": "src/features/auth/types.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/features/dashboard/DashboardPage.tsx": {
+    "path": "src/features/dashboard/DashboardPage.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/features/transactions/components/TransactionList.tsx": {
+    "path": "src/features/transactions/components/TransactionList.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/features/transactions/TransactionPage.tsx": {
+    "path": "src/features/transactions/TransactionPage.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/main.tsx": {
+    "path": "src/main.tsx",
+    "imports": [
+      "src/App.tsx"
+    ],
+    "importedBy": []
+  },
+  "src/routes.tsx": {
+    "path": "src/routes.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/services/api.ts": {
+    "path": "src/services/api.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/shared/components/Card.tsx": {
+    "path": "src/shared/components/Card.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/utils/cn.ts": {
+    "path": "src/utils/cn.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/vite-env.d.ts": {
+    "path": "src/vite-env.d.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "tailwind.config.js": {
+    "path": "tailwind.config.js",
+    "imports": [],
+    "importedBy": []
+  },
+  "vite.config.ts": {
+    "path": "vite.config.ts",
+    "imports": [],
+    "importedBy": []
+  }
+}

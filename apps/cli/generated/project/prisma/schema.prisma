@@ -11,40 +11,26 @@ model User {
   id           String        @id @default(uuid())
   email        String        @unique
   passwordHash String
+  transactions Transaction[]
+  budgets      Budget[]
   createdAt    DateTime      @default(now())
-  transactions Transaction[]
-  categories   Category[]
-  budgets      Budget[]
-}
-
-model Category {
-  id           String        @id @default(uuid())
-  name         String
-  userId       String
-  user         User          @relation(fields: [userId], references: [id])
-  transactions Transaction[]
-  budgets      Budget[]
 }
 
 model Transaction {
   id          String   @id @default(uuid())
-  amount      Float
-  description String
-  date        DateTime
-  type        String   // 'income' | 'expense'
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id])
   userId      String
   user        User     @relation(fields: [userId], references: [id])
+  amount      Float
+  type        String   // "INCOME" or "EXPENSE"
+  category    String
+  description String
+  date        DateTime @default(now())
 }
 
 model Budget {
-  id         String   @id @default(uuid())
-  amount     Float
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+  id         String @id @default(uuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id])
-  month      Int
-  year       Int
+  user       User   @relation(fields: [userId], references: [id])
+  category   String
+  limit      Float
 }

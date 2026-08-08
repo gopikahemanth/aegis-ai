@@ -1,0 +1,32 @@
+{
+  "reusablePatterns": [
+    {
+      "name": "LocalStorageStateHook",
+      "description": "Persists React state changes to local storage key-value pairs",
+      "files": [
+        "src/hooks/useLocalStorage.ts"
+      ],
+      "sampleCode": "import { useState, useEffect } from 'react';\nexport function useLocalStorage<T>(key: string, initialValue: T) {\n  const [value, setValue] = useState<T>(() => {\n    const stored = localStorage.getItem(key);\n    return stored ? JSON.parse(stored) : initialValue;\n  });\n  useEffect(() => {\n    localStorage.setItem(key, JSON.stringify(value));\n  }, [key, value]);\n  return [value, setValue] as const;\n}"
+    },
+    {
+      "name": "TailwindGlassmorphism",
+      "description": "Responsive translucent card container utilizing blur, border dividers, and gradient overlays",
+      "files": [
+        "src/components/Layout.tsx"
+      ],
+      "sampleCode": "className=\"bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-2xl shadow-indigo-500/10\""
+    },
+    {
+      "name": "GlassmorphicTransactionFilter",
+      "description": "A complex React filtering component styled with Tailwind glassmorphism for date range and category filtering with instant state synchronization",
+      "files": [],
+      "sampleCode": "import React, { useState } from 'react';\n\ninterface FilterProps {\n  onFilterChange: (filters: { startDate: string; endDate: string; category: string }) => void;\n  categories: string[];\n}\n\nexport const GlassmorphicTransactionFilter: React.FC<FilterProps> = ({ onFilterChange, categories }) => {\n  const [startDate, setStartDate] = useState('');\n  const [endDate, setEndDate] = useState('');\n  const [category, setCategory] = useState('ALL');\n\n  const handleApply = (newStart: string, newEnd: string, newCat: string) => {\n    onFilterChange({ startDate: newStart, endDate: newEnd, category: newCat });\n  };\n\n  return (\n    <div className=\"backdrop-blur-md bg-white/10 dark:bg-slate-900/40 border border-white/20 dark:border-slate-700/50 rounded-2xl p-6 shadow-xl flex flex-wrap gap-4 items-center justify-between text-slate-800 dark:text-slate-100\">\n      <div className=\"flex flex-col gap-1\">\n        <label className=\"text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400\">Start Date</label>\n        <input \n          type=\"date\"\n          value={startDate}\n          onChange={(e) => { setStartDate(e.target.value); handleApply(e.target.value, endDate, category); }}\n          className=\"bg-white/5 dark:bg-slate-800/50 border border-white/10 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500\"\n        />\n      </div>\n      <div className=\"flex flex-col gap-1\">\n        <label className=\"text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400\">End Date</label>\n        <input \n          type=\"date\"\n          value={endDate}\n          onChange={(e) => { setEndDate(e.target.value); handleApply(startDate, e.target.value, category); }}\n          className=\"bg-white/5 dark:bg-slate-800/50 border border-white/10 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500\"\n        />\n      </div>\n      <div className=\"flex flex-col gap-1 flex-1 min-w-[200px]\">\n        <label className=\"text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400\">Category</label>\n        <select\n          value={category}\n          onChange={(e) => { setCategory(e.target.value); handleApply(startDate, endDate, e.target.value); }}\n          className=\"bg-white/5 dark:bg-slate-800/50 border border-white/10 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500\"\n        >\n          <option value=\"ALL\" className=\"bg-slate-900\">All Categories</option>\n          {categories.map((cat) => (\n            <option key={cat} value={cat} className=\"bg-slate-900\">{cat}</option>\n          ))}\n        </select>\n      </div>\n    </div>\n  );\n};"
+    },
+    {
+      "name": "TailwindAnimatedProgressBar",
+      "description": "An animated monthly budget progress bar component utilizing Tailwind CSS gradients and dynamic width transitions based on expenditure percentage",
+      "files": [],
+      "sampleCode": "import React from 'react';\n\ninterface BudgetProgressProps {\n  category: string;\n  spent: number;\n  budget: number;\n}\n\nexport const TailwindAnimatedProgressBar: React.FC<BudgetProgressProps> = ({ category, spent, budget }) => {\n  const percentage = Math.min(Math.round((spent / budget) * 100), 100);\n  const isOverBudget = spent > budget;\n\n  return (\n    <div className=\"backdrop-blur-md bg-white/10 dark:bg-slate-900/40 border border-white/20 dark:border-slate-700/50 rounded-xl p-4 shadow-lg\">\n      <div className=\"flex justify-between items-center mb-2\">\n        <span className=\"font-semibold text-slate-800 dark:text-slate-100\">{category}</span>\n        <span className={`text-sm font-bold ${isOverBudget ? 'text-rose-500' : 'text-slate-600 dark:text-slate-300'}`}>\n          ${spent.toFixed(2)} / ${budget.toFixed(2)} ({percentage}%)\n        </span>\n      </div>\n      <div className=\"w-full bg-slate-200 dark:bg-slate-800 rounded-full h-3 overflow-hidden p-0.5 border border-white/10\">\n        <div \n          className={`h-full rounded-full transition-all duration-700 ease-out ${\n            isOverBudget \n              ? 'bg-gradient-to-r from-rose-500 to-red-600 animate-pulse' \n              : percentage > 80 \n              ? 'bg-gradient-to-r from-amber-400 to-orange-500'\n              : 'bg-gradient-to-r from-indigo-500 to-emerald-400'\n          }`}\n          style={{ width: `${percentage}%` }}\n        />\n      </div>\n    </div>\n  );\n};"
+    }
+  ]
+}

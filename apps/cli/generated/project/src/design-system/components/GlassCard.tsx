@@ -3,7 +3,6 @@ import React from 'react';
 interface GlassCardProps {
   children: React.ReactNode;
   className?: string;
-  [key: string]: any;
 }
 
 export const GlassCard: React.FC<any> = ({ children, className = '', ...props }) => (

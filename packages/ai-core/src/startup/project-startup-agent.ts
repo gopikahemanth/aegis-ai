@@ -790,9 +790,10 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         // Fix 2: Pages that are React.lazy-loaded need `export default`
         const isPage = rel.includes("/pages/") || rel.includes("Page.tsx");
         if (isPage && !content.includes("export default")) {
-          const namedExportMatch = content.match(/^export const (\w+):\s*React\.FC/m) || content.match(/^export (function|const) ([A-Z]\w+)/m);
+          const fcMatch = content.match(/^export const (\w+):\s*React\.FC/m);
+          const namedExportMatch = fcMatch || content.match(/^export (?:function|const) ([A-Z]\w+)/m);
           if (namedExportMatch) {
-            const componentName = namedExportMatch[1] || namedExportMatch[2];
+            const componentName = fcMatch ? namedExportMatch[1] : namedExportMatch[1];
             content = content.trimEnd() + `\n\nexport default ${componentName};\n`;
             changed = true;
           }

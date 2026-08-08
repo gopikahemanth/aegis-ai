@@ -945,10 +945,11 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
         // Fix 13.5: TS2724 entity module missing capitalized export (e.g. Task vs task)
         if (rel.includes("entities") || rel.includes("types") || rel.includes("models")) {
-          const baseName = rel.split("/").pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "";
-          if (baseName) {
+          const rawBaseName = rel.split("/").pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "";
+          if (rawBaseName) {
+            const baseName = rawBaseName.replace(/\.([a-z])/gi, (_, letter) => letter.toUpperCase()).replace(/[^a-zA-Z0-9_$]/g, "");
             const pascalName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
-            if (!content.includes(`export type ${pascalName}`) && !content.includes(`export interface ${pascalName}`) && !content.includes(`export const ${pascalName}`) && !content.includes(`export class ${pascalName}`)) {
+            if (pascalName && !content.includes(`export type ${pascalName}`) && !content.includes(`export interface ${pascalName}`) && !content.includes(`export const ${pascalName}`) && !content.includes(`export class ${pascalName}`) && !content.includes(`export type { ${pascalName}`) && !content.includes(`export { ${pascalName}`)) {
               content += `\nexport type ${pascalName} = any;\n`;
               changed = true;
             }

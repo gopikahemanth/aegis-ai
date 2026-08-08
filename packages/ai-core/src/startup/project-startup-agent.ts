@@ -1062,8 +1062,8 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
 
         // Fix 31: Auto-sanitize broken inline JSX component parameters (TS1005 / TS1109)
         if ((rel.endsWith(".tsx") || rel.endsWith(".jsx")) && (rel.startsWith("src/") || rel.startsWith("src\\"))) {
-          if (/\(\s*\{[^}]*\}\s*:\s*\{[^}]*\}\s*\)/.test(content)) {
-            content = content.replace(/\(\s*\{([^}]*)\}\s*:\s*\{[^}]*\}\s*\)/g, "(props: any)");
+          if (/\b(?:const|let|var|function)\s+[A-Z]\w*\s*=\s*\(\s*\{[^}]*\}\s*:\s*\{[^}]*\}\s*\)/.test(content) || /function\s+[A-Z]\w*\s*\(\s*\{[^}]*\}\s*:\s*\{[^}]*\}\s*\)/.test(content)) {
+            content = content.replace(/(\b(?:const|let|var|function)\s+[A-Z]\w*\s*=\s*|\bfunction\s+[A-Z]\w*\s*)\(\s*\{[^}]*\}\s*:\s*\{[^}]*\}\s*\)/g, "$1(props: any)");
             changed = true;
           }
         }

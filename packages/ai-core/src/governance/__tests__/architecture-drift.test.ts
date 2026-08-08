@@ -20,9 +20,10 @@ describe("Architecture Drift Governance Suite", () => {
   });
 
   it("TEST 1: Next.js contract vs Next.js project -> PASS", () => {
-    const contract = ArchitectureResolver.resolve("Build Next.js app", { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" }, {} as any);
+    const contract = ArchitectureResolver.resolve("Build Next.js app with Next.js API Routes", { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" }, {} as any);
     ArchitectureResolver.writeContract(testDir, contract);
     writeFileSync(join(testDir, "package.json"), JSON.stringify({ dependencies: { next: "^14.0.0", react: "^18.0.0" } }), "utf8");
+    mkdirSync(join(testDir, "app", "api"), { recursive: true });
 
     const audit = ArchitectureAuditor.audit(testDir);
     const diff = ArchitectureDiff.compare(ArchitectureResolver.loadContract(testDir), audit);
@@ -85,9 +86,9 @@ describe("Architecture Drift Governance Suite", () => {
   });
 
   it("TEST 7: Valid project with minor syntax error -> Architecture PASS, Build FAIL", () => {
-    const contract = ArchitectureResolver.resolve("Build React Vite app", { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" }, {} as any);
+    const contract = ArchitectureResolver.resolve("Build React Vite app with Express", { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" }, {} as any);
     ArchitectureResolver.writeContract(testDir, contract);
-    writeFileSync(join(testDir, "package.json"), JSON.stringify({ dependencies: { vite: "^5.0.0", react: "^18.0.0" } }), "utf8");
+    writeFileSync(join(testDir, "package.json"), JSON.stringify({ dependencies: { vite: "^5.0.0", react: "^18.0.0", express: "^4.18.0" } }), "utf8");
 
     const audit = ArchitectureAuditor.audit(testDir);
     const diff = ArchitectureDiff.compare(ArchitectureResolver.loadContract(testDir), audit);

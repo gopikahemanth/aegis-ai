@@ -44,23 +44,23 @@ export class ArchitectureDiff {
     }
 
     // 2. Compare Backend Framework
-    if (contract.backend.framework && actual.backendFramework !== "Unknown") {
+    if (contract.backend.framework && contract.backend.framework.toLowerCase() !== "none") {
       const exp = contract.backend.framework.toLowerCase();
       const act = actual.backendFramework.toLowerCase();
-      if (exp.includes("express") && !act.includes("express")) {
+      if (exp.includes("express") && act !== "unknown" && !act.includes("express")) {
         violations.push({ field: "backend.framework", expected: contract.backend.framework, actual: actual.backendFramework, severity: "BLOCKER" });
-      } else if (exp.includes("next") && !act.includes("next")) {
+      } else if (exp.includes("next") && act !== "unknown" && !act.includes("next")) {
         violations.push({ field: "backend.framework", expected: contract.backend.framework, actual: actual.backendFramework, severity: "BLOCKER" });
       }
     }
 
     // 3. Compare Database Provider
-    if (contract.database.provider && actual.databaseProvider !== "Unknown") {
+    if (contract.database.provider && contract.database.provider.toLowerCase() !== "none") {
       const exp = contract.database.provider.toLowerCase();
       const act = actual.databaseProvider.toLowerCase();
-      if (exp.includes("postgres") && !act.includes("postgres")) {
+      if (exp.includes("postgres") && act !== "unknown" && !act.includes("postgres")) {
         violations.push({ field: "database.provider", expected: contract.database.provider, actual: actual.databaseProvider, severity: "BLOCKER" });
-      } else if (exp.includes("sqlite") && !act.includes("sqlite")) {
+      } else if (exp.includes("sqlite") && act !== "unknown" && !act.includes("sqlite")) {
         violations.push({ field: "database.provider", expected: contract.database.provider, actual: actual.databaseProvider, severity: "BLOCKER" });
       }
     }

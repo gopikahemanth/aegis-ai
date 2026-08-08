@@ -1308,6 +1308,30 @@ export default DataTable;\n`;
           fixed.push(`Replaced truncated file with stub: ${rel}`);
         }
 
+        // Fix 38: Deduplicate TypeScript interface/type property declarations (TS2300 Duplicate identifier)
+        if ((rel.endsWith(".ts") || rel.endsWith(".tsx")) && content.includes("interface ")) {
+          // Match each interface body and dedup property names
+          const deduped = content.replace(
+            /(\binterface\s+\w[\w$]*\s*(?:extends\s+[^{]+)?\s*\{)([\s\S]*?)(\})/g,
+            (_, open, body, close) => {
+              const seen = new Set<string>();
+              const dedupedLines = body.split("\n").filter((line: string) => {
+                // Match property declarations: optional, required, method signatures
+                const propMatch = line.match(/^\s{0,8}(readonly\s+)?(\w[\w$]*)\??\s*[:({]/);
+                if (!propMatch) return true; // keep non-property lines (comments, blank, etc.)
+                const propName = propMatch[2];
+                if (seen.has(propName)) return false; // drop duplicate
+                seen.add(propName);
+                return true;
+              });
+              const newBody = dedupedLines.join("\n");
+              if (newBody !== body) changed = true;
+              return open + newBody + close;
+            }
+          );
+          content = deduped;
+        }
+
         // Fix 10: Truncation Detector — Check if file ends mid-expression
         if (!isLikelySyntacticallyComplete(content)) {
           truncated.push(rel);

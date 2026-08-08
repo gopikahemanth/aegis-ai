@@ -1310,9 +1310,9 @@ export default DataTable;\n`;
             let relImport = relative(dirname(fullStubPath), matchingDiskFile.fullPath).replace(/\\/g, "/");
             if (!relImport.startsWith(".")) relImport = "./" + relImport;
             relImport = relImport.replace(/\.(ts|tsx|js|jsx)$/, "");
-            writeFileSync(fullStubPath, `import * as Mod from '${relImport}';\nexport * from '${relImport}';\nconst _default = (Mod as any).default || Mod;\nexport default _default;\n`, "utf8");
+            writeFileSync(fullStubPath, `import * as Mod from '${relImport}';\nexport * from '${relImport}';\nconst _default = (Mod as any).default || Mod;\nexport const ${componentName} = _default;\nexport default _default;\n`, "utf8");
           } else if (isUiTarget) {
-            writeFileSync(fullStubPath, `import React from 'react';\n\nexport function ${componentName}({ children, className }: { children?: React.ReactNode; className?: string }) {\n  return <div className={className}>{children}</div>;\n}\n\nexport default ${componentName};\n`, "utf8");
+            writeFileSync(fullStubPath, `import React from 'react';\n\nexport function ${componentName}(props: any) {\n  return <div className={props?.className || "${componentName.toLowerCase()}-stub"} {...props}>{props?.children || '${componentName}'}</div>;\n}\nexport const _comp_${componentName} = ${componentName};\nexport default ${componentName};\n`, "utf8");
           } else {
             writeFileSync(fullStubPath, `// Auto-generated stub for missing module: ${componentName}\nexport default {};\n`, "utf8");
           }

@@ -5,6 +5,8 @@ import { ArchitectureResolver } from "../../governance/architecture-resolver.js"
 import { ArchitectureAuditor } from "../../governance/architecture-auditor.js";
 import { ArchitectureDiff } from "../../governance/architecture-diff.js";
 import { PlannerArchitectureGuard } from "../../governance/planner-guard.js";
+import { ArchitectureContractNormalizer } from "../../governance/contract-normalizer.js";
+import { FastDeterministicSanitizer } from "../../governance/fast-sanitizer.js";
 import { DefinitionOfDone } from "../../validation/definition-of-done.js";
 import { TransactionalRepairSystem } from "../../healing/transactional-repair.js";
 import { ValidationContextManager } from "../../validation/validation-context.js";
@@ -208,5 +210,38 @@ describe("Architecture Drift Governance Suite", () => {
     expect(filtered.length).toBe(1);
     expect(filtered[0].title).toBe("Implement Express JWT Auth authentication");
     expect(filtered[0].description).toContain("Express middleware");
+  });
+
+  it("TEST 18: ArchitectureContractNormalizer normalizes contradictory Next.js spec to React-Vite + Express contract", () => {
+    const contract = ArchitectureResolver.resolve("Build React-Vite app with Express, PostgreSQL and Prisma", { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" }, {} as any);
+    const contradictorySpec = {
+      name: "app",
+      type: "fullstack",
+      frontend: "Next.js 14 App Router",
+      backend: "Next.js API Routes",
+      database: "MongoDB",
+      features: ["NextAuth", "Next.js App Router"]
+    } as any;
+
+    const normalized = ArchitectureContractNormalizer.normalizeSpecification(contradictorySpec, contract);
+    expect(normalized.frontend).toBe("React-Vite");
+    expect(normalized.backend).toBe("Express");
+    expect(normalized.database).toBe("PostgreSQL");
+    expect(normalized.features).toContain("Express JWT Auth");
+  });
+
+  it("TEST 19: FastDeterministicSanitizer fixes dependency closure, case collisions, and invalid DB URL", () => {
+    writeFileSync(join(testDir, "package.json"), JSON.stringify({ dependencies: { express: "^4.18.2" } }), "utf8");
+    writeFileSync(join(testDir, ".env"), 'DATABASE_URL="sqlite://dev.db"', "utf8");
+    mkdirSync(join(testDir, "src"), { recursive: true });
+    writeFileSync(join(testDir, "src", "index.ts"), 'import multer from "multer";\nimport pdf from "pdf-parse";\n', "utf8");
+
+    const report = FastDeterministicSanitizer.sanitizeProject(testDir);
+    expect(report.missingDependenciesAdded).toContain("multer");
+    expect(report.missingDependenciesAdded).toContain("pdf-parse");
+    expect(report.databaseUrlValid).toBe(false);
+
+    const updatedEnv = readFileSync(join(testDir, ".env"), "utf8");
+    expect(updatedEnv).toContain("postgresql://");
   });
 });

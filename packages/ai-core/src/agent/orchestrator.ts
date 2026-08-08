@@ -55,7 +55,7 @@ import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-gener
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
 import { TransactionalRepairSystem } from "../healing/index.js";
-import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ExecutionReportGenerator } from "../governance/index.js";
+import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, ExecutionReportGenerator } from "../governance/index.js";
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
   "express",
@@ -287,6 +287,9 @@ export class Orchestrator {
     const resolvedContract = ArchitectureResolver.resolve(request, specification, canonicalSpec);
     ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
     const archContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
+
+    // Force specification normalization against locked contract
+    const normalizedSpec = ArchitectureContractNormalizer.normalizeSpecification(specification, resolvedContract);
 
     auditTrail.logEvent({
       agentRole: "Architect",
@@ -522,7 +525,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
     const canonicalSpec = SpecificationNormalizer.normalize(request, rawSpecification);
     (this as any)._currentCanonicalSpec = canonicalSpec;
-    const specification = canonicalSpec;
+    let specification = canonicalSpec;
     ValidationStateManager.getInstance().reset();
 
     // Merge specification inferred libraries into package.json (filtered by whitelist)
@@ -565,6 +568,10 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     const resolvedContract = ArchitectureResolver.resolve(request, rawSpecification, canonicalSpec);
     ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
     const appArchContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
+
+    // Force specification normalization against locked contract
+    const normalizedAppSpec = ArchitectureContractNormalizer.normalizeSpecification(specification, resolvedContract);
+    specification = normalizedAppSpec;
 
     auditTrail.logEvent({
       agentRole: "Architect",
@@ -986,6 +993,10 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
 
       this.resolveMissingLocalImports(outputDirectory);
+
+      // Fast Deterministic Sanitation (Dependency Closure, Casing, Export contracts, DB URL)
+      const sanitizeReport = FastDeterministicSanitizer.sanitizeProject(outputDirectory);
+      console.log(`[FastSanitizer] ✓ Pre-build sanitation complete (Collisions resolved: ${sanitizeReport.casingCollisionsResolved}, Imports added: ${sanitizeReport.missingDependenciesAdded.length}, Exports fixed: ${sanitizeReport.exportFixesApplied}, DB URL valid: ${sanitizeReport.databaseUrlValid})`);
     } catch (scanErr: any) {
       console.warn(`[Orchestrator] Pre-build import scan non-fatal warning: ${scanErr.message}`);
     }

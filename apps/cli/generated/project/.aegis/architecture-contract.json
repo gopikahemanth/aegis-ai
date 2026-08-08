@@ -1,36 +1,34 @@
 {
-  "contractId": "req_1786199799762",
-  "lockedAt": "2026-08-08T14:36:39.762Z",
+  "contractId": "req_1786200019945",
+  "lockedAt": "2026-08-08T14:40:19.945Z",
   "stack": {
     "frontend": "React",
     "backend": "Express",
-    "database": "PostgreSQL with Prisma ORM",
+    "database": "PostgreSQL",
     "orm": "Prisma",
-    "auth": "NextAuth.js (Credentials/OAuth)",
+    "auth": "JWT",
     "language": "TypeScript",
-    "styling": "TailwindCSS and ShadcnUI",
+    "styling": "tailwind",
     "packageManager": "pnpm"
   },
   "features": [
-    "auth",
-    "upload",
-    "parsing",
-    "analysis",
+    "pdf-parser",
+    "keyword-engine",
     "dashboard",
-    "history"
+    "persistence",
+    "auth"
   ],
   "userFlows": [
-    "user-authentication",
-    "upload-resume-and-job-description",
-    "generate-relevance-analysis",
-    "view-analysis-history",
-    "download-suggestions-report"
+    "upload-documents",
+    "analyze-resume-fit",
+    "review-keyword-gaps",
+    "view-application-history"
   ],
   "dataModels": [
     "User",
+    "ScanResult",
     "Resume",
-    "JobDescription",
-    "AnalysisResult"
+    "JobDescription"
   ],
   "allowedRoutePrefixes": [
     "/api",

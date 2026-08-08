@@ -1029,6 +1029,14 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
+        // Fix 29: Auto-inject (props: any) into component functions with 0 parameters (TS2322 IntrinsicAttributes)
+        if ((rel.endsWith(".tsx") || rel.endsWith(".jsx")) && (rel.startsWith("src/") || rel.startsWith("src\\"))) {
+          if (/function\s+[A-Z]\w*\s*\(\s*\)/.test(content)) {
+            content = content.replace(/function\s+([A-Z]\w*)\s*\(\s*\)/g, "function $1(props: any)");
+            changed = true;
+          }
+        }
+
         // Fix 25: Auto-inject className, children, onClick into component Props interfaces (TS2339)
         if (content.includes("interface ") && content.includes("Props")) {
           if (!content.includes("className?:") && !content.includes("[key: string]: any")) {

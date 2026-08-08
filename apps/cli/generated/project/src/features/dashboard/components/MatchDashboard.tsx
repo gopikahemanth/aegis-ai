@@ -1,45 +1,36 @@
-import React from 'react';
-import { Card } from '@/shared/components/Card';
-import { Badge } from '@/shared/components/Badge';
+import React, { useMemo } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
-interface MatchDashboardProps {
-  className?: string;
-  children?: any;
-  onClick?: any;
-  [key: string]: any;
-
+interface Props {
   score: number;
-  matched: string[];
-  missing: string[];
 }
 
-export const MatchDashboard: React.FC<any> = ({ score, matched, missing }) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-      <Card title="Overall Match Score" className="p-6">
-        <div className="text-4xl font-bold text-violet-500">{score}%</div>
-        <p className="text-zinc-400 mt-2">Semantic relevance to job description</p>
-      </Card>
+export const MatchDashboard: React.FC<any> = ({ score }) => {
+  const data = useMemo(() => [
+    { name: 'Match', value: score },
+    { name: 'Gap', value: 100 - score }
+  ], [score]);
 
-      <Card title="Skill Gap Analysis" className="p-6">
-        <div className="space-y-4">
-          <div>
-            <h4 className="text-sm font-medium text-emerald-400 mb-2">Matched Skills</h4>
-            <div className="flex flex-wrap gap-2">
-              {matched.slice(0, 10).map(k => <Badge key={k} variant="success">{k}</Badge>)}
-            </div>
-          </div>
-          <div>
-            <h4 className="text-sm font-medium text-red-400 mb-2">Missing Skills</h4>
-            <div className="flex flex-wrap gap-2">
-              {missing.slice(0, 10).map(k => <Badge key={k} variant="danger">{k}</Badge>)}
-            </div>
-          </div>
-        </div>
-      </Card>
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl">
+      <h2 className="text-lg font-semibold text-zinc-100 mb-4">Analysis Result</h2>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie data={data} innerRadius={60} outerRadius={80} dataKey="value">
+              <Cell fill="#8b5cf6" />
+              <Cell fill="#27272a" />
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="text-center">
+        <span className="text-4xl font-bold text-violet-500">{score}%</span>
+        <p className="text-zinc-400 text-sm mt-1">Match Score</p>
+      </div>
     </div>
   );
 };
 export default MatchDashboard;
 
-export type { MatchDashboardProps };
+export type { Props };

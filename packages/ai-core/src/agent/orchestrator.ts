@@ -1517,81 +1517,68 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
       const allDiskFiles = getAllProjectFiles(outputDirectory);
 
-      // Auto-rename any disk .ts file containing JSX to .tsx
+      // Only auto-rename UI component .ts files containing JSX (never server/lib/prisma.ts or pure node services)
       for (const diskFile of allDiskFiles) {
         if (diskFile.fullPath.endsWith(".ts") && !diskFile.fullPath.endsWith(".d.ts")) {
-          const hasJsx = /<[A-Z][A-Za-z0-9\.]*[\s/>]/.test(diskFile.content) || /return\s*\(\s*</.test(diskFile.content);
-          if (hasJsx) {
-            const newTsxPath = diskFile.fullPath.replace(/\.ts$/, ".tsx");
-            console.log(`[Orchestrator] Renaming JSX file from .ts to .tsx: ${diskFile.relPath} -> ${relative(outputDirectory, newTsxPath)}`);
-            writeFileSync(newTsxPath, diskFile.content, "utf8");
-            try { unlinkSync(diskFile.fullPath); } catch {}
-            diskFile.fullPath = newTsxPath;
-            diskFile.relPath = relative(outputDirectory, newTsxPath);
+          const isServerFile = diskFile.relPath.includes("server/") || diskFile.relPath.includes("prisma/") || diskFile.relPath.includes("services/");
+          if (!isServerFile) {
+            const hasJsx = /<[A-Z][A-Za-z0-9\.]*[\s/>]/.test(diskFile.content) || /return\s*\(\s*</.test(diskFile.content);
+            if (hasJsx) {
+              const newTsxPath = diskFile.fullPath.replace(/\.ts$/, ".tsx");
+              console.log(`[Orchestrator] Renaming UI component file from .ts to .tsx: ${diskFile.relPath} -> ${relative(outputDirectory, newTsxPath)}`);
+              writeFileSync(newTsxPath, diskFile.content, "utf8");
+              try { unlinkSync(diskFile.fullPath); } catch {}
+              diskFile.fullPath = newTsxPath;
+              diskFile.relPath = relative(outputDirectory, newTsxPath);
+            }
           }
         }
       }
 
       for (const diskFile of allDiskFiles) {
-        const fileDir = dirname(diskFile.fullPath);
         const importMatches = diskFile.content.matchAll(/(?:import\s+(?:[\s\S]*?\s+from\s+)?|import\s*\(\s*)['"]((?:\.|\@\/)[^'"]+)['"]/g);
         for (const m of importMatches) {
           const rawImportPath = m[1];
-          let targetPath = rawImportPath.startsWith("@/")
-            ? join(outputDirectory, "src", rawImportPath.slice(2))
-            : resolve(fileDir, rawImportPath);
+          // Use Extension-Aware Module Resolution (checks exact, .ts, .tsx, .js, .jsx, index files)
+          const resolvedModulePath = ProjectPathResolver.resolveModule(outputDirectory, diskFile.relPath, rawImportPath);
 
-          let targetFileExists = false;
-          for (const ext of ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"]) {
-            if (existsSync(targetPath + ext)) {
-              try {
-                if (!statSync(targetPath + ext).isDirectory()) {
-                  targetFileExists = true;
-                  break;
-                }
-              } catch {}
-            }
+          if (resolvedModulePath) {
+            continue; // Module exists with a valid extension (e.g., .tsx) — DO NOT generate a stub!
           }
 
-          if (!targetFileExists) {
-            const isUiTarget = /[\/\\](pages|components|views|ui|features)[\/\\]/i.test(targetPath) ||
-                              /(button|card|component|page|navbar|spinner|dashboard|gallery|header|footer|modal|drawer|form|input)/i.test(targetPath);
-            let stubExt = isUiTarget ? ".tsx" : ".ts";
-            const fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
-            const stubRelName = relative(outputDirectory, fullStubPath);
+          const targetPath = rawImportPath.startsWith("@/")
+            ? join(outputDirectory, "src", rawImportPath.slice(2))
+            : resolve(dirname(diskFile.fullPath), rawImportPath);
 
-            // Fuzzy resolution: check if a file with the same component/module name exists elsewhere in diskFiles
-            const componentName = stubRelName.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Component";
-            const lowerComp = componentName.toLowerCase();
-            const matchingDiskFile = allDiskFiles.find(f => {
-              const bName = f.relPath.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "";
-              const lowerBName = bName.toLowerCase();
-              if (f.fullPath === fullStubPath) return false;
-              if (lowerBName === lowerComp) return true;
-              if (lowerComp.endsWith("page") && lowerBName === lowerComp.replace("page", "")) return true;
-              if (lowerComp.endsWith("dashboard") && lowerBName.includes("dashboard")) return true;
-              if (lowerBName.includes(lowerComp) || lowerComp.includes(lowerBName)) return true;
-              return false;
-            });
+          const isUiTarget = /[\/\\](pages|components|views|ui|features)[\/\\]/i.test(targetPath) ||
+                            /(button|card|component|page|navbar|spinner|dashboard|gallery|header|footer|modal|drawer|form|input)/i.test(targetPath);
+          let stubExt = isUiTarget ? ".tsx" : ".ts";
+          const fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
+          const stubRelName = relative(outputDirectory, fullStubPath);
 
-            if (matchingDiskFile) {
-              console.log(`[Orchestrator] Pre-build missing local import scanner: Found matching file "${matchingDiskFile.relPath}" for "${stubRelName}". Creating re-export shim...`);
-              let relImportToTarget = relative(dirname(fullStubPath), matchingDiskFile.fullPath).replace(/\\/g, "/");
-              if (!relImportToTarget.startsWith(".")) relImportToTarget = "./" + relImportToTarget;
-              relImportToTarget = relImportToTarget.replace(/\.(ts|tsx|js|jsx)$/, "");
+          // Fuzzy resolution: check if a file with the same component/module name exists elsewhere in diskFiles
+          const componentName = stubRelName.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Component";
+          const lowerComp = componentName.toLowerCase();
+          const matchingDiskFile = allDiskFiles.find(f => {
+            const bName = f.relPath.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "";
+            const lowerBName = bName.toLowerCase();
+            if (f.fullPath === fullStubPath) return false;
+            if (lowerBName === lowerComp) return true;
+            if (lowerComp.endsWith("page") && lowerBName === lowerComp.replace("page", "")) return true;
+            if (lowerComp.endsWith("dashboard") && lowerBName.includes("dashboard")) return true;
+            if (lowerBName.includes(lowerComp) || lowerComp.includes(lowerBName)) return true;
+            return false;
+          });
 
-              const shimContent = `import * as Mod from '${relImportToTarget}';\nexport * from '${relImportToTarget}';\nconst _default = (Mod as any).default || (Mod as any)['${componentName}'] || Mod[Object.keys(Mod)[0]] || Mod;\nexport default _default;\n`;
-              mkdirSync(dirname(fullStubPath), { recursive: true });
-              writeFileSync(fullStubPath, shimContent, "utf8");
-              continue;
-            }
+          if (matchingDiskFile) {
+            console.log(`[Orchestrator] Pre-build missing local import scanner: Found matching file "${matchingDiskFile.relPath}" for "${stubRelName}". Creating re-export shim...`);
+            let relImportToTarget = relative(dirname(fullStubPath), matchingDiskFile.fullPath).replace(/\\/g, "/");
+            if (!relImportToTarget.startsWith(".")) relImportToTarget = "./" + relImportToTarget;
+            relImportToTarget = relImportToTarget.replace(/\.(ts|tsx|js|jsx)$/, "");
 
-            console.log(`[Orchestrator] Pre-build missing local import scanner: Generating domain-aware stub for missing file "${stubRelName}"...`);
-            const spec = (this as any)._currentCanonicalSpec || SpecificationNormalizer.normalize("", { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" });
-            const stubContent = DomainAwareFallbackGenerator.generateFallbackComponent(spec, componentName, stubRelName);
-            
+            const shimContent = `import * as Mod from '${relImportToTarget}';\nexport * from '${relImportToTarget}';\nconst _default = (Mod as any).default || (Mod as any)['${componentName}'] || Mod[Object.keys(Mod)[0]] || Mod;\nexport default _default;\n`;
             mkdirSync(dirname(fullStubPath), { recursive: true });
-            writeFileSync(fullStubPath, stubContent, "utf8");
+            writeFileSync(fullStubPath, shimContent, "utf8");
           }
         }
       }

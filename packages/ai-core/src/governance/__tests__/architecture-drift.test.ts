@@ -280,4 +280,20 @@ describe("Architecture Drift Governance Suite", () => {
     expect(path2).toBe("C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/apps/cli/generated/project/server/index.ts");
     expect(path3).toBe("C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/apps/cli/generated/project/server/index.ts");
   });
+
+  it("TEST 23: ProjectPathResolver.resolveModule resolves ./routes to routes.tsx when routes.tsx exists", () => {
+    mkdirSync(join(testDir, "src"), { recursive: true });
+    writeFileSync(join(testDir, "src", "routes.tsx"), 'export const AppRoutes = () => <div />;\n', "utf8");
+    writeFileSync(join(testDir, "src", "App.tsx"), 'import { AppRoutes } from "./routes";\n', "utf8");
+
+    const resolved = ProjectPathResolver.resolveModule(testDir, "src/App.tsx", "./routes");
+    expect(resolved).not.toBeNull();
+    expect(resolved).toContain("routes.tsx");
+  });
+
+  it("TEST 24: ProjectPathResolver throws DuplicateProjectRootError when path contains duplicate root", () => {
+    expect(() => {
+      ProjectPathResolver.resolveProjectFile(testDir, "generated/project/generated/project/server/index.ts");
+    }).toThrow();
+  });
 });

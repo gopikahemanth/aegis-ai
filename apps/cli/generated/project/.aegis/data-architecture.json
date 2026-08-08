@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "Authenticated system user",
+      "description": "System users for history tracking",
       "persistence": "database",
       "fields": [
         {
@@ -12,7 +12,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Primary identifier"
+          "description": "Unique identifier"
         },
         {
           "name": "email",
@@ -24,19 +24,28 @@
           "description": "User email address"
         },
         {
-          "name": "passwordHash",
+          "name": "password",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Encrypted credentials"
+          "description": "Hashed password"
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Creation timestamp"
         }
       ]
     },
     {
-      "name": "AnalysisResult",
-      "description": "Stores the outcome of a resume-to-job matching session",
+      "name": "AnalysisReport",
+      "description": "Stores final analysis results",
       "persistence": "database",
       "fields": [
         {
@@ -46,7 +55,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Primary identifier"
+          "description": "Unique identifier"
         },
         {
           "name": "userId",
@@ -55,7 +64,7 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": "User",
-          "description": "Owner of the analysis"
+          "description": "Owner of the report"
         },
         {
           "name": "matchScore",
@@ -64,16 +73,7 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Percentage similarity"
-        },
-        {
-          "name": "missingKeywords",
-          "type": "Json",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "List of missing skills"
+          "description": "Calculated percentage"
         },
         {
           "name": "resumeText",
@@ -82,16 +82,25 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Parsed resume content"
+          "description": "Raw resume text"
         },
         {
-          "name": "jobDescription",
+          "name": "jobDescriptionText",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Target job description"
+          "description": "Raw JD text"
+        },
+        {
+          "name": "skillGaps",
+          "type": "Json",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Structured JSON of missing skills"
         },
         {
           "name": "createdAt",
@@ -100,47 +109,49 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Timestamp"
+          "description": "Analysis timestamp"
         }
       ]
     }
   ],
-  "databaseSchema": "generator client { provider = \"prisma-client-js\" }\ndatasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") }\n\nmodel User {\n  id           String           @id @default(uuid())\n  email        String           @unique\n  passwordHash String\n  results      AnalysisResult[]\n}\n\nmodel AnalysisResult {\n  id              String   @id @default(uuid())\n  userId          String\n  user            User     @relation(fields: [userId], references: [id])\n  matchScore      Float\n  missingKeywords Json\n  resumeText      String\n  jobDescription  String\n  createdAt       DateTime @default(now())\n}",
+  "databaseSchema": "model User { id String @id @default(uuid()) email String @unique password String createdAt DateTime @default(now()) reports AnalysisReport[] } model AnalysisReport { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) matchScore Float resumeText String jobDescriptionText String skillGaps Json createdAt DateTime @default(now()) }",
   "apis": [
     {
-      "path": "/api/v1/analyze",
+      "path": "/api/v1/auth/register",
       "method": "POST",
-      "description": "Upload resume, parse text, and perform semantic keyword matching",
-      "requestBodySchema": "{ \"resume\": \"File\", \"jobDescription\": \"string\" }",
-      "responseBodySchema": "{ \"id\": \"string\", \"score\": \"number\", \"missingKeywords\": \"string[]\" }"
+      "description": "Registers new user",
+      "requestBodySchema": "{ email: string, password: string }",
+      "responseBodySchema": "{ userId: string, token: string }"
     },
     {
-      "path": "/api/v1/history",
+      "path": "/api/v1/analysis",
+      "method": "POST",
+      "description": "Uploads data and performs NLP analysis",
+      "requestBodySchema": "{ resumeFile: File, jobDescription: string }",
+      "responseBodySchema": "{ reportId: string, matchScore: number, skillGaps: any }"
+    },
+    {
+      "path": "/api/v1/analysis/history",
       "method": "GET",
-      "description": "Retrieve historical analysis results for the user",
-      "responseBodySchema": "AnalysisResult[]"
-    },
-    {
-      "path": "/api/v1/history/:id",
-      "method": "DELETE",
-      "description": "Delete a specific historical scan",
-      "responseBodySchema": "{ \"success\": \"boolean\" }"
+      "description": "Fetches user analysis reports",
+      "requestBodySchema": "null",
+      "responseBodySchema": "AnalysisReport[]"
     }
   ],
   "hooks": [
     {
-      "name": "useAnalyzeResume",
-      "type": "mutation",
-      "endpoint": "/api/v1/analyze",
-      "params": "formData",
-      "returns": "AnalysisResult"
+      "name": "useAnalysisHistory",
+      "type": "query",
+      "endpoint": "/api/v1/analysis/history",
+      "params": "void",
+      "returns": "AnalysisReport[]"
     },
     {
-      "name": "useHistory",
-      "type": "query",
-      "endpoint": "/api/v1/history",
-      "params": "void",
-      "returns": "AnalysisResult[]"
+      "name": "usePerformAnalysis",
+      "type": "mutation",
+      "endpoint": "/api/v1/analysis",
+      "params": "formData: FormData",
+      "returns": "{ reportId: string, matchScore: number }"
     }
   ]
 }

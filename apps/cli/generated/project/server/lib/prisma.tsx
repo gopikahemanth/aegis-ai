@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Badge(props: any) {
+export default function prisma() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   
@@ -75,5 +75,3 @@ export default function Badge(props: any) {
     </div>
   );
 }
-
-export { Badge };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function routes() {
+export default function DropzoneField() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   

@@ -6,7 +6,7 @@ interface GlassCardProps {
   [key: string]: any;
 }
 
-export const GlassCard: React.FC<any> = ({ children, className = '', ...props }) => (
+export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', ...props }) => (
   <div 
     className={`bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-md p-6 ${className}`} 
     {...props}
@@ -16,4 +16,3 @@ export const GlassCard: React.FC<any> = ({ children, className = '', ...props })
 );
 
 export default GlassCard;
-export type { GlassCardProps };

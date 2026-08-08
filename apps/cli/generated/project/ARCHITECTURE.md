@@ -1,38 +1,39 @@
-# Architecture: resume-keyword-scanner
+# ARCHITECTURE.md: resume-oracle-ai
 
 ## 1. System Overview
-The `resume-keyword-scanner` is a full-stack web application designed to parse resumes and extract relevant keywords against job descriptions. It utilizes a React-based frontend for user interaction and a Node/Express backend to orchestrate document analysis and authentication-protected user sessions.
+Resume-oracle-ai is a React-based SPA designed to parse, analyze, and optimize user resumes using LLM-driven insights. The system provides a reactive interface for document ingestion, real-time feedback loops, and structured data visualization to improve candidate competitiveness.
 
 ## 2. Folder Structure
 ```text
-├── server/
-│   ├── controllers/      # Business logic (auth, analysis)
-│   ├── middleware/       # Request interception (JWT validation)
-│   └── routes/           # API endpoint definitions
-├── src/
-│   ├── components/       # UI building blocks
-│   └── App.tsx           # Root component & routing entry
-└── package.json
+/src
+├── assets/          # Static assets (images, global CSS)
+├── components/      # Atomic UI components (Buttons, Inputs, Cards)
+├── hooks/           # Custom React hooks for business logic
+├── services/        # API clients and LLM integration modules
+├── store/           # Global state management slices
+├── types/           # TypeScript interfaces and shared schemas
+├── utils/           # Pure helper functions and validators
+└── views/           # Page-level components (Dashboard, Upload, Analysis)
 ```
 
 ## 3. Key Design Decisions
-*   **React (Frontend):** Selected for its component-based architecture, enabling modular UI development for file uploads and analysis result visualization.
-*   **Express (Backend):** Chosen for its minimalist, non-opinionated structure, allowing rapid development of RESTful endpoints to bridge the frontend and NLP analysis services.
-*   **JWT-based Auth:** Implemented via `auth.middleware.ts` to ensure stateless authentication, allowing the API to remain scalable across distributed instances.
-*   **Controller-Route Separation:** Business logic is decoupled from routing (using the controller pattern) to improve unit testability and maintainability.
+*   **React (Vite):** Selected for high development velocity, robust ecosystem, and efficient DOM updates via Virtual DOM.
+*   **TypeScript:** Enforced for type safety across complex data shapes (resume objects) to reduce runtime errors during parsing.
+*   **Tailwind CSS:** Used for utility-first styling to ensure a consistent design system and optimized bundle size.
+*   **Axios:** Chosen as the HTTP client for its interceptor support, enabling centralized handling of auth tokens and error formatting.
 
 ## 4. Data Flow
-1.  **Request Initiation:** The user uploads a resume file via `App.tsx`.
-2.  **Authorization:** The request hits `analysis.routes.tsx`, passing through `auth.middleware.ts` to verify the user token.
-3.  **Processing:** `analysis.controller.ts` receives the file, triggers the parsing logic, and extracts keywords.
-4.  **Persistence/Response:** Processed results are returned to the frontend; if applicable, session-specific metadata is persisted to the database.
-5.  **Rendering:** The frontend receives the JSON payload and updates the UI state to display the keyword analysis.
+1.  **Ingestion:** User uploads a resume via `UploadView`, which triggers an `UploadService` call to the backend.
+2.  **Processing:** The backend streams the document through an extraction pipeline; the UI polls or listens via WebSockets for the parsed JSON payload.
+3.  **Synchronization:** Upon receipt, the parsed data is dispatched to the `AppStore`, updating the reactive state.
+4.  **Feedback:** User interactions (e.g., "optimize section") trigger `Service` calls that send partial updates to the LLM, returning a delta that merges with the current state.
 
 ## 5. State Management Approach
-*   **Local State:** React `useState` and `useReducer` hooks are utilized for ephemeral UI states (loading spinners, form inputs, and validation messages).
-*   **Server State:** React Query (or similar fetch-based caching) is recommended to manage asynchronous server state, ensuring cache invalidation and reduced redundant API calls for analysis results.
+The application utilizes a **Redux Toolkit (RTK)** slice-based architecture. 
+*   **Global State:** Resume data, user profile, and session status are stored in the Redux store to ensure consistency across views.
+*   **Local State:** Component-specific UI states (e.g., form input, dropdown toggles) are managed via `useState` or `useReducer` to minimize store overhead.
 
 ## 6. Error Handling Strategy
-*   **Middleware Catch-all:** A global error-handling middleware in the Express server captures unhandled exceptions and standardizes error responses (status code + error message).
-*   **Frontend Interceptors:** API calls are wrapped in `try/catch` blocks (or async/await wrappers) to catch network failures or 4xx/5xx responses.
-*   **Graceful Degradation:** Users are notified via Toast notifications or UI-embedded error messages when an analysis process fails or authentication expires.
+*   **Centralized Interceptors:** Axios interceptors globally catch 4xx/5xx status codes to trigger toast notifications.
+*   **ErrorBoundary:** Top-level React Error Boundaries prevent application-wide crashes, providing a fallback UI for component failures.
+*   **Form Validation:** Schema validation (via Zod) ensures that parsed data adheres to strict structural requirements before being injected into the state store.

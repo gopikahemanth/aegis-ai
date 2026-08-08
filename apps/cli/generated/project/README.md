@@ -1,89 +1,92 @@
-# Resume Keyword Scanner
+# Resume Oracle AI
 
-An intelligent web application that analyzes resumes against job descriptions to provide keyword matching, gap analysis, and optimized scoring.
+An intelligent full-stack application for parsing resumes and analyzing keyword alignment against job descriptions using AI-driven scoring.
 
 ## Features
 
-*   **PDF Parsing:** Extracts structured text from uploaded PDF resumes using high-performance parsing libraries.
-*   **Keyword Extraction:** Automatically identifies core skills, technologies, and certifications from job descriptions.
-*   **Match Scoring:** Calculates a weighted percentage match based on keyword frequency and relevance.
-*   **Gap Analysis:** Identifies missing essential keywords that could improve the candidate's ranking in Applicant Tracking Systems (ATS).
-*   **Secure Authentication:** Protects user data and analysis history using JWT-based authentication.
-*   **Responsive UI:** A modern interface built with React and TypeScript for seamless desktop and mobile interaction.
+*   **PDF Parsing Engine:** Securely extracts text from uploaded PDF resumes using high-performance parsing libraries.
+*   **AI-Powered Scoring:** Calculates a match percentage between candidate qualifications and job requirements.
+*   **Keyword Extraction:** Automatically identifies essential skills, technologies, and certifications from both resume and job description inputs.
+*   **Gap Analysis:** Provides a detailed breakdown of missing keywords required to improve resume alignment.
+*   **Resume Database:** Persistent storage of parsed resume data and analysis history using PostgreSQL.
+*   **Responsive Dashboard:** A clean, intuitive React interface for managing uploads and viewing real-time analytics.
 
 ## Tech Stack
 
 | Technology | Purpose |
 | :--- | :--- |
-| React | Frontend UI library |
-| TypeScript | Type-safe development |
-| Express | Backend REST API framework |
-| PostgreSQL | Relational database for user data and analysis logs |
-| Node.js | Server-side runtime environment |
-| Prisma | Type-safe ORM for database interactions |
+| **React** | Frontend UI and component state management |
+| **TypeScript** | Type-safe development across the entire stack |
+| **Express** | RESTful API server |
+| **PostgreSQL** | Relational database for storing user data and resumes |
+| **Prisma** | ORM for database schema management and type-safe queries |
+| **OpenAI API** | Natural language processing for keyword analysis |
+| **Multer** | Middleware for handling multipart/form-data (file uploads) |
 
 ## Getting Started
 
 ### Prerequisites
 
-*   Node.js (version 18.x or higher)
-*   npm (version 9.x or higher)
-*   PostgreSQL (version 14.x or higher)
+*   Node.js (v18.x or higher)
+*   npm (v9.x or higher)
+*   PostgreSQL (v15.x or higher)
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/resume-keyword-scanner.git
-   cd resume-keyword-scanner
+   git clone https://github.com/username/resume-oracle-ai.git
+   cd resume-oracle-ai
    ```
 
 2. Install dependencies for both client and server:
    ```bash
    npm install
-   cd client && npm install && cd ../server && npm install
    ```
 
-### Environment Setup
+3. Environment Setup:
+   - Copy the example environment file:
+     ```bash
+     cp .env.example .env
+     ```
+   - Open the `.env` file and provide your configuration:
+     - `DATABASE_URL`: Connection string for your PostgreSQL instance.
+     - `OPENAI_API_KEY`: Your unique API key from OpenAI.
+     - `PORT`: Preferred server port (default 3000).
 
-1. Navigate to the root directory and create the environment files:
+4. Database Migration:
    ```bash
-   cp .env.example .env
+   npx prisma migrate dev
    ```
-
-2. Open the `.env` file and configure the following variables:
-   *   `DATABASE_URL`: Your PostgreSQL connection string.
-   *   `JWT_SECRET`: A secure random string for token signing.
-   *   `PORT`: The port for the backend server (default: 5000).
 
 ### Running Locally
 
-1. Start the database (if using Docker):
-   ```bash
-   docker-compose up -d
-   ```
-
-2. Start the development servers:
-   ```bash
-   # Run from the root directory
-   npm run dev
-   ```
+To run the client and server concurrently in development mode:
+```bash
+npm run dev
+```
 
 ## Available Scripts
 
-*   `npm run dev`: Starts both client and server in development mode with hot-reloading.
-*   `npm run build`: Compiles the project for production deployment.
-*   `npm run test`: Runs the test suite using Jest.
-*   `npm run lint`: Executes ESLint to enforce code quality and standards.
+*   `npm run dev`: Starts the development server with hot reloading.
+*   `npm run build`: Compiles the application for production deployment.
+*   `npm run test`: Executes the test suite using Vitest/Jest.
+*   `npm run lint`: Runs ESLint to identify code quality issues.
+*   `npm run start`: Starts the production server build.
 
 ## Project Structure
 
-*   `/client`: Contains the React frontend source code, components, and hooks.
-*   `/server`: Contains the Express backend, API routes, and controllers.
-*   `/server/controllers`: Logic for handling incoming requests and interacting with the database.
-*   `/server/middleware`: Authentication guards and request validation layers.
-*   `/server/routes`: Definition of API endpoints.
-*   `/prisma`: Database schema definitions and migration history.
+```text
+├── client/           # React frontend application
+│   ├── src/          # Components, hooks, and pages
+│   └── public/       # Static assets
+├── server/           # Express backend API
+│   ├── src/          # Controllers, routes, and services
+│   └── prisma/       # Database schema and migration files
+├── shared/           # Shared TypeScript interfaces
+├── .env.example      # Environment variables template
+└── package.json      # Dependencies and workspace scripts
+```
 
 ## License
 

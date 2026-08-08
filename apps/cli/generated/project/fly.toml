@@ -1,4 +1,4 @@
-app = "resume-keyword-scanner"
+app = "resume-oracle-ai"
 primary_region = "bos"
 
 [http_service]

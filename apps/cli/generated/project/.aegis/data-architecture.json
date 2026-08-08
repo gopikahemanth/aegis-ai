@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "System users for history tracking",
+      "description": "System users for authentication and history management",
       "persistence": "database",
       "fields": [
         {
@@ -12,7 +12,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "UUID"
+          "description": "Primary key"
         },
         {
           "name": "email",
@@ -21,10 +21,10 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "User email"
+          "description": "Unique email address"
         },
         {
-          "name": "passwordHash",
+          "name": "password",
           "type": "string",
           "isId": false,
           "isNullable": false,
@@ -36,7 +36,7 @@
     },
     {
       "name": "ScanResult",
-      "description": "Persistence of AI-analyzed resume results",
+      "description": "Stores the outcome of an AI resume analysis",
       "persistence": "database",
       "fields": [
         {
@@ -46,7 +46,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "UUID"
+          "description": "Primary key"
         },
         {
           "name": "userId",
@@ -58,13 +58,22 @@
           "description": "Owner of the scan"
         },
         {
-          "name": "matchScore",
+          "name": "jobTitle",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Target job role"
+        },
+        {
+          "name": "matchPercentage",
           "type": "number",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Percentage similarity"
+          "description": "Calculated score"
         },
         {
           "name": "missingKeywords",
@@ -73,25 +82,16 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Array of missing keywords"
+          "description": "Array of strings for gaps"
         },
         {
-          "name": "resumeText",
+          "name": "rawResumeText",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Extracted resume content"
-        },
-        {
-          "name": "jobDescriptionText",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Extracted job content"
+          "description": "Extracted text content"
         },
         {
           "name": "createdAt",
@@ -100,48 +100,48 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Scan timestamp"
+          "description": "Timestamp"
         }
       ]
     }
   ],
-  "databaseSchema": "generator client { provider = \"prisma-client-js\" }\ndatasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") }\n\nmodel User {\n  id String @id @default(uuid())\n  email String @unique\n  passwordHash String\n  scans ScanResult[]\n}\n\nmodel ScanResult {\n  id String @id @default(uuid())\n  userId String\n  user User @relation(fields: [userId], references: [id])\n  matchScore Float\n  missingKeywords Json\n  resumeText String\n  jobDescriptionText String\n  createdAt DateTime @default(now())\n}",
+  "databaseSchema": "model User {\n  id        String       @id @default(uuid())\n  email     String       @unique\n  password  String\n  scans     ScanResult[]\n}\n\nmodel ScanResult {\n  id              String   @id @default(uuid())\n  userId          String\n  user            User     @relation(fields: [userId], references: [id])\n  jobTitle        String\n  matchPercentage Float\n  missingKeywords Json\n  rawResumeText   String   @db.Text\n  createdAt       DateTime @default(now())\n}",
   "apis": [
     {
-      "path": "/api/v1/scan",
+      "path": "/api/v1/auth/register",
       "method": "POST",
-      "description": "Uploads PDF files, performs extraction and semantic keyword analysis",
-      "requestBodySchema": "multipart/form-data with resume and jobDescription pdfs",
-      "responseBodySchema": "{ id: string, matchScore: number, missingKeywords: string[] }"
+      "description": "Register a new user",
+      "requestBodySchema": "{ email: string, password: string }",
+      "responseBodySchema": "{ token: string }"
+    },
+    {
+      "path": "/api/v1/analyze",
+      "method": "POST",
+      "description": "Upload PDF and run NLP analysis",
+      "requestBodySchema": "Multipart form data with 'resume' file and 'jobDescription' text",
+      "responseBodySchema": "{ id: string, matchPercentage: number, missingKeywords: string[] }"
     },
     {
       "path": "/api/v1/history",
       "method": "GET",
-      "description": "Retrieves historical scan results for the authenticated user",
+      "description": "Fetch user scan history",
       "responseBodySchema": "ScanResult[]"
-    },
-    {
-      "path": "/api/v1/export",
-      "method": "GET",
-      "description": "Generates downloadable report for a specific scan ID",
-      "requestBodySchema": null,
-      "responseBodySchema": "PDF or CSV file stream"
     }
   ],
   "hooks": [
     {
-      "name": "useScanResult",
-      "type": "mutation",
-      "endpoint": "/api/v1/scan",
-      "params": "formData (resume, jobDescription)",
-      "returns": "ScanResult"
-    },
-    {
       "name": "useScanHistory",
       "type": "query",
       "endpoint": "/api/v1/history",
-      "params": "userId: string",
+      "params": "void",
       "returns": "ScanResult[]"
+    },
+    {
+      "name": "useAnalyzeResume",
+      "type": "mutation",
+      "endpoint": "/api/v1/analyze",
+      "params": "formData: FormData",
+      "returns": "{ id: string, matchPercentage: number, missingKeywords: string[] }"
     }
   ]
 }

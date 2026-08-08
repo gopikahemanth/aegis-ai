@@ -2,11 +2,6 @@
   "projectName": "project",
   "lastRequest": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
   "createdFiles": [
-    "server/controllers/auth.controller.ts",
-    "src/App.tsx",
-    "server/routes/analysis.routes.tsx",
-    "server/controllers/analysis.controller.ts",
-    "server/middleware/auth.middleware.ts",
     "Dockerfile",
     ".dockerignore",
     ".github/workflows/ci-cd.yml",
@@ -16,71 +11,72 @@
   "tasks": [
     {
       "id": 1,
-      "title": "Define Database Schema and Prisma Models",
-      "description": "Initialize Prisma with PostgreSQL and define User, Resume, JobDescription, and ScanResult models.",
+      "title": "Database Schema and ORM Setup",
+      "description": "Initialize Prisma with postgresql and define User, Resume, JobDescription, and ScanResult models.",
       "completed": true,
       "stage": "DataModeling",
       "priority": 1,
       "dependencies": [],
-      "estimatedComplexity": 2
+      "estimatedComplexity": 3
     },
     {
       "id": 2,
-      "title": "Implement Backend Services and Auth",
-      "description": "Develop Express server with JWT authentication, Multer for PDF uploads, and OCR/Parsing logic.",
+      "title": "Backend API Infrastructure",
+      "description": "Implement Express server with JWT auth, Multer for PDF uploads, and OCR/NLP processing services.",
       "completed": true,
       "stage": "Backend",
       "priority": 2,
       "dependencies": [
         1
       ],
-      "estimatedComplexity": 5
+      "estimatedComplexity": 8
     },
     {
       "id": 3,
-      "title": "Develop Analysis Engine",
-      "description": "Integrate natural language processing and OpenAI for semantic keyword matching and report generation.",
+      "title": "NLP Processing Logic",
+      "description": "Develop core logic using natural and compromise for resume-to-job keyword matching and semantic scoring.",
       "completed": true,
       "stage": "Backend",
       "priority": 3,
       "dependencies": [
         2
       ],
-      "estimatedComplexity": 4
+      "estimatedComplexity": 5
     },
     {
       "id": 4,
-      "title": "Build Frontend Dashboard and Interfaces",
-      "description": "Create React application with Tailwind CSS, Recharts for metrics, and TanStack Query for API management.",
+      "title": "React Frontend Development",
+      "description": "Build UI with Tailwind, React-Query for state, Recharts for dashboard analytics, and jsPDF for export.",
       "completed": true,
       "stage": "Frontend",
       "priority": 4,
       "dependencies": [
-        3
+        2
       ],
-      "estimatedComplexity": 5
+      "estimatedComplexity": 8
     },
     {
       "id": 5,
-      "title": "Implement Reports and Exporting",
-      "description": "Finalize export functionality using jspdf and json2csv for resume analysis reports.",
+      "title": "System Integration and Validation",
+      "description": "Connect frontend flows with backend endpoints, verify JWT authentication, and run end-to-end unit tests.",
       "completed": true,
-      "stage": "Frontend",
+      "stage": "Validation",
       "priority": 5,
       "dependencies": [
+        3,
         4
       ],
-      "estimatedComplexity": 2
+      "estimatedComplexity": 4
     }
   ],
   "history": [
     {
-      "timestamp": "2026-08-08T13:28:29.465Z",
+      "timestamp": "2026-08-08T13:42:24.722Z",
       "request": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
       "stage": "Initialization"
     },
     {
-      "timestamp": "2026-08-08T13:32:28.735Z",
+      "timestamp": "2026-08-08T13:47:47.694Z",
       "request": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
       "stage": "ExecutionComplete"
     }

@@ -1,11 +1,15 @@
 {
-  "timestamp": "2026-08-08T13:33:37.588Z",
+  "timestamp": "2026-08-08T13:48:21.293Z",
   "userPrompt": "Build a fullstack AI Resume Keyword Scanner web application with React, Express, PDF upload parsing, match score calculation, and detailed keyword breakdown.",
   "architectureContract": null,
+  "architectureContractStatus": "FAIL",
+  "architectureConsistencyStatus": "FAIL",
+  "architectureViolations": [
+    "architectureContract: expected 'valid contract file', got 'missing contract file'"
+  ],
   "status": "FAILED",
-  "dodScore": 82,
+  "dodScore": 74,
   "completedFeatures": [
-    "Build Verification",
     "Empty Application Detector",
     "No Hardcoded Business Data",
     "Form Input Validation",
@@ -16,19 +20,21 @@
     "Responsive Layouts",
     "Accessibility (ARIA + Focus)",
     "README.md Documentation",
+    "No Bare console.log",
     "Security (XSS / Secrets / Injection)",
     "Performance (Memoization / Virtualization)",
-    "Feature: PDF Document Parsing",
-    "Feature: Semantic Keyword Matching Engine",
+    "Lazy Loading (Routes)",
+    "Feature: Keyword Matching & NLP Analysis",
     "Feature: Interactive Analytics Dashboard",
-    "Feature: User Session and History Management",
-    "Feature: Export and Reporting"
+    "Feature: Export & Reporting"
   ],
   "failedFeatures": [
+    "Build Verification",
     "Architecture Contract Verification",
-    "No Bare console.log",
+    "Architecture Consistency Verification",
     "TypeScript — No 'any'",
-    "Lazy Loading (Routes)"
+    "Feature: PDF Parsing Engine",
+    "Feature: History & Authentication"
   ],
   "databaseStatus": {
     "requested": "SQLite",
@@ -36,14 +42,16 @@
     "isSynced": true
   },
   "validationResults": {
-    "typeCheck": true,
-    "build": true,
+    "typeCheck": false,
+    "build": false,
     "runtime": true,
     "realityChecker": true,
     "visualReviewer": true
   },
   "healingAttemptsCount": 0,
   "unresolvedIssues": [
-    "Architecture contract file missing"
+    "Project build is failing compilation errors",
+    "Architecture contract file missing",
+    "Architecture drift detected: architectureContract expected 'valid contract file', got 'missing contract file'"
   ]
 }

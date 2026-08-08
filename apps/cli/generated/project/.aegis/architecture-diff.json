@@ -1,0 +1,11 @@
+{
+  "status": "FAILED",
+  "violations": [
+    {
+      "field": "architectureContract",
+      "expected": "valid contract file",
+      "actual": "missing contract file",
+      "severity": "BLOCKER"
+    }
+  ]
+}

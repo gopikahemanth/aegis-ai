@@ -4,83 +4,31 @@
     "imports": [],
     "importedBy": []
   },
-  "server/controllers/analysis.controller.ts": {
-    "path": "server/controllers/analysis.controller.ts",
+  "server/controllers/ScanController.ts": {
+    "path": "server/controllers/ScanController.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "server/routes/scan.ts": {
+    "path": "server/routes/scan.ts",
     "imports": [],
     "importedBy": [
-      "server/routes/analysis.routes.tsx"
+      "src/features/dashboard/services/scanService.tsx"
     ]
-  },
-  "server/controllers/auth.controller.ts": {
-    "path": "server/controllers/auth.controller.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "server/controllers/exportController.ts": {
-    "path": "server/controllers/exportController.ts",
-    "imports": [
-      "server/lib/prisma.tsx"
-    ],
-    "importedBy": []
-  },
-  "server/controllers/scanController.ts": {
-    "path": "server/controllers/scanController.ts",
-    "imports": [
-      "server/lib/prisma.tsx"
-    ],
-    "importedBy": []
-  },
-  "server/controllers/uploadController.ts": {
-    "path": "server/controllers/uploadController.ts",
-    "imports": [],
-    "importedBy": []
-  },
-  "server/lib/prisma.tsx": {
-    "path": "server/lib/prisma.tsx",
-    "imports": [],
-    "importedBy": [
-      "server/controllers/exportController.ts",
-      "server/controllers/scanController.ts"
-    ]
-  },
-  "server/middleware/auth.middleware.ts": {
-    "path": "server/middleware/auth.middleware.ts",
-    "imports": [],
-    "importedBy": [
-      "server/routes/analysis.routes.tsx"
-    ]
-  },
-  "server/routes/analysis.routes.tsx": {
-    "path": "server/routes/analysis.routes.tsx",
-    "imports": [
-      "server/middleware/auth.middleware.ts",
-      "server/controllers/analysis.controller.ts"
-    ],
-    "importedBy": []
   },
   "src/App.tsx": {
     "path": "src/App.tsx",
     "imports": [
-      "src/features/dashboard/DashboardPage.tsx",
-      "src/features/auth/AuthPage.tsx"
+      "src/shared/components/Spinner.tsx"
     ],
     "importedBy": [
       "src/main.tsx"
     ]
   },
-  "src/components/Layout.tsx": {
-    "path": "src/components/Layout.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/features/dashboard/DashboardPage.tsx"
-    ]
-  },
   "src/design-system/components/Button.tsx": {
     "path": "src/design-system/components/Button.tsx",
     "imports": [],
-    "importedBy": [
-      "src/shared/components/Button.tsx"
-    ]
+    "importedBy": []
   },
   "src/design-system/components/EmptyState.tsx": {
     "path": "src/design-system/components/EmptyState.tsx",
@@ -110,65 +58,41 @@
   "src/features/auth/AuthPage.tsx": {
     "path": "src/features/auth/AuthPage.tsx",
     "imports": [],
-    "importedBy": [
-      "src/App.tsx"
-    ]
+    "importedBy": []
   },
-  "src/features/dashboard/components/DashboardMetrics.tsx": {
-    "path": "src/features/dashboard/components/DashboardMetrics.tsx",
-    "imports": [],
-    "importedBy": [
-      "src/features/dashboard/components/pages/Dashboard.tsx"
-    ]
-  },
-  "src/features/dashboard/components/MetricCard.tsx": {
-    "path": "src/features/dashboard/components/MetricCard.tsx",
+  "src/features/dashboard/components/ScanWorkflow.tsx": {
+    "path": "src/features/dashboard/components/ScanWorkflow.tsx",
     "imports": [
-      "src/shared/components/Card.tsx"
-    ],
-    "importedBy": [
-      "src/features/dashboard/DashboardPage.tsx"
-    ]
-  },
-  "src/features/dashboard/components/pages/Dashboard.tsx": {
-    "path": "src/features/dashboard/components/pages/Dashboard.tsx",
-    "imports": [
-      "src/features/dashboard/components/DashboardMetrics.tsx"
+      "src/features/dashboard/services/scanService.tsx",
+      "src/features/dashboard/components/ScoreCard.tsx"
     ],
     "importedBy": []
+  },
+  "src/features/dashboard/components/ScoreCard.tsx": {
+    "path": "src/features/dashboard/components/ScoreCard.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/features/dashboard/components/ScanWorkflow.tsx"
+    ]
   },
   "src/features/dashboard/DashboardPage.tsx": {
     "path": "src/features/dashboard/DashboardPage.tsx",
-    "imports": [
-      "src/components/Layout.tsx",
-      "src/features/dashboard/components/MetricCard.tsx",
-      "src/features/history/components/ScanHistoryTable.tsx"
-    ],
-    "importedBy": [
-      "src/App.tsx"
-    ]
-  },
-  "src/features/history/components/ScanHistoryTable.tsx": {
-    "path": "src/features/history/components/ScanHistoryTable.tsx",
     "imports": [],
-    "importedBy": [
-      "src/features/dashboard/DashboardPage.tsx"
-    ]
-  },
-  "src/features/reporting/components/ExportButton.tsx": {
-    "path": "src/features/reporting/components/ExportButton.tsx",
-    "imports": [
-      "src/shared/components/Button.tsx",
-      "src/features/reporting/services/exportService.ts"
-    ],
     "importedBy": []
   },
-  "src/features/reporting/services/exportService.ts": {
-    "path": "src/features/reporting/services/exportService.ts",
-    "imports": [],
+  "src/features/dashboard/services/scanService.tsx": {
+    "path": "src/features/dashboard/services/scanService.tsx",
+    "imports": [
+      "server/routes/scan.ts"
+    ],
     "importedBy": [
-      "src/features/reporting/components/ExportButton.tsx"
+      "src/features/dashboard/components/ScanWorkflow.tsx"
     ]
+  },
+  "src/features/parser/services/scanService.ts": {
+    "path": "src/features/parser/services/scanService.ts",
+    "imports": [],
+    "importedBy": []
   },
   "src/main.tsx": {
     "path": "src/main.tsx",
@@ -177,20 +101,16 @@
     ],
     "importedBy": []
   },
-  "src/shared/components/Button.tsx": {
-    "path": "src/shared/components/Button.tsx",
-    "imports": [
-      "src/design-system/components/Button.tsx"
-    ],
-    "importedBy": [
-      "src/features/reporting/components/ExportButton.tsx"
-    ]
-  },
   "src/shared/components/Card.tsx": {
     "path": "src/shared/components/Card.tsx",
     "imports": [],
+    "importedBy": []
+  },
+  "src/shared/components/Spinner.tsx": {
+    "path": "src/shared/components/Spinner.tsx",
+    "imports": [],
     "importedBy": [
-      "src/features/dashboard/components/MetricCard.tsx"
+      "src/App.tsx"
     ]
   },
   "src/utils/cn.ts": {

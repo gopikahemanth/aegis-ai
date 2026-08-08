@@ -555,9 +555,13 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
     }
 
+    const resolvedContract = ArchitectureResolver.resolve(request, rawSpecification, canonicalSpec);
+    ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
+    const appArchContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
+
     auditTrail.logEvent({
       agentRole: "Architect",
-      action: `Completed requirements mapping. Framework: ${specification.type}, Database: ${specification.database || "None"}`,
+      action: `Completed requirements mapping & locked Architecture Contract. Frontend: ${resolvedContract.frontend.framework}, Backend: ${resolvedContract.backend.framework}, DB: ${resolvedContract.database.provider} (${resolvedContract.database.orm})`,
       status: "SUCCESS"
     });
 

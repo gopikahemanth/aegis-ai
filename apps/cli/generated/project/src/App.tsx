@@ -1,42 +1,20 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import DashboardPage from './features/dashboard/DashboardPage';
-import AuthPage from './features/auth/AuthPage';
+import React, { Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Spinner } from './shared/components/Spinner';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
+const Dashboard = React.lazy(() => import('./features/dashboard/DashboardPage'));
+const Auth = React.lazy(() => import('./features/auth/AuthPage'));
 
-const App: React.FC<any> = () => {
-  const isAuthenticated = !!localStorage.getItem('token');
-
+export default function App(props: any) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
+    <BrowserRouter>
+      <Suspense fallback={<div className="flex h-screen items-center justify-center"><Spinner /></div>}>
         <Routes>
-          <Route 
-            path="/login" 
-            element={isAuthenticated ? <Navigate to="/dashboard" /> : <AuthPage />} 
-          />
-          <Route 
-            path="/dashboard" 
-            element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/" 
-            element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} 
-          />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/auth" element={<Auth />} />
         </Routes>
-      </Router>
-    </QueryClientProvider>
+      </Suspense>
+    </BrowserRouter>
   );
-};
-
-export default App;
+}
 export { App };

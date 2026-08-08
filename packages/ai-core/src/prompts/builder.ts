@@ -60,7 +60,24 @@ ${intelEngine.formatAsMarkdown(index)}
       console.warn(`[WorkspaceIntelligence] Warning: Scanning failed: ${e.message}`);
     }
 
-    const mergedContext = `${fullContext}\n${workspaceSummary}`;
+    const archLockBlock = `
+═══════════════════════════════════════════════════════
+ARCHITECTURE LOCK (IMMUTABLE — DO NOT DEVIATE OR SUBSTITUTE)
+═══════════════════════════════════════════════════════
+Frontend: ${spec.frontend || "React-Vite"}
+Backend:  ${spec.backend || "Express"}
+Database: ${spec.database || "SQLite"}
+Language: ${spec.language || "TypeScript"}
+Styling:  ${spec.styling || "TailwindCSS"}
+
+CRITICAL ARCHITECTURE RULES:
+1. You MUST NOT substitute database provider (e.g. NEVER change PostgreSQL to SQLite).
+2. You MUST NOT substitute frontend or backend framework (e.g. NEVER change Next.js to React/Vite or Express).
+3. If an architectural change is required, STOP and emit an ArchitectureChangeProposal.
+═══════════════════════════════════════════════════════
+`;
+
+    const mergedContext = `${fullContext}\n${archLockBlock}\n${workspaceSummary}`;
 
     // Thread domain vocabulary explicitly into the prompt context
     let domainVocabBlock = "";

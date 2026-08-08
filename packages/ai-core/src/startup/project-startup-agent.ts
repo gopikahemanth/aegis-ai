@@ -1149,9 +1149,9 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
-        // Fix 25: Auto-inject className, children, onClick into component Props interfaces (TS2339)
+        // Fix 25: Auto-inject className, children, onClick into component Props interfaces (TS2339 / TS2300)
         if (content.includes("interface ") && content.includes("Props")) {
-          if (!content.includes("className?:") && !content.includes("[key: string]: any")) {
+          if (!content.includes("className?:") && !content.includes("children?:") && !content.includes("children:") && !content.includes("[key: string]: any")) {
             content = content.replace(/(interface\s+[A-Za-z0-9_$]+Props\s*\{)/g, "$1\n  className?: string;\n  children?: any;\n  onClick?: any;\n  [key: string]: any;\n");
             changed = true;
           }

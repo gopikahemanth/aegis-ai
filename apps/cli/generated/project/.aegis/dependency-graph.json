@@ -1,0 +1,127 @@
+{
+  "postcss.config.js": {
+    "path": "postcss.config.js",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/app/api/tasks/route.ts": {
+    "path": "src/app/api/tasks/route.ts",
+    "imports": [
+      "src/lib/prisma.ts"
+    ],
+    "importedBy": [
+      "src/routes.ts"
+    ]
+  },
+  "src/App.tsx": {
+    "path": "src/App.tsx",
+    "imports": [
+      "src/routes.ts"
+    ],
+    "importedBy": [
+      "src/main.tsx"
+    ]
+  },
+  "src/design-system/components/Button.tsx": {
+    "path": "src/design-system/components/Button.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/components/EmptyState.tsx": {
+    "path": "src/design-system/components/EmptyState.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/components/GlassCard.tsx": {
+    "path": "src/design-system/components/GlassCard.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/components/Skeleton.tsx": {
+    "path": "src/design-system/components/Skeleton.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/index.ts": {
+    "path": "src/design-system/index.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/design-system/tokens.ts": {
+    "path": "src/design-system/tokens.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/features/board/components/BoardContainer.tsx": {
+    "path": "src/features/board/components/BoardContainer.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/features/board/stores/useBoardStore.tsx": {
+    "path": "src/features/board/stores/useBoardStore.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/features/tasks/hooks/useTaskMutations.ts": {
+    "path": "src/features/tasks/hooks/useTaskMutations.ts",
+    "imports": [
+      "src/services/api.tsx"
+    ],
+    "importedBy": []
+  },
+  "src/lib/prisma.ts": {
+    "path": "src/lib/prisma.ts",
+    "imports": [],
+    "importedBy": [
+      "src/app/api/tasks/route.ts"
+    ]
+  },
+  "src/main.tsx": {
+    "path": "src/main.tsx",
+    "imports": [
+      "src/App.tsx"
+    ],
+    "importedBy": []
+  },
+  "src/routes.ts": {
+    "path": "src/routes.ts",
+    "imports": [
+      "src/app/api/tasks/route.ts"
+    ],
+    "importedBy": [
+      "src/App.tsx"
+    ]
+  },
+  "src/services/api.tsx": {
+    "path": "src/services/api.tsx",
+    "imports": [],
+    "importedBy": [
+      "src/features/tasks/hooks/useTaskMutations.ts"
+    ]
+  },
+  "src/shared/components/Button.tsx": {
+    "path": "src/shared/components/Button.tsx",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/utils/cn.ts": {
+    "path": "src/utils/cn.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "src/vite-env.d.ts": {
+    "path": "src/vite-env.d.ts",
+    "imports": [],
+    "importedBy": []
+  },
+  "tailwind.config.js": {
+    "path": "tailwind.config.js",
+    "imports": [],
+    "importedBy": []
+  },
+  "vite.config.ts": {
+    "path": "vite.config.ts",
+    "imports": [],
+    "importedBy": []
+  }
+}

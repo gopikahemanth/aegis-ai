@@ -1,21 +1,31 @@
 import React from 'react';
+import { forwardRef } from 'react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'ghost';
+  variant?: 'primary' | 'secondary';
 }
 
-export const Button = ({ variant = 'primary', className = '', ...props }: ButtonProps) => {
-  const base = "px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2";
-  const variants = {
-    primary: "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500",
-    ghost: "text-neutral-600 hover:bg-neutral-100 focus:ring-neutral-400"
-  };
-
-  return (
-    <button 
-      className={`${base} ${variants[variant]} ${className}`} 
-      {...props} 
-    />
-  );
-};
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant = 'primary', ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        className={cn(
+          "px-4 py-2 rounded-lg font-medium transition-all focus-visible:ring-2 focus-visible:ring-indigo-500",
+          variant === 'primary' ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-slate-200 text-slate-800 hover:bg-slate-300",
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
 export default Button;
+
+export type { ClassValue };
+
+export type { ButtonProps };

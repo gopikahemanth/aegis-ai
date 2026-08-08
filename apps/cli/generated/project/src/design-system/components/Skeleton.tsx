@@ -32,3 +32,5 @@ export const Skeleton: React.FC<any> = ({ className = '', lines = 1, count }) =>
 };
 
 export default Skeleton;
+
+export type { SkeletonProps };

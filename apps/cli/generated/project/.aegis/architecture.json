@@ -1,0 +1,29 @@
+{
+  "framework": "react-vite",
+  "language": "TypeScript",
+  "packageManager": "npm",
+  "folderStructure": {
+    "src/components": [
+      "UI controls",
+      "Layout panels"
+    ],
+    "src/hooks": [
+      "State hooks",
+      "Lifecycle listeners"
+    ],
+    "src/services": [
+      "Storage, styling, utility service blocks"
+    ]
+  },
+  "namingConventions": [
+    "PascalCase for components and folders",
+    "camelCase for utility files, hooks, types",
+    "Use Tailwind CSS responsive style rules"
+  ],
+  "styling": "tailwind",
+  "additionalRules": [
+    "Preserve type assertions in React TSX components",
+    "Do not generate stubs or incomplete code blocks",
+    "Ensure all necessary packages and dependencies required for drag-and-drop, UI components, and state management are fully installed and configured in package.json prior to build execution."
+  ]
+}

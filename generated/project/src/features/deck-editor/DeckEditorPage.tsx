@@ -20,6 +20,7 @@ export const DeckEditorPage: React.FC = () => {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Active card form state
   const [front, setFront] = useState('');
@@ -62,9 +63,12 @@ export const DeckEditorPage: React.FC = () => {
       if (isNew || !currentDeckId) {
         const created = await apiClient.createDeck({ title, description, category, isPublic });
         setCurrentDeckId(created.id);
-        navigate(`/decks/${created.id}/edit`, { replace: true });
+        navigate(`/dashboard`, { replace: true });
       } else {
         await apiClient.updateDeck(currentDeckId, { title, description, category, isPublic });
+        setSuccess('✓ Deck info saved successfully!');
+        setTimeout(() => setSuccess(null), 3000);
+        navigate(`/dashboard`);
       }
       setSaving(false);
     } catch (err: unknown) {
@@ -183,6 +187,12 @@ export const DeckEditorPage: React.FC = () => {
         {error && (
           <div className="mb-6 p-4 rounded-md bg-red-950/60 border border-red-800 text-red-200 text-sm">
             {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-6 p-4 rounded-md bg-emerald-950/60 border border-emerald-800 text-emerald-200 text-sm font-medium flex items-center gap-2">
+            {success}
           </div>
         )}
 

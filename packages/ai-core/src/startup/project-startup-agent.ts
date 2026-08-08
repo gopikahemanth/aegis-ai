@@ -891,19 +891,18 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
-        // Fix 27: Dual export shim for server/lib/prisma.ts (TS2614)
-        if (rel.includes("prisma") || rel.includes("db.ts")) {
-          if (content.includes("PrismaClient")) {
-            if (!content.includes("export const prisma") && content.includes("const prisma")) {
-              content = content.replace("const prisma", "export const prisma");
-              changed = true;
-            }
+        // Fix 27: Universal Prisma Client Export Shim for all lib/prisma.ts, src/lib/prisma.ts, and db.ts files (TS2614)
+        if (rel.includes("prisma") || rel.includes("db.ts") || rel.includes("db.js")) {
+          if (!content.includes("export const prisma") && !content.includes("export { prisma }")) {
+            content += `\nimport { PrismaClient } from '@prisma/client';\nexport const prisma = (globalThis as any).prisma || new PrismaClient();\nexport default prisma;\nexport const db = prisma;\n`;
+            changed = true;
+          } else {
             if (!content.includes("export default")) {
               content += `\nexport default prisma;\n`;
               changed = true;
             }
-            if (!content.includes("export const prisma") && !content.includes("export { prisma }")) {
-              content += `\nexport { prisma };\n`;
+            if (!content.includes("export const db")) {
+              content += `\nexport const db = prisma;\n`;
               changed = true;
             }
           }

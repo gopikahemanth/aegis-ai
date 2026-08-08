@@ -1,6 +1,6 @@
 import { Deck, Card, QuizSession, DeckMetrics } from '../entities/flashcard';
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:4000/api';
+const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 export const apiClient = {
   async getDecks(): Promise<Deck[]> {
@@ -80,3 +80,6 @@ export const apiClient = {
     return res.json();
   }
 };
+
+export const api = apiClient;
+export default apiClient;

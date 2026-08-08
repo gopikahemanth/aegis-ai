@@ -6,17 +6,9 @@ interface GlassCardProps {
   [key: string]: any;
 }
 
-/**
- * GlassCard component providing a consistent glassmorphic effect.
- * Uses Tailwind CSS backdrop-blur and semi-transparent backgrounds.
- */
-export const GlassCard: React.FC<any> = ({ 
-  children, 
-  className = '', 
-  ...props 
-}) => (
+export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', ...props }) => (
   <div 
-    className={`bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-lg p-6 ${className}`} 
+    className={`bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-md p-6 ${className}`} 
     {...props}
   >
     {children}

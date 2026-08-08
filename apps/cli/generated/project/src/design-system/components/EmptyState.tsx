@@ -1,6 +1,11 @@
 import React from 'react';
 
 interface EmptyStateProps {
+  className?: string;
+  children?: any;
+  onClick?: any;
+  [key: string]: any;
+
   icon?: React.ReactNode;
   title: string;
   description?: string;
@@ -23,3 +28,5 @@ export const EmptyState: React.FC<any> = ({ icon, title, description, action }) 
 );
 
 export default EmptyState;
+
+export type { EmptyStateProps };

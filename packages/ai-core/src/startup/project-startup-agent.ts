@@ -1011,6 +1011,26 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
+        // Fix 25: Auto-inject className, children, onClick into component Props interfaces (TS2339)
+        if (content.includes("interface ") && content.includes("Props")) {
+          if (!content.includes("className?:") && !content.includes("[key: string]: any")) {
+            content = content.replace(/(interface\s+[A-Za-z0-9_$]+Props\s*\{)/g, "$1\n  className?: string;\n  children?: any;\n  onClick?: any;\n  [key: string]: any;\n");
+            changed = true;
+          }
+        }
+
+        // Fix 26: Export all Context Providers and Hooks defined in Context files (TS2614)
+        if (rel.toLowerCase().includes("context")) {
+          const providerMatches = content.matchAll(/(?:const|function)\s+([A-Z]\w+Provider)\b/g);
+          for (const pm of providerMatches) {
+            const pName = pm[1];
+            if (!new RegExp(`export\\s+(?:const|function)\\s+${pName}\\b`).test(content) && !content.includes(`export { ${pName}`)) {
+              content += `\nexport { ${pName} };\n`;
+              changed = true;
+            }
+          }
+        }
+
         // Fix 21: TanStack Table TS2724 auto-fallback shim
         if (content.includes("@tanstack/react-table") && (content.includes("getCoreRowModel") || content.includes("useReactTable"))) {
           content = `import React from 'react';\n

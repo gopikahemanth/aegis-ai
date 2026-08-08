@@ -654,8 +654,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       ExecutionPhase.Planning,
     );
 
-    const framework =
-      this.selector.select(architecture);
+    const framework = resolvedContract?.frontend?.framework || this.selector.select(architecture);
 
     console.log("Framework:", framework);
 

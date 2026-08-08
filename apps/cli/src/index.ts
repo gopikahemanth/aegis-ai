@@ -10,6 +10,9 @@ async function main() {
     await runCLI();
   } catch (err: any) {
     console.error(`\n❌ Execution Error: ${err?.message || err}`);
+    if (err?.stack) {
+      console.error(`\n=== STACK TRACE ===\n${err.stack}\n===================`);
+    }
     process.exit(1);
   }
 }

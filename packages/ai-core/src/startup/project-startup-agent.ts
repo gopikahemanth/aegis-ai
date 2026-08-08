@@ -657,6 +657,11 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
       let schema = readFileSync(schemaPath, "utf8");
 
       let schemaModified = false;
+      if (!schema.includes("datasource db")) {
+        schema = `datasource db {\n  provider = "sqlite"\n  url      = "file:./dev.db"\n}\n\n` + schema;
+        schemaModified = true;
+        patches.push("Added missing SQLite datasource block to Prisma schema");
+      }
       if (schema.includes('provider = "postgresql"') || schema.includes("provider = 'postgresql'")) {
         schema = schema.replace(/provider\s*=\s*["']postgresql["']/g, 'provider = "sqlite"');
         schema = schema.replace(/url\s*=\s*env\("DATABASE_URL"\)/g, 'url = "file:./dev.db"');

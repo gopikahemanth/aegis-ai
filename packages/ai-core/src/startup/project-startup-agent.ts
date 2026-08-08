@@ -912,7 +912,7 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
-        // Fix 13.11: Dual export shim for React components, entities, & types (TS2614 / TS2652) - Frontend ONLY
+        // Fix 13.11: Dual export shim for React components, entities, & types (TS2614 / TS2652 / TS2693 / TS2552) - Frontend ONLY
         const baseComp = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "";
         const isFrontend = rel.startsWith("src/") || rel.startsWith("src\\");
         if (isFrontend && baseComp && /^[A-Z]/.test(baseComp) && !rel.endsWith(".d.ts")) {
@@ -920,12 +920,43 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           const hasNamedExport = new RegExp(`export\\s+(const|let|var|function|class|type|interface|enum)\\s+${baseComp}\\b`).test(content) || content.includes(`export { ${baseComp}`);
 
           if (!hasNamedExport) {
-            content += `\ntry { (globalThis as any).${baseComp} = ${baseComp}; } catch {}\nexport { ${baseComp} };\n`;
-            changed = true;
+            const isTypeOrInterface = new RegExp(`(?:type|interface)\\s+${baseComp}\\b`).test(content);
+            const isValueOrComponent = new RegExp(`(?:const|function|class|let|var)\\s+${baseComp}\\b`).test(content);
+
+            if (isTypeOrInterface && !isValueOrComponent) {
+              content += `\nexport type { ${baseComp} };\n`;
+              changed = true;
+            } else if (isValueOrComponent) {
+              content += `\nexport { ${baseComp} };\n`;
+              changed = true;
+            } else {
+              const singular = baseComp.endsWith("s") ? baseComp.slice(0, -1) : baseComp;
+              const hasSingular = new RegExp(`(?:const|function|class|let|var)\\s+${singular}\\b`).test(content);
+              if (hasSingular) {
+                content += `\nexport const ${baseComp} = ${singular};\n`;
+                changed = true;
+              } else {
+                content += `\nconst _shim_${baseComp}: any = (props: any) => <div className="${baseComp.toLowerCase()}-shim" {...props}>{props?.children}</div>;\nexport { _shim_${baseComp} as ${baseComp} };\n`;
+                changed = true;
+              }
+            }
           }
+
           if (!hasDefault) {
-            content += `\nconst _default_${baseComp} = typeof ${baseComp} !== 'undefined' ? ${baseComp} : ((props: any) => <div className="${baseComp.toLowerCase()}-shim" {...props}>{props?.children}</div>);\nexport default _default_${baseComp};\n`;
-            changed = true;
+            const isValueOrComponent = new RegExp(`(?:const|function|class|let|var)\\s+${baseComp}\\b`).test(content);
+            if (isValueOrComponent) {
+              content += `\nexport default ${baseComp};\n`;
+              changed = true;
+            } else {
+              const singular = baseComp.endsWith("s") ? baseComp.slice(0, -1) : baseComp;
+              const hasSingular = new RegExp(`(?:const|function|class|let|var)\\s+${singular}\\b`).test(content);
+              const defaultTarget = hasSingular ? singular : `_shim_${baseComp}`;
+              if (!hasSingular && !content.includes(`_shim_${baseComp}`)) {
+                content += `\nconst _shim_${baseComp}: any = (props: any) => <div className="${baseComp.toLowerCase()}-shim" {...props}>{props?.children}</div>;\n`;
+              }
+              content += `\nexport default ${defaultTarget};\n`;
+              changed = true;
+            }
           }
         }
 

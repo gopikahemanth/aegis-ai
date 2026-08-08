@@ -710,6 +710,46 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         const absSchema = resolve(schemaPath);
         const schemaRelativePath = relative(absDir, absSchema);
 
+        // Auto-repair missing Prisma inverse relation fields (P1012)
+        try {
+          let schemaContent = readFileSync(absSchema, "utf8");
+          let schemaModified = false;
+          const modelBlocks = schemaContent.split(/(?=model\s+\w+\s*\{)/);
+          const models: Record<string, string[]> = {};
+          
+          for (const block of modelBlocks) {
+            const mMatch = block.match(/model\s+([A-Za-z0-9_$]+)\s*\{/);
+            if (mMatch) {
+              const mName = mMatch[1];
+              models[mName] = [];
+              const relMatches = block.matchAll(/(\w+)\s+([A-Za-z0-9_$]+)\s*@relation/g);
+              for (const rm of relMatches) {
+                const targetModel = rm[2];
+                if (targetModel && targetModel !== mName) {
+                  models[mName].push(targetModel);
+                }
+              }
+            }
+          }
+
+          for (const [sourceModel, targetModels] of Object.entries(models)) {
+            for (const targetModel of targetModels) {
+              const targetRegex = new RegExp(`(model\\s+${targetModel}\\s*\\{[^}]*)(\\})`, "s");
+              const targetMatch = schemaContent.match(targetRegex);
+              if (targetMatch && !targetMatch[1].includes(sourceModel)) {
+                const fieldName = sourceModel.toLowerCase() + "s";
+                schemaContent = schemaContent.replace(targetRegex, `$1  ${fieldName} ${sourceModel}[]\n$2`);
+                schemaModified = true;
+              }
+            }
+          }
+
+          if (schemaModified) {
+            writeFileSync(absSchema, schemaContent, "utf8");
+            patches.push("Auto-repaired Prisma schema inverse relations (P1012)");
+          }
+        } catch { /* ignore */ }
+
         const localPrismaBin = join(absDir, "node_modules", ".bin", "prisma");
         const prismaBin = existsSync(localPrismaBin) ? `"${localPrismaBin}"` : "npx --yes prisma@6";
 

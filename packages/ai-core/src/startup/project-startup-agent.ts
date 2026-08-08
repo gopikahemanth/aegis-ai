@@ -1196,12 +1196,19 @@ export default DataTable;\n`;
           const fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
           const componentName = fullStubPath.split(/[\/\\]/).pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Component";
 
-          // Check fuzzy match on disk
+          // Check fuzzy match on disk (support Page / Component suffixes)
           const lowerComp = componentName.toLowerCase();
           const matchingDiskFile = allDiskFiles.find(f => {
             const bName = f.relPath.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "";
             if (f.fullPath === fullStubPath) return false;
-            return bName.toLowerCase() === lowerComp;
+            const lowerBName = bName.toLowerCase();
+            if (lowerBName === lowerComp) return true;
+            if (lowerComp.endsWith("page") && lowerBName === lowerComp.replace("page", "")) return true;
+            if (lowerComp.endsWith("component") && lowerBName === lowerComp.replace("component", "")) return true;
+            if (lowerComp.endsWith("view") && lowerBName === lowerComp.replace("view", "")) return true;
+            if (lowerBName.endsWith("page") && lowerComp === lowerBName.replace("page", "")) return true;
+            if (lowerBName.includes(lowerComp) || lowerComp.includes(lowerBName)) return true;
+            return false;
           });
 
           mkdirSync(dirname(fullStubPath), { recursive: true });

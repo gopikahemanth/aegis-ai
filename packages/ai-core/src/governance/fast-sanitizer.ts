@@ -5,6 +5,7 @@ export interface FastSanitationReport {
   casingCollisionsResolved: number;
   missingDependenciesAdded: string[];
   exportFixesApplied: number;
+  syntaxErrorsRepaired: number;
   databaseUrlValid: boolean;
 }
 
@@ -14,17 +15,19 @@ export class FastDeterministicSanitizer {
       casingCollisionsResolved: 0,
       missingDependenciesAdded: [],
       exportFixesApplied: 0,
+      syntaxErrorsRepaired: 0,
       databaseUrlValid: true
     };
 
     // 1. File Casing Collision Resolution
     report.casingCollisionsResolved = this.resolveCasingCollisions(outputDirectory);
 
-    // 2. Dependency Closure
+    // 2. Dependency Closure (Excluding local path aliases like @/shared)
     report.missingDependenciesAdded = this.ensureDependencyClosure(outputDirectory);
 
-    // 3. Export / Import contract sanitation
+    // 3. Export / Import contract sanitation & Known Syntax preflight fixes
     report.exportFixesApplied = this.sanitizeExportContracts(outputDirectory);
+    report.syntaxErrorsRepaired = this.repairKnownSyntaxErrors(outputDirectory);
 
     // 4. Database URL validation
     report.databaseUrlValid = this.validateDatabaseUrl(outputDirectory);
@@ -71,7 +74,8 @@ export class FastDeterministicSanitizer {
         const matches = content.matchAll(/(?:import|from|require\()\s*['"]([^'"]+)['"]/g);
         for (const m of matches) {
           const specifier = m[1];
-          if (!specifier.startsWith(".") && !specifier.startsWith("/") && !specifier.startsWith("node:")) {
+          // Filter out local relative imports and tsconfig path aliases (e.g. @/shared, @/components)
+          if (!specifier.startsWith(".") && !specifier.startsWith("/") && !specifier.startsWith("node:") && !specifier.startsWith("@/")) {
             const pkgName = specifier.startsWith("@") ? specifier.split("/").slice(0, 2).join("/") : specifier.split("/")[0];
             externalImports.add(pkgName);
           }
@@ -109,7 +113,53 @@ export class FastDeterministicSanitizer {
         fixes++;
       }
     }
+
+    // Sanitize pdf-parse import contract (pdf-parse does not have a default export in newer typings/modules)
+    const codeFiles = this.getAllFiles(root).filter(f => f.endsWith(".ts") || f.endsWith(".tsx"));
+    for (const relFile of codeFiles) {
+      const fullPath = join(root, relFile);
+      let content = readFileSync(fullPath, "utf8");
+      if (content.includes('import pdfParse from "pdf-parse"') || content.includes("import pdf from 'pdf-parse'")) {
+        content = content.replace(/import\s+(?:pdfParse|pdf)\s+from\s+["']pdf-parse["'];?/g, 'import * as pdfParse from "pdf-parse";');
+        writeFileSync(fullPath, content, "utf8");
+        fixes++;
+      }
+    }
+
     return fixes;
+  }
+
+  private static repairKnownSyntaxErrors(root: string): number {
+    let repaired = 0;
+    const codeFiles = this.getAllFiles(root).filter(f => f.endsWith(".tsx") || f.endsWith(".ts"));
+
+    for (const relFile of codeFiles) {
+      const fullPath = join(root, relFile);
+      let content = readFileSync(fullPath, "utf8");
+      let modified = false;
+
+      // Fix 1: React.FC<any>> syntax typo
+      if (content.includes("React.FC<any>>") || content.includes("React.FC<React.HTMLAttributes<HTMLDivElement>>>")) {
+        content = content.replace(/React\.FC<any>>/g, "React.FC<any>").replace(/React\.FC<React\.HTMLAttributes<HTMLDivElement>>>/g, "React.FC<React.HTMLAttributes<HTMLDivElement>>");
+        modified = true;
+      }
+
+      // Fix 2: Double closing brackets or malformed FC interfaces
+      if (content.includes("React.FC<")) {
+        const regex = /React\.FC<([^>]+)>>/g;
+        if (regex.test(content)) {
+          content = content.replace(regex, "React.FC<$1>");
+          modified = true;
+        }
+      }
+
+      if (modified) {
+        writeFileSync(fullPath, content, "utf8");
+        repaired++;
+        console.log(`[SyntaxPreflight] 🛠️ Deterministically repaired syntax error in: ${relFile}`);
+      }
+    }
+    return repaired;
   }
 
   private static validateDatabaseUrl(root: string): boolean {

@@ -244,4 +244,28 @@ describe("Architecture Drift Governance Suite", () => {
     const updatedEnv = readFileSync(join(testDir, ".env"), "utf8");
     expect(updatedEnv).toContain("postgresql://");
   });
+
+  it("TEST 20: FastDeterministicSanitizer ignores local path aliases (@/shared) from dependency closure", () => {
+    writeFileSync(join(testDir, "package.json"), JSON.stringify({ dependencies: { express: "^4.18.2" } }), "utf8");
+    writeFileSync(join(testDir, "src", "alias.ts"), 'import { Button } from "@/shared/components/Button";\n', "utf8");
+
+    const report = FastDeterministicSanitizer.sanitizeProject(testDir);
+    expect(report.missingDependenciesAdded).not.toContain("@/shared");
+    expect(report.missingDependenciesAdded).not.toContain("@/shared/components/Button");
+  });
+
+  it("TEST 21: FastDeterministicSanitizer repairs pdf-parse default import contract and React.FC<any>> syntax typo", () => {
+    writeFileSync(join(testDir, "src", "pdfHandler.ts"), 'import pdfParse from "pdf-parse";\n', "utf8");
+    writeFileSync(join(testDir, "src", "GlassCard.tsx"), 'export const GlassCard: React.FC<any>> = (props) => <div />;\n', "utf8");
+
+    const report = FastDeterministicSanitizer.sanitizeProject(testDir);
+    expect(report.exportFixesApplied).toBeGreaterThanOrEqual(1);
+    expect(report.syntaxErrorsRepaired).toBeGreaterThanOrEqual(1);
+
+    const pdfCode = readFileSync(join(testDir, "src", "pdfHandler.ts"), "utf8");
+    expect(pdfCode).toContain('* as pdfParse');
+
+    const glassCode = readFileSync(join(testDir, "src", "GlassCard.tsx"), "utf8");
+    expect(glassCode).not.toContain('React.FC<any>>');
+  });
 });

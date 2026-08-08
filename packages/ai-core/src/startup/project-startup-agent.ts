@@ -1463,18 +1463,16 @@ export default DataTable;\n`;
             return false;
           });
 
-          mkdirSync(dirname(fullStubPath), { recursive: true });
           if (matchingDiskFile) {
+            mkdirSync(dirname(fullStubPath), { recursive: true });
             let relImport = relative(dirname(fullStubPath), matchingDiskFile.fullPath).replace(/\\/g, "/");
             if (!relImport.startsWith(".")) relImport = "./" + relImport;
             relImport = relImport.replace(/\.(ts|tsx|js|jsx)$/, "");
             writeFileSync(fullStubPath, `import * as Mod from '${relImport}';\nexport * from '${relImport}';\nconst _default = (Mod as any).default || Mod;\nexport const ${componentName} = _default;\nexport default _default;\n`, "utf8");
-          } else if (isUiTarget) {
-            writeFileSync(fullStubPath, `import React from 'react';\n\nexport function ${componentName}(props: any) {\n  return <div className={props?.className || "${componentName.toLowerCase()}-stub"} {...props}>{props?.children || '${componentName}'}</div>;\n}\nexport const _comp_${componentName} = ${componentName};\nexport default ${componentName};\n`, "utf8");
+            console.log(`[Startup] Re-exported existing module: ${relative(outputDirectory, fullStubPath)} -> ${matchingDiskFile.relPath}`);
           } else {
-            writeFileSync(fullStubPath, `// Auto-generated stub for missing module: ${componentName}\nexport default {};\n`, "utf8");
+            console.warn(`[Startup] ⚠️ Missing required import target: ${relative(outputDirectory, fullStubPath)}. Skipping fake stub creation.`);
           }
-          console.log(`[Startup] Created missing import stub: ${relative(outputDirectory, fullStubPath)}`);
         }
       }
     }

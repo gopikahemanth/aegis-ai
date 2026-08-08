@@ -1,33 +1,27 @@
 import { Request, Response } from 'express';
 import pdfParse from 'pdf-parse';
+import { calculateKeywordMatch } from '../../shared/utils/nlpEngine';
 
-export const analyzeResume = async (req: Request, res: Response): Promise<void> => {
+export const analyzeResume = async (req: Request, res: Response) => {
   try {
+    if (!req.file) return res.status(400).json({ error: 'Resume file required' });
     const { jobDescription } = req.body;
-    if (!req.file || !jobDescription) {
-      res.status(400).json({ error: 'Missing resume file or job description' });
-      return;
-    }
+    if (!jobDescription) return res.status(400).json({ error: 'Job description required' });
 
     const pdfData = await pdfParse(req.file.buffer);
-    const resumeText = pdfData.text.toLowerCase();
+    const resumeText = pdfData.text;
     
-    // Extract keywords from JD (alphanumeric words > 3 chars)
-    const jdKeywords = Array.from(new Set(jobDescription.toLowerCase().match(/\b[a-z]{3,}\b/g) || []));
+    const analysis = calculateKeywordMatch(resumeText, jobDescription);
     
-    const matched: string[] = [];
-    const missing: string[] = [];
-
-    jdKeywords.forEach(keyword => {
-      if (resumeText.includes(keyword)) matched.push(keyword);
-      else missing.push(keyword);
+    res.status(200).json({
+      success: true,
+      data: {
+        score: analysis.score,
+        matched: analysis.matchedKeywords,
+        missing: analysis.missingKeywords,
+        timestamp: new Date().toISOString()
+      }
     });
-
-    const matchScore = jdKeywords.length > 0 
-      ? Math.round((matched.length / jdKeywords.length) * 100) 
-      : 0;
-
-    res.json({ matchScore, matched, missing });
   } catch (error) {
     res.json([]);
   }

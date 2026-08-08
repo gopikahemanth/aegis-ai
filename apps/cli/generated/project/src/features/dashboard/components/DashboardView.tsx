@@ -1,47 +1,61 @@
-import React, { Suspense } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { fetchRecentScans } from '../services/ScanService';
+import React, { useMemo } from 'react';
+import { Card } from '@/shared/components/Card';
+import { 
+  ResponsiveContainer, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  CartesianGrid, 
+  Cell 
+} from 'recharts';
 
-const DashboardView = () => {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['recent-scans'],
-    queryFn: fetchRecentScans
-  });
+interface DashboardProps {
+  className?: string;
+  children?: any;
+  onClick?: any;
+  [key: string]: any;
 
-  if (isLoading) return <div className="animate-pulse h-64 bg-slate-100 rounded-2xl" />;
-  if (error) return <div className="text-red-600">Failed to load history.</div>;
+  data: { name: string; matchScore: number }[];
+}
+
+export const DashboardView: React.FC<any> = ({ data }) => {
+  const averageScore = useMemo(() => 
+    data.length > 0 
+      ? data.reduce((acc, curr) => acc + curr.matchScore, 0) / data.length 
+      : 0
+  , [data]);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <h1 className="text-2xl font-bold mb-8">Scan Summary</h1>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <MetricCard title="Total Scans" value={data?.length || 0} />
-        {/* Additional KPI cards */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8">
+      <Card title="Total Resumes Analyzed">
+        <p className="text-4xl font-bold text-white">{data.length}</p>
+      </Card>
+      <Card title="Average Match Score">
+        <p className="text-4xl font-bold text-blue-500">{averageScore.toFixed(0)}%</p>
+      </Card>
+      <div className="col-span-1 md:col-span-2 h-64 bg-slate-900 rounded-2xl p-4 border border-slate-800">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis dataKey="name" stroke="#94a3b8" />
+            <YAxis stroke="#94a3b8" />
+            <Tooltip 
+              contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155' }}
+              itemStyle={{ color: '#fff' }}
+            />
+            <Bar dataKey="matchScore" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.matchScore > 70 ? '#22c55e' : '#3b82f6'} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
-      
-      <section className="mt-12">
-        <h2 className="text-lg font-semibold mb-4">Recent Scan History</h2>
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          {data?.map((scan: any) => (
-            <div key={scan.id} className="p-6 border-b border-slate-100 hover:bg-slate-50 transition-colors">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">{scan.fileName}</span>
-                <span className="text-indigo-600 font-bold">{scan.matchScore}% Match</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   );
 };
-
-const MetricCard = (props: any) => (
-  <div className="p-6 border border-slate-200 rounded-2xl bg-white shadow-sm">
-    <p className="text-sm text-slate-500 mb-1">{title}</p>
-    <p className="text-3xl font-extrabold text-slate-900">{value}</p>
-  </div>
-);
-
 export default DashboardView;
-export { DashboardView };
+
+export type { DashboardProps };

@@ -1,32 +1,32 @@
 {
-  "contractId": "req_1786200019945",
-  "lockedAt": "2026-08-08T14:40:19.945Z",
+  "contractId": "req_1786201515961",
+  "lockedAt": "2026-08-08T15:05:15.961Z",
   "stack": {
     "frontend": "React",
     "backend": "Express",
-    "database": "PostgreSQL",
+    "database": "mongodb",
     "orm": "Prisma",
     "auth": "JWT",
     "language": "TypeScript",
-    "styling": "tailwind",
+    "styling": "tailwindcss",
     "packageManager": "pnpm"
   },
   "features": [
-    "pdf-parser",
-    "keyword-engine",
+    "pdf-parsing",
+    "keyword-analysis",
     "dashboard",
-    "persistence",
-    "auth"
+    "history-persistence",
+    "ui-components"
   ],
   "userFlows": [
-    "upload-documents",
-    "analyze-resume-fit",
-    "review-keyword-gaps",
-    "view-application-history"
+    "upload-resume-and-job-description",
+    "analyze-keyword-match",
+    "view-dashboard-results",
+    "browse-application-history"
   ],
   "dataModels": [
     "User",
-    "ScanResult",
+    "AnalysisResult",
     "Resume",
     "JobDescription"
   ],

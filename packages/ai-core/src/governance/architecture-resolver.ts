@@ -56,12 +56,12 @@ export class ArchitectureResolver {
     if (promptLower.includes("nextauth") || promptLower.includes("next-auth")) auth = "NextAuth.js";
     else if (promptLower.includes("jwt")) auth = "JWT";
 
-    return {
+    return Object.freeze({
       version: 1,
       status: "locked",
-      frontend: { framework: frontendFramework },
-      backend: { framework: backendFramework },
-      database: { provider: dbProvider, orm },
+      frontend: Object.freeze({ framework: frontendFramework }),
+      backend: Object.freeze({ framework: backendFramework }),
+      database: Object.freeze({ provider: dbProvider, orm }),
       language: canonicalSpec.lockedStack?.language || rawSpec.language || "TypeScript",
       styling: canonicalSpec.lockedStack?.styling || rawSpec.styling || "TailwindCSS",
       packageManager: canonicalSpec.lockedStack?.packageManager || rawSpec.packageManager || "pnpm",
@@ -70,12 +70,12 @@ export class ArchitectureResolver {
       requiredFeatures: canonicalSpec.features || rawSpec.features || [],
       requiredRoutes: canonicalSpec.userFlows || rawSpec.userFlows || [],
       requiredModels: canonicalSpec.dataModels || rawSpec.dataModels || [],
-      projectStructure: {
+      projectStructure: Object.freeze({
         src: "Frontend source directory",
         server: "Backend server directory",
         prisma: "Database schema directory"
-      }
-    };
+      })
+    });
   }
 
   public static writeContract(outputDirectory: string, contract: ArchitectureContractV1): void {

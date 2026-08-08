@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "System user with authentication",
+      "description": "Authenticated system user",
       "persistence": "database",
       "fields": [
         {
@@ -12,7 +12,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "UUID identifier"
+          "description": "Primary identifier"
         },
         {
           "name": "email",
@@ -21,22 +21,22 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Email for login"
+          "description": "Login email"
         },
         {
-          "name": "password",
+          "name": "passwordHash",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Hashed password"
+          "description": "Encrypted credentials"
         }
       ]
     },
     {
-      "name": "ScanResult",
-      "description": "Historical scan analysis report",
+      "name": "AnalysisResult",
+      "description": "Historical record of a resume analysis session",
       "persistence": "database",
       "fields": [
         {
@@ -46,7 +46,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Primary key"
+          "description": "Primary identifier"
         },
         {
           "name": "userId",
@@ -55,16 +55,7 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": "User",
-          "description": "Owner of the scan"
-        },
-        {
-          "name": "jobTitle",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Target job role"
+          "description": "Owner of the record"
         },
         {
           "name": "matchScore",
@@ -73,7 +64,7 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Calculated percentage"
+          "description": "Calculated relevance percentage"
         },
         {
           "name": "missingKeywords",
@@ -82,7 +73,16 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Array of missing skills"
+          "description": "List of identified keyword gaps"
+        },
+        {
+          "name": "jobTitle",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Target job title"
         },
         {
           "name": "createdAt",
@@ -91,49 +91,46 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Timestamp"
+          "description": "Timestamp of analysis"
         }
       ]
     }
   ],
-  "databaseSchema": "generator client { provider = \"prisma-client-js\" } datasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") } model User { id String @id @default(uuid()) email String @unique password String scans ScanResult[] } model ScanResult { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) jobTitle String matchScore Float missingKeywords Json createdAt DateTime @default(now()) }",
+  "databaseSchema": "datasource db { provider = \"sqlite\" url = \"file:./dev.db\" } generator client { provider = \"prisma-client-js\" } model User { id String @id @default(uuid()) email String @unique passwordHash String analyses AnalysisResult[] } model AnalysisResult { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) matchScore Float missingKeywords Json jobTitle String createdAt DateTime @default(now()) }",
   "apis": [
     {
-      "path": "/api/v1/auth/register",
+      "path": "/api/v1/analyze",
       "method": "POST",
-      "description": "Register new user",
-      "requestBodySchema": "{ \"email\": \"string\", \"password\": \"string\" }",
-      "responseBodySchema": "{ \"token\": \"string\" }"
+      "description": "Upload resume and job description to perform NLP analysis",
+      "requestBodySchema": "{ \"resume\": File, \"jobDescription\": string, \"jobTitle\": string }",
+      "responseBodySchema": "{ \"matchScore\": number, \"missingKeywords\": string[], \"id\": string }"
     },
     {
-      "path": "/api/v1/scan",
-      "method": "POST",
-      "description": "Process resume and job description via NLP",
-      "requestBodySchema": "Multipart FormData containing pdf file and jobDescription text",
-      "responseBodySchema": "{ \"id\": \"string\", \"matchScore\": \"number\", \"missingKeywords\": \"string[]\" }"
-    },
-    {
-      "path": "/api/v1/scans",
+      "path": "/api/v1/history",
       "method": "GET",
-      "description": "Fetch user scan history",
-      "requestBodySchema": null,
-      "responseBodySchema": "ScanResult[]"
+      "description": "Retrieve all past analysis records for the user",
+      "responseBodySchema": "AnalysisResult[]"
+    },
+    {
+      "path": "/api/v1/history/:id",
+      "method": "DELETE",
+      "description": "Delete a specific analysis history item"
     }
   ],
   "hooks": [
     {
-      "name": "useScanHistory",
-      "type": "query",
-      "endpoint": "/api/v1/scans",
-      "params": "none",
-      "returns": "ScanResult[]"
-    },
-    {
       "name": "useAnalyzeResume",
       "type": "mutation",
-      "endpoint": "/api/v1/scan",
-      "params": "formData",
-      "returns": "{ matchScore: number, missingKeywords: string[] }"
+      "endpoint": "/api/v1/analyze",
+      "params": "formData: FormData",
+      "returns": "AnalysisResult"
+    },
+    {
+      "name": "useAnalysisHistory",
+      "type": "query",
+      "endpoint": "/api/v1/history",
+      "params": "none",
+      "returns": "AnalysisResult[]"
     }
   ]
 }

@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ProjectSpecification } from "../architect/specification.js";
 
 export interface CanonicalProjectSpecification extends ProjectSpecification {
@@ -17,7 +19,16 @@ export interface CanonicalProjectSpecification extends ProjectSpecification {
 
 export class SpecificationNormalizer {
   public static normalize(userPrompt: string, rawSpec: ProjectSpecification): CanonicalProjectSpecification {
-    const promptLower = userPrompt.toLowerCase();
+    let combinedPrompt = userPrompt;
+    if (userPrompt && (userPrompt.includes("/") || userPrompt.includes("\\"))) {
+      try {
+        const promptFile = join(userPrompt, ".aegis", "prompt.txt");
+        if (existsSync(promptFile)) {
+          combinedPrompt += " " + readFileSync(promptFile, "utf8");
+        }
+      } catch {}
+    }
+    const promptLower = combinedPrompt.toLowerCase();
     
     // 1. Detect Domain Category
     let domainCategory: CanonicalProjectSpecification["domainCategory"] = "general-dashboard";

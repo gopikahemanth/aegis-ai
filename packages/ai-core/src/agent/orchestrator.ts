@@ -302,6 +302,7 @@ export class Orchestrator {
         JSON.stringify(dataArch, null, 2),
         "utf8"
       );
+      writeFileSync(join(aegisDir, "prompt.txt"), request, "utf8");
       console.log("[DataArchitecture] ✓ Saved data architecture definition in project builder.");
 
       const dataContext = `

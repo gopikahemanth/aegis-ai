@@ -6,6 +6,12 @@ import { ProjectSpecification } from "../architect/specification.js";
 export interface ArchitectureContractV1 {
   version: 1;
   status: "locked";
+  source: "user_prompt" | "canonical_spec" | "system_default";
+  confidence: number;
+  reason: string;
+  userSpecified: boolean;
+  inferred: boolean;
+  overridden: boolean;
   frontend: {
     framework: string; // e.g. "Next.js" | "React-Vite" | "HTML"
   };
@@ -14,7 +20,7 @@ export interface ArchitectureContractV1 {
   };
   database: {
     provider: string; // e.g. "PostgreSQL" | "SQLite" | "MongoDB" | "MySQL"
-    orm: string; // e.g. "Prisma" | "Drizzle" | "TypeORM" | "None"
+    orm: string; // e.g. "Prisma" | "Drizzle" | "TypeORM" | "Mongoose" | "None"
   };
   language: string; // e.g. "TypeScript" | "JavaScript"
   styling: string; // e.g. "TailwindCSS" | "CSS Modules"
@@ -34,8 +40,9 @@ export class ArchitectureResolver {
     canonicalSpec: CanonicalProjectSpecification
   ): ArchitectureContractV1 {
     const promptLower = userPrompt.toLowerCase();
+    const userSpecified = promptLower.length > 0;
 
-    // Single source of truth resolution rules
+    // Single source of truth resolution rules with provenance metadata
     let frontendFramework = canonicalSpec.lockedStack?.frontend || rawSpec.frontend || "React-Vite";
     if (promptLower.includes("next.js") || promptLower.includes("nextjs")) frontendFramework = "Next.js";
     else if (promptLower.includes("vite") || promptLower.includes("react")) frontendFramework = "React-Vite";
@@ -61,6 +68,12 @@ export class ArchitectureResolver {
     return Object.freeze({
       version: 1,
       status: "locked",
+      source: userSpecified ? "user_prompt" : "canonical_spec",
+      confidence: userSpecified ? 1.0 : 0.9,
+      reason: "Single-source of truth locked by ArchitectureResolver based on user prompt and spec precedence",
+      userSpecified,
+      inferred: !userSpecified,
+      overridden: false,
       frontend: Object.freeze({ framework: frontendFramework }),
       backend: Object.freeze({ framework: backendFramework }),
       database: Object.freeze({ provider: dbProvider, orm }),
@@ -86,7 +99,7 @@ export class ArchitectureResolver {
       mkdirSync(aegisDir, { recursive: true });
     }
     writeFileSync(join(aegisDir, "architecture-contract.json"), JSON.stringify(contract, null, 2), "utf8");
-    console.log(`[ArchitectureResolver] 🔒 Locked Single-Source Architecture Contract: ${contract.frontend.framework} + ${contract.backend.framework} + ${contract.database.provider} (${contract.database.orm})`);
+    console.log(`[ArchitectureResolver] 🔒 Locked Single-Source Architecture Contract: ${contract.frontend.framework} + ${contract.backend.framework} + ${contract.database.provider} (${contract.database.orm}) [source: ${contract.source}]`);
   }
 
   public static loadContract(outputDirectory: string): ArchitectureContractV1 | null {

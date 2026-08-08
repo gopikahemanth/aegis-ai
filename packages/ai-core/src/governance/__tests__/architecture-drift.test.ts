@@ -321,4 +321,16 @@ describe("Architecture Drift Governance Suite", () => {
       ProjectPathResolver.resolveProjectFile("generated/project", "generated/project/generated/project/server/controllers/authController.ts");
     }).toThrow();
   });
+
+  it("TEST 28: ArchitectureResolver metadata includes provenance fields (source, confidence, reason, userSpecified)", () => {
+    const prompt = "Build a React-Vite app with Express and PostgreSQL.";
+    const rawSpec = { name: "app", type: "fullstack" };
+    const canonical = SpecificationNormalizer.normalize(prompt, rawSpec as any);
+    const contract = ArchitectureResolver.resolve(prompt, rawSpec as any, canonical);
+
+    expect(contract.source).toBe("user_prompt");
+    expect(contract.confidence).toBe(1.0);
+    expect(contract.userSpecified).toBe(true);
+    expect(contract.inferred).toBe(false);
+  });
 });

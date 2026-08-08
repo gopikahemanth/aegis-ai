@@ -851,6 +851,24 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
+        // Fix 27: Dual export shim for server/lib/prisma.ts (TS2614)
+        if (rel.includes("prisma") || rel.includes("db.ts")) {
+          if (content.includes("PrismaClient")) {
+            if (!content.includes("export const prisma") && content.includes("const prisma")) {
+              content = content.replace("const prisma", "export const prisma");
+              changed = true;
+            }
+            if (!content.includes("export default")) {
+              content += `\nexport default prisma;\n`;
+              changed = true;
+            }
+            if (!content.includes("export const prisma") && !content.includes("export { prisma }")) {
+              content += `\nexport { prisma };\n`;
+              changed = true;
+            }
+          }
+        }
+
         // Fix 7: Truncated JSX onClick handler setTheme(theme === 'light' ? 'dark' : 'light' -> setTheme(theme === 'light' ? 'dark' : 'light')
         if (content.includes("setTheme(theme === 'light' ? 'dark' : 'light'") && !content.includes("setTheme(theme === 'light' ? 'dark' : 'light')")) {
           content = content.replace("setTheme(theme === 'light' ? 'dark' : 'light'", "setTheme(theme === 'light' ? 'dark' : 'light')");

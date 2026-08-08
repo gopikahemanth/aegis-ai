@@ -101,7 +101,7 @@ export class SandboxVerifier {
           childProcess = spawn("pnpm", ["dev"], {
             cwd: projectPath,
             shell: true,
-            env: { ...process.env, PORT: String(port), VITE_PORT: String(port) },
+            env: { ...process.env, PORT: "5000", SERVER_PORT: "5000", VITE_PORT: String(port) },
           });
 
           childProcess.stdout.on("data", (data: any) => {

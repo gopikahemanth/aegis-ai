@@ -178,6 +178,8 @@ export class SandboxVerifier {
       });
 
       await page.goto(targetUrl, { waitUntil: "networkidle2" });
+      // Give React SPA 2 seconds to finish mounting and rendering components
+      await new Promise((r) => setTimeout(r, 2000));
 
       const screenshotPath = join(projectPath, "screenshot.png");
       await page.screenshot({ path: screenshotPath });

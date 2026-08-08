@@ -136,6 +136,19 @@ export class ErrorRootCauseMapper {
       };
     }
 
+    // ── TS2353 — Prisma relational / property mismatch ───────────────────────
+    if (code === "TS2353") {
+      const propMatch = message.match(/Object literal may only specify known properties, and '(\w+)' does not exist in type/)?.[1];
+      return {
+        raw, file, line, col, code, message,
+        errorClass: "missing-property",
+        trueSourceFile: file,
+        repairHint: `Property '${propMatch ?? "unknown"}' does not exist on Prisma model/type. ` +
+          `If '${propMatch}' is stored as JSON in the database, do not nest Prisma 'include' or 'create' queries for '${propMatch}' — treat '${propMatch}' as a direct property or JSON string. ` +
+          `Align the query with the exact Prisma schema definition.`,
+      };
+    }
+
     // ── TS2307 — cannot find module ───────────────────────────────────────────
     if (code === "TS2307") {
       const modName = message.match(/Cannot find module '([^']+)'/)?.[1];

@@ -1,40 +1,41 @@
-# AegisFitnessTracker
+# AegisExpenseTrack
 
-A comprehensive full-stack workout and fitness management application designed to track progress, visualize training volume, and maintain consistency through streak monitoring.
+AegisExpenseTrack is a robust, full-stack SaaS solution designed for streamlined personal finance management, featuring real-time expense tracking, automated budget visualization, and intuitive data reporting.
 
-## Features
+## Key Features
 
-*   **Workout Logging:** Intuitive interface to record sets, repetitions, and weight lifted per exercise.
-*   **Exercise Categorization:** Visual badges for muscle groups to allow for quick identification and filtering.
-*   **Analytics Dashboard:** Interactive charts calculating weekly training volume and progress trends.
-*   **Consistency Tracking:** Integrated streak counter to motivate long-term adherence.
-*   **CRUD Operations:** Full lifecycle management of workouts with dedicated edit and delete modals.
-*   **Filtering:** Filter workout history by specific muscle groups or date ranges.
-*   **UI/UX:** Modern dark-mode glassmorphism design for a sleek, ergonomic user experience.
+*   **Interactive Financial Logging:** Seamlessly log income and expenses with dynamic category tagging.
+*   **Budget Oversight:** Real-time monthly budget progress bars with visual threshold alerts.
+*   **Data Visualization:** Interactive pie charts providing instant breakdowns of spending by category.
+*   **Advanced Data Management:** Filter transactions by custom date ranges and specific categories.
+*   **Export Capabilities:** Generate and download financial reports in CSV and PDF formats.
+*   **CRUD Functionality:** Integrated modal-based interface for effortless transaction editing and deletion.
+*   **Modern UI/UX:** A responsive, dark-mode glassmorphism interface built for high readability and visual comfort.
 
 ## Tech Stack
 
 | Technology | Purpose |
 | :--- | :--- |
-| **React** | Frontend UI library and component state management |
-| **TypeScript** | Type-safe development across frontend and backend |
-| **Express** | RESTful API server framework |
-| **Prisma** | ORM for database schema modeling and queries |
-| **SQLite** | Lightweight, file-based relational database |
-| **Recharts** | Data visualization for workout analytics |
-| **Tailwind CSS** | Styling and glassmorphism UI implementation |
+| React 18 (Vite) | Frontend framework and build tool |
+| TypeScript | Type-safe application logic |
+| Express.js | Backend API architecture |
+| Prisma | Type-safe ORM for database operations |
+| SQLite | Lightweight relational database management |
+| Tailwind CSS | Styling and glassmorphism UI implementation |
 
 ## Getting Started
 
 ### Prerequisites
-* Node.js (v18.0.0 or higher)
-* npm (v9.0.0 or higher) or yarn
+
+*   **Node.js:** v18.0.0 or higher
+*   **Package Manager:** npm (v9+) or yarn (v1.22+)
 
 ### Installation
+
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/aegis-fitness-tracker.git
-   cd aegis-fitness-tracker
+   git clone https://github.com/yourusername/aegis-expense-track.git
+   cd aegis-expense-track
    ```
 
 2. Install dependencies for both client and server:
@@ -42,34 +43,38 @@ A comprehensive full-stack workout and fitness management application designed t
    npm install
    ```
 
-### Environment Setup
-1. Copy the example environment file:
+3. Setup environment variables:
    ```bash
    cp .env.example .env
    ```
-2. Open the `.env` file and configure your database connection string and API keys as required by the application.
+   *Open the `.env` file and configure the `DATABASE_URL` and `PORT` variables as required.*
+
+4. Initialize the database:
+   ```bash
+   npx prisma migrate dev
+   ```
 
 ### Running Locally
-To start both the backend server and the frontend development environment:
+
+To start both the client and server concurrently in development mode:
 ```bash
 npm run dev
 ```
 
 ## Available Scripts
 
-* `npm run dev`: Starts the development server with hot-reloading for both client and server.
-* `npm run build`: Compiles the application for production deployment.
-* `npm run lint`: Executes ESLint to verify code quality and style adherence.
-* `npm run test`: Runs the test suite using the configured testing framework.
-* `npm run prisma:generate`: Updates the Prisma client based on schema changes.
+*   `npm run dev`: Starts the development server with hot-module replacement.
+*   `npm run build`: Compiles the application for production deployment.
+*   `npm run lint`: Executes ESLint to verify code quality and consistency.
+*   `npm run test`: Runs the configured test suite for core logic validation.
 
 ## Project Structure
 
-* `/src/client`: React source code, including components, hooks, and context providers.
-* `/src/server`: Express API routes, middleware, and controller logic.
-* `/prisma`: Database schema definition (`schema.prisma`) and migration history.
-* `/public`: Static assets and global configuration files.
-* `/types`: Shared TypeScript interface definitions for frontend and backend synchronization.
+*   `/client`: Contains the React/Vite frontend source code, including components, hooks, and styles.
+*   `/server`: Houses the Express API, routes, and middleware.
+*   `/prisma`: Contains the schema definition and database migration files.
+*   `/public`: Static assets, icons, and fonts used throughout the application.
+*   `/types`: Global TypeScript interface definitions for cross-module consistency.
 
 ## License
 

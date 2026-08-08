@@ -1039,10 +1039,10 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
           }
         }
 
-        // Fix 34: Auto-export all functions and constants in utility/helper/service files (TS2614)
+        // Fix 34: Auto-export all top-level functions and constants in utility/helper/service files (TS2614)
         if (rel.includes("util") || rel.includes("helper") || rel.includes("format") || rel.includes("currency") || rel.includes("date") || rel.includes("service") || rel.includes("api")) {
-          const fnMatches = content.matchAll(/(?:const|function|let|var)\s+([A-Za-z0-9_$]+)\b/g);
-          for (const fm of fnMatches) {
+          const topLevelMatches = content.matchAll(/^(?:export\s+)?(?:const|function|let|var)\s+([A-Za-z0-9_$]+)\b/gm);
+          for (const fm of topLevelMatches) {
             const fnName = fm[1];
             if (fnName && !fnName.startsWith("_") && fnName !== "default" && !new RegExp(`export\\s+(?:const|function|let|var)\\s+${fnName}\\b`).test(content) && !content.includes(`export { ${fnName}`)) {
               content += `\nexport { ${fnName} };\n`;

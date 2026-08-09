@@ -1,10 +1,10 @@
 {
-  "contractId": "req_1786206996737",
-  "lockedAt": "2026-08-08T16:36:36.738Z",
+  "contractId": "req_1786208449521",
+  "lockedAt": "2026-08-08T17:00:49.521Z",
   "stack": {
     "frontend": "React-Vite",
     "backend": "Express",
-    "database": "MongoDB",
+    "database": "PostgreSQL",
     "orm": "Prisma",
     "auth": "JWT",
     "language": "TypeScript",
@@ -15,22 +15,20 @@
     "pdf-parsing",
     "keyword-analysis",
     "dashboard",
-    "authentication",
-    "history-tracking",
-    "report-generation"
+    "history-management",
+    "authentication"
   ],
   "userFlows": [
-    "user-registration-login",
     "upload-resume-and-job-description",
-    "generate-match-analytics",
-    "view-scan-history",
-    "export-optimization-report"
+    "process-analysis-scoring",
+    "view-gap-analysis-dashboard",
+    "manage-submission-history"
   ],
   "dataModels": [
     "User",
-    "Scan",
-    "Resume",
-    "JobDescription"
+    "Submission",
+    "AnalysisResult",
+    "Keyword"
   ],
   "allowedRoutePrefixes": [
     "/api",

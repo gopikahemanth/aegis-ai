@@ -3,12 +3,68 @@ import { existsSync } from "node:fs";
 
 export class DuplicateProjectRootError extends Error {
   constructor(path: string) {
-    super(`[ProjectPathGuard] DUPLICATE PROJECT ROOT DETECTED in path: "${path}"`);
+    super(`DUPLICATE_PROJECT_ROOT: Path contains duplicate root segment: "${path}"`);
     this.name = "DuplicateProjectRootError";
   }
 }
 
+/**
+ * ProjectRootSingleton — canonical absolute project root, set once.
+ * All pipeline components should use this to avoid path concatenation bugs.
+ */
+export class ProjectRootSingleton {
+  private static _root: string | null = null;
+
+  public static setRoot(absolutePath: string): void {
+    const abs = resolve(absolutePath);
+    ProjectRootSingleton._root = abs;
+  }
+
+  public static getRoot(): string | null {
+    return ProjectRootSingleton._root;
+  }
+
+  public static reset(): void {
+    ProjectRootSingleton._root = null;
+  }
+}
+
 export class ProjectPathResolver {
+  /**
+   * Assert that a path does not contain duplicate root segments.
+   * Throws DuplicateProjectRootError if it does.
+   */
+  public static assertNoDuplicateRoot(path: string): void {
+    const normalized = path.replace(/\\/g, "/");
+    if (
+      normalized.includes("generated/project/generated/project") ||
+      normalized.includes("generated\\project\\generated\\project")
+    ) {
+      console.error(`[ProjectPathGuard] DUPLICATE PROJECT ROOT DETECTED: ${path}`);
+      throw new DuplicateProjectRootError(path);
+    }
+  }
+
+  /**
+   * Remove duplicate root segments from a path.
+   * e.g. "/root/generated/project/generated/project/src/App.tsx"
+   *   → "/root/generated/project/src/App.tsx"
+   */
+  public static deduplicateRoot(path: string, rootFragment: string): string {
+    const normalized = path.replace(/\\/g, "/");
+    const frag = rootFragment.replace(/\\/g, "/").replace(/\/$/, "");
+    const doubled = frag + "/" + frag.split("/").pop() + "/";
+    if (normalized.includes(doubled)) {
+      return normalized.replace(doubled, frag + "/");
+    }
+    // Also handle the full doubled path
+    const doubled2 = frag + "/" + frag + "/";
+    if (normalized.includes(doubled2)) {
+      return normalized.replace(doubled2, frag + "/");
+    }
+    return path;
+  }
+
   public static resolveProjectFile(projectRoot: string, targetPath: string): string {
     const normalizedRoot = normalize(projectRoot).replace(/\\/g, "/");
     let normalizedTarget = normalize(targetPath).replace(/\\/g, "/");
@@ -17,7 +73,10 @@ export class ProjectPathResolver {
     normalizedTarget = normalizedTarget.replace(/^(\.\/|\.\.\/)+/, "");
 
     // Hard Assertion & Error Guard for duplicate project root
-    if (normalizedTarget.includes("generated/project/generated/project") || normalizedTarget.includes("generated\\project\\generated\\project")) {
+    if (
+      normalizedTarget.includes("generated/project/generated/project") ||
+      normalizedTarget.includes("generated\\project\\generated\\project")
+    ) {
       console.error(`[ProjectPathGuard] DUPLICATE PROJECT ROOT DETECTED: ${targetPath}`);
       throw new DuplicateProjectRootError(targetPath);
     }

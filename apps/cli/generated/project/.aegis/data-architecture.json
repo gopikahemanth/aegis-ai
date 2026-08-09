@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "System users for authentication and history tracking",
+      "description": "System users for persistence and history tracking",
       "persistence": "database",
       "fields": [
         {
@@ -12,7 +12,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Unique identifier"
+          "description": "Primary identifier"
         },
         {
           "name": "email",
@@ -21,7 +21,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "User email address"
+          "description": "Unique email for auth"
         },
         {
           "name": "password",
@@ -33,19 +33,19 @@
           "description": "Hashed password"
         },
         {
-          "name": "scans",
+          "name": "submissions",
           "type": "customType",
           "isId": false,
-          "isNullable": true,
+          "isNullable": false,
           "isUnique": false,
-          "relationTo": "Scan",
+          "relationTo": "Submission",
           "description": "User scan history"
         }
       ]
     },
     {
-      "name": "Scan",
-      "description": "Historical record of a resume versus job description analysis",
+      "name": "Submission",
+      "description": "Individual resume analysis request",
       "persistence": "database",
       "fields": [
         {
@@ -55,7 +55,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Unique scan ID"
+          "description": "Primary identifier"
         },
         {
           "name": "userId",
@@ -67,13 +67,74 @@
           "description": "Owning user"
         },
         {
-          "name": "matchScore",
+          "name": "jobTitle",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Target job title"
+        },
+        {
+          "name": "resumeText",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Extracted text content"
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Timestamp"
+        },
+        {
+          "name": "result",
+          "type": "customType",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": "AnalysisResult",
+          "description": "Computed analysis"
+        }
+      ]
+    },
+    {
+      "name": "AnalysisResult",
+      "description": "Computed metrics from NLP scan",
+      "persistence": "database",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "isId": true,
+          "isNullable": false,
+          "isUnique": true,
+          "relationTo": null,
+          "description": "Primary identifier"
+        },
+        {
+          "name": "submissionId",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": true,
+          "relationTo": "Submission",
+          "description": "Owning submission"
+        },
+        {
+          "name": "score",
           "type": "number",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "NLP calculated score"
+          "description": "Match percentage"
         },
         {
           "name": "matchedKeywords",
@@ -91,57 +152,41 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Array of missing skills"
-        },
-        {
-          "name": "createdAt",
-          "type": "DateTime",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Timestamp of scan"
+          "description": "Array of missing keywords"
         }
       ]
     }
   ],
-  "databaseSchema": "model User {\n  id        String   @id @default(uuid())\n  email     String   @unique\n  password  String\n  scans     Scan[]\n}\n\nmodel Scan {\n  id              String   @id @default(uuid())\n  userId          String\n  user            User     @relation(fields: [userId], references: [id])\n  matchScore      Float\n  matchedKeywords Json\n  missingKeywords Json\n  createdAt       DateTime @default(now())\n}",
+  "databaseSchema": "generator client { provider = \"prisma-client-js\" } datasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") } model User { id String @id @default(uuid()) email String @unique password String submissions Submission[] } model Submission { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) jobTitle String resumeText String createdAt DateTime @default(now()) result AnalysisResult? } model AnalysisResult { id String @id @default(uuid()) submissionId String @unique submission Submission @relation(fields: [submissionId], references: [id]) score Float matchedKeywords Json missingKeywords Json }",
   "apis": [
     {
-      "path": "/api/v1/auth/register",
+      "path": "/api/v1/scan",
       "method": "POST",
-      "description": "Registers a new user",
-      "requestBodySchema": "{ \"email\": \"string\", \"password\": \"string\" }",
-      "responseBodySchema": "{ \"userId\": \"string\", \"token\": \"string\" }"
+      "description": "Upload PDF and Job Desc for analysis",
+      "requestBodySchema": "{ \"file\": File, \"jobDescription\": string }",
+      "responseBodySchema": "{ \"score\": number, \"matched\": string[], \"missing\": string[] }"
     },
     {
-      "path": "/api/v1/scan/analyze",
-      "method": "POST",
-      "description": "Uploads PDF and JD, parses, and returns match metrics",
-      "requestBodySchema": "FormData (resume: File, jobDescription: string)",
-      "responseBodySchema": "{ \"matchScore\": \"number\", \"matchedKeywords\": \"string[]\", \"missingKeywords\": \"string[]\" }"
-    },
-    {
-      "path": "/api/v1/scan/history",
+      "path": "/api/v1/history",
       "method": "GET",
-      "description": "Retrieves scan history for authenticated user",
-      "responseBodySchema": "Scan[]"
+      "description": "Retrieve user scan history",
+      "responseBodySchema": "Submission[]"
     }
   ],
   "hooks": [
     {
       "name": "useAnalyzeResume",
       "type": "mutation",
-      "endpoint": "/api/v1/scan/analyze",
-      "params": "formData: FormData",
-      "returns": "{ matchScore: number, matchedKeywords: string[], missingKeywords: string[] }"
+      "endpoint": "/api/v1/scan",
+      "params": "formData (file, jobDescription)",
+      "returns": "AnalysisResult"
     },
     {
       "name": "useScanHistory",
       "type": "query",
-      "endpoint": "/api/v1/scan/history",
-      "params": "userId: string",
-      "returns": "Scan[]"
+      "endpoint": "/api/v1/history",
+      "params": "none",
+      "returns": "Submission[]"
     }
   ]
 }

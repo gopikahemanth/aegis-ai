@@ -56,7 +56,10 @@ import { DomainConsistencyValidator } from "../semantics/domain-consistency-vali
 import { ValidationStateManager } from "../validation/validation-state.js";
 import { TransactionalRepairSystem } from "../healing/index.js";
 import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate } from "../governance/index.js";
-import { ProjectPathResolver } from "../utils/path-resolver.js";
+import { DomainModelGuard } from "../governance/domain-model-guard.js";
+import { StagedValidator } from "../validation/staged-validator.js";
+import { FinalSuccessGate } from "../validation/final-success-gate.js";
+import { ProjectPathResolver, ProjectRootSingleton } from "../utils/path-resolver.js";
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
   "express",
@@ -679,11 +682,21 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         specification,
       );
 
+    // Set canonical project root singleton to prevent duplicate path bugs
+    ProjectRootSingleton.setRoot(outputDirectory);
+    ProjectPathResolver.assertNoDuplicateRoot(outputDirectory);
+
     const activeContractApp = resolvedContract || ArchitectureResolver.loadContract(outputDirectory);
     if (!activeContractApp) {
       throw new Error(`ARCHITECTURE_CONTRACT_MISSING: No architecture contract found in generateApplication for projectPath: ${outputDirectory}`);
     }
     tasks = PlannerArchitectureGuard.filterTasks(tasks, activeContractApp);
+
+    // DomainModelGuard: Filter out tasks that introduce unauthorized domain models
+    const requiredDomainModels = activeContractApp.requiredModels || [];
+    if (requiredDomainModels.length > 0) {
+      tasks = DomainModelGuard.filterTasks(tasks, requiredDomainModels);
+    }
 
     this.execution.enter(
       ExecutionPhase.Architecture,
@@ -1430,6 +1443,14 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       0,
       (dodResult?.blockers ?? []).map((b: any) => b.detail)
     );
+
+    // ─── FINAL SUCCESS GATE (Strict Zero-False-Positive Check) ─────────────
+    const finalGateResult = FinalSuccessGate.verify(outputDirectory, loadedContract, build.success, build.stderr);
+    if (!finalGateResult.success) {
+      this.execution.complete();
+      console.error(`\n❌ FINAL SUCCESS GATE FAILED: ${finalGateResult.blockingReason}`);
+      throw new Error(`Project generation failed: ${finalGateResult.blockingReason}`);
+    }
 
     // Hard-fail when build is broken OR DoD required criteria failed (NO GIT COMMIT / NO DOCUMENTATION GENERATION / NO FALSE POSITIVE)
     if (!build.success || !dodPassed || archDiff.status !== "PASS") {

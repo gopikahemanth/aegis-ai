@@ -1,29 +1,30 @@
 import { Request, Response } from 'express';
-import pdfParse from 'pdf-parse';
-import { AnalysisService } from '../services/AnalysisService';
+import { extractTextFromPDF } from '../utils/pdfParser';
+import { performKeywordAnalysis } from '../utils/nlpEngine';
+import { prisma } from '../index'; // Assuming prisma client is exported from index
 
-export class ScanController {
-  public static async processScan(req: Request, res: Response): Promise<void> {
-    try {
-      if (!req.files || !('resume' in req.files) || !('jobDescription' in req.files)) {
-        res.status(400).json({ error: 'Both Resume and Job Description are required' });
-        return;
-      }
+export const analyzeResumeScan = async (req: Request, res: Response) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No resume provided' });
+    
+    const { jobDescription } = req.body;
+    const resumeText = await extractTextFromPDF(req.file.buffer);
+    
+    const analysis = performKeywordAnalysis({ resumeText, jobDescriptionText: jobDescription });
+    
+    const record = await prisma.submission.create({
+      data: {
+        userId: (req as any).user.id,
+        jobDescription,
+        analysisResult: {
+          create: analysis
+        }
+      },
+      include: { analysisResult: true }
+    });
 
-      const resumeBuffer = (req.files as any).resume[0].buffer;
-      const jdBuffer = (req.files as any).jobDescription[0].buffer;
-
-      const resumeData = await pdfParse(resumeBuffer);
-      const jdData = await pdfParse(jdBuffer);
-
-      const result = AnalysisService.analyze(resumeData.text, jdData.text);
-
-      res.status(200).json({
-        success: true,
-        data: result
-      });
-    } catch (error) {
-      res.json([]);
-    }
+    res.json(record);
+  } catch (error) {
+    res.json([]);
   }
-}
+};

@@ -760,11 +760,31 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         const localPrismaBin = join(absDir, "node_modules", ".bin", "prisma");
         const prismaBin = existsSync(localPrismaBin) ? `"${localPrismaBin}"` : "npx --yes prisma@6";
 
-        execSync(`${prismaBin} db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: absDir, stdio: "pipe" });
-        execSync(`${prismaBin} generate --schema="${schemaRelativePath}"`, { cwd: absDir, stdio: "pipe" });
-        patches.push(`Initialized SQLite database tables and generated Prisma client from ${schemaRelativePath}`);
+        // Always run prisma generate (requires no live database connection)
+        try {
+          execSync(`${prismaBin} generate --schema="${schemaRelativePath}"`, { cwd: absDir, stdio: "pipe" });
+          patches.push(`Generated Prisma client from ${schemaRelativePath}`);
+          console.log(`[Startup] ✓ Generated Prisma client from ${schemaRelativePath}`);
+        } catch (genErr: any) {
+          console.warn(`[Startup] Warning: Prisma client generation failed: ${genErr.message}`);
+        }
+
+        // Attempt db push (requires live database connection) — P1000 is classified as non-fatal warning
+        try {
+          execSync(`${prismaBin} db push --schema="${schemaRelativePath}" --accept-data-loss`, { cwd: absDir, stdio: "pipe" });
+          patches.push(`Pushed database schema (${dbProvider}) from ${schemaRelativePath}`);
+          console.log(`[Startup] ✓ Pushed database schema (${dbProvider}) from ${schemaRelativePath}`);
+        } catch (dbPushErr: any) {
+          const errMsg = dbPushErr.message || "";
+          if (errMsg.includes("P1000") || errMsg.includes("Authentication failed") || errMsg.includes("ECONNREFUSED")) {
+            console.warn(`[Startup] ⚠️ DATABASE_CONNECTION_REQUIRED: Could not connect to ${dbProvider} server (${errMsg}). Skipping live migration. Prisma Client has been generated.`);
+            patches.push(`DATABASE_CONNECTION_REQUIRED: Live ${dbProvider} migration skipped`);
+          } else {
+            console.warn(`[Startup] Warning: Prisma db push non-fatal issue: ${errMsg}`);
+          }
+        }
       } catch (dbPushErr: any) {
-        console.warn(`[Startup] Warning: Direct Prisma db push failed: ${dbPushErr.message}`);
+        console.warn(`[Startup] Warning: Direct Prisma execution failed: ${dbPushErr.message}`);
       }
     } catch (err: any) {
       console.warn(`[Startup] Warning: Prisma schema patch failed: ${err.message}`);

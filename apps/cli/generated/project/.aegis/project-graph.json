@@ -12,15 +12,39 @@
     }
   ],
   [
-    "server/controllers/analysisController.ts",
+    "scripts/dev.js",
     {
-      "path": "server/controllers/analysisController.ts",
+      "path": "scripts/dev.js",
+      "language": "js",
+      "imports": [],
+      "exports": [],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/controllers/scanController.ts",
+    {
+      "path": "server/controllers/scanController.ts",
       "language": "ts",
-      "imports": [
-        "../lib/prisma"
-      ],
+      "imports": [],
       "exports": [
         "analyzeResume"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/index.ts",
+    {
+      "path": "server/index.ts",
+      "language": "ts",
+      "imports": [
+        "./routes/authRoutes",
+        "./routes/scanRoutes",
+        "./middleware/errorHandler"
+      ],
+      "exports": [
+        "prisma"
       ],
       "referencedFiles": []
     }
@@ -36,6 +60,18 @@
       "exports": [
         "App",
         "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/controllers/scanController.ts",
+    {
+      "path": "src/controllers/scanController.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "analyzeResume"
       ],
       "referencedFiles": []
     }
@@ -141,24 +177,6 @@
     }
   ],
   [
-    "src/features/analyzer/services/analysisService.ts",
-    {
-      "path": "src/features/analyzer/services/analysisService.ts",
-      "language": "ts",
-      "imports": [],
-      "exports": [
-        "performScan",
-        "fetchHistory",
-        "getAll",
-        "get",
-        "create",
-        "update",
-        "remove"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
     "src/features/auth/LoginPage.tsx",
     {
       "path": "src/features/auth/LoginPage.tsx",
@@ -187,57 +205,30 @@
     }
   ],
   [
-    "src/features/dashboard/components/MatchOverview.tsx",
+    "src/features/dashboard/components/Dashboard.tsx",
     {
-      "path": "src/features/dashboard/components/MatchOverview.tsx",
+      "path": "src/features/dashboard/components/Dashboard.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "MatchOverview",
+        "Dashboard",
         "default"
       ],
       "referencedFiles": []
     }
   ],
   [
-    "src/features/dashboard/components/MatchRadar.tsx",
+    "src/features/dashboard/DashboardPage.tsx",
     {
-      "path": "src/features/dashboard/components/MatchRadar.tsx",
+      "path": "src/features/dashboard/DashboardPage.tsx",
       "language": "tsx",
-      "imports": [],
-      "exports": [
-        "MatchRadar",
-        "default"
+      "imports": [
+        "../../shared/components/Card",
+        "./components/MatchScoreChart",
+        "./components/KeywordPills"
       ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/dashboard/components/MatchRadarChart.tsx",
-    {
-      "path": "src/features/dashboard/components/MatchRadarChart.tsx",
-      "language": "tsx",
-      "imports": [],
       "exports": [
-        "MatchRadarChart",
         "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/scan/services/scanService.ts",
-    {
-      "path": "src/features/scan/services/scanService.ts",
-      "language": "ts",
-      "imports": [],
-      "exports": [
-        "performScan",
-        "getAll",
-        "get",
-        "create",
-        "update",
-        "remove"
       ],
       "referencedFiles": []
     }
@@ -309,13 +300,26 @@
       "language": "ts",
       "imports": [],
       "exports": [
-        "resumeService",
+        "scanService",
         "getAll",
         "get",
         "create",
         "update",
         "remove",
         "apiClient",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/components/Card.tsx",
+    {
+      "path": "src/shared/components/Card.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "Card",
         "default"
       ],
       "referencedFiles": []

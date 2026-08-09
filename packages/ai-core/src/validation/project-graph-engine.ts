@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from "node:fs";
+﻿import { existsSync, readFileSync, writeFileSync, readdirSync, statSync, mkdirSync } from "node:fs";
 import { join, extname, dirname, resolve, relative } from "node:path";
 import { createHash } from "node:crypto";
 
@@ -11,9 +11,9 @@ export interface ProjectGraphNode {
 }
 
 export interface GraphIssue {
-  type: "MISSING_MODULE" | "EXPORT_MISMATCH" | "CASE_MISMATCH" | "DUPLICATE_MODULE" | "INVALID_IMPORT";
+  type: "MISSING_MODULE" | "EXPORT_MISMATCH" | "CASE_MISMATCH" | "DUPLICATE_MODULE" | "INVALID_IMPORT" | "PRISMA_SCHEMA_MISMATCH";
   sourceFile: string;
-  importPath: string;
+  importPath?: string;
   message: string;
   suggestedFix?: string;
 }
@@ -31,7 +31,8 @@ export interface ProjectGraphValidationResult {
  *  2. Export mismatches (importing named export 'api' when file only has default export 'apiClient')
  *  3. Case mismatches (DashboardPage.tsx vs dashboardPage.tsx)
  *  4. Duplicate module definitions
- *  5. Deterministic import auto-fixes
+ *  5. Prisma / Database model & field mismatches
+ *  6. Deterministic import & export auto-fixes
  */
 export class ProjectGraphEngine {
   private nodes: Map<string, ProjectGraphNode> = new Map();
@@ -82,10 +83,52 @@ export class ProjectGraphEngine {
     this.buildGraph(projectRoot);
     const issues: GraphIssue[] = [];
 
+    // Load Prisma schema models for database contract validation
+    const prismaModels = new Map<string, Set<string>>();
+    const prismaSchemaPath = join(projectRoot, "prisma", "schema.prisma");
+    if (existsSync(prismaSchemaPath)) {
+      try {
+        const schemaContent = readFileSync(prismaSchemaPath, "utf8");
+        const modelBlocks = schemaContent.split(/model\s+/);
+        for (const block of modelBlocks.slice(1)) {
+          const modelName = block.split(/\s|\{/)[0].trim();
+          const fieldMatches = block.match(/^\s+([a-zA-Z0-9_$]+)\s+/gm);
+          if (modelName && fieldMatches) {
+            const fields = new Set(fieldMatches.map(f => f.trim().split(/\s+/)[0]));
+            prismaModels.set(modelName.toLowerCase(), fields);
+          }
+        }
+      } catch {}
+    }
+
     for (const [relPath, node] of this.nodes.entries()) {
       const sourceAbs = join(projectRoot, relPath);
       const sourceDir = dirname(sourceAbs);
       const content = readFileSync(sourceAbs, "utf8");
+
+      // Validate Prisma API invocations against schema
+      if (prismaModels.size > 0 && (relPath.startsWith("server") || relPath.startsWith("src"))) {
+        const prismaCallRegex = /prisma\.([a-zA-Z0-9_$]+)\.(create|findUnique|findFirst|findMany|update|delete)\s*\(\s*\{[\s\S]*?data:\s*\{([^}]+)\}/g;
+        let pMatch: RegExpExecArray | null;
+        while ((pMatch = prismaCallRegex.exec(content)) !== null) {
+          const modelName = pMatch[1].toLowerCase();
+          const fieldsBlock = pMatch[2];
+          const schemaFields = prismaModels.get(modelName);
+
+          if (schemaFields) {
+            const usedFields = fieldsBlock.split(",").map(line => line.split(":")[0].trim()).filter(f => f && !f.startsWith("//"));
+            for (const field of usedFields) {
+              if (field && !schemaFields.has(field) && !field.startsWith("select") && !field.startsWith("include")) {
+                issues.push({
+                  type: "PRISMA_SCHEMA_MISMATCH",
+                  sourceFile: relPath,
+                  message: `PRISMA_SCHEMA_MISMATCH: Model "${pMatch[1]}" does not contain field "${field}" referenced in ${relPath}.`,
+                });
+              }
+            }
+          }
+        }
+      }
 
       for (const impPath of node.imports) {
         if (impPath.startsWith("node:")) continue;
@@ -146,7 +189,7 @@ export class ProjectGraphEngine {
     // Auto-fix unambiguous export mismatches
     let fixedCount = 0;
     for (const issue of issues) {
-      if (issue.type === "EXPORT_MISMATCH" && issue.suggestedFix) {
+      if (issue.type === "EXPORT_MISMATCH" && issue.suggestedFix && issue.importPath) {
         const sourceAbs = join(projectRoot, issue.sourceFile);
         try {
           let content = readFileSync(sourceAbs, "utf8");

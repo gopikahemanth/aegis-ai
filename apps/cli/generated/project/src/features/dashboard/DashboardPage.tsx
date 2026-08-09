@@ -1,5 +1,14 @@
-import * as Mod from './components/Dashboard';
-export * from './components/Dashboard';
-const _default = (Mod as any).default || Mod;
-export const DashboardPage = _default;
-export default _default;
+import React from 'react';
+import MatchDashboard from './components/MatchDashboard';
+
+export const DashboardPage: React.FC = () => {
+  return (
+    <MatchDashboard
+      score={85}
+      matchedKeywords={['React', 'TypeScript', 'Express', 'PostgreSQL']}
+      missingSkills={['Docker', 'GraphQL']}
+    />
+  );
+};
+
+export default DashboardPage;

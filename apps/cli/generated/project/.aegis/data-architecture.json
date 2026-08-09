@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "System users with hashed credentials",
+      "description": "System users for history tracking",
       "persistence": "database",
       "fields": [
         {
@@ -12,7 +12,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "UUID primary key"
+          "description": "Primary identifier"
         },
         {
           "name": "email",
@@ -30,22 +30,22 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Bcrypt hashed password"
+          "description": "Hashed password"
         },
         {
           "name": "scans",
           "type": "customType",
           "isId": false,
-          "isNullable": true,
+          "isNullable": false,
           "isUnique": false,
-          "relationTo": "ResumeScan",
-          "description": "Relation to history"
+          "relationTo": "ScanResult",
+          "description": "User scan history"
         }
       ]
     },
     {
-      "name": "ResumeScan",
-      "description": "Stores individual analysis results and metadata",
+      "name": "ScanResult",
+      "description": "Persistence of resume analysis results",
       "persistence": "database",
       "fields": [
         {
@@ -55,7 +55,7 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "UUID"
+          "description": "Primary identifier"
         },
         {
           "name": "userId",
@@ -64,16 +64,7 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": "User",
-          "description": "Owner ID"
-        },
-        {
-          "name": "jobTitle",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Target job title"
+          "description": "Owner of scan"
         },
         {
           "name": "matchScore",
@@ -82,7 +73,7 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Calculated similarity percentage"
+          "description": "Calculated match percentage"
         },
         {
           "name": "missingKeywords",
@@ -91,7 +82,16 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "JSON array of missing terms"
+          "description": "List of missing skills"
+        },
+        {
+          "name": "suggestions",
+          "type": "Json",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "AI-generated improvement advice"
         },
         {
           "name": "createdAt",
@@ -100,48 +100,47 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Timestamp"
+          "description": "Timestamp of scan"
         }
       ]
     }
   ],
-  "databaseSchema": "datasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") } model User { id String @id @default(uuid()) email String @unique password String scans ResumeScan[] } model ResumeScan { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) jobTitle String matchScore Float missingKeywords Json createdAt DateTime @default(now()) }",
+  "databaseSchema": "generator client { provider = \"prisma-client-js\" }\ndatasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") }\n\nmodel User {\n  id        String       @id @default(uuid())\n  email     String       @unique\n  password  String\n  scans     ScanResult[]\n}\n\nmodel ScanResult {\n  id              String   @id @default(uuid())\n  userId          String\n  user            User     @relation(fields: [userId], references: [id])\n  matchScore      Float\n  missingKeywords Json\n  suggestions     Json\n  createdAt       DateTime @default(now())\n}",
   "apis": [
     {
-      "path": "/api/v1/auth/register",
+      "path": "/api/v1/scan",
       "method": "POST",
-      "description": "Registers new user",
-      "requestBodySchema": "{ email: string, password: string }",
-      "responseBodySchema": "{ token: string }"
+      "description": "Upload resume, process via NLP, and return match analysis",
+      "requestBodySchema": "{ \"resume\": \"File\", \"jobDescription\": \"string\" }",
+      "responseBodySchema": "{ \"score\": number, \"missingKeywords\": string[], \"suggestions\": string[] }"
     },
     {
-      "path": "/api/v1/scan/analyze",
-      "method": "POST",
-      "description": "Uploads PDF and job description for analysis",
-      "requestBodySchema": "Multipart form data with 'resume' file and 'jobDescription' string",
-      "responseBodySchema": "{ scanId: string, matchScore: number, missingKeywords: string[] }"
-    },
-    {
-      "path": "/api/v1/scan/history",
+      "path": "/api/v1/history",
       "method": "GET",
-      "description": "Fetches user scan history",
-      "responseBodySchema": "ResumeScan[]"
+      "description": "Fetch user scan history",
+      "responseBodySchema": "ScanResult[]"
+    },
+    {
+      "path": "/api/v1/history/:id",
+      "method": "DELETE",
+      "description": "Delete a specific scan record",
+      "responseBodySchema": "{ \"success\": boolean }"
     }
   ],
   "hooks": [
     {
       "name": "useAnalyzeResume",
       "type": "mutation",
-      "endpoint": "/api/v1/scan/analyze",
+      "endpoint": "/api/v1/scan",
       "params": "formData (file + jobDescription)",
       "returns": "analysisResult"
     },
     {
       "name": "useScanHistory",
       "type": "query",
-      "endpoint": "/api/v1/scan/history",
-      "params": "none",
-      "returns": "ResumeScan[]"
+      "endpoint": "/api/v1/history",
+      "params": "void",
+      "returns": "ScanResult[]"
     }
   ]
 }

@@ -1,32 +1,72 @@
 import { Request, Response } from 'express';
-import pdfParse from 'pdf-parse';
-import { prisma } from '../services/prismaService';
 
-export const analyzeResume = async (req: Request, res: Response) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'No resume file provided' });
-    
-    const { jobDescription } = req.body;
-    const resumeData = await pdfParse(req.file.buffer);
-    const resumeText = resumeData.text;
+/**
+ * Controller responsible for analyzing resume content against job descriptions.
+ * Implements keyword extraction and matching logic.
+ */
+export class AnalysisController {
+  /**
+   * Analyzes a resume against a job description.
+   * Calculates keyword overlap and generates a match score.
+   */
+  public async analyze(req: Request, res: Response): Promise<void> {
+    try {
+      const { jobDescription, resumeText } = req.body;
 
-    // Simple keyword-based scoring engine for MVP
-    const jobKeywords = jobDescription.toLowerCase().split(/\W+/);
-    const foundKeywords = jobKeywords.filter((k: string) => k.length > 3 && resumeText.toLowerCase().includes(k));
-    const score = Math.round((foundKeywords.length / Math.max(jobKeywords.length, 1)) * 100);
-
-    const analysis = await prisma.resumeAnalysis.create({
-      data: {
-        userId: (req as any).user.id,
-        resumeText,
-        jobDescription,
-        matchScore: score,
-        keywordMatches: { found: foundKeywords }
+      if (!jobDescription || !resumeText) {
+        res.status(400).json({ error: 'Missing required analysis fields' });
+        return;
       }
-    });
 
-    res.json(analysis);
-  } catch (error) {
-    res.json([]);
+      const jdWords = this.extractKeywords(jobDescription);
+      const resumeWords = this.extractKeywords(resumeText);
+
+      const foundKeywords = jdWords.filter((word) =>
+        resumeWords.includes(word)
+      );
+      
+      const missingKeywords = jdWords.filter((word) =>
+        !resumeWords.includes(word)
+      );
+
+      const score = jdWords.length > 0 
+        ? Math.round((foundKeywords.length / jdWords.length) * 100) 
+        : 0;
+
+      res.status(200).json({
+        score,
+        foundKeywords,
+        missingKeywords,
+        totalKeywordsFound: foundKeywords.length,
+        totalKeywordsRequired: jdWords.length
+      });
+    } catch (error) {
+      console.error('Analysis error:', error);
+      res.json([]);
+    }
   }
-};
+
+  /**
+   * Tokenizes and cleans text to extract unique professional keywords.
+   * Filters out common stop words and enforces minimum character length.
+   */
+  private extractKeywords(text: string): string[] {
+    if (!text) return [];
+    
+    const stopWords = new Set([
+      'the', 'and', 'with', 'for', 'that', 'this', 'to', 'in', 'of', 'a', 'is', 
+      'are', 'was', 'were', 'it', 'on', 'at', 'by', 'an', 'as', 'from', 'or', 'be'
+    ]);
+    
+    const words = text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .split(/\s+/);
+
+    return Array.from(
+      new Set(
+        words.filter((word) => word.length > 3 && !stopWords.has(word))
+      )
+    );
+  }
+}

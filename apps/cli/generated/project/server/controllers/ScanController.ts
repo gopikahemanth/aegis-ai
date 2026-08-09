@@ -1,27 +1,36 @@
 import { Request, Response } from 'express';
-import { prisma } from '../lib/prisma';
+import { PrismaClient } from '@prisma/client';
+import pdfParse from 'pdf-parse';
 
-export const analyzeResume = async (req: Request, res: Response) => {
+const prisma = new PrismaClient();
+
+export const createScan = async (req: Request, res: Response) => {
   try {
-    const { userId, jobDescription, resumeText } = req.body;
+    const { jobTitle, jobDescription } = req.body;
+    const file = req.file;
 
-    // Simulation of NLP logic to be expanded into natural/compromise engine
-    const keywords = jobDescription.toLowerCase().split(' ').filter((w: string) => w.length > 5);
-    const matched = keywords.filter((k: string) => resumeText.toLowerCase().includes(k));
-    const score = Math.round((matched.length / Math.max(keywords.length, 1)) * 100);
+    if (!file) return res.status(400).json({ error: 'Resume file required' });
 
-    const scan = await prisma.resumeScan.create({
+    const parsed = await pdfParse(file.buffer);
+    const resumeText = parsed.text;
+
+    // Simplified NLP logic for backend persistence
+    const jobWords = jobDescription.toLowerCase().split(/\s+/);
+    const resumeWords = new Set(resumeText.toLowerCase().split(/\s+/));
+    const matches = jobWords.filter((w: string) => resumeWords.has(w));
+    const score = Math.round((matches.length / (jobWords.length || 1)) * 100);
+
+    const session = await prisma.scanSession.create({
       data: {
-        userId,
-        rawText: resumeText,
+        userId: (req as any).user.id,
+        jobTitle,
         jobDescription,
+        resumeText,
         matchScore: score,
-        matchedKeywords: matched,
-        missingSkills: keywords.filter((k: string) => !matched.includes(k))
       }
     });
 
-    res.status(201).json(scan);
+    res.status(201).json(session);
   } catch (error) {
     res.json([]);
   }

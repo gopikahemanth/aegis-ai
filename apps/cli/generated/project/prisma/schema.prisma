@@ -8,21 +8,30 @@ datasource db {
 }
 
 model User {
-  id            String       @id @default(uuid())
-  email         String       @unique
-  passwordHash  String
-  createdAt     DateTime     @default(now())
-  resumeScans   ResumeScan[]
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+  scanSessions ScanSession[]
 }
 
-model ResumeScan {
-  id              String   @id @default(uuid())
+model ScanSession {
+  id              String         @id @default(uuid())
   userId          String
-  user            User     @relation(fields: [userId], references: [id])
-  rawText         String   @db.Text
-  jobDescription  String   @db.Text
+  user            User           @relation(fields: [userId], references: [id])
+  jobTitle        String
+  jobDescription  String
+  resumeText      String
   matchScore      Int
-  matchedKeywords String[]
-  missingSkills   String[]
-  createdAt       DateTime @default(now())
+  createdAt       DateTime       @default(now())
+  matchedKeywords KeywordMatch[]
+}
+
+model KeywordMatch {
+  id            String      @id @default(uuid())
+  scanSessionId String
+  scanSession   ScanSession @relation(fields: [scanSessionId], references: [id])
+  keyword       String
+  isMatched     Boolean
+  category      String?
 }

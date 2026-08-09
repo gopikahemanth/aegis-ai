@@ -1,20 +1,44 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: '/api',
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-export const scanResume = async (file: File, jobDescription: string) => {
-  const formData = new FormData();
-  formData.append('resume', file);
-  formData.append('jobDescription', jobDescription);
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-  const { data } = await api.post('/analyze', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
-  return data;
+export const resumeApi = {
+  uploadAndAnalyze: async (resumeFile: File, jobDescription: string) => {
+    const formData = new FormData();
+    formData.append('resume', resumeFile);
+    formData.append('jobDescription', jobDescription);
+    const response = await apiClient.post('/scans', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  getScanHistory: async () => {
+    const response = await apiClient.get('/scans');
+    return response.data;
+  },
 };
-export { api };
+
+export default apiClient;
+
+type API_BASE_URL = any;
+
+export { API_BASE_URL };
 
 export const getAll = async (...args: any[]) => [];
 export const get = async (...args: any[]) => ({});
@@ -22,7 +46,4 @@ export const create = async (...args: any[]) => ({});
 export const update = async (...args: any[]) => ({});
 export const remove = async (...args: any[]) => ({});
 
-export const apiClient: any = (globalThis as any).apiClient || (globalThis as any).api || { get: async () => ({ data: [] }), post: async () => ({ data: {} }), put: async () => ({ data: {} }), delete: async () => ({ data: {} }), patch: async () => ({ data: {} }) };
-
-const _apiDefaultShim = (globalThis as any).api || (globalThis as any).apiClient || { get: async () => ({ data: [] }), post: async () => ({ data: {} }), put: async () => ({ data: {} }), delete: async () => ({ data: {} }), patch: async () => ({ data: {} }) };
-export default _apiDefaultShim;
+export const api: any = (globalThis as any).api || (globalThis as any).apiClient || { get: async () => ({ data: [] }), post: async () => ({ data: {} }), put: async () => ({ data: {} }), delete: async () => ({ data: {} }), patch: async () => ({ data: {} }) };

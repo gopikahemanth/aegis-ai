@@ -1,24 +1,28 @@
-import React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AppRoutes } from "./routes";
+import React, { Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Layout } from './shared/components/Layout';
+import { Spinner } from './shared/components/Spinner';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+const Dashboard = React.lazy(() => import('./features/dashboard/DashboardPage'));
+const NewScan = React.lazy(() => import('./features/scan/NewScanPage'));
 
-export function App(props: any) {
+const queryClient = new QueryClient();
+
+export default function App(props: any) {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-        <AppRoutes />
-      </div>
+      <BrowserRouter>
+        <Layout>
+          <Suspense fallback={<Spinner />}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/scan/new" element={<NewScan />} />
+            </Routes>
+          </Suspense>
+        </Layout>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
-
-export default App;
+export { App };

@@ -1,11 +1,22 @@
-import { ProviderError } from "./provider-error.js";
+﻿import { ProviderError } from "./provider-error.js";
 import { Models } from "./models.js";
 import type { AIProvider, ChatMessage, ChatOptions } from "./base.js";
+
+export type ProviderHealthState =
+  | "HEALTHY"
+  | "DEGRADED"
+  | "RATE_LIMITED"
+  | "QUOTA_EXHAUSTED"
+  | "AUTH_FAILED"
+  | "UNAVAILABLE"
+  | "COOLDOWN";
 
 export class FailoverProvider implements AIProvider {
   public readonly name = "failover";
   private readonly disabledUntil = new Map<string, number>();
-  private readonly permanentlyDisabled = new Set<string>(); // 402 payment required
+  private readonly permanentlyDisabled = new Set<string>();
+  private readonly sessionDisabled = new Set<string>();
+  private readonly healthStates = new Map<string, ProviderHealthState>();
 
   constructor(
     private readonly providers: AIProvider[],
@@ -15,6 +26,20 @@ export class FailoverProvider implements AIProvider {
     if (providers.length === 0) {
       throw new Error("FailoverProvider requires at least one provider.");
     }
+    for (const p of providers) {
+      this.healthStates.set(p.name, "HEALTHY");
+    }
+  }
+
+  public getHealthState(providerName: string): ProviderHealthState {
+    if (this.permanentlyDisabled.has(providerName) || this.sessionDisabled.has(providerName)) {
+      return "QUOTA_EXHAUSTED";
+    }
+    const expiry = this.disabledUntil.get(providerName);
+    if (expiry && Date.now() < expiry) {
+      return "COOLDOWN";
+    }
+    return this.healthStates.get(providerName) || "HEALTHY";
   }
 
   async chat(
@@ -46,44 +71,21 @@ export class FailoverProvider implements AIProvider {
     for (const [pName, expiry] of this.disabledUntil.entries()) {
       if (now >= expiry) {
         this.disabledUntil.delete(pName);
-      }
-    }
-
-    // Count available (non-permanent, non-temporarily-disabled) providers
-    const available = this.providers.filter(p =>
-      !this.permanentlyDisabled.has(p.name) &&
-      !(this.disabledUntil.has(p.name) && Date.now() < (this.disabledUntil.get(p.name) ?? 0))
-    );
-
-    if (available.length === 0) {
-      // Find soonest expiry among temporary disables (excluding permanent)
-      const tempDisables = [...this.disabledUntil.entries()]
-        .filter(([name]) => !this.permanentlyDisabled.has(name));
-      if (tempDisables.length > 0) {
-        const soonest = Math.min(...tempDisables.map(([, exp]) => exp));
-        const waitMs = Math.max(soonest - Date.now(), 0);
-        if (waitMs > 0) {
-          console.log(`[FailoverProvider] All providers temporarily rate-limited. Waiting ${Math.round(waitMs / 1000)}s for soonest provider to recover...`);
-          await new Promise(resolve => setTimeout(resolve, waitMs + 500));
+        if (!this.sessionDisabled.has(pName) && !this.permanentlyDisabled.has(pName)) {
+          this.healthStates.set(pName, "HEALTHY");
         }
-        // Clear expired disables
-        for (const [pName, expiry] of this.disabledUntil.entries()) {
-          if (Date.now() >= expiry) this.disabledUntil.delete(pName);
-        }
-      } else {
-        console.log("[FailoverProvider] All providers permanently disabled — resetting temporary disables.");
-        this.disabledUntil.clear();
       }
     }
 
     for (const provider of this.providers) {
+      if (this.sessionDisabled.has(provider.name) || this.permanentlyDisabled.has(provider.name)) {
+        continue;
+      }
       const until = this.disabledUntil.get(provider.name);
       if (until && Date.now() < until) {
         continue;
       }
       let providerAttempts = 0;
-      let quotaAttempts = 0;
-      const maxQuotaAttempts = 30;
       let delay = this.initialDelayMs;
 
       while (providerAttempts < this.maxRetries) {
@@ -103,51 +105,12 @@ export class FailoverProvider implements AIProvider {
             };
           }
 
-          if (activeOptions?.model) {
-            const requestedModel = activeOptions.model;
-            let isCompatible = false;
-
-            if (providerName in Models) {
-              const pConfig = Models[providerName];
-              if (
-                pConfig.default === requestedModel ||
-                pConfig.strong === requestedModel ||
-                pConfig.balanced === requestedModel ||
-                pConfig.fast === requestedModel
-              ) {
-                isCompatible = true;
-              }
-            }
-
-            if (!isCompatible) {
-              if (provider.name === "gemini" && requestedModel.toLowerCase().includes("gemini")) {
-                isCompatible = true;
-              } else if (provider.name === "groq" && (requestedModel.toLowerCase().includes("llama") || requestedModel.toLowerCase().includes("mixtral"))) {
-                isCompatible = true;
-              } else if (provider.name === "openai" && requestedModel.toLowerCase().includes("gpt")) {
-                isCompatible = true;
-              } else if (provider.name === "ollama" && requestedModel.toLowerCase().includes("llama")) {
-                isCompatible = true;
-              } else if (provider.name === "openrouter" && (requestedModel.toLowerCase().includes("deepseek") || requestedModel.includes("/"))) {
-                isCompatible = true;
-              }
-            }
-
-            if (!isCompatible && providerName in Models) {
-              console.log(
-                `[FailoverProvider] Overriding model "${requestedModel}" to default "${Models[providerName].default}" for provider "${provider.name}"`
-              );
-              activeOptions = {
-                ...activeOptions,
-                model: Models[providerName].default
-              };
-            }
-          }
-
           console.log(
             `[FailoverProvider] Attempting chat with provider: ${provider.name} (attempt ${providerAttempts}/${this.maxRetries})`
           );
-          return await provider.chat(messages, activeOptions);
+          const result = await provider.chat(messages, activeOptions);
+          this.healthStates.set(provider.name, "HEALTHY");
+          return result;
         } catch (error: any) {
           lastError = error;
           console.warn(
@@ -155,78 +118,42 @@ export class FailoverProvider implements AIProvider {
             error.message
           );
 
-          let retryAfter = error instanceof ProviderError ? error.retryAfter : undefined;
-          if (retryAfter === undefined && error.message) {
-            const match = error.message.match(/retry in ([0-9.]+)\s*s/i);
-            if (match) {
-              retryAfter = Math.ceil(parseFloat(match[1]));
-            }
-          }
-          if (retryAfter === undefined && error.details) {
-            try {
-              const detailsStr = JSON.stringify(error.details);
-              const match = detailsStr.match(/"retryDelay":\s*"(\d+)s?"/i) || detailsStr.match(/retry\s*in\s*(\d+)s?/i);
-              if (match) retryAfter = parseInt(match[1], 10);
-            } catch {}
-          }
-
           const is402 = error.message?.includes("402") || error.message?.toLowerCase().includes("payment required");
           const isFetchFailed = error.message?.includes("fetch failed") || error.message?.includes("ECONNREFUSED");
           const is429 = error.message?.includes("429") || error.message?.includes("quota") ||
             error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.toLowerCase().includes("rate limit");
 
           if (is402) {
-            console.warn(`[FailoverProvider] 402 Payment Required on provider "${provider.name}". Permanently disabling for this session.`);
+            console.warn(`[FailoverProvider] 402 Payment Required on provider "${provider.name}". Session disabled.`);
             this.permanentlyDisabled.add(provider.name);
-            this.disabledUntil.set(provider.name, Date.now() + 86400000); // 24h
+            this.healthStates.set(provider.name, "AUTH_FAILED");
             break;
           }
 
           if (isFetchFailed) {
             console.warn(`[FailoverProvider] Connection failed on provider "${provider.name}". Disabling for 10 minutes.`);
             this.disabledUntil.set(provider.name, Date.now() + 600000);
+            this.healthStates.set(provider.name, "UNAVAILABLE");
             break;
           }
 
           if (is429) {
-            const isDailyQuota = error.message?.includes("GenerateRequestsPerDay") || error.message?.includes("limit: 500") || error.message?.includes("PerDay");
-            if (isDailyQuota) {
-              console.warn(`[FailoverProvider] Quota rate limit on provider "${provider.name}". Disabling for 60s cooldown and failing over to next provider.`);
-              this.disabledUntil.set(provider.name, Date.now() + 60000); // 60s cooldown instead of 24h
-              break;
-            }
-
-            if (retryAfter !== undefined && retryAfter <= 60 && quotaAttempts < maxQuotaAttempts) {
-              quotaAttempts++;
-              providerAttempts--;
-              const sleepSec = Math.max(Math.min(retryAfter, 60), 1);
-              console.log(`[FailoverProvider] 429 Rate Limit on provider "${provider.name}". Cooldown ${quotaAttempts}/${maxQuotaAttempts}: Sleeping for ${sleepSec}s as requested by provider...`);
-              await new Promise((resolve) => setTimeout(resolve, sleepSec * 1000));
-              continue;
-            }
-            const disableSec = Math.max(retryAfter ?? 15, 15);
-            this.disabledUntil.set(provider.name, Date.now() + disableSec * 1000);
-            console.warn(
-              `[FailoverProvider] 429 Rate Limit on provider "${provider.name}". Disabling for ${disableSec}s and failing over immediately.`
-            );
+            console.warn(`[FailoverProvider] ⚡ 429 Quota Exhausted on provider "${provider.name}". Marking QUOTA_EXHAUSTED for current generation session and failing over immediately...`);
+            this.sessionDisabled.add(provider.name);
+            this.healthStates.set(provider.name, "QUOTA_EXHAUSTED");
             break;
           }
 
           if (providerAttempts < this.maxRetries) {
             const nextDelay = Math.min(delay, 5000);
-            console.log(
-              `[FailoverProvider] Backing off for ${nextDelay}ms...`
-            );
             await new Promise((resolve) => setTimeout(resolve, nextDelay));
             delay = Math.min(delay * 2, 5000);
           }
         }
       }
 
-      console.warn(
-        `[FailoverProvider] Provider ${provider.name} exhausted all attempts. Disabling provider for 15s, falling back.`
-      );
       this.disabledUntil.set(provider.name, Date.now() + 15000);
+      this.healthStates.set(provider.name, "DEGRADED");
     }
 
     throw new Error(

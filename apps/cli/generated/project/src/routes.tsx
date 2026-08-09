@@ -5,7 +5,7 @@ import UploadPage from "./features/upload/UploadPage";
 import LoginPage from "./features/auth/LoginPage";
 import MatchDashboard from "./features/analysis/components/MatchDashboard";
 
-export function AppRoutes(props: any) {
+export function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>

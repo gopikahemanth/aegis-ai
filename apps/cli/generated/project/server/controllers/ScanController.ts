@@ -1,36 +1,44 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import pdfParse from 'pdf-parse';
+import * as pdfParse from "pdf-parse";
+import natural from 'natural';
 
-const prisma = new PrismaClient();
-
-export const createScan = async (req: Request, res: Response) => {
+export const analyzeResume = async (req: Request, res: Response) => {
   try {
-    const { jobTitle, jobDescription } = req.body;
-    const file = req.file;
+    if (!req.file || !req.body.jobDescription) {
+      return res.status(400).json({ error: 'Missing resume or job description.' });
+    }
 
-    if (!file) return res.status(400).json({ error: 'Resume file required' });
+    const resumeData = await pdf(req.file.buffer);
+    const resumeText = resumeData.text.toLowerCase();
+    const jobDescription = (req.body.jobDescription as string).toLowerCase();
 
-    const parsed = await pdfParse(file.buffer);
-    const resumeText = parsed.text;
+    const tokenizer = new natural.WordTokenizer();
+    const resumeTokens = new Set(tokenizer.tokenize(resumeText));
+    const jobTokens = tokenizer.tokenize(jobDescription);
+    
+    const matchedKeywords: string[] = [];
+    const missingKeywords: string[] = [];
 
-    // Simplified NLP logic for backend persistence
-    const jobWords = jobDescription.toLowerCase().split(/\s+/);
-    const resumeWords = new Set(resumeText.toLowerCase().split(/\s+/));
-    const matches = jobWords.filter((w: string) => resumeWords.has(w));
-    const score = Math.round((matches.length / (jobWords.length || 1)) * 100);
-
-    const session = await prisma.scanSession.create({
-      data: {
-        userId: (req as any).user.id,
-        jobTitle,
-        jobDescription,
-        resumeText,
-        matchScore: score,
+    jobTokens.forEach(token => {
+      if (token.length > 3) {
+        if (resumeTokens.has(token)) {
+          if (!matchedKeywords.includes(token)) matchedKeywords.push(token);
+        } else {
+          if (!missingKeywords.includes(token)) missingKeywords.push(token);
+        }
       }
     });
 
-    res.status(201).json(session);
+    const matchScore = jobTokens.length > 0 
+      ? Math.round((matchedKeywords.length / jobTokens.length) * 100) 
+      : 0;
+
+    res.json({
+      matchScore: Math.min(matchScore, 100),
+      matchedKeywords,
+      missingKeywords: missingKeywords.slice(0, 10),
+      summary: `Your resume matches ${matchedKeywords.length} key terms found in the job description.`
+    });
   } catch (error) {
     res.json([]);
   }

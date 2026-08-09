@@ -1,5 +1,6 @@
-﻿import { ArchitectureContractV1 } from "../governance/architecture-resolver.js";
+import { ArchitectureContractV1 } from "../governance/architecture-resolver.js";
 import { DependencyClosureValidator } from "./dependency-closure-validator.js";
+import { ProjectGraphEngine } from "./project-graph-engine.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -60,13 +61,16 @@ export class FinalSuccessGate {
       critical: true,
     });
 
-    // 3. Implementation
-    const prismaPath = join(projectRoot, "prisma", "schema.prisma");
+    // 3. Project Graph & Implementation Closure
+    const graphEngine = new ProjectGraphEngine();
+    const graphResult = graphEngine.validateGraph(projectRoot);
     const closure = DependencyClosureValidator.validate(projectRoot);
+    const graphValid = graphResult.valid && closure.valid;
+
     items.push({
       name: "Implementation",
-      passed: closure.valid,
-      message: closure.valid ? "Source modules present." : "Missing modules detected.",
+      passed: graphValid,
+      message: graphValid ? "Source modules & imports valid." : "Missing modules or graph mismatches detected.",
       critical: true,
     });
 

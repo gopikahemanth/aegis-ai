@@ -22,41 +22,41 @@
     "ormProvenance": "default"
   },
   "language": "TypeScript",
-  "styling": "TailwindCSS and ShadcnUI",
+  "styling": "TailwindCSS",
   "packageManager": "pnpm",
   "authentication": "JWT",
   "requiredLibraries": [
     "pdf-parse",
     "openai",
-    "prisma",
-    "jsonwebtoken",
-    "bcrypt",
-    "react-hook-form",
+    "drizzle-orm",
     "zod",
-    "recharts",
+    "react-hook-form",
+    "lucide-react",
     "jspdf",
-    "aws-sdk"
+    "next-auth",
+    "pg"
   ],
   "requiredFeatures": [
     "auth",
-    "resume-upload",
-    "parsing-engine",
-    "comparison-logic",
-    "dashboard",
-    "report-generation"
+    "upload",
+    "parsing",
+    "scoring",
+    "history",
+    "export"
   ],
   "requiredRoutes": [
-    "user-registration-flow",
-    "resume-upload-and-parsing",
-    "job-description-submission",
-    "view-matching-analytics",
-    "download-optimization-report"
+    "authenticate-user",
+    "upload-resume-and-job-description",
+    "analyze-keyword-match",
+    "view-scan-history",
+    "export-analysis-report"
   ],
   "requiredModels": [
     "User",
+    "Scan",
     "Resume",
     "JobDescription",
-    "MatchResult"
+    "AnalysisResult"
   ],
   "projectStructure": {
     "src": "Frontend source directory",

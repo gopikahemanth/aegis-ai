@@ -61,6 +61,7 @@ import { StagedValidator } from "../validation/staged-validator.js";
 import { FinalSuccessGate } from "../validation/final-success-gate.js";
 import { GeneratedFileValidator } from "../validation/generated-file-validator.js";
 import { DeterministicProjectFixer } from "../validation/deterministic-project-fixer.js";
+import { ProjectGraphEngine } from "../validation/project-graph-engine.js";
 import { AppServerRunner } from "../startup/app-server-runner.js";
 import { ReadOnlyBrowserValidator } from "../validation/read-only-browser-validator.js";
 import { ProjectPathResolver, ProjectRootSingleton } from "../utils/path-resolver.js";
@@ -1089,6 +1090,15 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       const buildFixReport = DeterministicProjectFixer.fixProject(outputDirectory);
       if (buildFixReport.createdFiles.length > 0 || buildFixReport.modifiedFiles.length > 0) {
         console.log(`[DeterministicFixer] ✓ Created ${buildFixReport.createdFiles.length} missing module(s), repaired ${buildFixReport.modifiedFiles.length} file(s).`);
+      }
+
+      // Project Graph Engine: Build & Validate Cross-File Dependency Graph
+      const projectGraphEngine = new ProjectGraphEngine();
+      const graphValidation = projectGraphEngine.validateGraph(outputDirectory);
+      if (graphValidation.valid) {
+        console.log(`[ProjectGraph] ✓ Project dependency graph validated cleanly.`);
+      } else {
+        console.warn(`[ProjectGraph] ⚠️ Project graph validation found ${graphValidation.issues.length} issue(s). Applying deterministic fixes...`);
       }
 
       // Fast Deterministic Sanitation (Dependency Closure, Casing, Export contracts, DB URL)

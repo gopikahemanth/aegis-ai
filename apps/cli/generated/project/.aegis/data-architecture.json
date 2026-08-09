@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "System authenticated user",
+      "description": "System user with authentication credentials",
       "persistence": "database",
       "fields": [
         {
@@ -21,22 +21,31 @@
           "isNullable": false,
           "isUnique": true,
           "relationTo": null,
-          "description": "Email address"
+          "description": "User login email"
         },
         {
-          "name": "password",
+          "name": "passwordHash",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Hashed password"
+          "description": "Bcrypt hashed password"
+        },
+        {
+          "name": "resumeScans",
+          "type": "customType",
+          "isId": false,
+          "isNullable": true,
+          "isUnique": false,
+          "relationTo": "ResumeScan",
+          "description": "Related history of scans"
         }
       ]
     },
     {
-      "name": "ScanSession",
-      "description": "Historical scan record and aggregate metrics",
+      "name": "ResumeScan",
+      "description": "Historical record of a resume versus job description analysis",
       "persistence": "database",
       "fields": [
         {
@@ -58,22 +67,31 @@
           "description": "Owner of the scan"
         },
         {
-          "name": "jobDescription",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Original JD text"
-        },
-        {
           "name": "matchScore",
           "type": "number",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Calculated percentage"
+          "description": "Calculated percentage match"
+        },
+        {
+          "name": "matchedKeywords",
+          "type": "Json",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "List of found keywords"
+        },
+        {
+          "name": "missingSkills",
+          "type": "Json",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "List of missing required skills"
         },
         {
           "name": "createdAt",
@@ -82,103 +100,49 @@
           "isNullable": false,
           "isUnique": false,
           "relationTo": null,
-          "description": "Timestamp"
-        }
-      ]
-    },
-    {
-      "name": "KeywordMatch",
-      "description": "Detailed keyword analysis results per scan",
-      "persistence": "database",
-      "fields": [
-        {
-          "name": "id",
-          "type": "string",
-          "isId": true,
-          "isNullable": false,
-          "isUnique": true,
-          "relationTo": null,
-          "description": "Primary identifier"
-        },
-        {
-          "name": "scanId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": "ScanSession",
-          "description": "Parent scan"
-        },
-        {
-          "name": "keyword",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "The target keyword"
-        },
-        {
-          "name": "isFound",
-          "type": "boolean",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Presence in resume"
+          "description": "Timestamp of creation"
         }
       ]
     }
   ],
-  "databaseSchema": "generator client { provider = \"prisma-client-js\" }\ndatasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") }\n\nmodel User {\n  id        String        @id @default(uuid())\n  email     String        @unique\n  password  String\n  scans     ScanSession[]\n}\n\nmodel ScanSession {\n  id             String         @id @default(uuid())\n  userId         String\n  user           User           @relation(fields: [userId], references: [id])\n  jobDescription String\n  matchScore     Float\n  createdAt      DateTime       @default(now())\n  keywords       KeywordMatch[]\n}\n\nmodel KeywordMatch {\n  id      String      @id @default(uuid())\n  scanId  String\n  scan    ScanSession @relation(fields: [scanId], references: [id])\n  keyword String\n  isFound Boolean\n}",
+  "databaseSchema": "generator client { provider = \"prisma-client-js\" } datasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") } model User { id String @id @default(uuid()) email String @unique passwordHash String scans ResumeScan[] } model ResumeScan { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) matchScore Float matchedKeywords Json missingSkills Json createdAt DateTime @default(now()) }",
   "apis": [
+    {
+      "path": "/api/v1/auth/register",
+      "method": "POST",
+      "description": "Register a new user",
+      "requestBodySchema": "{ email: string, password: string }",
+      "responseBodySchema": "{ token: string, user: { id: string, email: string } }"
+    },
     {
       "path": "/api/v1/scan",
       "method": "POST",
-      "description": "Upload resume, parse text, analyze against job description",
-      "requestBodySchema": "{ \"jobDescription\": string, \"resumeFile\": File }",
-      "responseBodySchema": "{ \"scanId\": string, \"score\": number, \"matches\": Array<{keyword: string, isFound: boolean}> }"
+      "description": "Upload resume, parse, and analyze against job description",
+      "requestBodySchema": "FormData (pdf file, jobDescription text)",
+      "responseBodySchema": "{ scanId: string, matchScore: number, matchedKeywords: string[], missingSkills: string[] }"
     },
     {
-      "path": "/api/v1/scan/:id",
+      "path": "/api/v1/scan/history",
       "method": "GET",
-      "description": "Retrieve historical scan detail",
-      "responseBodySchema": "{ \"scanId\": string, \"matchScore\": number, \"keywords\": Array<{keyword: string, isFound: boolean}> }"
-    },
-    {
-      "path": "/api/v1/scans",
-      "method": "GET",
-      "description": "Retrieve history list for user",
-      "responseBodySchema": "Array<{id: string, matchScore: number, createdAt: string}>"
-    },
-    {
-      "path": "/api/v1/scan/:id",
-      "method": "DELETE",
-      "description": "Remove a specific scan record",
-      "responseBodySchema": "{ \"success\": boolean }"
+      "description": "Fetch current user scan history",
+      "requestBodySchema": "null",
+      "responseBodySchema": "ResumeScan[]"
     }
   ],
   "hooks": [
     {
-      "name": "useScanHistory",
-      "type": "query",
-      "endpoint": "/api/v1/scans",
-      "params": "none",
-      "returns": "ScanSession[]"
-    },
-    {
-      "name": "usePerformScan",
+      "name": "useAnalyzeResume",
       "type": "mutation",
       "endpoint": "/api/v1/scan",
-      "params": "formData",
+      "params": "formData (file, description)",
       "returns": "ScanResult"
     },
     {
-      "name": "useDeleteScan",
-      "type": "mutation",
-      "endpoint": "/api/v1/scan/:id",
-      "params": "scanId: string",
-      "returns": "void"
+      "name": "useScanHistory",
+      "type": "query",
+      "endpoint": "/api/v1/scan/history",
+      "params": "none",
+      "returns": "ResumeScan[]"
     }
   ]
 }

@@ -12,11 +12,13 @@
     }
   ],
   [
-    "server/controllers/analyzer.controller.ts",
+    "server/controllers/scanController.ts",
     {
-      "path": "server/controllers/analyzer.controller.ts",
+      "path": "server/controllers/scanController.ts",
       "language": "ts",
-      "imports": [],
+      "imports": [
+        "../lib/prisma"
+      ],
       "exports": [
         "analyzeResume"
       ],
@@ -24,23 +26,26 @@
     }
   ],
   [
-    "server/controllers/scanController.ts",
+    "server/routes/analysis.ts",
     {
-      "path": "server/controllers/scanController.ts",
+      "path": "server/routes/analysis.ts",
       "language": "ts",
       "imports": [],
       "exports": [
-        "analyzeMatch"
+        "default"
       ],
       "referencedFiles": []
     }
   ],
   [
-    "server/routes/scan.ts",
+    "server/routes/scan.routes.tsx",
     {
-      "path": "server/routes/scan.ts",
-      "language": "ts",
-      "imports": [],
+      "path": "server/routes/scan.routes.tsx",
+      "language": "tsx",
+      "imports": [
+        "../lib/prisma",
+        "../middleware/auth"
+      ],
       "exports": [
         "default"
       ],
@@ -53,10 +58,9 @@
       "path": "src/App.tsx",
       "language": "tsx",
       "imports": [
-        "./routes"
+        "./shared/components/Navbar"
       ],
       "exports": [
-        "App",
         "default"
       ],
       "referencedFiles": []
@@ -148,85 +152,26 @@
     }
   ],
   [
-    "src/features/analysis/components/MatchDashboard.tsx",
+    "src/features/dashboard/components/Dashboard.tsx",
     {
-      "path": "src/features/analysis/components/MatchDashboard.tsx",
-      "language": "tsx",
-      "imports": [
-        "../../../shared/components/MatchScoreDial"
-      ],
-      "exports": [
-        "MatchDashboard",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/auth/LoginPage.tsx",
-    {
-      "path": "src/features/auth/LoginPage.tsx",
-      "language": "tsx",
-      "imports": [
-        "../../shared/components/Layout"
-      ],
-      "exports": [
-        "LoginPage",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/dashboard/components/AnalysisList.tsx",
-    {
-      "path": "src/features/dashboard/components/AnalysisList.tsx",
+      "path": "src/features/dashboard/components/Dashboard.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "AnalysisList",
+        "Dashboard",
         "default"
       ],
       "referencedFiles": []
     }
   ],
   [
-    "src/features/dashboard/components/ScanDashboard.tsx",
+    "src/features/dashboard/components/DashboardView.tsx",
     {
-      "path": "src/features/dashboard/components/ScanDashboard.tsx",
-      "language": "tsx",
-      "imports": [
-        "../../../shared/components/Card",
-        "../../../shared/utils/cn"
-      ],
-      "exports": [
-        "ScanDashboard",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/dashboard/components/ScanResultCard.tsx",
-    {
-      "path": "src/features/dashboard/components/ScanResultCard.tsx",
+      "path": "src/features/dashboard/components/DashboardView.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "ScanResultCard",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/dashboard/components/StatsOverview.tsx",
-    {
-      "path": "src/features/dashboard/components/StatsOverview.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "StatsOverview",
+        "DashboardView",
         "default"
       ],
       "referencedFiles": []
@@ -238,8 +183,7 @@
       "path": "src/features/dashboard/DashboardPage.tsx",
       "language": "tsx",
       "imports": [
-        "../../shared/components/Card",
-        "./hooks/useDashboardData"
+        "../../shared/components"
       ],
       "exports": [
         "default"
@@ -248,44 +192,17 @@
     }
   ],
   [
-    "src/features/parser/components/ResumeDropzone.tsx",
+    "src/features/dashboard/hooks/useDashboardData.tsx",
     {
-      "path": "src/features/parser/components/ResumeDropzone.tsx",
+      "path": "src/features/dashboard/hooks/useDashboardData.tsx",
       "language": "tsx",
       "imports": [
-        "../../../shared/utils/cn"
+        "../../../services/api"
       ],
       "exports": [
-        "ResumeDropzone",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/upload/UploadPage.tsx",
-    {
-      "path": "src/features/upload/UploadPage.tsx",
-      "language": "tsx",
-      "imports": [
-        "../../shared/components/Layout",
-        "../../shared/components/Spinner"
-      ],
-      "exports": [
-        "UploadPage",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/lib/prisma.ts",
-    {
-      "path": "src/lib/prisma.ts",
-      "language": "ts",
-      "imports": [],
-      "exports": [
-        "prisma",
+        "calculateAvg",
+        "calculateMissing",
+        "useDashboardData",
         "default"
       ],
       "referencedFiles": []
@@ -305,115 +222,30 @@
     }
   ],
   [
-    "src/routes.tsx",
+    "src/services/api/client.ts",
     {
-      "path": "src/routes.tsx",
-      "language": "tsx",
-      "imports": [
-        "./features/dashboard/DashboardPage",
-        "./features/upload/UploadPage",
-        "./features/auth/LoginPage",
-        "./features/analysis/components/MatchDashboard"
-      ],
-      "exports": [
-        "AppRoutes",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/services/api.ts",
-    {
-      "path": "src/services/api.ts",
+      "path": "src/services/api/client.ts",
       "language": "ts",
       "imports": [],
       "exports": [
         "apiClient",
-        "resumeApi",
-        "default"
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove"
       ],
       "referencedFiles": []
     }
   ],
   [
-    "src/shared/components/Card.tsx",
+    "src/shared/components/Button.tsx",
     {
-      "path": "src/shared/components/Card.tsx",
+      "path": "src/shared/components/Button.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "Card",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/shared/components/Layout.tsx",
-    {
-      "path": "src/shared/components/Layout.tsx",
-      "language": "tsx",
-      "imports": [
-        "./Navbar"
-      ],
-      "exports": [
-        "Layout",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/shared/components/MatchScoreDial.tsx",
-    {
-      "path": "src/shared/components/MatchScoreDial.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "MatchScoreDial",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/shared/components/Navbar.tsx",
-    {
-      "path": "src/shared/components/Navbar.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "Navbar",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/shared/components/Spinner.tsx",
-    {
-      "path": "src/shared/components/Spinner.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "Spinner",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/shared/utils/cn.tsx",
-    {
-      "path": "src/shared/utils/cn.tsx",
-      "language": "tsx",
-      "imports": [
-        "../../utils/cn",
-        "../../utils/cn"
-      ],
-      "exports": [
-        "cn",
+        "Button",
         "default"
       ],
       "referencedFiles": []

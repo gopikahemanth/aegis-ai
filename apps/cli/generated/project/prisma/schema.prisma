@@ -8,32 +8,20 @@ datasource db {
 }
 
 model User {
-  id            String       @id @default(uuid())
-  email         String       @unique
+  id            String   @id @default(uuid())
+  email         String   @unique
   passwordHash  String
-  createdAt     DateTime     @default(now())
-  resumes       Resume[]
-  scanResults   ScanResult[]
+  scans         Scan[]
+  createdAt     DateTime @default(now())
 }
 
-model Resume {
-  id          String       @id @default(uuid())
-  userId      String
-  user        User         @relation(fields: [userId], references: [id])
-  fileName    String
-  rawText     String
-  uploadedAt  DateTime     @default(now())
-  scanResults ScanResult[]
-}
-
-model ScanResult {
-  id                String   @id @default(uuid())
-  userId            String
-  user              User     @relation(fields: [userId], references: [id])
-  resumeId          String
-  resume            Resume   @relation(fields: [resumeId], references: [id])
-  matchScore        Int
-  matchedKeywords   String[]
-  missingKeywords   String[]
-  createdAt         DateTime @default(now())
+model Scan {
+  id              String   @id @default(uuid())
+  user            User     @relation(fields: [userId], references: [id])
+  userId          String
+  fileName        String
+  matchScore      Int
+  matchedKeywords String[]
+  missingKeywords String[]
+  createdAt       DateTime @default(now())
 }

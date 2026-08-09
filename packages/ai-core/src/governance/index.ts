@@ -19,4 +19,5 @@ export * from "./project-file-registry.js";
 export * from "./task-normalizer.js";
 export * from "./task-scope-validator.js";
 export * from "./symbol-registry.js";
+export * from "./technology-compatibility-registry.js";
 

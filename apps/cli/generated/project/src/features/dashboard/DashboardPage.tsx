@@ -1,37 +1,59 @@
-import React, { Suspense } from 'react';
-import { motion } from 'framer-motion';
-import { Card } from '../../shared/components/Card';
-import { useDashboardData } from './hooks/useDashboardData';
+import React, { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { Card, Button, Input, ProgressTracker } from '../../shared/components';
 
-const DashboardPage: React.FC<any> = () => {
-  const { data: scans, isLoading, error } = useDashboardData();
+export default function DashboardPage(props: any) {
+  const [file, setFile] = useState<File | null>(null);
+  const [jd, setJd] = useState('');
 
-  if (isLoading) return <div className="animate-pulse h-96 bg-slate-800 rounded-xl" />;
-  if (error) return <div className="text-red-400">Failed to load history.</div>;
+  const mutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const res = await fetch('/api/analyze', { method: 'POST', body: formData });
+      return res.json();
+    }
+  });
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="p-8 max-w-7xl mx-auto space-y-8"
-    >
-      <header>
-        <h1 className="text-2xl font-bold text-white">Resume Scans</h1>
-        <p className="text-slate-400">View your latest job match analysis reports.</p>
-      </header>
+    <div className="grid lg:grid-cols-2 gap-8 p-8">
+      <Card className="p-6">
+        <h2 className="text-xl font-bold mb-4">Upload & Analyze</h2>
+        <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+        <textarea 
+          className="w-full h-48 mt-4 border rounded p-2" 
+          placeholder="Paste job description here..."
+          value={jd}
+          onChange={(e) => setJd(e.target.value)}
+        />
+        <Button 
+          disabled={!file || !jd || mutation.isPending}
+          onClick={() => {
+            const fd = new FormData();
+            if(file) fd.append('resume', file);
+            fd.append('jobDescription', jd);
+            mutation.mutate(fd);
+          }}
+        >
+          {mutation.isPending ? 'Analyzing...' : 'Run Scan'}
+        </Button>
+      </Card>
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card title="Total Scans" value={scans?.length || 0} />
-        <Card title="Avg Match Score" value={`${calculateAvg(scans)}%`} />
-        <Card title="Missing Skills Found" value={calculateMissing(scans)} />
-      </section>
-
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-        {/* Table implementation with @tanstack/react-table goes here */}
-      </div>
-    </motion.div>
+      {mutation.data && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold">Match Score: {mutation.data.matchScore}%</h3>
+          <ProgressTracker progress={mutation.data.matchScore} />
+          <div className="mt-6">
+            <h4 className="font-medium">Missing Skills:</h4>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {mutation.data.missingKeywords.map((kw: string) => (
+                <span key={kw} className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">
+                  {kw}
+                </span>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
   );
-};
-
-export default DashboardPage;
+}
 export { DashboardPage };

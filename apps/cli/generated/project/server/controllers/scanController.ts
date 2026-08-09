@@ -1,31 +1,35 @@
 import { Request, Response } from 'express';
 import pdfParse from 'pdf-parse';
-import natural from 'natural';
+import { prisma } from '../lib/prisma';
 
-const tokenizer = new natural.WordTokenizer();
-
-export const analyzeMatch = async (req: Request, res: Response) => {
+export const analyzeResume = async (req: Request, res: Response) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'Resume file required' });
-    
-    const { targetKeywords } = req.body;
-    const keywords: string[] = JSON.parse(targetKeywords);
-    
-    const data = await pdfParse(req.file.buffer);
-    const tokens = tokenizer.tokenize(data.text.toLowerCase()) || [];
-    
-    const matched = keywords.filter(kw => tokens.includes(kw.toLowerCase()));
-    const missing = keywords.filter(kw => !tokens.includes(kw.toLowerCase()));
-    const score = Math.round((matched.length / keywords.length) * 100);
+    if (!req.file || !req.body.jobDescription) {
+      return res.status(400).json({ error: 'Missing resume file or job description' });
+    }
 
-    res.json({
-      matchScore: score,
-      matchedKeywords: matched,
-      missingKeywords: missing,
-      fileName: req.file.originalname,
-      timestamp: new Date().toISOString()
+    const pdfData = await pdfParse(req.file.buffer);
+    const resumeText = pdfData.text.toLowerCase();
+    const jdText = req.body.jobDescription.toLowerCase();
+
+    // Keyword Extraction Logic
+    const keywords = Array.from(new Set(jdText.match(/\b[a-z]{4,}\b/g) || []));
+    const matched = keywords.filter(kw => resumeText.includes(kw));
+    const missing = keywords.filter(kw => !resumeText.includes(kw));
+    const score = Math.round((matched.length / (keywords.length || 1)) * 100);
+
+    const scan = await prisma.scan.create({
+      data: {
+        userId: (req as any).user.id,
+        jobDescription: req.body.jobDescription,
+        matchScore: score,
+        matchedKeywords: matched,
+        missingKeywords: missing,
+      }
     });
-  } catch (err) {
+
+    res.json(scan);
+  } catch (error) {
     res.json([]);
   }
 };

@@ -70,16 +70,14 @@
   "routes": [
     "user-authentication",
     "upload-resume-and-job-description",
-    "parse-and-analyze-content",
-    "view-match-score-and-gaps",
-    "generate-ai-improvements",
-    "save-to-dashboard-history"
+    "view-gap-analysis-dashboard",
+    "track-historical-analysis-results"
   ],
   "models": [
     "User",
     "Resume",
     "JobDescription",
-    "AnalysisReport"
+    "AnalysisResult"
   ],
   "apiEndpoints": [
     "POST /api/scans",

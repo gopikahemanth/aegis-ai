@@ -5,9 +5,12 @@ export * from "./architecture-diff.js";
 export * from "./planner-guard.js";
 export * from "./contract-normalizer.js";
 export * from "./contract-gate.js";
+export * from "./contract-integrity-validator.js";
+export * from "./technology-constraint-validator.js";
 export * from "./fast-sanitizer.js";
 export * from "./safe-patch-system.js";
 export * from "./root-cause-classifier.js";
 export * from "./empty-app-detector.js";
 export * from "./api-contract-registry.js";
 export * from "./execution-report-generator.js";
+

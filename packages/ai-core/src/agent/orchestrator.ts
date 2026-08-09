@@ -55,10 +55,11 @@ import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-gener
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
 import { TransactionalRepairSystem } from "../healing/index.js";
-import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate } from "../governance/index.js";
+import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator } from "../governance/index.js";
 import { DomainModelGuard } from "../governance/domain-model-guard.js";
 import { StagedValidator } from "../validation/staged-validator.js";
 import { FinalSuccessGate } from "../validation/final-success-gate.js";
+import { GeneratedFileValidator } from "../validation/generated-file-validator.js";
 import { ProjectPathResolver, ProjectRootSingleton } from "../utils/path-resolver.js";
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
@@ -291,6 +292,13 @@ export class Orchestrator {
     const resolvedContract = ArchitectureResolver.resolve(request, specification, canonicalSpec);
     ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
     const archContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
+
+    // ── TechnologyConstraintValidator — Reject libraries that conflict with locked contract ──
+    const { allowed: allowedLibs, forbidden: forbiddenLibs } = TechnologyConstraintValidator.filterLibraries(inferredLibraries, resolvedContract);
+    inferredLibraries = allowedLibs;
+    if (forbiddenLibs.length > 0) {
+      console.log(`[TechnologyConstraint] Filtered ${forbiddenLibs.length} forbidden library(ies): ${forbiddenLibs.join(", ")}`);
+    }
 
     // ── MANDATORY CONTRACT GATE — Stop pipeline if contract is invalid ─────
     const contractGateResult = ContractGate.verify(resolvedContract);
@@ -590,6 +598,13 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
     const appArchContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
 
+    // ── ContractIntegrityValidator — Assert contract immutability ─────────────
+    ContractIntegrityValidator.assertValid(specification, resolvedContract);
+
+    // ── TechnologyConstraintValidator — Filter forbidden libraries ───────────
+    const { allowed: allowedAppLibs, forbidden: forbiddenAppLibs } = TechnologyConstraintValidator.filterLibraries(rawSpecification.inferredLibraries || [], resolvedContract);
+    rawSpecification.inferredLibraries = allowedAppLibs;
+
     // ── MANDATORY CONTRACT GATE — Stop pipeline if contract is invalid ─────
     const appContractGateResult = ContractGate.verify(resolvedContract);
     if (!appContractGateResult.valid) {
@@ -731,6 +746,17 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       parallelTiers = tasks.map(t => [t]);
     }
 
+    // Print final resolved architecture snapshot before coding (Part 15)
+    console.log("\n=== FINAL RESOLVED ARCHITECTURE ===");
+    console.log(`Frontend: ${resolvedContract.frontend.framework}`);
+    console.log(`Backend:  ${resolvedContract.backend.framework}`);
+    console.log(`Database: ${resolvedContract.database.provider}`);
+    console.log(`ORM:      ${resolvedContract.database.orm}`);
+    console.log(`Auth:     ${resolvedContract.authentication}`);
+    console.log(`Language: ${resolvedContract.language}`);
+    console.log(`Models:   ${(resolvedContract.requiredModels || []).join(", ")}`);
+    console.log("===================================\n");
+
     console.log("Starting implementation loop...");
     for (let i = 0; i < parallelTiers.length; i++) {
       const tier = parallelTiers[i];
@@ -750,10 +776,18 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
             imagePayload,
           );
 
-          // Validate that all generated TypeScript files are syntactically complete
-          const truncatedCodeFiles = result.files.filter(f => (f.path.endsWith(".ts") || f.path.endsWith(".tsx")) && !isLikelySyntacticallyComplete(f.content));
-          if (truncatedCodeFiles.length > 0) {
-            throw new Error(`Truncated code generated in file(s): ${truncatedCodeFiles.map(f => f.path).join(", ")}`);
+          // Candidate file completeness validation
+          const invalidCandidates: string[] = [];
+          for (const file of result.files) {
+            const validation = GeneratedFileValidator.validateCompleteness(file.content, file.path);
+            if (!validation.valid) {
+              const msg = validation.issues.map(j => j.message).join("; ");
+              invalidCandidates.push(`${file.path} (${msg})`);
+            }
+          }
+
+          if (invalidCandidates.length > 0) {
+            throw new Error(`INCOMPLETE_GENERATED_FILE: Candidate files failed completeness validation: ${invalidCandidates.join(", ")}`);
           }
         } catch (coderError: any) {
           console.warn(`[Orchestrator] CoderAgent validation failed for task "${task.title}": ${coderError.message}`);
@@ -772,10 +806,23 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
                 response + `\nAttempted output for task "${task.title}":\n` + (lastError.stack || lastError.message)
               );
 
-              const repairedFiles = this.parser.parse(repairResponse);
+              let repairedFiles = this.parser.parse(repairResponse);
+              if (repairedFiles.length === 0) {
+                // Fallback XML <FILE path="..."> parsing (Part 10)
+                const xmlRegex = /<FILE\s+path=["']([^"']+)["']>\s*([\s\S]*?)\s*<\/FILE>/gi;
+                let match: RegExpExecArray | null;
+                while ((match = xmlRegex.exec(repairResponse)) !== null) {
+                  const filePath = match[1].trim();
+                  const fileContent = match[2].trim();
+                  if (filePath && fileContent) {
+                    repairedFiles.push({ path: filePath, content: fileContent });
+                  }
+                }
+              }
+
               const validRepairedFiles = repairedFiles.filter(f => {
-                if (!f.path.endsWith(".ts") && !f.path.endsWith(".tsx")) return true;
-                return isLikelySyntacticallyComplete(f.content);
+                const validation = GeneratedFileValidator.validateCompleteness(f.content, f.path);
+                return validation.valid;
               });
 
               if (validRepairedFiles.length > 0) {
@@ -784,9 +831,9 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
                   files: validRepairedFiles
                 };
                 success = true;
-                console.log(`[Self-Healing] ✓ Coder repair succeeded! Validated completeness.`);
+                console.log(`[Self-Healing] ✓ Coder repair succeeded! Validated completeness for ${validRepairedFiles.length} file(s).`);
               } else {
-                throw new Error("No syntactically complete file changes parsed from repair response.");
+                throw new Error("REPAIR_RESPONSE_INVALID: No syntactically complete candidate files parsed from repair response.");
               }
             } catch (repairErr: any) {
               lastError = repairErr;

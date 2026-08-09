@@ -18,15 +18,15 @@
     },
     {
       "name": "PDFParsingServicePattern",
-      "description": "An Express-based service utilizing pdf-parse and natural language processing to extract text from uploads and perform a weighted keyword intersection analysis.",
+      "description": "A robust Express-based utility using 'pdf-parse' and 'natural' NLP library to extract raw text from uploaded buffers and compute keyword density scores.",
       "files": [],
-      "sampleCode": "import pdf from 'pdf-parse';\nimport { Request, Response } from 'express';\n\ninterface ScanResult {\n  matchScore: number;\n  missingKeywords: string[];\n  foundKeywords: string[];\n}\n\nexport const analyzeResume = async (req: Request, res: Response) => {\n  if (!req.file) return res.status(400).send('No file uploaded.');\n  \n  const { keywords } = req.body;\n  const data = await pdf(req.file.buffer);\n  const resumeText = data.text.toLowerCase();\n  \n  const foundKeywords = keywords.filter((k: string) => resumeText.includes(k.toLowerCase()));\n  const matchScore = (foundKeywords.length / keywords.length) * 100;\n  \n  res.json({\n    matchScore,\n    foundKeywords,\n    missingKeywords: keywords.filter((k: string) => !foundKeywords.includes(k))\n  } as ScanResult);\n};"
+      "sampleCode": "import pdf from 'pdf-parse';\nimport natural from 'natural';\n\nexport const analyzeResume = async (fileBuffer: Buffer, targetKeywords: string[]) => {\n  const data = await pdf(fileBuffer);\n  const text = data.text.toLowerCase();\n  const tokenizer = new natural.WordTokenizer();\n  const tokens = tokenizer.tokenize(text);\n\n  const breakdown = targetKeywords.map(keyword => {\n    const count = tokens.filter(t => t === keyword.toLowerCase()).length;\n    return { keyword, count, found: count > 0 };\n  });\n\n  const score = (breakdown.filter(i => i.found).length / targetKeywords.length) * 100;\n  return { score, breakdown };\n};"
     },
     {
-      "name": "CircularProgressIndicator",
-      "description": "A Tailwind-styled SVG progress circle component for React that visually represents the match score with smooth CSS transitions.",
+      "name": "MatchScoreZustandStore",
+      "description": "Centralized state management using Zustand to track the asynchronous scan process, loading states, and the final analytical result object.",
       "files": [],
-      "sampleCode": "import React from 'react';\n\nexport const MatchScoreGauge: React.FC<{ score: number }> = ({ score }) => {\n  const radius = 40;\n  const circumference = 2 * Math.PI * radius;\n  const strokeDashoffset = circumference - (score / 100) * circumference;\n\n  return (\n    <div className=\"flex items-center justify-center relative\">\n      <svg className=\"transform -rotate-90 w-32 h-32\">\n        <circle className=\"text-gray-200\" strokeWidth=\"8\" stroke=\"currentColor\" fill=\"transparent\" r={radius} cx=\"64\" cy=\"64\" />\n        <circle \n          className=\"text-indigo-600 transition-all duration-1000 ease-out\"\n          strokeWidth=\"8\" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} \n          strokeLinecap=\"round\" stroke=\"currentColor\" fill=\"transparent\" r={radius} cx=\"64\" cy=\"64\" \n        />\n      </svg>\n      <span className=\"absolute text-xl font-bold\">{Math.round(score)}%</span>\n    </div>\n  );\n};"
+      "sampleCode": "import { create } from 'zustand';\n\ninterface ScanStore {\n  score: number;\n  breakdown: { keyword: string; count: number; found: boolean }[];\n  isLoading: boolean;\n  setResults: (score: number, breakdown: any[]) => void;\n  setLoading: (val: boolean) => void;\n}\n\nexport const useScanStore = create<ScanStore>((set) => ({\n  score: 0,\n  breakdown: [],\n  isLoading: false,\n  setResults: (score, breakdown) => set({ score, breakdown, isLoading: false }),\n  setLoading: (isLoading) => set({ isLoading }),\n}));"
     }
   ]
 }

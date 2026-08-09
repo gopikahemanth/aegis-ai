@@ -55,7 +55,7 @@ import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-gener
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
 import { TransactionalRepairSystem } from "../healing/index.js";
-import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator } from "../governance/index.js";
+import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator, CanonicalArchitectureState, CanonicalManifestGenerator, ProjectFileRegistry, TaskNormalizer } from "../governance/index.js";
 import { DomainModelGuard } from "../governance/domain-model-guard.js";
 import { StagedValidator } from "../validation/staged-validator.js";
 import { FinalSuccessGate } from "../validation/final-success-gate.js";
@@ -622,6 +622,11 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     const normalizedAppSpec = ArchitectureContractNormalizer.normalizeSpecification(specification, resolvedContract);
     specification = normalizedAppSpec;
 
+    // ── CANONICAL ARCHITECTURE STATE (Single Source of Truth) ─────────────
+    const canonicalState = CanonicalArchitectureState.getInstance().initialize(resolvedContract, outputDirectory);
+    CanonicalManifestGenerator.generate(resolvedContract, outputDirectory);
+    ProjectFileRegistry.getInstance().initialize(resolvedContract, outputDirectory);
+
     auditTrail.logEvent({
       agentRole: "Architect",
       action: `Completed requirements mapping & locked Architecture Contract. Frontend: ${resolvedContract.frontend.framework}, Backend: ${resolvedContract.backend.framework}, DB: ${resolvedContract.database.provider} (${resolvedContract.database.orm})`,
@@ -710,6 +715,9 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       throw new Error(`ARCHITECTURE_CONTRACT_MISSING: No architecture contract found in generateApplication for projectPath: ${outputDirectory}`);
     }
     tasks = PlannerArchitectureGuard.filterTasks(tasks, activeContractApp);
+
+    // TaskNormalizer: Normalize tasks against canonical contract
+    tasks = tasks.map(t => TaskNormalizer.normalizeTask(t, activeContractApp).normalizedTask);
 
     // DomainModelGuard: Filter out tasks that introduce unauthorized domain models
     const requiredDomainModels = activeContractApp.requiredModels || [];

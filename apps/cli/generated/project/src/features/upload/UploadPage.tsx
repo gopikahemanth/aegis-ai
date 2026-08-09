@@ -1,9 +1,8 @@
-const onSubmit = (data: any) => console.log(data);
 import React, { useState } from 'react';
 import Layout from '../../shared/components/Layout';
 import Spinner from '../../shared/components/Spinner';
 
-export const UploadPage: React.FC<any> = () => {
+export const UploadPage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState('');
   const [loading, setLoading] = useState(false);

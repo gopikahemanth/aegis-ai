@@ -1,29 +1,37 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-api.interceptors.request.use((config) => {
+apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
-export const scanService = {
-  analyze: (formData: FormData) => api.post('/scan', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-  getHistory: () => api.get('/scan/history')
+export const resumeApi = {
+  uploadAndAnalyze: async (resumeFile: File, jobDescription: string) => {
+    const formData = new FormData();
+    formData.append('resume', resumeFile);
+    formData.append('jobDescription', jobDescription);
+    const response = await apiClient.post('/scans', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  getScanHistory: async () => {
+    const response = await apiClient.get('/scans');
+    return response.data;
+  },
 };
 
-export default api;
-export { api };
-
-export const getAll = async (...args: any[]) => [];
-export const get = async (...args: any[]) => ({});
-export const create = async (...args: any[]) => ({});
-export const update = async (...args: any[]) => ({});
-export const remove = async (...args: any[]) => ({});
-
-export const apiClient: any = (globalThis as any).apiClient || (globalThis as any).api || { get: async () => ({ data: [] }), post: async () => ({ data: {} }), put: async () => ({ data: {} }), delete: async () => ({ data: {} }), patch: async () => ({ data: {} }) };
+export default apiClient;

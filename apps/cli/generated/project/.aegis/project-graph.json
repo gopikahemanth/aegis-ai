@@ -12,39 +12,25 @@
     }
   ],
   [
-    "scripts/dev.js",
+    "server/controllers/ScanController.ts",
     {
-      "path": "scripts/dev.js",
-      "language": "js",
-      "imports": [],
-      "exports": [],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "server/controllers/scanController.ts",
-    {
-      "path": "server/controllers/scanController.ts",
+      "path": "server/controllers/ScanController.ts",
       "language": "ts",
       "imports": [],
       "exports": [
-        "analyzeResume"
+        "uploadResume"
       ],
       "referencedFiles": []
     }
   ],
   [
-    "server/index.ts",
+    "server/models/ResumeScan.tsx",
     {
-      "path": "server/index.ts",
-      "language": "ts",
-      "imports": [
-        "./routes/authRoutes",
-        "./routes/scanRoutes",
-        "./middleware/errorHandler"
-      ],
+      "path": "server/models/ResumeScan.tsx",
+      "language": "tsx",
+      "imports": [],
       "exports": [
-        "prisma"
+        "ResumeScan"
       ],
       "referencedFiles": []
     }
@@ -55,7 +41,7 @@
       "path": "src/App.tsx",
       "language": "tsx",
       "imports": [
-        "./routes"
+        "./components/Layout"
       ],
       "exports": [
         "App",
@@ -65,13 +51,14 @@
     }
   ],
   [
-    "src/controllers/scanController.ts",
+    "src/components/Layout.tsx",
     {
-      "path": "src/controllers/scanController.ts",
-      "language": "ts",
+      "path": "src/components/Layout.tsx",
+      "language": "tsx",
       "imports": [],
       "exports": [
-        "analyzeResume"
+        "Layout",
+        "default"
       ],
       "referencedFiles": []
     }
@@ -205,13 +192,13 @@
     }
   ],
   [
-    "src/features/dashboard/components/Dashboard.tsx",
+    "src/features/dashboard/components/ScanOverviewCard.tsx",
     {
-      "path": "src/features/dashboard/components/Dashboard.tsx",
+      "path": "src/features/dashboard/components/ScanOverviewCard.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "Dashboard",
+        "ScanOverviewCard",
         "default"
       ],
       "referencedFiles": []
@@ -223,11 +210,29 @@
       "path": "src/features/dashboard/DashboardPage.tsx",
       "language": "tsx",
       "imports": [
-        "../../shared/components/Card",
-        "./components/MatchScoreChart",
-        "./components/KeywordPills"
+        "../../components/Layout",
+        "../../components/MatchScoreChart",
+        "../../shared/components/EmptyState"
       ],
       "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/parser/services/ParserService.ts",
+    {
+      "path": "src/features/parser/services/ParserService.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "ParserService",
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove",
         "default"
       ],
       "referencedFiles": []
@@ -300,26 +305,21 @@
       "language": "ts",
       "imports": [],
       "exports": [
-        "scanService",
-        "getAll",
-        "get",
-        "create",
-        "update",
-        "remove",
         "apiClient",
+        "resumeApi",
         "default"
       ],
       "referencedFiles": []
     }
   ],
   [
-    "src/shared/components/Card.tsx",
+    "src/shared/components/EmptyState.tsx",
     {
-      "path": "src/shared/components/Card.tsx",
+      "path": "src/shared/components/EmptyState.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "Card",
+        "EmptyState",
         "default"
       ],
       "referencedFiles": []
@@ -361,6 +361,19 @@
       "imports": [],
       "exports": [
         "Navbar",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/components/Skeleton.tsx",
+    {
+      "path": "src/shared/components/Skeleton.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "Skeleton",
         "default"
       ],
       "referencedFiles": []

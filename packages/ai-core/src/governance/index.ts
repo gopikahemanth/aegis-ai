@@ -13,4 +13,8 @@ export * from "./root-cause-classifier.js";
 export * from "./empty-app-detector.js";
 export * from "./api-contract-registry.js";
 export * from "./execution-report-generator.js";
+export * from "./canonical-architecture-state.js";
+export * from "./canonical-manifest-generator.js";
+export * from "./project-file-registry.js";
+export * from "./task-normalizer.js";
 

@@ -1,41 +1,27 @@
 import { Request, Response } from 'express';
 import pdfParse from 'pdf-parse';
+import { PrismaClient } from '@prisma/client';
 
-export const analyzeResume = async (req: Request, res: Response): Promise<void> => {
+const prisma = new PrismaClient();
+
+export const uploadResume = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) {
-      res.status(400).json({ error: 'Resume PDF is required' });
-      return;
-    }
-
-    const { jobDescription } = req.body;
-    if (!jobDescription) {
-      res.status(400).json({ error: 'Job description text is required' });
+      res.status(400).json({ error: 'Resume file required' });
       return;
     }
 
     const pdfData = await pdfParse(req.file.buffer);
-    const resumeText = pdfData.text.toLowerCase();
-
-    const jdWords = jobDescription
-      .toLowerCase()
-      .replace(/[^\w\s]/gi, '')
-      .split(/\s+/);
-
-    const uniqueKeywords = Array.from(new Set(jdWords)).filter(w => w.length > 3);
-    const matchedKeywords = uniqueKeywords.filter(k => resumeText.includes(k));
-    const missingKeywords = uniqueKeywords.filter(k => !resumeText.includes(k));
-
-    const matchScore = uniqueKeywords.length > 0 
-      ? Math.round((matchedKeywords.length / uniqueKeywords.length) * 100) 
-      : 0;
-
-    res.json({
-      matchScore,
-      matchedKeywords,
-      missingKeywords,
-      totalKeywordsChecked: uniqueKeywords.length
+    const resume = await prisma.resume.create({
+      data: {
+        userId: (req as any).user.id,
+        originalName: req.file.originalname,
+        rawText: pdfData.text,
+        s3Key: `resumes/${Date.now()}-${req.file.originalname}`
+      }
     });
+
+    res.status(201).json({ success: true, resumeId: resume.id });
   } catch (error) {
     res.json([]);
   }

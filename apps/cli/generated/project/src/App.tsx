@@ -1,24 +1,23 @@
-import React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AppRoutes } from "./routes";
+import React, { lazy } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Layout } from './components/Layout';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
+const queryClient = new QueryClient();
 
-export function App(props: any) {
+export const App: React.FC<any> = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-        <AppRoutes />
-      </div>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<DashboardPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
     </QueryClientProvider>
   );
-}
+};
 
 export default App;

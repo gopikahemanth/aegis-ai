@@ -60,6 +60,7 @@ import { DomainModelGuard } from "../governance/domain-model-guard.js";
 import { StagedValidator } from "../validation/staged-validator.js";
 import { FinalSuccessGate } from "../validation/final-success-gate.js";
 import { GeneratedFileValidator } from "../validation/generated-file-validator.js";
+import { DeterministicProjectFixer } from "../validation/deterministic-project-fixer.js";
 import { ProjectPathResolver, ProjectRootSingleton } from "../utils/path-resolver.js";
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
@@ -1081,6 +1082,12 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
 
       this.resolveMissingLocalImports(outputDirectory);
+
+      // Deterministic Project Fixer: Create real implementation modules (routes.tsx, prisma.ts, MatchScoreDial, Layout, api.ts, pdf-parse fix)
+      const buildFixReport = DeterministicProjectFixer.fixProject(outputDirectory);
+      if (buildFixReport.createdFiles.length > 0 || buildFixReport.modifiedFiles.length > 0) {
+        console.log(`[DeterministicFixer] ✓ Created ${buildFixReport.createdFiles.length} missing module(s), repaired ${buildFixReport.modifiedFiles.length} file(s).`);
+      }
 
       // Fast Deterministic Sanitation (Dependency Closure, Casing, Export contracts, DB URL)
       const sanitizeReport = FastDeterministicSanitizer.sanitizeProject(outputDirectory);

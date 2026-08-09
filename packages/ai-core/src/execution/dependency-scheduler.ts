@@ -77,9 +77,16 @@ export class DependencyScheduler {
       if (
         ready.length === 0
       ) {
-        throw new Error(
-          "Circular task dependency detected.",
-        );
+        console.warn("[DependencyScheduler] ⚠️ Circular or unresolvable task dependency detected. Automatically breaking cycle by scheduling lowest-id remaining task...");
+        const remaining = tasks.filter(t => !completed.has(t.id));
+        remaining.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+        const breakTask = remaining[0];
+        if (breakTask) {
+          tiers.push([breakTask]);
+          completed.add(breakTask.id);
+          continue;
+        }
+        break;
       }
 
       ready.sort(

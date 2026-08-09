@@ -1,39 +1,68 @@
 {
-  "contractId": "req_1786247698150",
-  "lockedAt": "2026-08-09T03:54:58.150Z",
-  "stack": {
-    "frontend": "React-Vite",
-    "backend": "Express",
-    "database": "MongoDB",
-    "orm": "Prisma",
-    "auth": "JWT",
-    "language": "TypeScript",
-    "styling": "Tailwind CSS",
-    "packageManager": "pnpm"
+  "version": 1,
+  "status": "locked",
+  "source": "user_prompt",
+  "confidence": 1,
+  "reason": "Contract locked by ArchitectureResolver. Frontend(user), Backend(user), DB(default), ORM(default)",
+  "userSpecified": true,
+  "inferred": false,
+  "overridden": false,
+  "frontend": {
+    "framework": "React-Vite",
+    "provenance": "user"
   },
-  "features": [
-    "parser",
-    "analyzer",
-    "dashboard",
-    "storage",
-    "exporter"
+  "backend": {
+    "framework": "Express",
+    "provenance": "user"
+  },
+  "database": {
+    "provider": "PostgreSQL",
+    "orm": "Prisma",
+    "provenance": "default",
+    "ormProvenance": "default"
+  },
+  "language": "TypeScript",
+  "styling": "Tailwind CSS + Shadcn UI",
+  "packageManager": "pnpm",
+  "authentication": "JWT",
+  "requiredLibraries": [
+    "pdf-parse",
+    "langchain",
+    "openai",
+    "prisma",
+    "@prisma/client",
+    "recharts",
+    "zod",
+    "next-auth",
+    "react-hook-form",
+    "jspdf"
   ],
-  "userFlows": [
+  "requiredFeatures": [
+    "auth",
+    "upload",
+    "parsing",
+    "scoring",
+    "dashboard",
+    "export"
+  ],
+  "requiredRoutes": [
+    "user-authentication",
     "upload-resume-and-job-description",
-    "analyze-keyword-relevance",
+    "generate-relevance-analysis",
     "view-analysis-results",
     "view-scan-history",
     "export-analysis-report"
   ],
-  "dataModels": [
+  "requiredModels": [
     "User",
-    "ScanSession",
-    "MatchResult"
+    "Resume",
+    "JobDescription",
+    "AnalysisReport",
+    "KeywordMatch"
   ],
-  "allowedRoutePrefixes": [
-    "/api",
-    "/auth",
-    "/dashboard",
-    "/"
-  ]
+  "projectStructure": {
+    "src": "Frontend source directory",
+    "server": "Backend server directory",
+    "prisma": "Database schema directory"
+  }
 }

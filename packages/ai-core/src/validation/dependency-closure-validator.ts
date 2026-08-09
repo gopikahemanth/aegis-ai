@@ -1,4 +1,4 @@
-﻿import { existsSync, readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname, resolve, extname, basename, relative } from "node:path";
 
 export interface ClosureViolation {
@@ -38,10 +38,15 @@ export class DependencyClosureValidator {
     return dp[m][n];
   }
 
-  public static resolveModule(importPath: string, fromDir: string): string | null {
-    if (!importPath.startsWith(".") && !importPath.startsWith("/")) return "external";
+  public static resolveModule(importPath: string, fromDir: string, projectRoot?: string): string | null {
+    if (!importPath.startsWith(".") && !importPath.startsWith("/") && !importPath.startsWith("@/")) return "external";
 
-    const base = resolve(fromDir, importPath);
+    let base: string;
+    if (importPath.startsWith("@/") && projectRoot) {
+      base = resolve(projectRoot, "src", importPath.slice(2));
+    } else {
+      base = resolve(fromDir, importPath);
+    }
 
     if (existsSync(base)) {
       try {
@@ -99,7 +104,7 @@ export class DependencyClosureValidator {
     const missingSet = new Set<string>();
     const suggestedMatches = new Map<string, string>();
 
-    const importRegex = /(?:import|export)\s+(?:[\s\S]*?\s+from\s+)?['"](\.[^'"]+)['"]/g;
+    const importRegex = /(?:import|export)\s+(?:[\s\S]*?\s+from\s+)?['"]((\.|\/|@\/)[^'"]+)['"]/g;
 
     for (const file of allFiles) {
       let content: string;
@@ -115,7 +120,7 @@ export class DependencyClosureValidator {
         const importPath = match[1];
         if (importPath.startsWith("node:")) continue;
 
-        const resolved = DependencyClosureValidator.resolveModule(importPath, fileDir);
+        const resolved = DependencyClosureValidator.resolveModule(importPath, fileDir, projectRoot);
 
         if (resolved === null) {
           const relativeSource = file.replace(projectRoot, "").replace(/\\/g, "/").replace(/^\//, "");

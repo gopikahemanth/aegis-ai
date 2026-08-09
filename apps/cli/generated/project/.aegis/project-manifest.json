@@ -68,10 +68,11 @@
     }
   ],
   "routes": [
+    "user-authentication",
     "upload-resume-and-job-description",
-    "analyze-semantic-match",
-    "view-improvement-recommendations",
-    "manage-analysis-history"
+    "generate-semantic-analysis",
+    "view-scoring-dashboard",
+    "export-gap-analysis-report"
   ],
   "models": [
     "User",

@@ -1,6 +1,7 @@
 import { ArchitectureContractV1 } from "../governance/architecture-resolver.js";
 import { DependencyClosureValidator } from "./dependency-closure-validator.js";
 import { ProjectGraphEngine } from "./project-graph-engine.js";
+import { UIFeatureChecker } from "./ui-feature-checker.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -105,7 +106,15 @@ export class FinalSuccessGate {
       critical: true,
     });
 
-    // 6. Reality Checker & Visual Review
+    // 6. Reality Checker & UI Feature Check
+    const uiFeatureResult = UIFeatureChecker.validate(projectRoot);
+    items.push({
+      name: "UI Feature Check",
+      passed: uiFeatureResult.passed,
+      message: uiFeatureResult.passed ? "All required UI elements present." : `Missing UI: ${uiFeatureResult.missingElements.join("; ")}`,
+      critical: true,
+    });
+
     items.push({
       name: "Reality Checker",
       passed: true,

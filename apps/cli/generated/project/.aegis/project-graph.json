@@ -12,81 +12,13 @@
     }
   ],
   [
-    "server/controllers/auth.controller.ts",
-    {
-      "path": "server/controllers/auth.controller.ts",
-      "language": "ts",
-      "imports": [],
-      "exports": [
-        "register",
-        "login"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
     "server/controllers/scanController.ts",
     {
       "path": "server/controllers/scanController.ts",
       "language": "ts",
-      "imports": [
-        "../utils/matchEngine"
-      ],
-      "exports": [],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "server/features/analyzer/analyzer.service.ts",
-    {
-      "path": "server/features/analyzer/analyzer.service.ts",
-      "language": "ts",
       "imports": [],
       "exports": [
-        "AnalyzerService",
-        "getAll",
-        "get",
-        "create",
-        "update",
-        "remove"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "server/src/index.ts",
-    {
-      "path": "server/src/index.ts",
-      "language": "ts",
-      "imports": [
-        "./utils/pdfParser",
-        "./models/Resume"
-      ],
-      "exports": [],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "server/src/models/Resume.tsx",
-    {
-      "path": "server/src/models/Resume.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "server/src/utils/pdfParser.ts",
-    {
-      "path": "server/src/utils/pdfParser.ts",
-      "language": "ts",
-      "imports": [],
-      "exports": [
-        "extractTextFromPDF",
-        "calculateMatchScore"
+        "analyzeResume"
       ],
       "referencedFiles": []
     }
@@ -96,11 +28,24 @@
     {
       "path": "src/App.tsx",
       "language": "tsx",
+      "imports": [],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/controllers/scanController.ts",
+    {
+      "path": "src/controllers/scanController.ts",
+      "language": "ts",
       "imports": [
-        "./routes"
+        "../../server/controllers/scanController",
+        "../../server/controllers/scanController"
       ],
       "exports": [
-        "App",
+        "scanController",
         "default"
       ],
       "referencedFiles": []
@@ -192,6 +137,38 @@
     }
   ],
   [
+    "src/entities/scan.tsx",
+    {
+      "path": "src/entities/scan.tsx",
+      "language": "tsx",
+      "imports": [
+        "../controllers/scanController",
+        "../middleware/authMiddleware"
+      ],
+      "exports": [
+        "analyzeResumeHandler",
+        "ResumeDropzone",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/analysis/components/AnalysisView.tsx",
+    {
+      "path": "src/features/analysis/components/AnalysisView.tsx",
+      "language": "tsx",
+      "imports": [
+        "@/shared/components/FileUploader"
+      ],
+      "exports": [
+        "AnalysisView",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
     "src/features/analysis/components/MatchDashboard.tsx",
     {
       "path": "src/features/analysis/components/MatchDashboard.tsx",
@@ -201,21 +178,6 @@
       ],
       "exports": [
         "MatchDashboard",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/auth/components/ProtectedRoute.tsx",
-    {
-      "path": "src/features/auth/components/ProtectedRoute.tsx",
-      "language": "tsx",
-      "imports": [
-        "../hooks/useAuth"
-      ],
-      "exports": [
-        "ProtectedRoute",
         "default"
       ],
       "referencedFiles": []
@@ -250,18 +212,28 @@
     }
   ],
   [
-    "src/features/upload/services/uploadService.ts",
+    "src/features/dashboard/DashboardPage.tsx",
     {
-      "path": "src/features/upload/services/uploadService.ts",
-      "language": "ts",
+      "path": "src/features/dashboard/DashboardPage.tsx",
+      "language": "tsx",
+      "imports": [
+        "../../shared/components/Button"
+      ],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/upload/components/UploadDashboard.tsx",
+    {
+      "path": "src/features/upload/components/UploadDashboard.tsx",
+      "language": "tsx",
       "imports": [],
       "exports": [
-        "uploadResume",
-        "getAll",
-        "get",
-        "create",
-        "update",
-        "remove"
+        "UploadDashboard",
+        "default"
       ],
       "referencedFiles": []
     }
@@ -335,6 +307,32 @@
       "exports": [
         "apiClient",
         "resumeApi",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/components/Button.tsx",
+    {
+      "path": "src/shared/components/Button.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "Button",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/components/FileUploader.tsx",
+    {
+      "path": "src/shared/components/FileUploader.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "FileUploader",
         "default"
       ],
       "referencedFiles": []

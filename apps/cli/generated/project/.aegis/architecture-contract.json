@@ -22,33 +22,35 @@
     "ormProvenance": "default"
   },
   "language": "TypeScript",
-  "styling": "Tailwind CSS with Shadcn/UI",
+  "styling": "TailwindCSS",
   "packageManager": "pnpm",
   "authentication": "JWT",
   "requiredLibraries": [
     "pdf-parse",
-    "langchain",
-    "@prisma/client",
-    "lucia-auth",
+    "tesseract.js",
+    "openai",
+    "prisma",
+    "next-auth",
     "recharts",
+    "react-pdf",
     "zod",
     "framer-motion",
-    "react-hook-form",
-    "openai"
+    "react-dropzone"
   ],
   "requiredFeatures": [
     "auth",
-    "pdf-parsing",
-    "keyword-analysis",
-    "scoring",
-    "history",
-    "dashboard"
+    "upload",
+    "parsing",
+    "matching",
+    "dashboard",
+    "export"
   ],
   "requiredRoutes": [
+    "user-authentication",
     "upload-resume-and-job-description",
-    "analyze-semantic-match",
-    "view-improvement-recommendations",
-    "manage-analysis-history"
+    "generate-semantic-analysis",
+    "view-scoring-dashboard",
+    "export-gap-analysis-report"
   ],
   "requiredModels": [
     "User",

@@ -22,34 +22,35 @@
     "ormProvenance": "default"
   },
   "language": "TypeScript",
-  "styling": "TailwindCSS",
+  "styling": "Tailwind CSS + Shadcn UI",
   "packageManager": "pnpm",
   "authentication": "JWT",
   "requiredLibraries": [
     "pdf-parse",
+    "langchain",
     "openai",
     "prisma",
-    "next-auth",
     "zod",
-    "framer-motion",
     "recharts",
-    "react-hook-form",
-    "lucide-react"
+    "lucide-react",
+    "next-auth",
+    "framer-motion"
   ],
   "requiredFeatures": [
     "auth",
-    "upload",
     "parsing",
+    "matching",
     "scoring",
     "history",
-    "export"
+    "optimization"
   ],
   "requiredRoutes": [
     "user-authentication",
     "upload-resume-and-job-description",
-    "generate-relevance-analysis",
-    "view-historical-comparisons",
-    "export-improvement-report"
+    "parse-and-analyze-content",
+    "view-match-score-and-gaps",
+    "generate-ai-improvements",
+    "save-to-dashboard-history"
   ],
   "requiredModels": [
     "User",

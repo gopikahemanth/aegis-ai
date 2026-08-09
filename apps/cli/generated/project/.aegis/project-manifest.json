@@ -70,9 +70,10 @@
   "routes": [
     "user-authentication",
     "upload-resume-and-job-description",
-    "generate-relevance-analysis",
-    "view-historical-comparisons",
-    "export-improvement-report"
+    "parse-and-analyze-content",
+    "view-match-score-and-gaps",
+    "generate-ai-improvements",
+    "save-to-dashboard-history"
   ],
   "models": [
     "User",

@@ -1,26 +1,24 @@
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AppRoutes } from "./routes";
 
-const Dashboard = lazy(() => import('./features/dashboard/DashboardPage'));
-const Upload = lazy(() => import('./features/upload/UploadPage'));
-const Analysis = lazy(() => import('./features/analysis/AnalysisPage'));
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-const queryClient = new QueryClient();
-
-export default function App(props: any) {
+export function App(props: any) {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/upload" element={<Upload />} />
-            <Route path="/analysis/:id" element={<Analysis />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+        <AppRoutes />
+      </div>
     </QueryClientProvider>
   );
 }
-export { App };
+
+export default App;

@@ -12,25 +12,11 @@
     }
   ],
   [
-    "server/controllers/scanner.controller.ts",
+    "server/controllers/analyzer.controller.ts",
     {
-      "path": "server/controllers/scanner.controller.ts",
+      "path": "server/controllers/analyzer.controller.ts",
       "language": "ts",
       "imports": [],
-      "exports": [
-        "processScan"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "server/controllers/scannerController.ts",
-    {
-      "path": "server/controllers/scannerController.ts",
-      "language": "ts",
-      "imports": [
-        "../lib/prisma"
-      ],
       "exports": [
         "analyzeResume"
       ],
@@ -38,13 +24,23 @@
     }
   ],
   [
-    "server/routes/scanner.ts",
+    "server/controllers/scanController.ts",
     {
-      "path": "server/routes/scanner.ts",
+      "path": "server/controllers/scanController.ts",
       "language": "ts",
-      "imports": [
-        "../lib/prisma"
+      "imports": [],
+      "exports": [
+        "analyzeMatch"
       ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/routes/scan.ts",
+    {
+      "path": "server/routes/scan.ts",
+      "language": "ts",
+      "imports": [],
       "exports": [
         "default"
       ],
@@ -56,8 +52,11 @@
     {
       "path": "src/App.tsx",
       "language": "tsx",
-      "imports": [],
+      "imports": [
+        "./routes"
+      ],
       "exports": [
+        "App",
         "default"
       ],
       "referencedFiles": []
@@ -149,37 +148,6 @@
     }
   ],
   [
-    "src/entities/Analysis.ts",
-    {
-      "path": "src/entities/Analysis.ts",
-      "language": "ts",
-      "imports": [
-        "../features/analysis/services/analysisService",
-        "../features/analysis/services/analysisService"
-      ],
-      "exports": [
-        "Analysis",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/analysis/AnalysisPage.tsx",
-    {
-      "path": "src/features/analysis/AnalysisPage.tsx",
-      "language": "tsx",
-      "imports": [
-        "../../entities/Analysis",
-        "../../entities/Analysis"
-      ],
-      "exports": [
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
     "src/features/analysis/components/MatchDashboard.tsx",
     {
       "path": "src/features/analysis/components/MatchDashboard.tsx",
@@ -190,27 +158,6 @@
       "exports": [
         "MatchDashboard",
         "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/analysis/services/analysisService.tsx",
-    {
-      "path": "src/features/analysis/services/analysisService.tsx",
-      "language": "tsx",
-      "imports": [
-        "../../../services/api",
-        "../../../entities/Analysis"
-      ],
-      "exports": [
-        "analyzeResume",
-        "fetchHistory",
-        "getAll",
-        "get",
-        "create",
-        "update",
-        "remove"
       ],
       "referencedFiles": []
     }
@@ -244,13 +191,72 @@
     }
   ],
   [
-    "src/features/dashboard/components/MetricsGrid.tsx",
+    "src/features/dashboard/components/ScanDashboard.tsx",
     {
-      "path": "src/features/dashboard/components/MetricsGrid.tsx",
+      "path": "src/features/dashboard/components/ScanDashboard.tsx",
+      "language": "tsx",
+      "imports": [
+        "../../../shared/components/Card",
+        "../../../shared/utils/cn"
+      ],
+      "exports": [
+        "ScanDashboard",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/dashboard/components/ScanResultCard.tsx",
+    {
+      "path": "src/features/dashboard/components/ScanResultCard.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "MetricsGrid",
+        "ScanResultCard",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/dashboard/components/StatsOverview.tsx",
+    {
+      "path": "src/features/dashboard/components/StatsOverview.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "StatsOverview",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/dashboard/DashboardPage.tsx",
+    {
+      "path": "src/features/dashboard/DashboardPage.tsx",
+      "language": "tsx",
+      "imports": [
+        "../../shared/components/Card",
+        "./hooks/useDashboardData"
+      ],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/parser/components/ResumeDropzone.tsx",
+    {
+      "path": "src/features/parser/components/ResumeDropzone.tsx",
+      "language": "tsx",
+      "imports": [
+        "../../../shared/utils/cn"
+      ],
+      "exports": [
+        "ResumeDropzone",
         "default"
       ],
       "referencedFiles": []
@@ -323,12 +329,8 @@
       "language": "ts",
       "imports": [],
       "exports": [
-        "getAll",
-        "get",
-        "create",
-        "update",
-        "remove",
         "apiClient",
+        "resumeApi",
         "default"
       ],
       "referencedFiles": []
@@ -396,6 +398,22 @@
       "imports": [],
       "exports": [
         "Spinner",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/utils/cn.tsx",
+    {
+      "path": "src/shared/utils/cn.tsx",
+      "language": "tsx",
+      "imports": [
+        "../../utils/cn",
+        "../../utils/cn"
+      ],
+      "exports": [
+        "cn",
         "default"
       ],
       "referencedFiles": []

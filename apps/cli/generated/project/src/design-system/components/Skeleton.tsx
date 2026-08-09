@@ -16,7 +16,7 @@ export const Skeleton: React.FC<any> = ({ className = '', lines = 1, count }) =>
         {Array.from({ length: effectiveLines }).map((_, i) => (
           <div
             key={i}
-            className={`h-4 rounded-md bg-slate-800 animate-pulse ${i === effectiveLines - 1 ? 'w-3/4' : 'w-full'} ${className}`}
+            className={`h-4 rounded-md bg-zinc-800 animate-pulse ${i === effectiveLines - 1 ? 'w-3/4' : 'w-full'} ${className}`}
           />
         ))}
       </div>
@@ -26,7 +26,7 @@ export const Skeleton: React.FC<any> = ({ className = '', lines = 1, count }) =>
     <div
       role="status"
       aria-label="Loading"
-      className={`rounded-md bg-slate-800 animate-pulse ${className}`}
+      className={`rounded-md bg-zinc-800 animate-pulse ${className}`}
     />
   );
 };

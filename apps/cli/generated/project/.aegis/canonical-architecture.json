@@ -1,0 +1,54 @@
+{
+  "contractVersion": 1,
+  "architectureHash": "f50bc363584f",
+  "frontend": "React-Vite",
+  "backend": "Express",
+  "database": "PostgreSQL",
+  "orm": "Prisma",
+  "authentication": "JWT",
+  "language": "TypeScript",
+  "styling": "Tailwind CSS with Shadcn/UI",
+  "packageManager": "pnpm",
+  "requiredLibraries": [
+    "pdf-parse",
+    "langchain",
+    "@prisma/client",
+    "lucia-auth",
+    "recharts",
+    "zod",
+    "framer-motion",
+    "react-hook-form",
+    "openai"
+  ],
+  "requiredFeatures": [
+    "auth",
+    "pdf-parsing",
+    "keyword-analysis",
+    "scoring",
+    "history",
+    "dashboard"
+  ],
+  "requiredRoutes": [
+    "upload-resume-and-job-description",
+    "analyze-semantic-match",
+    "view-improvement-recommendations",
+    "manage-analysis-history"
+  ],
+  "requiredModels": [
+    "User",
+    "Resume",
+    "JobDescription",
+    "AnalysisResult"
+  ],
+  "forbiddenTechnologies": [
+    "Next.js",
+    "App Router",
+    "NextAuth",
+    "Server Actions",
+    "Next.js API Routes",
+    "MongoDB",
+    "Mongoose",
+    "Drizzle",
+    "Drizzle ORM"
+  ]
+}

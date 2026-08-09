@@ -1,0 +1,86 @@
+[
+  [
+    "src/routes.tsx",
+    {
+      "path": "src/routes.tsx",
+      "description": "Application React Router configuration"
+    }
+  ],
+  [
+    "src/App.tsx",
+    {
+      "path": "src/App.tsx",
+      "description": "Root React application container with QueryClientProvider"
+    }
+  ],
+  [
+    "src/features/dashboard/DashboardPage.tsx",
+    {
+      "path": "src/features/dashboard/DashboardPage.tsx",
+      "description": "Canonical dashboard page"
+    }
+  ],
+  [
+    "src/features/upload/UploadPage.tsx",
+    {
+      "path": "src/features/upload/UploadPage.tsx",
+      "description": "Canonical resume upload page"
+    }
+  ],
+  [
+    "src/features/auth/LoginPage.tsx",
+    {
+      "path": "src/features/auth/LoginPage.tsx",
+      "description": "Canonical auth login page"
+    }
+  ],
+  [
+    "src/shared/components/MatchScoreDial.tsx",
+    {
+      "path": "src/shared/components/MatchScoreDial.tsx",
+      "description": "Canonical score gauge dial SVG"
+    }
+  ],
+  [
+    "src/shared/components/Layout.tsx",
+    {
+      "path": "src/shared/components/Layout.tsx",
+      "description": "Canonical app shell layout"
+    }
+  ],
+  [
+    "src/services/api.ts",
+    {
+      "path": "src/services/api.ts",
+      "description": "Frontend API client service"
+    }
+  ],
+  [
+    "server/controllers/ScanController.ts",
+    {
+      "path": "server/controllers/ScanController.ts",
+      "description": "Express scan controller"
+    }
+  ],
+  [
+    "server/routes/scan.routes.ts",
+    {
+      "path": "server/routes/scan.routes.ts",
+      "description": "Express scan route definitions"
+    }
+  ],
+  [
+    "server/lib/prisma.ts",
+    {
+      "path": "server/lib/prisma.ts",
+      "description": "Prisma client instance initialization"
+    }
+  ],
+  [
+    "prisma/schema.prisma",
+    {
+      "path": "prisma/schema.prisma",
+      "description": "Prisma database schema models"
+    }
+  ]
+]

@@ -12,25 +12,81 @@
     }
   ],
   [
-    "server/controllers/ScanController.ts",
+    "server/controllers/auth.controller.ts",
     {
-      "path": "server/controllers/ScanController.ts",
+      "path": "server/controllers/auth.controller.ts",
       "language": "ts",
       "imports": [],
       "exports": [
-        "uploadResume"
+        "register",
+        "login"
       ],
       "referencedFiles": []
     }
   ],
   [
-    "server/models/ResumeScan.tsx",
+    "server/controllers/scanController.ts",
     {
-      "path": "server/models/ResumeScan.tsx",
+      "path": "server/controllers/scanController.ts",
+      "language": "ts",
+      "imports": [
+        "../utils/matchEngine"
+      ],
+      "exports": [],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/features/analyzer/analyzer.service.ts",
+    {
+      "path": "server/features/analyzer/analyzer.service.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "AnalyzerService",
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/src/index.ts",
+    {
+      "path": "server/src/index.ts",
+      "language": "ts",
+      "imports": [
+        "./utils/pdfParser",
+        "./models/Resume"
+      ],
+      "exports": [],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/src/models/Resume.tsx",
+    {
+      "path": "server/src/models/Resume.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "ResumeScan"
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/src/utils/pdfParser.ts",
+    {
+      "path": "server/src/utils/pdfParser.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "extractTextFromPDF",
+        "calculateMatchScore"
       ],
       "referencedFiles": []
     }
@@ -41,23 +97,10 @@
       "path": "src/App.tsx",
       "language": "tsx",
       "imports": [
-        "./components/Layout"
+        "./routes"
       ],
       "exports": [
         "App",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/components/Layout.tsx",
-    {
-      "path": "src/components/Layout.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "Layout",
         "default"
       ],
       "referencedFiles": []
@@ -164,6 +207,21 @@
     }
   ],
   [
+    "src/features/auth/components/ProtectedRoute.tsx",
+    {
+      "path": "src/features/auth/components/ProtectedRoute.tsx",
+      "language": "tsx",
+      "imports": [
+        "../hooks/useAuth"
+      ],
+      "exports": [
+        "ProtectedRoute",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
     "src/features/auth/LoginPage.tsx",
     {
       "path": "src/features/auth/LoginPage.tsx",
@@ -192,48 +250,18 @@
     }
   ],
   [
-    "src/features/dashboard/components/ScanOverviewCard.tsx",
+    "src/features/upload/services/uploadService.ts",
     {
-      "path": "src/features/dashboard/components/ScanOverviewCard.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "ScanOverviewCard",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/dashboard/DashboardPage.tsx",
-    {
-      "path": "src/features/dashboard/DashboardPage.tsx",
-      "language": "tsx",
-      "imports": [
-        "../../components/Layout",
-        "../../components/MatchScoreChart",
-        "../../shared/components/EmptyState"
-      ],
-      "exports": [
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/parser/services/ParserService.ts",
-    {
-      "path": "src/features/parser/services/ParserService.ts",
+      "path": "src/features/upload/services/uploadService.ts",
       "language": "ts",
       "imports": [],
       "exports": [
-        "ParserService",
+        "uploadResume",
         "getAll",
         "get",
         "create",
         "update",
-        "remove",
-        "default"
+        "remove"
       ],
       "referencedFiles": []
     }
@@ -313,19 +341,6 @@
     }
   ],
   [
-    "src/shared/components/EmptyState.tsx",
-    {
-      "path": "src/shared/components/EmptyState.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "EmptyState",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
     "src/shared/components/Layout.tsx",
     {
       "path": "src/shared/components/Layout.tsx",
@@ -361,19 +376,6 @@
       "imports": [],
       "exports": [
         "Navbar",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/shared/components/Skeleton.tsx",
-    {
-      "path": "src/shared/components/Skeleton.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "Skeleton",
         "default"
       ],
       "referencedFiles": []

@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "contractVersion": 1,
+  "frontend": "React-Vite",
+  "backend": "Express",
+  "database": "PostgreSQL",
+  "orm": "Prisma",
+  "files": [
+    {
+      "path": "src/routes.tsx",
+      "category": "required",
+      "description": "Application React Router configuration"
+    },
+    {
+      "path": "src/App.tsx",
+      "category": "required",
+      "description": "Root React application component with QueryClientProvider"
+    },
+    {
+      "path": "src/features/dashboard/DashboardPage.tsx",
+      "category": "required",
+      "description": "Canonical dashboard view"
+    },
+    {
+      "path": "src/features/upload/UploadPage.tsx",
+      "category": "required",
+      "description": "Canonical resume upload view"
+    },
+    {
+      "path": "src/features/auth/LoginPage.tsx",
+      "category": "required",
+      "description": "Canonical authentication login view"
+    },
+    {
+      "path": "src/shared/components/MatchScoreDial.tsx",
+      "category": "required",
+      "description": "Canonical score gauge dial SVG"
+    },
+    {
+      "path": "src/shared/components/Layout.tsx",
+      "category": "required",
+      "description": "Application layout shell"
+    },
+    {
+      "path": "src/services/api.ts",
+      "category": "required",
+      "description": "Frontend API client service"
+    },
+    {
+      "path": "server/controllers/ScanController.ts",
+      "category": "required",
+      "description": "Express scan controller"
+    },
+    {
+      "path": "server/routes/scan.routes.ts",
+      "category": "required",
+      "description": "Express scan routes definition"
+    },
+    {
+      "path": "server/lib/prisma.ts",
+      "category": "required",
+      "description": "Prisma client instance"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "category": "required",
+      "description": "Prisma database schema"
+    }
+  ],
+  "routes": [
+    "upload-resume-and-job-description",
+    "analyze-semantic-match",
+    "view-improvement-recommendations",
+    "manage-analysis-history"
+  ],
+  "models": [
+    "User",
+    "Resume",
+    "JobDescription",
+    "AnalysisResult"
+  ],
+  "apiEndpoints": [
+    "POST /api/scans",
+    "GET /api/scans",
+    "POST /api/auth/login"
+  ]
+}

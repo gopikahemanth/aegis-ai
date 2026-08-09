@@ -198,15 +198,25 @@ export class DependencyClosureValidator {
         const oldImport = `"${v.importPath}"`;
         const newImport = `"${relNoExt}"`;
 
-        if (content.includes(oldImport) && relNoExt !== v.importPath) {
-          content = content.split(oldImport).join(newImport);
+        if (content.includes(oldImport)) {
+          content = content.replace(oldImport, newImport);
           writeFileSync(sourceAbs, content, "utf8");
-          console.log(`[DependencyClosure] ✓ Fixed: "${v.importPath}" → "${relNoExt}" in ${v.sourceFile}`);
+          console.log(`[DependencyClosure] ✓ Auto-fixed import in ${v.sourceFile}: ${v.importPath} → ${relNoExt}`);
           fixed++;
         }
-      } catch { /* ignore */ }
+      } catch {}
     }
 
     return fixed;
+  }
+
+  public static isForbiddenDependency(packageName: string, dbProvider: string = "PostgreSQL"): boolean {
+    const pkg = packageName.toLowerCase().trim();
+    if (dbProvider.toLowerCase().includes("postgres") || dbProvider.toLowerCase().includes("sqlite")) {
+      if (pkg === "mongoose" || pkg === "mongodb" || pkg === "next-auth" || pkg === "drizzle-orm") {
+        return true;
+      }
+    }
+    return false;
   }
 }

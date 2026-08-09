@@ -1,28 +1,39 @@
 import { Request, Response } from 'express';
 import pdfParse from 'pdf-parse';
-import { PrismaClient } from '@prisma/client';
+import { calculateResumeMatch } from '../utils/matchEngine';
 
-const prisma = new PrismaClient();
-
-export const uploadResume = async (req: Request, res: Response): Promise<void> => {
+export async function processResumeAnalysis(req: Request, res: Response) {
   try {
-    if (!req.file) {
-      res.status(400).json({ error: 'Resume file required' });
-      return;
+    if (!req.file || !req.body.jobDescription) {
+      return res.status(400).json({ error: 'Missing file or job description' });
     }
 
     const pdfData = await pdfParse(req.file.buffer);
-    const resume = await prisma.resume.create({
+    const resumeText = pdfData.text;
+    
+    // Simple mock-up of keyword extraction from JD - in prod use NLP/compromise
+    const jobKeywords = req.body.jobDescription.split(' ').filter((w: string) => w.length > 5);
+    
+    const analysis = calculateResumeMatch(resumeText, jobKeywords);
+
+    // Save to DB via Prisma
+    const scan = await prisma.resumeScan.create({
       data: {
         userId: (req as any).user.id,
-        originalName: req.file.originalname,
-        rawText: pdfData.text,
-        s3Key: `resumes/${Date.now()}-${req.file.originalname}`
+        jobDescription: req.body.jobDescription,
+        resumeText,
+        matchScore: analysis.matchScore,
+        matchResult: {
+          create: {
+            matchedKeywords: analysis.matchedKeywords,
+            missingKeywords: analysis.missingKeywords
+          }
+        }
       }
     });
 
-    res.status(201).json({ success: true, resumeId: resume.id });
+    res.status(200).json(scan);
   } catch (error) {
     res.json([]);
   }
-};
+}

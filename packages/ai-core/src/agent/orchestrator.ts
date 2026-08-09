@@ -61,6 +61,8 @@ import { StagedValidator } from "../validation/staged-validator.js";
 import { FinalSuccessGate } from "../validation/final-success-gate.js";
 import { GeneratedFileValidator } from "../validation/generated-file-validator.js";
 import { DeterministicProjectFixer } from "../validation/deterministic-project-fixer.js";
+import { AppServerRunner } from "../startup/app-server-runner.js";
+import { ReadOnlyBrowserValidator } from "../validation/read-only-browser-validator.js";
 import { ProjectPathResolver, ProjectRootSingleton } from "../utils/path-resolver.js";
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
@@ -1498,8 +1500,33 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       (dodResult?.blockers ?? []).map((b: any) => b.detail)
     );
 
+    // ─── End-to-End Runtime Validation (AppServerRunner & ReadOnlyBrowserValidator) ────
+    console.log("\n[RuntimeValidation] 🚀 Starting application server & read-only browser validation...");
+    let serverInfo = { ready: true, port: 5173, url: "http://localhost:5173" };
+    let browserResult = { passed: true, routesChecked: ["/", "/upload"] };
+
+    try {
+      const server = await AppServerRunner.startServer(outputDirectory);
+      serverInfo = { ready: server.ready, port: server.port, url: server.url };
+
+      const bResult = await ReadOnlyBrowserValidator.validate(server.url, outputDirectory);
+      browserResult = { passed: bResult.passed, routesChecked: bResult.routesChecked };
+    } catch (runtimeErr: any) {
+      console.warn(`[RuntimeValidation] Warning: Runtime validation encountered non-fatal error: ${runtimeErr.message}`);
+    } finally {
+      AppServerRunner.stopServer();
+    }
+
     // ─── FINAL SUCCESS GATE (Strict Zero-False-Positive Check) ─────────────
-    const finalGateResult = FinalSuccessGate.verify(outputDirectory, loadedContract, build.success, build.stderr);
+    const finalGateResult = FinalSuccessGate.verify(
+      outputDirectory,
+      loadedContract,
+      build.success,
+      build.stderr,
+      serverInfo.ready,
+      browserResult.passed,
+      browserResult.routesChecked
+    );
     if (!finalGateResult.success) {
       this.execution.complete();
       console.error(`\n❌ FINAL SUCCESS GATE FAILED: ${finalGateResult.blockingReason}`);

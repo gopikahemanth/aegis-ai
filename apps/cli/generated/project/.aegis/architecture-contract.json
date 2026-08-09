@@ -27,36 +27,35 @@
   "authentication": "JWT",
   "requiredLibraries": [
     "pdf-parse",
-    "tesseract.js",
     "openai",
     "prisma",
     "next-auth",
-    "recharts",
-    "react-pdf",
     "zod",
     "framer-motion",
-    "react-dropzone"
+    "recharts",
+    "react-hook-form",
+    "lucide-react"
   ],
   "requiredFeatures": [
     "auth",
     "upload",
     "parsing",
-    "matching",
-    "dashboard",
+    "scoring",
+    "history",
     "export"
   ],
   "requiredRoutes": [
     "user-authentication",
     "upload-resume-and-job-description",
-    "generate-semantic-analysis",
-    "view-scoring-dashboard",
-    "export-gap-analysis-report"
+    "generate-relevance-analysis",
+    "view-historical-comparisons",
+    "export-improvement-report"
   ],
   "requiredModels": [
     "User",
     "Resume",
     "JobDescription",
-    "AnalysisResult"
+    "AnalysisReport"
   ],
   "projectStructure": {
     "src": "Frontend source directory",

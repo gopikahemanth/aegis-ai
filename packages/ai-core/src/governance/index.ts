@@ -17,4 +17,6 @@ export * from "./canonical-architecture-state.js";
 export * from "./canonical-manifest-generator.js";
 export * from "./project-file-registry.js";
 export * from "./task-normalizer.js";
+export * from "./task-scope-validator.js";
+export * from "./symbol-registry.js";
 

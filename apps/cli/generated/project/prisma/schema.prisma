@@ -8,21 +8,20 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
+  id            String         @id @default(uuid())
+  email         String         @unique
   passwordHash  String
-  createdAt     DateTime @default(now())
-  scans         ResumeScan[]
+  createdAt     DateTime       @default(now())
+  resumeScans   AnalysisResult[]
 }
 
-model ResumeScan {
+model AnalysisResult {
   id              String   @id @default(uuid())
   userId          String
   user            User     @relation(fields: [userId], references: [id])
   jobTitle        String
   matchScore      Int
   matchedKeywords String[]
-  missingSkills   String[]
-  rawTextSnippet  String?
+  missingKeywords String[]
   createdAt       DateTime @default(now())
 }

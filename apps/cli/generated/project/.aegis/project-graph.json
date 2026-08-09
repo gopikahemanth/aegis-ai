@@ -12,13 +12,41 @@
     }
   ],
   [
-    "server/controllers/scanController.ts",
+    "server/controllers/scanner.controller.ts",
     {
-      "path": "server/controllers/scanController.ts",
+      "path": "server/controllers/scanner.controller.ts",
       "language": "ts",
       "imports": [],
       "exports": [
+        "processScan"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/controllers/scannerController.ts",
+    {
+      "path": "server/controllers/scannerController.ts",
+      "language": "ts",
+      "imports": [
+        "../lib/prisma"
+      ],
+      "exports": [
         "analyzeResume"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/routes/scanner.ts",
+    {
+      "path": "server/routes/scanner.ts",
+      "language": "ts",
+      "imports": [
+        "../lib/prisma"
+      ],
+      "exports": [
+        "default"
       ],
       "referencedFiles": []
     }
@@ -30,22 +58,6 @@
       "language": "tsx",
       "imports": [],
       "exports": [
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/controllers/scanController.ts",
-    {
-      "path": "src/controllers/scanController.ts",
-      "language": "ts",
-      "imports": [
-        "../../server/controllers/scanController",
-        "../../server/controllers/scanController"
-      ],
-      "exports": [
-        "scanController",
         "default"
       ],
       "referencedFiles": []
@@ -137,32 +149,31 @@
     }
   ],
   [
-    "src/entities/scan.tsx",
+    "src/entities/Analysis.ts",
     {
-      "path": "src/entities/scan.tsx",
-      "language": "tsx",
+      "path": "src/entities/Analysis.ts",
+      "language": "ts",
       "imports": [
-        "../controllers/scanController",
-        "../middleware/authMiddleware"
+        "../features/analysis/services/analysisService",
+        "../features/analysis/services/analysisService"
       ],
       "exports": [
-        "analyzeResumeHandler",
-        "ResumeDropzone",
+        "Analysis",
         "default"
       ],
       "referencedFiles": []
     }
   ],
   [
-    "src/features/analysis/components/AnalysisView.tsx",
+    "src/features/analysis/AnalysisPage.tsx",
     {
-      "path": "src/features/analysis/components/AnalysisView.tsx",
+      "path": "src/features/analysis/AnalysisPage.tsx",
       "language": "tsx",
       "imports": [
-        "@/shared/components/FileUploader"
+        "../../entities/Analysis",
+        "../../entities/Analysis"
       ],
       "exports": [
-        "AnalysisView",
         "default"
       ],
       "referencedFiles": []
@@ -179,6 +190,27 @@
       "exports": [
         "MatchDashboard",
         "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/analysis/services/analysisService.tsx",
+    {
+      "path": "src/features/analysis/services/analysisService.tsx",
+      "language": "tsx",
+      "imports": [
+        "../../../services/api",
+        "../../../entities/Analysis"
+      ],
+      "exports": [
+        "analyzeResume",
+        "fetchHistory",
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove"
       ],
       "referencedFiles": []
     }
@@ -212,27 +244,13 @@
     }
   ],
   [
-    "src/features/dashboard/DashboardPage.tsx",
+    "src/features/dashboard/components/MetricsGrid.tsx",
     {
-      "path": "src/features/dashboard/DashboardPage.tsx",
-      "language": "tsx",
-      "imports": [
-        "../../shared/components/Button"
-      ],
-      "exports": [
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/upload/components/UploadDashboard.tsx",
-    {
-      "path": "src/features/upload/components/UploadDashboard.tsx",
+      "path": "src/features/dashboard/components/MetricsGrid.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "UploadDashboard",
+        "MetricsGrid",
         "default"
       ],
       "referencedFiles": []
@@ -305,34 +323,25 @@
       "language": "ts",
       "imports": [],
       "exports": [
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove",
         "apiClient",
-        "resumeApi",
         "default"
       ],
       "referencedFiles": []
     }
   ],
   [
-    "src/shared/components/Button.tsx",
+    "src/shared/components/Card.tsx",
     {
-      "path": "src/shared/components/Button.tsx",
+      "path": "src/shared/components/Card.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "Button",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/shared/components/FileUploader.tsx",
-    {
-      "path": "src/shared/components/FileUploader.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "FileUploader",
+        "Card",
         "default"
       ],
       "referencedFiles": []

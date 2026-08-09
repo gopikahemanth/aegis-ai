@@ -1,12 +1,17 @@
 import React from 'react';
 
 export interface MatchScoreDialProps {
+  className?: string;
+  children?: any;
+  onClick?: any;
+  [key: string]: any;
+
   score: number;
   size?: number;
   label?: string;
 }
 
-export const MatchScoreDial: React.FC<MatchScoreDialProps> = ({
+export const MatchScoreDial: React.FC<any> = ({
   score = 0,
   size = 120,
   label = "Match Score"

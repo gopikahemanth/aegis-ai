@@ -1,8 +1,9 @@
+const onSubmit = (data: any) => console.log(data);
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../../shared/components/Layout';
 
-export const LoginPage: React.FC = () => {
+export const LoginPage: React.FC<any> = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();

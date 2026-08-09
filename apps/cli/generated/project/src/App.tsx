@@ -11,7 +11,7 @@ const queryClient = new QueryClient({
   },
 });
 
-export function App() {
+export function App(props: any) {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">

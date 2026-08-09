@@ -1,0 +1,425 @@
+[
+  [
+    "postcss.config.js",
+    {
+      "path": "postcss.config.js",
+      "language": "js",
+      "imports": [],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/controllers/analysisController.ts",
+    {
+      "path": "server/controllers/analysisController.ts",
+      "language": "ts",
+      "imports": [
+        "../lib/prisma"
+      ],
+      "exports": [
+        "analyzeResume"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/App.tsx",
+    {
+      "path": "src/App.tsx",
+      "language": "tsx",
+      "imports": [
+        "./routes"
+      ],
+      "exports": [
+        "App",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/components/Button.tsx",
+    {
+      "path": "src/design-system/components/Button.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "Button",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/components/EmptyState.tsx",
+    {
+      "path": "src/design-system/components/EmptyState.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "EmptyState",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/components/GlassCard.tsx",
+    {
+      "path": "src/design-system/components/GlassCard.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "GlassCard",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/components/Skeleton.tsx",
+    {
+      "path": "src/design-system/components/Skeleton.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "Skeleton",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/index.ts",
+    {
+      "path": "src/design-system/index.ts",
+      "language": "ts",
+      "imports": [
+        "./tokens.js",
+        "./components/Button.js",
+        "./components/Skeleton.js",
+        "./components/EmptyState.js",
+        "./components/GlassCard.js"
+      ],
+      "exports": [],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/tokens.ts",
+    {
+      "path": "src/design-system/tokens.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "colors",
+        "spacing",
+        "radius",
+        "typography",
+        "shadows",
+        "animations"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/analysis/components/MatchDashboard.tsx",
+    {
+      "path": "src/features/analysis/components/MatchDashboard.tsx",
+      "language": "tsx",
+      "imports": [
+        "../../../shared/components/MatchScoreDial"
+      ],
+      "exports": [
+        "MatchDashboard",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/analyzer/services/analysisService.ts",
+    {
+      "path": "src/features/analyzer/services/analysisService.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "performScan",
+        "fetchHistory",
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/auth/LoginPage.tsx",
+    {
+      "path": "src/features/auth/LoginPage.tsx",
+      "language": "tsx",
+      "imports": [
+        "../../shared/components/Layout"
+      ],
+      "exports": [
+        "LoginPage",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/dashboard/components/AnalysisList.tsx",
+    {
+      "path": "src/features/dashboard/components/AnalysisList.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "AnalysisList",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/dashboard/components/MatchOverview.tsx",
+    {
+      "path": "src/features/dashboard/components/MatchOverview.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "MatchOverview",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/dashboard/components/MatchRadar.tsx",
+    {
+      "path": "src/features/dashboard/components/MatchRadar.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "MatchRadar",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/dashboard/components/MatchRadarChart.tsx",
+    {
+      "path": "src/features/dashboard/components/MatchRadarChart.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "MatchRadarChart",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/scan/services/scanService.ts",
+    {
+      "path": "src/features/scan/services/scanService.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "performScan",
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/upload/UploadPage.tsx",
+    {
+      "path": "src/features/upload/UploadPage.tsx",
+      "language": "tsx",
+      "imports": [
+        "../../shared/components/Layout",
+        "../../shared/components/Spinner"
+      ],
+      "exports": [
+        "UploadPage",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/lib/prisma.ts",
+    {
+      "path": "src/lib/prisma.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "prisma",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/main.tsx",
+    {
+      "path": "src/main.tsx",
+      "language": "tsx",
+      "imports": [
+        "./App",
+        "./index.css"
+      ],
+      "exports": [],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/routes.tsx",
+    {
+      "path": "src/routes.tsx",
+      "language": "tsx",
+      "imports": [
+        "./features/dashboard/DashboardPage",
+        "./features/upload/UploadPage",
+        "./features/auth/LoginPage",
+        "./features/analysis/components/MatchDashboard"
+      ],
+      "exports": [
+        "AppRoutes",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/services/api.ts",
+    {
+      "path": "src/services/api.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "resumeService",
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove",
+        "apiClient",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/components/Layout.tsx",
+    {
+      "path": "src/shared/components/Layout.tsx",
+      "language": "tsx",
+      "imports": [
+        "./Navbar"
+      ],
+      "exports": [
+        "Layout",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/components/MatchScoreDial.tsx",
+    {
+      "path": "src/shared/components/MatchScoreDial.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "MatchScoreDial",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/components/Navbar.tsx",
+    {
+      "path": "src/shared/components/Navbar.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "Navbar",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/components/Spinner.tsx",
+    {
+      "path": "src/shared/components/Spinner.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "Spinner",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/utils/cn.ts",
+    {
+      "path": "src/utils/cn.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "cn",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/vite-env.d.ts",
+    {
+      "path": "src/vite-env.d.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "tailwind.config.js",
+    {
+      "path": "tailwind.config.js",
+      "language": "js",
+      "imports": [],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "vite.config.ts",
+    {
+      "path": "vite.config.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ]
+]

@@ -1,11 +1,16 @@
 import React from 'react';
 
 export interface AnalysisListProps {
+  className?: string;
+  children?: any;
+  onClick?: any;
+  [key: string]: any;
+
   data?: any[];
   isLoading?: boolean;
 }
 
-export const AnalysisList: React.FC<AnalysisListProps> = ({ data = [], isLoading = false }) => {
+export const AnalysisList: React.FC<any> = ({ data = [], isLoading = false }) => {
   if (isLoading) {
     return <div className="p-4 text-sm text-slate-400 animate-pulse">Loading analysis history...</div>;
   }

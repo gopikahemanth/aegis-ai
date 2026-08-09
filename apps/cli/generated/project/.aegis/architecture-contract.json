@@ -22,38 +22,37 @@
     "ormProvenance": "default"
   },
   "language": "TypeScript",
-  "styling": "TailwindCSS",
+  "styling": "Tailwind CSS",
   "packageManager": "pnpm",
   "authentication": "JWT",
   "requiredLibraries": [
     "pdf-parse",
+    "langchain",
     "openai",
     "drizzle-orm",
+    "lucia-auth",
+    "recharts",
     "zod",
-    "react-hook-form",
-    "lucide-react",
-    "jspdf",
-    "next-auth",
-    "pg"
+    "react-dropzone",
+    "shadcn-ui"
   ],
   "requiredFeatures": [
     "auth",
     "upload",
     "parsing",
-    "scoring",
-    "history",
+    "analysis",
+    "dashboard",
     "export"
   ],
   "requiredRoutes": [
-    "authenticate-user",
+    "user-authentication",
     "upload-resume-and-job-description",
-    "analyze-keyword-match",
-    "view-scan-history",
-    "export-analysis-report"
+    "perform-gap-analysis",
+    "view-analysis-dashboard",
+    "download-improvement-report"
   ],
   "requiredModels": [
     "User",
-    "Scan",
     "Resume",
     "JobDescription",
     "AnalysisResult"

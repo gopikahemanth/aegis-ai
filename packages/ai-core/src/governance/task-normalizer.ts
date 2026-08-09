@@ -1,4 +1,4 @@
-﻿import { ArchitectureContractV1 } from "./architecture-resolver.js";
+import { ArchitectureContractV1 } from "./architecture-resolver.js";
 import { Task } from "../planner/task.js";
 
 export interface TaskNormalizationCorrection {
@@ -33,15 +33,11 @@ export class TaskNormalizer {
     let title = task.title;
     let description = task.description || "";
 
-    // 1. Next.js / NextAuth / Server Actions -> React-Vite + Express REST
-    if (/NextAuth/i.test(title) || /NextAuth/i.test(description)) {
-      corrections.push({
-        field: "title",
-        from: title,
-        to: title.replace(/NextAuth/gi, "Express JWT Auth"),
-      });
-      title = title.replace(/NextAuth/gi, "Express JWT Auth");
-      description = description.replace(/NextAuth/gi, "Express JWT Authentication with bcrypt and jsonwebtoken");
+    // 1. Next.js / NextAuth / Lucia Auth / Server Actions -> React-Vite + Express REST + JWT
+    if (/NextAuth|Lucia Auth|OAuth2/i.test(title) || /NextAuth|Lucia Auth|OAuth2/i.test(description)) {
+      corrections.push({ field: "title", from: title, to: title.replace(/NextAuth|Lucia Auth|OAuth2/gi, "Express JWT Auth") });
+      title = title.replace(/NextAuth|Lucia Auth|OAuth2/gi, "Express JWT Auth");
+      description = description.replace(/NextAuth|Lucia Auth|OAuth2/gi, "Express JWT Authentication with bcrypt and jsonwebtoken");
     }
 
     if (/Server Actions/i.test(title) || /Server Actions/i.test(description)) {
@@ -49,9 +45,9 @@ export class TaskNormalizer {
       description = description.replace(/server actions/gi, "Express REST endpoints and controller handlers");
     }
 
-    if (/Next\.js\s+App\s+Router/i.test(title) || /Next\.js\s+App\s+Router/i.test(description)) {
-      title = title.replace(/Next\.js\s+App\s+Router/gi, `${expFrontend} Router`);
-      description = description.replace(/Next\.js\s+App\s+Router/gi, `${expFrontend} with React Router DOM`);
+    if (/Next\.js\s+App\s+Router|Next\.js|Shadcn\s+UI/i.test(title) || /Next\.js\s+App\s+Router|Next\.js|Shadcn\s+UI/i.test(description)) {
+      title = title.replace(/Next\.js\s+App\s+Router|Next\.js/gi, `${expFrontend}`);
+      description = description.replace(/Next\.js\s+App\s+Router|Next\.js|Shadcn\s+UI/gi, `${expFrontend} with TailwindCSS`);
     }
 
     if (/Next\.js\s+API\s+Routes/i.test(title) || /Next\.js\s+API\s+Routes/i.test(description)) {
@@ -70,9 +66,9 @@ export class TaskNormalizer {
       description = description.replace(/Mongoose/gi, expOrm);
     }
 
-    if (/Drizzle/i.test(title) || /Drizzle/i.test(description)) {
-      title = title.replace(/Drizzle/gi, expOrm);
-      description = description.replace(/Drizzle/gi, expOrm);
+    if (/Drizzle|Drizzle\s+ORM/i.test(title) || /Drizzle|Drizzle\s+ORM/i.test(description)) {
+      title = title.replace(/Drizzle\s+ORM|Drizzle/gi, expOrm);
+      description = description.replace(/Drizzle\s+ORM|Drizzle/gi, expOrm);
     }
 
     // 3. Domain Model Normalization (ResumeScan / ScanResult -> AnalysisResult)

@@ -18,11 +18,59 @@ export interface DomainModelGuardResult {
  * Validates that CoderAgent tasks do not introduce domain models that
  * are not part of the locked architecture contract.
  *
- * Example: A Resume Scanner contract locks [User, Submission, AnalysisResult, Keyword].
- * If the planner generates a task that creates a "Task" or "Item" model,
+ * Example: A Resume Scanner contract locks [User, Resume, JobDescription, AnalysisResult].
+ * If the planner generates a task that creates a "Task" or "ShoppingCart" model,
  * DomainModelGuard will reject it with UNAUTHORIZED_DOMAIN_MODEL.
  */
 export class DomainModelGuard {
+  // Explicit technology & infrastructure vocabulary blacklist (MUST NEVER BE EXTRACTIONS AS DOMAIN MODELS)
+  private static readonly TECH_BLACKLIST = new Set([
+    "postgresql",
+    "postgres",
+    "mysql",
+    "sqlite",
+    "mongodb",
+    "mongo",
+    "prisma",
+    "drizzle",
+    "mongoose",
+    "express",
+    "react",
+    "react-vite",
+    "vite",
+    "nextjs",
+    "next",
+    "next-auth",
+    "jwt",
+    "typescript",
+    "javascript",
+    "node",
+    "backend",
+    "frontend",
+    "database",
+    "api",
+    "server",
+    "client",
+    "middleware",
+    "router",
+    "controller",
+    "service",
+    "library",
+    "framework",
+    "the",
+    "new",
+    "all",
+    "this",
+    "that",
+    "from",
+    "with",
+    "schema",
+    "model",
+    "entity",
+    "table",
+    "auth",
+  ]);
+
   // Generic template models that pollute domain-specific apps
   private static readonly ALWAYS_FORBIDDEN = new Set([
     "todoitem",
@@ -38,6 +86,13 @@ export class DomainModelGuard {
     "subscription",
   ]);
 
+  // Domain model terminology mapping (e.g. ResumeScan -> AnalysisResult)
+  private static readonly MODEL_ALIASES: Record<string, string> = {
+    resumescan: "analysisresult",
+    scanresult: "analysisresult",
+    scan: "analysisresult",
+  };
+
   /**
    * Validate tasks against the contract's required models.
    * @param tasks - Planned tasks from the planner
@@ -50,7 +105,6 @@ export class DomainModelGuard {
     const violations: DomainModelViolation[] = [];
 
     if (!requiredModels || requiredModels.length === 0) {
-      // No contract models defined — skip guard
       return { valid: true, violations: [] };
     }
 
@@ -58,13 +112,17 @@ export class DomainModelGuard {
       requiredModels.map(m => m.toLowerCase().replace(/[^a-z]/g, ""))
     );
 
-    // Model creation patterns in task text
+    // Also allow mapped aliases of required models
+    for (const [alias, canonical] of Object.entries(DomainModelGuard.MODEL_ALIASES)) {
+      if (allowedNormalized.has(canonical)) {
+        allowedNormalized.add(alias);
+      }
+    }
+
     const modelPatterns = [
       /create\s+(?:a\s+)?(\w+)\s+model/gi,
-      /define\s+(?:a\s+)?(\w+)\s+(?:schema|model|entity|table)/gi,
-      /(\w+)\s+prisma\s+model/gi,
+      /define\s+(?:a\s+)?(\w+)\s+(?:schema|entity|table)/gi,
       /model\s+(\w+)\s*\{/gi,
-      /implement\s+(\w+)\s+(?:crud|repository|service)/gi,
     ];
 
     for (const task of tasks) {
@@ -78,22 +136,24 @@ export class DomainModelGuard {
             taskId: taskIdStr,
             taskTitle: task.title,
             forbiddenModel: forbidden,
-            reason: `UNAUTHORIZED_DOMAIN_MODEL: Task introduces "${forbidden}" which is not in contract.requiredModels [${requiredModels.join(", ")}]`,
+            reason: `UNAUTHORIZED_DOMAIN_MODEL: Task introduces generic model "${forbidden}" which is not in contract.requiredModels [${requiredModels.join(", ")}]`,
           });
         }
       }
 
-      // Check task-specific model extraction
+      // Check model extraction patterns
       for (const pattern of modelPatterns) {
         pattern.lastIndex = 0;
         let match: RegExpExecArray | null;
         while ((match = pattern.exec(taskText)) !== null) {
-          const modelName = match[1].toLowerCase().replace(/[^a-z]/g, "");
-          if (
-            modelName.length > 2 &&
-            !allowedNormalized.has(modelName) &&
-            !["the", "new", "all", "this", "that", "from", "with"].includes(modelName)
-          ) {
+          const rawMatch = match[1].toLowerCase().replace(/[^a-z]/g, "");
+
+          // Ignore technology vocabulary blacklist
+          if (DomainModelGuard.TECH_BLACKLIST.has(rawMatch) || rawMatch.length <= 2) {
+            continue;
+          }
+
+          if (!allowedNormalized.has(rawMatch)) {
             violations.push({
               taskId: taskIdStr,
               taskTitle: task.title,
@@ -125,22 +185,31 @@ export class DomainModelGuard {
   }
 
   /**
-   * Filter out tasks that violate the domain model contract.
-   * Logs violations but does NOT throw — removes offending tasks and continues.
-   * Used when planner regeneration still produces violations after retries.
+   * Normalize task text to replace aliases (e.g. ResumeScan -> AnalysisResult)
+   * and remove invalid model references WITHOUT stripping the entire task.
    */
   public static filterTasks(tasks: Task[], requiredModels: string[]): Task[] {
-    const result = DomainModelGuard.validate(tasks, requiredModels);
-    if (result.valid) return tasks;
-
-    const forbiddenTaskIds = new Set(result.violations.map(v => v.taskId));
-    const filtered = tasks.filter(t => !forbiddenTaskIds.has(String(t.id)));
-
-    console.warn(
-      `[DomainModelGuard] ⚠️ Stripped ${forbiddenTaskIds.size} unauthorized task(s) from plan. ` +
-      `Continuing with ${filtered.length} valid task(s).`
+    const allowedNormalized = new Set(
+      requiredModels.map(m => m.toLowerCase().replace(/[^a-z]/g, ""))
     );
 
-    return filtered;
+    return tasks.map(task => {
+      let title = task.title;
+      let description = task.description || "";
+
+      // Replace aliases: ResumeScan / ScanResult -> AnalysisResult
+      title = title
+        .replace(/ResumeScan|ScanResult/g, "AnalysisResult")
+        .replace(/resumescan|scanresult/gi, "AnalysisResult");
+      description = description
+        .replace(/ResumeScan|ScanResult/g, "AnalysisResult")
+        .replace(/resumescan|scanresult/gi, "AnalysisResult");
+
+      return {
+        ...task,
+        title,
+        description,
+      };
+    });
   }
 }

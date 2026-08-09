@@ -8,45 +8,20 @@ datasource db {
 }
 
 model User {
-  id            String       @id @default(uuid())
-  email         String       @unique
+  id            Int         @id @default(autoincrement())
+  email         String      @unique
   passwordHash  String
-  resumes       Resume[]
-  jobDescriptions JobDescription[]
-  scans         ScanResult[]
-  createdAt     DateTime     @default(now())
+  createdAt     DateTime    @default(now())
+  scans         ResumeScan[]
 }
 
-model Resume {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  fileName  String
-  content   String   @db.Text
-  createdAt DateTime @default(now())
-  scans     ScanResult[]
-}
-
-model JobDescription {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  title     String
-  content   String   @db.Text
-  createdAt DateTime @default(now())
-  scans     ScanResult[]
-}
-
-model ScanResult {
-  id               String         @id @default(uuid())
-  userId           String
-  user             User           @relation(fields: [userId], references: [id])
-  resumeId         String
-  resume           Resume         @relation(fields: [resumeId], references: [id])
-  jobDescriptionId String
-  jobDescription   JobDescription @relation(fields: [jobDescriptionId], references: [id])
+model ResumeScan {
+  id               Int      @id @default(autoincrement())
+  user             User     @relation(fields: [userId], references: [id])
+  userId           Int
   matchScore       Int
-  skillGaps        String[]
-  analysisSummary  String         @db.Text
-  createdAt        DateTime       @default(now())
+  matchedKeywords  String[]
+  missingKeywords  String[]
+  fileName         String
+  createdAt        DateTime @default(now())
 }

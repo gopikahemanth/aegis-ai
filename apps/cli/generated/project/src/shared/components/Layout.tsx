@@ -4,7 +4,7 @@ export interface LayoutProps {
   children: React.ReactNode;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children }) => {
+export const Layout: React.FC<any> = ({ children }) => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <nav className="border-b border-slate-800 bg-slate-900/70 backdrop-blur px-8 py-4 flex items-center justify-between">

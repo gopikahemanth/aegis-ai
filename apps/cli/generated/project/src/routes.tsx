@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import DashboardPage from "./features/dashboard/DashboardPage";
 import { MatchDashboard } from "./features/analysis/components/MatchDashboard";
 
-export function AppRoutes() {
+export function AppRoutes(props: any) {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">

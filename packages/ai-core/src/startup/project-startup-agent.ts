@@ -1030,16 +1030,6 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
             } else if (isValueOrComponent) {
               content += `\nexport { ${baseComp} };\n`;
               changed = true;
-            } else {
-              const singular = baseComp.endsWith("s") ? baseComp.slice(0, -1) : baseComp;
-              const hasSingular = new RegExp(`(?:const|function|class|let|var)\\s+${singular}\\b`).test(content);
-              if (hasSingular) {
-                content += `\nexport const ${baseComp} = ${singular};\n`;
-                changed = true;
-              } else {
-                content += `\nconst _shim_${baseComp}: any = (props: any) => <div className="${baseComp.toLowerCase()}-shim" {...props}>{props?.children}</div>;\nexport { _shim_${baseComp} as ${baseComp} };\n`;
-                changed = true;
-              }
             }
           }
 
@@ -1047,15 +1037,6 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
             const isValueOrComponent = new RegExp(`(?:const|function|class|let|var)\\s+${baseComp}\\b`).test(content);
             if (isValueOrComponent) {
               content += `\nexport default ${baseComp};\n`;
-              changed = true;
-            } else {
-              const singular = baseComp.endsWith("s") ? baseComp.slice(0, -1) : baseComp;
-              const hasSingular = new RegExp(`(?:const|function|class|let|var)\\s+${singular}\\b`).test(content);
-              const defaultTarget = hasSingular ? singular : `_shim_${baseComp}`;
-              if (!hasSingular && !content.includes(`_shim_${baseComp}`)) {
-                content += `\nconst _shim_${baseComp}: any = (props: any) => <div className="${baseComp.toLowerCase()}-shim" {...props}>{props?.children}</div>;\n`;
-              }
-              content += `\nexport default ${defaultTarget};\n`;
               changed = true;
             }
           }

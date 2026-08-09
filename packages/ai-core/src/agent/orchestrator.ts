@@ -289,7 +289,7 @@ export class Orchestrator {
     }
     writeFileSync(join(aegisDir, "prompt.txt"), request, "utf8");
 
-    const resolvedContract = ArchitectureResolver.resolve(request, specification, canonicalSpec);
+    const resolvedContract = ArchitectureResolver.resolve(request, specification, canonicalSpec, outputDirectory);
     ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
     const archContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
 
@@ -594,7 +594,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
     }
 
-    const resolvedContract = ArchitectureResolver.resolve(request, rawSpecification, canonicalSpec);
+    const resolvedContract = ArchitectureResolver.resolve(request, rawSpecification, canonicalSpec, outputDirectory);
     ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
     const appArchContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
 

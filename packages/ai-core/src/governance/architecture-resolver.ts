@@ -44,8 +44,18 @@ export class ArchitectureResolver {
   public static resolve(
     userPrompt: string,
     rawSpec: ProjectSpecification,
-    canonicalSpec: CanonicalProjectSpecification
+    canonicalSpec: CanonicalProjectSpecification,
+    outputDirectory?: string
   ): ArchitectureContractV1 {
+    // ── Idempotency Check: Load existing locked contract if available ───────────
+    if (outputDirectory) {
+      const existing = ArchitectureResolver.loadContract(outputDirectory);
+      if (existing && existing.status === "locked") {
+        console.log(`[ArchitectureResolver] 🔒 Reusing existing locked Architecture Contract (DB: ${existing.database.provider}, Frontend: ${existing.frontend.framework})`);
+        return existing;
+      }
+    }
+
     const promptLower = userPrompt.toLowerCase();
 
     // ── FRONTEND resolution with provenance ─────────────────────────────────
@@ -193,6 +203,7 @@ export class ArchitectureResolver {
     if (!existsSync(aegisDir)) {
       mkdirSync(aegisDir, { recursive: true });
     }
+    console.log(`[CONTRACT WRITE] caller: ArchitectureResolver, path: ${outputDirectory}, database: ${contract.database.provider}, frontend: ${contract.frontend.framework}, backend: ${contract.backend.framework}`);
     writeFileSync(join(aegisDir, "architecture-contract.json"), JSON.stringify(contract, null, 2), "utf8");
     console.log(
       `[ArchitectureResolver] 🔒 Locked Architecture Contract:\n` +

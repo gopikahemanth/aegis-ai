@@ -64,7 +64,6 @@ export class SpecificationNormalizer {
     if (promptLower.includes("postgres") || promptLower.includes("postgresql")) database = "PostgreSQL";
     else if (promptLower.includes("mongo") || promptLower.includes("mongodb")) database = "MongoDB";
     else if (promptLower.includes("sqlite")) database = "SQLite";
-    else if (rawSpec.database) database = rawSpec.database;
 
     let orm = "Prisma";
     if (promptLower.includes("drizzle")) orm = "Drizzle";

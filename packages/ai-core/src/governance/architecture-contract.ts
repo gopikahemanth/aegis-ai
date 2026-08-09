@@ -87,7 +87,17 @@ export class ArchitectureContractManager {
       allowedRoutePrefixes: ["/api", "/auth", "/dashboard", "/"]
     };
 
-    writeFileSync(join(aegisDir, "architecture-contract.json"), JSON.stringify(archContract, null, 2), "utf8");
+    const contractFile = join(aegisDir, "architecture-contract.json");
+    if (existsSync(contractFile)) {
+      try {
+        const existing = JSON.parse(readFileSync(contractFile, "utf8"));
+        console.log(`[ArchitectureContractManager] 🔒 Reusing existing locked contract (DB: ${existing.database?.provider || existing.stack?.database})`);
+        return existing;
+      } catch {}
+    }
+
+    console.log(`[CONTRACT WRITE] caller: ArchitectureContractManager, path: ${outputDirectory}, database: ${archContract.stack.database}, frontend: ${archContract.stack.frontend}, backend: ${archContract.stack.backend}`);
+    writeFileSync(contractFile, JSON.stringify(archContract, null, 2), "utf8");
     writeFileSync(join(aegisDir, "requirement-contract.json"), JSON.stringify(requirementContract, null, 2), "utf8");
 
     console.log(`[Governance] 🔒 Architecture Contract locked in .aegis/architecture-contract.json (DB: ${archContract.stack.database}, Frontend: ${archContract.stack.frontend}, Backend: ${archContract.stack.backend})`);

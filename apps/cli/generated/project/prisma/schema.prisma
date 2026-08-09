@@ -8,20 +8,20 @@ datasource db {
 }
 
 model User {
-  id            Int         @id @default(autoincrement())
-  email         String      @unique
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
   passwordHash  String
-  createdAt     DateTime    @default(now())
-  scans         ResumeScan[]
+  createdAt     DateTime       @default(now())
+  analyses      ResumeAnalysis[]
 }
 
-model ResumeScan {
-  id               Int      @id @default(autoincrement())
-  user             User     @relation(fields: [userId], references: [id])
-  userId           Int
-  matchScore       Int
-  matchedKeywords  String[]
-  missingKeywords  String[]
-  fileName         String
-  createdAt        DateTime @default(now())
+model ResumeAnalysis {
+  id              Int            @id @default(autoincrement())
+  userId          Int
+  user            User           @relation(fields: [userId], references: [id])
+  resumeText      String
+  jobDescription  String
+  matchScore      Float
+  keywordMatches  Json
+  createdAt       DateTime       @default(now())
 }

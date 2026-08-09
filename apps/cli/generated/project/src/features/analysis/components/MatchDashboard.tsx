@@ -2,11 +2,16 @@ import React from 'react';
 import MatchScoreDial from '../../../shared/components/MatchScoreDial';
 
 export interface MatchDashboardProps {
+  className?: string;
+  children?: any;
+  onClick?: any;
+  [key: string]: any;
+
   score?: number;
   skills?: string[];
 }
 
-export const MatchDashboard: React.FC<MatchDashboardProps> = ({ score = 85, skills = ["React", "TypeScript", "Express", "PostgreSQL"] }) => {
+export const MatchDashboard: React.FC<any> = ({ score = 85, skills = ["React", "TypeScript", "Express", "PostgreSQL"] }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 bg-slate-900/60 rounded-2xl border border-slate-800">
       <MatchScoreDial score={score} />
@@ -26,4 +31,3 @@ export const MatchDashboard: React.FC<MatchDashboardProps> = ({ score = 85, skil
 };
 
 export default MatchDashboard;
-

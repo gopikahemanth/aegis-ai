@@ -1,5 +1,5 @@
-import { resolve, normalize, isAbsolute, dirname, join } from "node:path";
-import { existsSync } from "node:fs";
+﻿import { resolve, normalize, isAbsolute, dirname, join } from "node:path";
+import { existsSync, statSync } from "node:fs";
 
 export class DuplicateProjectRootError extends Error {
   constructor(path: string) {
@@ -8,10 +8,6 @@ export class DuplicateProjectRootError extends Error {
   }
 }
 
-/**
- * ProjectRootSingleton — canonical absolute project root, set once.
- * All pipeline components should use this to avoid path concatenation bugs.
- */
 export class ProjectRootSingleton {
   private static _root: string | null = null;
 
@@ -29,11 +25,91 @@ export class ProjectRootSingleton {
   }
 }
 
-export class ProjectPathResolver {
+/**
+ * ImportResolver — Centralized resolution and extension normalization engine.
+ * Handles relative imports, tsconfig @/ path aliases, extension normalization (.tsxx -> .tsx),
+ * and directory index file resolution across all Aegis pipeline subsystems.
+ */
+export class ImportResolver {
+  public static readonly EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"];
+
   /**
-   * Assert that a path does not contain duplicate root segments.
-   * Throws DuplicateProjectRootError if it does.
+   * Normalize path string to remove doubled/invalid extensions.
+   * e.g. "AnalysisList.tsxx" -> "AnalysisList.tsx"
+   *      "Foo.jsxx"         -> "Foo.jsx"
    */
+  public static normalizeExtension(path: string): string {
+    if (!path) return path;
+    let normalized = path.replace(/\\/g, "/");
+
+    // Repair .tsxx, .tsxxx, .jsxx, .jsxxy
+    normalized = normalized.replace(/\.tsx+$/i, ".tsx");
+    normalized = normalized.replace(/\.jsx+$/i, ".jsx");
+    normalized = normalized.replace(/\.ts{2,}$/i, ".ts");
+    normalized = normalized.replace(/\.js{2,}$/i, ".js");
+
+    return normalized;
+  }
+
+  /**
+   * Resolve an import specifier relative to project root and importing file.
+   * Checks exact path, extension variations, and directory index files.
+   */
+  public static resolve(projectRoot: string, importerPath: string, importSpecifier: string): string | null {
+    const root = normalize(projectRoot).replace(/\\/g, "/");
+    let cleanSpecifier = ImportResolver.normalizeExtension(importSpecifier);
+
+    if (!cleanSpecifier.startsWith(".") && !cleanSpecifier.startsWith("/") && !cleanSpecifier.startsWith("@/")) {
+      return "external";
+    }
+
+    let baseDir = root;
+    if (importerPath) {
+      const fullImporter = ImportResolver.normalizeExtension(resolve(root, importerPath));
+      baseDir = dirname(fullImporter);
+    }
+
+    let targetBasePath: string;
+    if (cleanSpecifier.startsWith("@/")) {
+      targetBasePath = join(root, "src", cleanSpecifier.slice(2)).replace(/\\/g, "/");
+    } else if (cleanSpecifier.startsWith(".")) {
+      targetBasePath = join(baseDir, cleanSpecifier).replace(/\\/g, "/");
+    } else {
+      targetBasePath = join(root, cleanSpecifier).replace(/\\/g, "/");
+    }
+
+    // 1. Direct file check
+    if (existsSync(targetBasePath)) {
+      try {
+        if (statSync(targetBasePath).isFile()) return targetBasePath;
+      } catch {}
+    }
+
+    // 2. Extension checks (.ts, .tsx, .js, .jsx)
+    for (const ext of ImportResolver.EXTENSIONS) {
+      const candidate = targetBasePath + ext;
+      if (existsSync(candidate)) {
+        try {
+          if (statSync(candidate).isFile()) return candidate;
+        } catch {}
+      }
+    }
+
+    // 3. Directory index checks
+    for (const ext of ImportResolver.EXTENSIONS) {
+      const candidate = join(targetBasePath, `index${ext}`).replace(/\\/g, "/");
+      if (existsSync(candidate)) {
+        try {
+          if (statSync(candidate).isFile()) return candidate;
+        } catch {}
+      }
+    }
+
+    return null;
+  }
+}
+
+export class ProjectPathResolver {
   public static assertNoDuplicateRoot(path: string): void {
     const normalized = path.replace(/\\/g, "/");
     if (
@@ -45,11 +121,6 @@ export class ProjectPathResolver {
     }
   }
 
-  /**
-   * Remove duplicate root segments from a path.
-   * e.g. "/root/generated/project/generated/project/src/App.tsx"
-   *   → "/root/generated/project/src/App.tsx"
-   */
   public static deduplicateRoot(path: string, rootFragment: string): string {
     const normalized = path.replace(/\\/g, "/");
     const frag = rootFragment.replace(/\\/g, "/").replace(/\/$/, "");
@@ -57,7 +128,6 @@ export class ProjectPathResolver {
     if (normalized.includes(doubled)) {
       return normalized.replace(doubled, frag + "/");
     }
-    // Also handle the full doubled path
     const doubled2 = frag + "/" + frag + "/";
     if (normalized.includes(doubled2)) {
       return normalized.replace(doubled2, frag + "/");
@@ -67,12 +137,10 @@ export class ProjectPathResolver {
 
   public static resolveProjectFile(projectRoot: string, targetPath: string): string {
     const normalizedRoot = normalize(projectRoot).replace(/\\/g, "/");
-    let normalizedTarget = normalize(targetPath).replace(/\\/g, "/");
+    let normalizedTarget = ImportResolver.normalizeExtension(normalize(targetPath).replace(/\\/g, "/"));
 
-    // Remove leading ./ or ../ prefixes
     normalizedTarget = normalizedTarget.replace(/^(\.\/|\.\.\/)+/, "");
 
-    // Hard Assertion & Error Guard for duplicate project root
     if (
       normalizedTarget.includes("generated/project/generated/project") ||
       normalizedTarget.includes("generated\\project\\generated\\project")
@@ -81,12 +149,10 @@ export class ProjectPathResolver {
       throw new DuplicateProjectRootError(targetPath);
     }
 
-    // Strip leading "generated/project/" if projectRoot already ends with "generated/project"
     if (normalizedRoot.endsWith("generated/project") && normalizedTarget.startsWith("generated/project/")) {
       normalizedTarget = normalizedTarget.replace(/^generated\/project\//, "");
     }
 
-    // If targetPath already starts with normalizedRoot, return as-is
     if (normalizedTarget.startsWith(normalizedRoot)) {
       return normalizedTarget;
     }
@@ -102,43 +168,7 @@ export class ProjectPathResolver {
     return this.resolveProjectFile(projectRoot, targetPath);
   }
 
-  /**
-   * Extension-Aware Module Resolution:
-   * Resolves local imports (e.g. ./routes, @/shared/components/Button) by checking:
-   * 1. exact file
-   * 2. .ts
-   * 3. .tsx
-   * 4. .js
-   * 5. .jsx
-   * 6. index.ts / index.tsx / index.js / index.jsx inside directory
-   */
   public static resolveModule(projectRoot: string, importerPath: string, importSpecifier: string): string | null {
-    const root = normalize(projectRoot).replace(/\\/g, "/");
-    let baseDir = root;
-
-    if (importerPath) {
-      const fullImporter = this.resolveProjectFile(root, importerPath);
-      baseDir = dirname(fullImporter);
-    }
-
-    let targetPath = importSpecifier;
-    if (importSpecifier.startsWith("@/")) {
-      targetPath = join(root, "src", importSpecifier.slice(2)).replace(/\\/g, "/");
-    } else if (importSpecifier.startsWith(".")) {
-      targetPath = join(baseDir, importSpecifier).replace(/\\/g, "/");
-    } else {
-      targetPath = join(root, importSpecifier).replace(/\\/g, "/");
-    }
-
-    const candidateExtensions = ["", ".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.tsx", "/index.js", "/index.jsx"];
-
-    for (const ext of candidateExtensions) {
-      const candidate = targetPath + ext;
-      if (existsSync(candidate)) {
-        return candidate;
-      }
-    }
-
-    return null;
+    return ImportResolver.resolve(projectRoot, importerPath, importSpecifier);
   }
 }

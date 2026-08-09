@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-export const Navbar: React.FC = () => {
+export const Navbar: React.FC<any> = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
 

@@ -12,28 +12,24 @@
     }
   ],
   [
-    "server/controllers/scanController.ts",
+    "server/controllers/scan.controller.ts",
     {
-      "path": "server/controllers/scanController.ts",
+      "path": "server/controllers/scan.controller.ts",
       "language": "ts",
       "imports": [
         "../lib/prisma"
       ],
-      "exports": [
-        "analyzeResume"
-      ],
+      "exports": [],
       "referencedFiles": []
     }
   ],
   [
-    "server/routes/analysis.ts",
+    "server/controllers/scanController.ts",
     {
-      "path": "server/routes/analysis.ts",
+      "path": "server/controllers/scanController.ts",
       "language": "ts",
       "imports": [],
-      "exports": [
-        "default"
-      ],
+      "exports": [],
       "referencedFiles": []
     }
   ],
@@ -43,8 +39,22 @@
       "path": "server/routes/scan.routes.tsx",
       "language": "tsx",
       "imports": [
-        "../lib/prisma",
-        "../middleware/auth"
+        "../controllers/scan.controller",
+        "../middleware/auth.middleware"
+      ],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/routes/scan.ts",
+    {
+      "path": "server/routes/scan.ts",
+      "language": "ts",
+      "imports": [
+        "../controllers/scanController"
       ],
       "exports": [
         "default"
@@ -57,9 +67,7 @@
     {
       "path": "src/App.tsx",
       "language": "tsx",
-      "imports": [
-        "./shared/components/Navbar"
-      ],
+      "imports": [],
       "exports": [
         "default"
       ],
@@ -152,26 +160,28 @@
     }
   ],
   [
-    "src/features/dashboard/components/Dashboard.tsx",
+    "src/features/analyzer/components/SemanticResultPanel.tsx",
     {
-      "path": "src/features/dashboard/components/Dashboard.tsx",
+      "path": "src/features/analyzer/components/SemanticResultPanel.tsx",
       "language": "tsx",
-      "imports": [],
+      "imports": [
+        "../../../shared/components/AnimatedMatchScoreGauge"
+      ],
       "exports": [
-        "Dashboard",
+        "SemanticResultPanel",
         "default"
       ],
       "referencedFiles": []
     }
   ],
   [
-    "src/features/dashboard/components/DashboardView.tsx",
+    "src/features/dashboard/components/MatchScoreGauge.tsx",
     {
-      "path": "src/features/dashboard/components/DashboardView.tsx",
+      "path": "src/features/dashboard/components/MatchScoreGauge.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "DashboardView",
+        "MatchScoreGauge",
         "default"
       ],
       "referencedFiles": []
@@ -183,9 +193,12 @@
       "path": "src/features/dashboard/DashboardPage.tsx",
       "language": "tsx",
       "imports": [
-        "../../shared/components"
+        "../../shared/components/Layout",
+        "../analysis/components/MatchDashboard",
+        "./hooks/useDashboardData"
       ],
       "exports": [
+        "DashboardPage",
         "default"
       ],
       "referencedFiles": []
@@ -209,6 +222,19 @@
     }
   ],
   [
+    "src/features/parser/components/FileDropZone.tsx",
+    {
+      "path": "src/features/parser/components/FileDropZone.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "FileDropZone",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
     "src/main.tsx",
     {
       "path": "src/main.tsx",
@@ -222,30 +248,16 @@
     }
   ],
   [
-    "src/services/api/client.ts",
+    "src/shared/components/AnimatedMatchScoreGauge.tsx",
     {
-      "path": "src/services/api/client.ts",
-      "language": "ts",
-      "imports": [],
-      "exports": [
-        "apiClient",
-        "getAll",
-        "get",
-        "create",
-        "update",
-        "remove"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/shared/components/Button.tsx",
-    {
-      "path": "src/shared/components/Button.tsx",
+      "path": "src/shared/components/AnimatedMatchScoreGauge.tsx",
       "language": "tsx",
-      "imports": [],
+      "imports": [
+        "../../features/dashboard/components/MatchScoreGauge",
+        "../../features/dashboard/components/MatchScoreGauge"
+      ],
       "exports": [
-        "Button",
+        "AnimatedMatchScoreGauge",
         "default"
       ],
       "referencedFiles": []

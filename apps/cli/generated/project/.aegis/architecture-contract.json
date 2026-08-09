@@ -22,41 +22,43 @@
     "ormProvenance": "default"
   },
   "language": "TypeScript",
-  "styling": "TailwindCSS and ShadcnUI",
+  "styling": "Tailwind CSS + Shadcn UI",
   "packageManager": "pnpm",
   "authentication": "JWT",
   "requiredLibraries": [
     "pdf-parse",
+    "langchain",
     "openai",
     "prisma",
     "@prisma/client",
     "next-auth",
     "zod",
-    "react-hook-form",
     "recharts",
-    "framer-motion",
+    "lucide-react",
     "clsx",
     "tailwind-merge"
   ],
   "requiredFeatures": [
-    "auth",
-    "upload",
-    "parsing",
-    "analysis",
-    "dashboard",
-    "history"
+    "authentication",
+    "pdf-processing",
+    "job-parsing",
+    "scoring-engine",
+    "gap-analysis",
+    "history-tracking"
   ],
   "requiredRoutes": [
-    "user-authentication",
+    "user-onboarding",
     "upload-resume-and-job-description",
-    "view-gap-analysis-dashboard",
-    "track-historical-analysis-results"
+    "generate-match-score-and-gaps",
+    "review-actionable-insights",
+    "view-comparison-history"
   ],
   "requiredModels": [
     "User",
     "Resume",
     "JobDescription",
-    "AnalysisResult"
+    "MatchReport",
+    "KeywordGap"
   ],
   "projectStructure": {
     "src": "Frontend source directory",

@@ -22,4 +22,10 @@ export interface Task {
     | "running"
     | "completed"
     | "failed";
+
+  architectureHash?: string;
+  allowedTechnologies?: string[];
+  forbiddenTechnologies?: string[];
+  allowedPaths?: string[];
+  forbiddenPaths?: string[];
 }

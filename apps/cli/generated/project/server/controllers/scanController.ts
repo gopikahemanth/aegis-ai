@@ -1,35 +1,43 @@
 import { Request, Response } from 'express';
 import pdfParse from 'pdf-parse';
-import { prisma } from '../lib/prisma';
 
-export const analyzeResume = async (req: Request, res: Response) => {
+export async function parseResumeAndCalculateMatch(req: Request, res: Response): Promise<void> {
   try {
-    if (!req.file || !req.body.jobDescription) {
-      return res.status(400).json({ error: 'Missing resume file or job description' });
+    if (!req.file) {
+      res.status(400).json({ error: 'Resume PDF is required.' });
+      return;
+    }
+
+    const { jobDescription } = req.body;
+    if (!jobDescription) {
+      res.status(400).json({ error: 'Job description is required.' });
+      return;
     }
 
     const pdfData = await pdfParse(req.file.buffer);
     const resumeText = pdfData.text.toLowerCase();
-    const jdText = req.body.jobDescription.toLowerCase();
 
-    // Keyword Extraction Logic
-    const keywords = Array.from(new Set(jdText.match(/\b[a-z]{4,}\b/g) || []));
-    const matched = keywords.filter(kw => resumeText.includes(kw));
-    const missing = keywords.filter(kw => !resumeText.includes(kw));
-    const score = Math.round((matched.length / (keywords.length || 1)) * 100);
+    const rawKeywords = jobDescription
+      .toLowerCase()
+      .replace(/[^a-z0-9\+\#\.\s]/g, '')
+      .split(/\s+|,|\n/)
+      .filter((w: string) => w.length > 3);
 
-    const scan = await prisma.scan.create({
-      data: {
-        userId: (req as any).user.id,
-        jobDescription: req.body.jobDescription,
-        matchScore: score,
-        matchedKeywords: matched,
-        missingKeywords: missing,
-      }
+    const uniqueKeywords = Array.from(new Set<string>(rawKeywords));
+    const matchedKeywords = uniqueKeywords.filter(kw => resumeText.includes(kw));
+    const missingKeywords = uniqueKeywords.filter(kw => !resumeText.includes(kw));
+
+    const matchScore = uniqueKeywords.length > 0 
+      ? Math.round((matchedKeywords.length / uniqueKeywords.length) * 100)
+      : 0;
+
+    res.status(200).json({
+      matchScore,
+      matchedKeywords,
+      missingKeywords,
+      totalChecked: uniqueKeywords.length
     });
-
-    res.json(scan);
   } catch (error) {
     res.json([]);
   }
-};
+}

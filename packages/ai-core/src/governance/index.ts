@@ -20,4 +20,5 @@ export * from "./task-normalizer.js";
 export * from "./task-scope-validator.js";
 export * from "./symbol-registry.js";
 export * from "./technology-compatibility-registry.js";
+export * from "./plan-contract-gate.js";
 

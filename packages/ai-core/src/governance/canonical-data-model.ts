@@ -25,7 +25,8 @@ export class CanonicalDataModelContract {
    */
   public static getPrismaSchema(promptText: string = ""): string {
     const pLower = promptText.toLowerCase();
-    const isSecurity = pLower.includes("code") || pLower.includes("vulnerability") || pLower.includes("reviewer") || pLower.includes("security") || pLower.includes("scanner");
+    const isResume = pLower.includes("resume") || pLower.includes("jobdescription") || pLower.includes("ats") || pLower.includes("keyword");
+    const isSecurity = !isResume;
 
     if (isSecurity) {
       return `// ============================================================
@@ -187,7 +188,8 @@ model KeywordMatch {
    */
   public static getModelNames(promptText: string = ""): string[] {
     const pLower = promptText.toLowerCase();
-    const isSecurity = pLower.includes("code") || pLower.includes("vulnerability") || pLower.includes("reviewer") || pLower.includes("security") || pLower.includes("scanner");
+    const isResume = pLower.includes("resume") || pLower.includes("jobdescription") || pLower.includes("ats") || pLower.includes("keyword");
+    const isSecurity = !isResume;
     return isSecurity ? [...CanonicalDataModelContract.SECURITY_MODEL_NAMES] : [...CanonicalDataModelContract.RESUME_MODEL_NAMES];
   }
 

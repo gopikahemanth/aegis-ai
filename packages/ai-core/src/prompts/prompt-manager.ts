@@ -113,12 +113,17 @@ Do not explain anything.`;
 STRICT ARCHITECTURE LOCK (MUST CONFORM TO THESE STACK CONSTRAINTS):
 - Frontend Framework: ${spec?.frontend ?? spec?.type ?? "React / Vite"}
 - Backend Framework: ${spec?.backend ?? "Express"}
-- Database Engine: ${spec?.database ?? "SQLite"}
-- Authentication: ${spec?.auth ?? "JWT / Session"}
+- Database Engine: ${spec?.database ?? "PostgreSQL"}
+- ORM: Prisma
+- Authentication: ${spec?.auth ?? "JWT"}
 
 CRITICAL ARCHITECTURE CONSTRAINTS:
-- Do NOT plan Next.js API routes if backend is Express.
-- Do NOT plan PostgreSQL if database is SQLite.
+- Do NOT plan Next.js, NextAuth, Lucia Auth, OAuth2, Server Actions, or Next.js App Router.
+- Do NOT plan Mongoose, MongoDB, or Drizzle.
+- The ONLY frontend framework permitted is: ${spec?.frontend ?? "React-Vite"}.
+- The ONLY backend framework permitted is: ${spec?.backend ?? "Express"}.
+- The ONLY ORM / Database permitted is: ${spec?.database ?? "PostgreSQL"} with Prisma.
+- The ONLY authentication permitted is: JWT with Express.
 - All task descriptions MUST strictly adhere to the above locked tech stack.
 
 Break the project into execution tasks. Be extremely concise. Generate a maximum of 5 high-level tasks to cover the entire implementation scope. Keep task descriptions short to prevent output truncation.

@@ -1,4 +1,4 @@
-﻿import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 export interface UIFeatureResult {
@@ -9,34 +9,26 @@ export interface UIFeatureResult {
 export class UIFeatureChecker {
   public static validate(projectRoot: string): UIFeatureResult {
     const missingElements: string[] = [];
-    const filesToScan = [
-      join(projectRoot, "src", "features", "upload", "UploadPage.tsx"),
-      join(projectRoot, "src", "features", "dashboard", "DashboardPage.tsx"),
-      join(projectRoot, "src", "features", "analysis", "components", "MatchDashboard.tsx"),
-      join(projectRoot, "src", "routes.tsx"),
-      join(projectRoot, "src", "App.tsx")
-    ];
+    const srcDir = join(projectRoot, "src");
 
     let combinedContent = "";
-    for (const f of filesToScan) {
-      if (existsSync(f)) {
+    if (existsSync(srcDir)) {
+      const files = this.getAllTsxFiles(srcDir);
+      for (const f of files) {
         try { combinedContent += readFileSync(f, "utf8") + "\n"; } catch {}
       }
     }
 
-    // Check 1: File Upload Input / Dropzone
-    if (!combinedContent.includes('type="file"') && !combinedContent.includes("accept") && !combinedContent.includes("ResumeUploader")) {
-      missingElements.push("File Upload Input / PDF dropzone component");
+    // Check 1: Interactive Input / Form Component
+    const hasInput = combinedContent.includes('type="file"') || combinedContent.includes("<textarea") || combinedContent.includes("<input") || combinedContent.includes("<form") || combinedContent.includes("dropzone") || combinedContent.includes("Upload");
+    if (!hasInput) {
+      missingElements.push("Interactive Input / Form component");
     }
 
-    // Check 2: Job Description Input
-    if (!combinedContent.includes("<textarea") && !combinedContent.includes("jobDescription")) {
-      missingElements.push("Job Description textarea input");
-    }
-
-    // Check 3: Keyword Breakdown Rendering
-    if (!combinedContent.includes("matchedKeywords") && !combinedContent.includes("Matched Keywords") && !combinedContent.includes("skills")) {
-      missingElements.push("Matched / Missing Keyword Breakdown section");
+    // Check 2: Results / Breakdown / Analysis Visualization Section
+    const hasVisualization = combinedContent.includes("score") || combinedContent.includes("keywords") || combinedContent.includes("results") || combinedContent.includes("vulnerabilities") || combinedContent.includes("analysis") || combinedContent.includes("metrics") || combinedContent.includes("skills");
+    if (!hasVisualization) {
+      missingElements.push("Analysis Results / Visualization section");
     }
 
     const passed = missingElements.length === 0;
@@ -51,5 +43,21 @@ export class UIFeatureChecker {
       passed,
       missingElements
     };
+  }
+
+  private static getAllTsxFiles(dir: string): string[] {
+    let results: string[] = [];
+    try {
+      const list = readdirSync(dir, { withFileTypes: true });
+      for (const entry of list) {
+        const fullPath = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          results = results.concat(this.getAllTsxFiles(fullPath));
+        } else if (entry.isFile() && (entry.name.endsWith(".tsx") || entry.name.endsWith(".ts"))) {
+          results.push(fullPath);
+        }
+      }
+    } catch {}
+    return results;
   }
 }

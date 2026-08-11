@@ -34,10 +34,13 @@ export class ArchitecturePlanner {
       spec.type === "fullstack"
     ) {
       directoryTree.push(
-        "src/routes",
-        "src/controllers",
-        "src/models",
-        "src/middleware"
+        "server",
+        "server/routes",
+        "server/controllers",
+        "server/services",
+        "server/middleware",
+        "server/lib",
+        "prisma"
       );
     }
 

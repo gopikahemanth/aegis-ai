@@ -15,10 +15,15 @@ export * from "./api-contract-registry.js";
 export * from "./execution-report-generator.js";
 export * from "./canonical-architecture-state.js";
 export * from "./canonical-manifest-generator.js";
+export * from "./canonical-data-model.js";
+export * from "./canonical-file-graph.js";
+export * from "./semantic-duplicate-detector.js";
 export * from "./project-file-registry.js";
 export * from "./task-normalizer.js";
 export * from "./task-scope-validator.js";
 export * from "./symbol-registry.js";
 export * from "./technology-compatibility-registry.js";
 export * from "./plan-contract-gate.js";
-
+export * from "./manifest-completeness-validator.js";
+export * from "./canonical-dependency-closure-validator.js";
+export * from "./symbol-contract-validator.js";

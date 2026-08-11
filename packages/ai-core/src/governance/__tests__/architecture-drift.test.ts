@@ -333,4 +333,80 @@ describe("Architecture Drift Governance Suite", () => {
     expect(contract.userSpecified).toBe(true);
     expect(contract.inferred).toBe(false);
   });
+
+  it("TEST 29: PrismaDelegateOperationRegistry validates standard delegate operations and rejects invalid operations", () => {
+    const { PrismaDelegateOperationRegistry, CanonicalPrismaModelRegistry } = require("../canonical-data-model.js");
+
+    expect(PrismaDelegateOperationRegistry.isValidOperation("create")).toBe(true);
+    expect(PrismaDelegateOperationRegistry.isValidOperation("findMany")).toBe(true);
+    expect(PrismaDelegateOperationRegistry.isValidOperation("update")).toBe(true);
+    expect(PrismaDelegateOperationRegistry.isValidOperation("delete")).toBe(true);
+    expect(PrismaDelegateOperationRegistry.isValidOperation("invalidOperation")).toBe(false);
+
+    expect(CanonicalPrismaModelRegistry.isValidDelegate("analysisResult")).toBe(true);
+    expect(CanonicalPrismaModelRegistry.isValidDelegate("user")).toBe(true);
+    expect(CanonicalPrismaModelRegistry.isValidDelegate("scan")).toBe(false);
+    expect(CanonicalPrismaModelRegistry.isValidDelegate("invalidModel")).toBe(false);
+  });
+
+  it("TEST 30: CanonicalModuleRegistry resolves canonical imports & aliases and classifies framework support files", () => {
+    const { CanonicalModuleRegistry, isFrameworkSupportFile, CanonicalFileGraph } = require("../canonical-file-graph.js");
+
+    // A) server/index.ts -> ./routes/scan.routes
+    const resA = CanonicalModuleRegistry.resolveImport("server/index.ts", "./routes/scan.routes");
+    expect(resA.resolvedPath).toBe("server/routes/scan.routes.ts");
+
+    // B) server/index.ts -> ./routes/scanRoutes (alias)
+    const resB = CanonicalModuleRegistry.resolveImport("server/index.ts", "./routes/scanRoutes");
+    expect(resB.resolvedPath).toBe("server/routes/scan.routes.ts");
+
+    // C) src/App.tsx -> ./routes
+    const resC = CanonicalModuleRegistry.resolveImport("src/App.tsx", "./routes");
+    expect(resC.resolvedPath).toBe("src/routes.tsx");
+
+    // D) src/App.tsx -> ./inventedRoutes (should be null)
+    const resD = CanonicalModuleRegistry.resolveImport("src/App.tsx", "./inventedRoutes");
+    expect(resD.resolvedPath).toBeNull();
+
+    // E) Frontend importing server implementation -> boundary violation
+    const boundaryCheck = CanonicalFileGraph.checkBoundaryViolation("src/components/UploadForm.tsx", "server/routes/scan.routes");
+    expect(boundaryCheck.violated).toBe(true);
+
+    // F) Framework support files classified correctly
+    expect(isFrameworkSupportFile("tailwind.config.js")).toBe(true);
+    expect(isFrameworkSupportFile("postcss.config.js")).toBe(true);
+    expect(isFrameworkSupportFile("src/vite-env.d.ts")).toBe(true);
+  });
+
+  it("TEST 31: CanonicalDependencyClosureValidator distinguishes external npm packages from local dependencies", () => {
+    const { isExternalPackage, validateExternalDependency, validateLocalDependency } = require("../canonical-dependency-closure-validator.js");
+
+    expect(isExternalPackage("@prisma/client")).toBe(true);
+    expect(isExternalPackage("react")).toBe(true);
+    expect(isExternalPackage("express")).toBe(true);
+    expect(isExternalPackage("./routes/scan.routes")).toBe(false);
+    expect(isExternalPackage("src/services/api")).toBe(false);
+
+    const extRes = validateExternalDependency("server/lib/prisma.ts", "@prisma/client", testDir);
+    expect(extRes.status).toBe("VALID_EXTERNAL_PACKAGE");
+
+    const locRes = validateLocalDependency("src/features/analyzer/AnalyzePage.tsx", "src/features/parser/UploadDropzone");
+    expect(locRes.status).toBe("VALID_LOCAL");
+    expect(locRes.resolvedPath).toBe("src/features/upload/components/UploadForm.tsx");
+  });
+
+  it("TEST 32: SymbolContractValidator validates named and default export contracts without converting import kinds", () => {
+    const { SymbolContractValidator } = require("../symbol-contract-validator.js");
+
+    const sampleContent = `
+      export function analyzeScan() {}
+      export function getScanHistory() {}
+      export default function defaultHandler() {}
+    `;
+
+    const parsed = SymbolContractValidator.parseExports(sampleContent);
+    expect(parsed.named.has("analyzeScan")).toBe(true);
+    expect(parsed.named.has("getScanHistory")).toBe(true);
+    expect(parsed.hasDefault).toBe(true);
+  });
 });

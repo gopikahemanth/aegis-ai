@@ -1,7 +1,7 @@
-﻿import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { ArchitectureContractV1 } from "./architecture-resolver.js";
-import { createHash } from "node:crypto";
+import { CANONICAL_FILES, CanonicalFileGraph } from "./canonical-file-graph.js";
 
 export interface ProjectFileEntry {
   path: string;
@@ -24,24 +24,12 @@ export class ProjectFileRegistry {
   public initialize(contract: ArchitectureContractV1, outputDirectory: string): void {
     this.registry.clear();
 
-    // Standard Canonical Map for React-Vite + Express + PostgreSQL (Prisma)
-    const canonicalFiles: ProjectFileEntry[] = [
-      { path: "src/routes.tsx", description: "Application React Router configuration" },
-      { path: "src/App.tsx", description: "Root React application container with QueryClientProvider" },
-      { path: "src/features/dashboard/DashboardPage.tsx", description: "Canonical dashboard page" },
-      { path: "src/features/upload/UploadPage.tsx", description: "Canonical resume upload page" },
-      { path: "src/features/auth/LoginPage.tsx", description: "Canonical auth login page" },
-      { path: "src/shared/components/MatchScoreDial.tsx", description: "Canonical score gauge dial SVG" },
-      { path: "src/shared/components/Layout.tsx", description: "Canonical app shell layout" },
-      { path: "src/services/api.ts", description: "Frontend API client service" },
-      { path: "server/controllers/ScanController.ts", description: "Express scan controller" },
-      { path: "server/routes/scan.routes.ts", description: "Express scan route definitions" },
-      { path: "server/lib/prisma.ts", description: "Prisma client instance initialization" },
-      { path: "prisma/schema.prisma", description: "Prisma database schema models" },
-    ];
-
-    for (const entry of canonicalFiles) {
-      this.registry.set(entry.path, entry);
+    for (const entry of CANONICAL_FILES) {
+      this.registry.set(entry.canonicalPath, {
+        path: entry.canonicalPath,
+        description: entry.semanticRole,
+        expectedExports: entry.requiredExports,
+      });
     }
 
     const aegisDir = join(outputDirectory, ".aegis");
@@ -54,10 +42,19 @@ export class ProjectFileRegistry {
   }
 
   public registerFile(path: string, description: string, ownerTaskId?: number, expectedExports?: string[]): void {
-    this.registry.set(path.replace(/\\/g, "/"), { path, description, ownerTaskId, expectedExports });
+    const normalized = path.replace(/\\/g, "/");
+    if (CanonicalFileGraph.isAuthorized(normalized)) {
+      this.registry.set(normalized, { path: normalized, description, ownerTaskId, expectedExports });
+    } else {
+      console.warn(`[ProjectFileRegistry] ⚠️ Rejected registration of unauthorized file path: "${normalized}"`);
+    }
   }
 
   public hasFile(path: string): boolean {
     return this.registry.has(path.replace(/\\/g, "/"));
+  }
+
+  public isAuthorized(path: string): boolean {
+    return CanonicalFileGraph.isAuthorized(path);
   }
 }

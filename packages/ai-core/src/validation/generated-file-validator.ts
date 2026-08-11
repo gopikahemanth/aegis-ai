@@ -1,4 +1,4 @@
-﻿import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
+import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
 
 export interface ValidationIssue {
   type: "TRUNCATION" | "SYNTAX" | "UNBALANCED" | "MISSING_EXPORT";
@@ -76,21 +76,54 @@ export class GeneratedFileValidator {
       issues.push({ type: "UNBALANCED", message: `Unbalanced square brackets in "${path}" (delta: ${bracketCount}).` });
     }
 
-    // 3. Suspicious Trailing Expressions Check
+    // 3. Suspicious Trailing Expressions Check (check only the actual file ending, not lines in middle of file)
     const trimmed = content.trim();
+    const lastChunk = trimmed.slice(-100);
     const suspiciousEndings = [
-      /const\s+[a-zA-Z0-9_$]+\s*=$/m,
-      /let\s+[a-zA-Z0-9_$]+\s*=$/m,
-      /return\s*\{$/m,
-      /if\s*\($/m,
-      /export\s+const\s+[a-zA-Z0-9_$]+\s*=\s*\($/m,
-      /<[a-zA-Z0-9_$]+$/m,
+      /const\s+[a-zA-Z0-9_$]+\s*=$/,
+      /let\s+[a-zA-Z0-9_$]+\s*=$/,
+      /return\s*\{$/,
+      /if\s*\($/,
+      /export\s+const\s+[a-zA-Z0-9_$]+\s*=\s*\($/,
+      /=\s*$/,
     ];
 
     for (const pattern of suspiciousEndings) {
-      if (pattern.test(trimmed)) {
+      if (pattern.test(lastChunk)) {
         issues.push({ type: "TRUNCATION", message: `Suspicious trailing statement ending in "${path}".` });
         break;
+      }
+    }
+
+    // 4. Placeholder / Stub Detection
+    // These patterns indicate missing required functionality that must be implemented.
+    // NOTE: Legitimate null handling (e.g. catch blocks returning null, optional returns) is excluded.
+    if (isTs) {
+      const PLACEHOLDER_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
+        { pattern: /\/\/\s*TODO:/i, label: "TODO comment" },
+        { pattern: /\/\/\s*FIXME:/i, label: "FIXME comment" },
+        { pattern: /\/\/\s*IMPLEMENT\s*HERE/i, label: "IMPLEMENT HERE comment" },
+        { pattern: /\/\/\s*PLACEHOLDER/i, label: "PLACEHOLDER comment" },
+        { pattern: /\/\/\s*coming soon/i, label: "coming soon placeholder" },
+        {
+          // throw new Error("Not implemented") or throw new Error("TODO") — not inside catch blocks
+          pattern: /throw\s+new\s+Error\s*\(\s*["'`](?:Not implemented|TODO|IMPLEMENT|PLACEHOLDER)["'`]\s*\)/i,
+          label: "Not implemented stub"
+        },
+        {
+          // export const api = {} (empty object export used as stub)
+          pattern: /export\s+const\s+\w+\s*=\s*\{\s*\}\s*;?\s*$/m,
+          label: "Empty exported object stub"
+        },
+      ];
+
+      for (const { pattern, label } of PLACEHOLDER_PATTERNS) {
+        if (pattern.test(content)) {
+          issues.push({
+            type: "SYNTAX",
+            message: `Placeholder stub detected in "${path}": ${label}. This file requires complete implementation.`,
+          });
+        }
       }
     }
 

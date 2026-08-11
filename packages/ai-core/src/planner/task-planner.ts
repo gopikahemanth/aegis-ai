@@ -65,13 +65,15 @@ export class TaskPlanner {
         ...task,
         id,
         title: (task.title || "")
-          .replace(/PostgreSQL|Postgres/gi, specification.database || "SQLite")
-          .replace(/NextAuth/gi, "Express JWT Auth")
-          .replace(/Next\.js 14|Next\.js/gi, specification.frontend || "React"),
+          .replace(/PostgreSQL|Postgres/gi, specification.database || "PostgreSQL")
+          .replace(/Lucia Auth|OAuth2|NextAuth/gi, "Express JWT Auth")
+          .replace(/Mongoose|MongoDB/gi, "Prisma PostgreSQL")
+          .replace(/Next\.js\s*14|Next\.js/gi, specification.frontend || "React-Vite"),
         description: (task.description || "")
-          .replace(/PostgreSQL|Postgres/gi, specification.database || "SQLite")
-          .replace(/NextAuth/gi, "Express JWT Auth")
-          .replace(/Next\.js 14|Next\.js/gi, specification.frontend || "React"),
+          .replace(/PostgreSQL|Postgres/gi, specification.database || "PostgreSQL")
+          .replace(/Lucia Auth|OAuth2|NextAuth/gi, "Express JWT Auth")
+          .replace(/Mongoose|MongoDB/gi, "Prisma PostgreSQL")
+          .replace(/Next\.js\s*14|Next\.js/gi, specification.frontend || "React-Vite"),
         priority: isNaN(priority) ? 1 : priority,
         estimatedComplexity: isNaN(estimatedComplexity) ? 1 : estimatedComplexity,
         dependencies,

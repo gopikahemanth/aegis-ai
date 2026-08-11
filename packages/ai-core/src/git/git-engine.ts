@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { writeFileSync, existsSync } from "node:fs";
+import { writeFileSync, existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
 export class GitIntegrationEngine {
@@ -40,7 +40,6 @@ export class GitIntegrationEngine {
     const lockFile = join(projectPath, ".git", "index.lock");
     if (existsSync(lockFile)) {
       try {
-        const { unlinkSync } = require("node:fs");
         unlinkSync(lockFile);
         console.log("[GitEngine] Cleaned stale .git/index.lock file.");
       } catch { /* ignore */ }

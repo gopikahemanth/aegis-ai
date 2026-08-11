@@ -1,4 +1,4 @@
-﻿import { ProviderError } from "./provider-error.js";
+import { ProviderError } from "./provider-error.js";
 import { Models } from "./models.js";
 import type { AIProvider, ChatMessage, ChatOptions } from "./base.js";
 
@@ -13,10 +13,10 @@ export type ProviderHealthState =
 
 export class FailoverProvider implements AIProvider {
   public readonly name = "failover";
-  private readonly disabledUntil = new Map<string, number>();
-  private readonly permanentlyDisabled = new Set<string>();
-  private readonly sessionDisabled = new Set<string>();
-  private readonly healthStates = new Map<string, ProviderHealthState>();
+  private static readonly disabledUntil = new Map<string, number>();
+  private static readonly permanentlyDisabled = new Set<string>();
+  private static readonly sessionDisabled = new Set<string>();
+  private static readonly healthStates = new Map<string, ProviderHealthState>();
 
   constructor(
     private readonly providers: AIProvider[],
@@ -27,19 +27,21 @@ export class FailoverProvider implements AIProvider {
       throw new Error("FailoverProvider requires at least one provider.");
     }
     for (const p of providers) {
-      this.healthStates.set(p.name, "HEALTHY");
+      if (!FailoverProvider.healthStates.has(p.name)) {
+        FailoverProvider.healthStates.set(p.name, "HEALTHY");
+      }
     }
   }
 
   public getHealthState(providerName: string): ProviderHealthState {
-    if (this.permanentlyDisabled.has(providerName) || this.sessionDisabled.has(providerName)) {
+    if (FailoverProvider.permanentlyDisabled.has(providerName) || FailoverProvider.sessionDisabled.has(providerName)) {
       return "QUOTA_EXHAUSTED";
     }
-    const expiry = this.disabledUntil.get(providerName);
+    const expiry = FailoverProvider.disabledUntil.get(providerName);
     if (expiry && Date.now() < expiry) {
       return "COOLDOWN";
     }
-    return this.healthStates.get(providerName) || "HEALTHY";
+    return FailoverProvider.healthStates.get(providerName) || "HEALTHY";
   }
 
   async chat(
@@ -68,20 +70,20 @@ export class FailoverProvider implements AIProvider {
     }
 
     const now = Date.now();
-    for (const [pName, expiry] of this.disabledUntil.entries()) {
+    for (const [pName, expiry] of FailoverProvider.disabledUntil.entries()) {
       if (now >= expiry) {
-        this.disabledUntil.delete(pName);
-        if (!this.sessionDisabled.has(pName) && !this.permanentlyDisabled.has(pName)) {
-          this.healthStates.set(pName, "HEALTHY");
+        FailoverProvider.disabledUntil.delete(pName);
+        if (!FailoverProvider.sessionDisabled.has(pName) && !FailoverProvider.permanentlyDisabled.has(pName)) {
+          FailoverProvider.healthStates.set(pName, "HEALTHY");
         }
       }
     }
 
     for (const provider of this.providers) {
-      if (this.sessionDisabled.has(provider.name) || this.permanentlyDisabled.has(provider.name)) {
+      if (FailoverProvider.sessionDisabled.has(provider.name) || FailoverProvider.permanentlyDisabled.has(provider.name)) {
         continue;
       }
-      const until = this.disabledUntil.get(provider.name);
+      const until = FailoverProvider.disabledUntil.get(provider.name);
       if (until && Date.now() < until) {
         continue;
       }
@@ -109,7 +111,7 @@ export class FailoverProvider implements AIProvider {
             `[FailoverProvider] Attempting chat with provider: ${provider.name} (attempt ${providerAttempts}/${this.maxRetries})`
           );
           const result = await provider.chat(messages, activeOptions);
-          this.healthStates.set(provider.name, "HEALTHY");
+          FailoverProvider.healthStates.set(provider.name, "HEALTHY");
           return result;
         } catch (error: any) {
           lastError = error;
@@ -119,28 +121,36 @@ export class FailoverProvider implements AIProvider {
           );
 
           const is402 = error.message?.includes("402") || error.message?.toLowerCase().includes("payment required");
+          const is404 = error.message?.includes("404") || error.message?.includes("NOT_FOUND") || error.message?.toLowerCase().includes("no longer available");
           const isFetchFailed = error.message?.includes("fetch failed") || error.message?.includes("ECONNREFUSED");
           const is429 = error.message?.includes("429") || error.message?.includes("quota") ||
             error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.toLowerCase().includes("rate limit");
 
           if (is402) {
             console.warn(`[FailoverProvider] 402 Payment Required on provider "${provider.name}". Session disabled.`);
-            this.permanentlyDisabled.add(provider.name);
-            this.healthStates.set(provider.name, "AUTH_FAILED");
+            FailoverProvider.permanentlyDisabled.add(provider.name);
+            FailoverProvider.healthStates.set(provider.name, "AUTH_FAILED");
+            break;
+          }
+
+          if (is404) {
+            console.warn(`[FailoverProvider] 404 Model Not Found on provider "${provider.name}". Session disabling provider for current generation...`);
+            FailoverProvider.sessionDisabled.add(provider.name);
+            FailoverProvider.healthStates.set(provider.name, "UNAVAILABLE");
             break;
           }
 
           if (isFetchFailed) {
             console.warn(`[FailoverProvider] Connection failed on provider "${provider.name}". Disabling for 10 minutes.`);
-            this.disabledUntil.set(provider.name, Date.now() + 600000);
-            this.healthStates.set(provider.name, "UNAVAILABLE");
+            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 600000);
+            FailoverProvider.healthStates.set(provider.name, "UNAVAILABLE");
             break;
           }
 
           if (is429) {
             console.warn(`[FailoverProvider] ⚡ 429 Quota Exhausted on provider "${provider.name}". Marking QUOTA_EXHAUSTED for current generation session and failing over immediately...`);
-            this.sessionDisabled.add(provider.name);
-            this.healthStates.set(provider.name, "QUOTA_EXHAUSTED");
+            FailoverProvider.sessionDisabled.add(provider.name);
+            FailoverProvider.healthStates.set(provider.name, "QUOTA_EXHAUSTED");
             break;
           }
 
@@ -152,8 +162,8 @@ export class FailoverProvider implements AIProvider {
         }
       }
 
-      this.disabledUntil.set(provider.name, Date.now() + 15000);
-      this.healthStates.set(provider.name, "DEGRADED");
+      FailoverProvider.disabledUntil.set(provider.name, Date.now() + 15000);
+      FailoverProvider.healthStates.set(provider.name, "DEGRADED");
     }
 
     throw new Error(

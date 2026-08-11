@@ -97,4 +97,54 @@ export class TaskNormalizer {
       valid: violations.length === 0,
     };
   }
+
+  /**
+   * Deduplicates tasks by semantic role/category and caps at max 6 canonical tasks.
+   */
+  public static deduplicateAndCapTasks(tasks: Task[], maxTasks = 6): Task[] {
+    const seenRoles = new Map<string, Task>();
+
+    for (const task of tasks) {
+      const titleLower = (task.title + " " + (task.description || "")).toLowerCase();
+      let semanticRole = "FEATURE";
+
+      if (/database|schema|prisma|model/i.test(titleLower)) {
+        semanticRole = "DB_SCHEMA";
+      } else if (/backend|server|express|infrastructure|middleware/i.test(titleLower)) {
+        semanticRole = "BACKEND_INFRASTRUCTURE";
+      } else if (/analysis|engine|parser|pdf|keyword|matcher|scorer/i.test(titleLower)) {
+        semanticRole = "ANALYSIS_ENGINE";
+      } else if (/api|route|controller|endpoint/i.test(titleLower)) {
+        semanticRole = "API_LAYER";
+      } else if (/frontend|react|vite|ui|dashboard|component|page/i.test(titleLower)) {
+        semanticRole = "FRONTEND_APPLICATION";
+      } else if (/integration|validation|e2e|testing/i.test(titleLower)) {
+        semanticRole = "INTEGRATION_VALIDATION";
+      }
+
+      if (!seenRoles.has(semanticRole)) {
+        seenRoles.set(semanticRole, task);
+      } else {
+        console.log(`[TaskNormalizer] ✂️ Deduplicated duplicate task #${task.id} "${task.title}" (semantic role: ${semanticRole})`);
+      }
+    }
+
+    const deduplicated = Array.from(seenRoles.values()).slice(0, maxTasks);
+
+    // Re-index IDs to 1, 2, 3, ... and clean dependencies to be strictly < id
+    return deduplicated.map((t, idx) => {
+      const newId = idx + 1;
+      const rawDeps = t.dependencies || [];
+      const dependencies = rawDeps
+        .map(d => Number(d))
+        .filter(d => !isNaN(d) && d > 0 && d < newId);
+
+      return {
+        ...t,
+        id: newId,
+        dependencies,
+      };
+    });
+  }
 }
+

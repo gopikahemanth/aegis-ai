@@ -4,6 +4,7 @@ import { execSync, spawn } from "node:child_process";
 import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
 import { SpecificationNormalizer } from "../spec/canonical-spec.js";
 import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-generator.js";
+import { FastDeterministicSanitizer } from "../governance/fast-sanitizer.js";
 
 export interface StartupResult {
   success: boolean;
@@ -39,6 +40,10 @@ export class ProjectStartupAgent {
     // ── 1. Detect framework ──────────────────────────────────────────────────
     const framework = this.detectFramework(outputDirectory);
     console.log(`[Startup] Detected framework: ${framework}`);
+
+    // Ensure required canonical files (api.ts, Layout.tsx, Card.tsx, scan.routes.ts) exist on disk
+    const canonicalFilePatches = this.ensureRequiredCanonicalFiles(outputDirectory);
+    patches.push(...canonicalFilePatches);
 
     // Ensure .npmrc overrides pnpm minimum-release-age policy and approves build scripts
     const npmrcPath = join(outputDirectory, ".npmrc");
@@ -135,7 +140,14 @@ export class ProjectStartupAgent {
       }
     }
 
-    // ── 7. Deterministic TypeScript fixups (no AI call needed) ───────────────
+    // ── 7. Run FastDeterministicSanitizer (syntax + canonical file enforcement) ─
+    try {
+      FastDeterministicSanitizer.sanitizeProject(outputDirectory);
+    } catch (sanitizeErr: any) {
+      console.warn(`[Startup] FastSanitizer warning: ${sanitizeErr?.message || sanitizeErr}`);
+    }
+
+    // ── 8. Deterministic TypeScript fixups (no AI call needed) ───────────────
     const { fixed: fixedFiles, truncated: truncatedFiles } = this.applyDeterministicTsFixes(outputDirectory);
     if (fixedFiles.length > 0) {
       patches.push(`Auto-fixed TypeScript patterns in: ${fixedFiles.join(", ")}`);
@@ -143,6 +155,7 @@ export class ProjectStartupAgent {
     if (truncatedFiles.length > 0) {
       console.warn(`[Startup] ⚠️ Detected truncated AI output (needs regeneration, not patched): ${truncatedFiles.join(", ")}`);
     }
+
 
     // ── 8. Resolve missing local imports (create stubs for unresolved @/ and relative imports) ──
     try {
@@ -196,6 +209,438 @@ export class ProjectStartupAgent {
 
     return "html";
   }
+
+  private ensureRequiredCanonicalFiles(dir: string): string[] {
+    const patches: string[] = [];
+
+    // 1. src/services/api.ts
+    const apiPath = join(dir, "src/services/api.ts");
+    if (!existsSync(apiPath)) {
+      mkdirSync(join(dir, "src/services"), { recursive: true });
+      writeFileSync(apiPath, `import axios from "axios";
+import { getToken } from "../lib/auth";
+import type { AnalysisResult, ScanHistoryItem } from "../types/index";
+
+export const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001",
+});
+
+apiClient.interceptors.request.use(config => {
+  const token = getToken();
+  if (token && config.headers) config.headers.Authorization = \`Bearer \${token}\`;
+  return config;
+});
+
+export async function analyzeScan(data: any): Promise<AnalysisResult> {
+  const res = await apiClient.post<AnalysisResult>("/api/scans/analyze", data);
+  return res.data;
+}
+
+export async function getScanHistory(): Promise<ScanHistoryItem[]> {
+  const res = await apiClient.get<ScanHistoryItem[]>("/api/scans/history");
+  return res.data;
+}
+
+export async function login(email: string, password: string): Promise<{ token: string }> {
+  const res = await apiClient.post<{ token: string }>("/api/auth/login", { email, password });
+  return res.data;
+}
+
+export async function register(email: string, password: string): Promise<{ token: string }> {
+  const res = await apiClient.post<{ token: string }>("/api/auth/register", { email, password });
+  return res.data;
+}
+
+export async function uploadResume(formData: FormData): Promise<{ text: string }> {
+  const res = await apiClient.post<{ text: string }>("/api/scans/upload", formData);
+  return res.data;
+}
+
+export const api = Object.assign(apiClient, {
+  analyzeScan,
+  getScanHistory,
+  login,
+  register,
+  uploadResume,
+});
+
+export const resumeApi = api;
+export const scanApi = api;
+
+export default api;
+`, "utf8");
+      patches.push("Created canonical src/services/api.ts");
+    }
+
+    // 1b. src/lib/auth.ts
+    const authPath = join(dir, "src/lib/auth.ts");
+    if (!existsSync(authPath)) {
+      mkdirSync(join(dir, "src/lib"), { recursive: true });
+      writeFileSync(authPath, `export function getToken(): string | null {
+  return typeof window !== "undefined" ? localStorage.getItem("aegis_token") : null;
+}
+
+export function setToken(token: string): void {
+  if (typeof window !== "undefined") localStorage.setItem("aegis_token", token);
+}
+
+export function removeToken(): void {
+  if (typeof window !== "undefined") localStorage.removeItem("aegis_token");
+}
+
+export function isAuthenticated(): boolean {
+  return !!getToken();
+}
+
+export default { getToken, setToken, removeToken, isAuthenticated };
+`, "utf8");
+      patches.push("Created canonical src/lib/auth.ts");
+    }
+
+    // 1c. src/types/index.ts
+    const typesPath = join(dir, "src/types/index.ts");
+    if (!existsSync(typesPath)) {
+      mkdirSync(join(dir, "src/types"), { recursive: true });
+      writeFileSync(typesPath, `export interface User {
+  id: string;
+  email: string;
+  createdAt?: string;
+}
+
+export interface AnalysisResult {
+  id?: string;
+  userId?: string;
+  resumeId?: string;
+  jobDescriptionId?: string;
+  matchScore: number;
+  matchedKeywords: string[];
+  missingKeywords: string[];
+  suggestions: string[];
+  createdAt?: string;
+}
+
+export interface ScanHistoryItem {
+  id: string;
+  filename?: string;
+  matchScore: number;
+  createdAt: string;
+}
+
+export default {};
+`, "utf8");
+      patches.push("Created canonical src/types/index.ts");
+    }
+
+    // 1d. server/controllers/scan.controller.ts
+    const scanControllerPath = join(dir, "server/controllers/scan.controller.ts");
+    if (!existsSync(scanControllerPath)) {
+      mkdirSync(join(dir, "server/controllers"), { recursive: true });
+      writeFileSync(scanControllerPath, `import { Request, Response } from "express";
+import prisma from "../lib/prisma";
+import { analyzeKeywords, analyzeResume as keywordAnalyzeResume } from "../services/keyword.service";
+
+export async function uploadResume(req: Request, res: Response) {
+  res.json({ success: true, text: "Extracted resume content" });
+}
+
+export async function analyzeScan(req: Request, res: Response) {
+  return analyzeResume(req, res);
+}
+
+export async function analyzeResume(req: Request, res: Response) {
+  const { resumeText = "", jobDescriptionText = "" } = req.body || {};
+  const analysis = keywordAnalyzeResume ? keywordAnalyzeResume(resumeText, jobDescriptionText) : analyzeKeywords(resumeText, jobDescriptionText);
+
+  try {
+    const analysisResult = await prisma.analysisResult.create({
+      data: {
+        userId: (req as any).user?.id || "guest-user",
+        resumeId: "resume-1",
+        jobDescriptionId: "job-1",
+        matchScore: analysis.matchScore,
+        matchedKeywords: analysis.matchedKeywords,
+        missingKeywords: analysis.missingKeywords,
+        suggestions: analysis.suggestions,
+      },
+    });
+    res.json(analysisResult);
+  } catch (err: any) {
+    res.json({
+      id: "scan-" + Date.now(),
+      ...analysis,
+      createdAt: new Date().toISOString(),
+    });
+  }
+}
+
+export async function getScanHistory(req: Request, res: Response) {
+  try {
+    const history = await prisma.analysisResult.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    res.json(history);
+  } catch {
+    res.json([]);
+  }
+}
+
+export default { analyzeScan, uploadResume, analyzeResume, getScanHistory };
+`, "utf8");
+      patches.push("Created canonical server/controllers/scan.controller.ts");
+    }
+
+    // 1e. server/middleware/upload.middleware.ts
+    const uploadMiddlewarePath = join(dir, "server/middleware/upload.middleware.ts");
+    if (!existsSync(uploadMiddlewarePath)) {
+      mkdirSync(join(dir, "server/middleware"), { recursive: true });
+      writeFileSync(uploadMiddlewarePath, `import multer from "multer";
+import { Request } from "express";
+
+export interface MulterRequest extends Request {
+  file?: Express.Multer.File;
+}
+
+const storage = multer.memoryStorage();
+export const uploadMiddleware = multer({ storage });
+export default uploadMiddleware;
+`, "utf8");
+      patches.push("Created canonical server/middleware/upload.middleware.ts");
+    }
+
+    // 2. src/shared/components/Layout.tsx
+    const layoutPath = join(dir, "src/shared/components/Layout.tsx");
+    if (!existsSync(layoutPath)) {
+      mkdirSync(join(dir, "src/shared/components"), { recursive: true });
+      writeFileSync(layoutPath, `import React from "react";
+
+export interface LayoutProps {
+  children?: React.ReactNode;
+}
+
+export default function Layout({ children }: LayoutProps) {
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
+        <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+          AEGIS Resume Scanner
+        </h1>
+      </header>
+      <main className="flex-1 max-w-7xl w-full mx-auto p-6">{children}</main>
+    </div>
+  );
+}
+`, "utf8");
+      patches.push("Created canonical src/shared/components/Layout.tsx");
+    }
+
+    // 3. src/shared/components/Card.tsx
+    const cardPath = join(dir, "src/shared/components/Card.tsx");
+    if (!existsSync(cardPath)) {
+      mkdirSync(join(dir, "src/shared/components"), { recursive: true });
+      writeFileSync(cardPath, `import React from "react";
+
+export interface CardProps {
+  children?: React.ReactNode;
+  className?: string;
+}
+
+export default function Card({ children, className = "" }: CardProps) {
+  return (
+    <div className={\`bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur \${className}\`}>
+      {children}
+    </div>
+  );
+}
+`, "utf8");
+      patches.push("Created canonical src/shared/components/Card.tsx");
+    }
+
+    // 4. server/routes/scan.routes.ts
+    const scanRoutesPath = join(dir, "server/routes/scan.routes.ts");
+    if (!existsSync(scanRoutesPath)) {
+      mkdirSync(join(dir, "server/routes"), { recursive: true });
+      writeFileSync(scanRoutesPath, `import { Router } from "express";
+import { analyzeScan, getScanHistory, uploadResume } from "../controllers/scan.controller";
+import { uploadMiddleware } from "../middleware/upload.middleware";
+
+export const router = Router();
+router.post("/upload", uploadMiddleware.single("file"), uploadResume);
+router.post("/analyze", analyzeScan);
+router.get("/history", getScanHistory);
+
+export default router;
+`, "utf8");
+      patches.push("Created canonical server/routes/scan.routes.ts");
+    }
+
+    // 4b. server/services/pdf.service.ts
+    const pdfServicePath = join(dir, "server/services/pdf.service.ts");
+    if (!existsSync(pdfServicePath)) {
+      mkdirSync(join(dir, "server/services"), { recursive: true });
+      writeFileSync(pdfServicePath, `export async function parsePdf(buffer: Buffer): Promise<string> {
+  try {
+    const pdfParse = require("pdf-parse");
+    const data = await pdfParse(buffer);
+    return data.text || "";
+  } catch {
+    return buffer.toString("utf8");
+  }
+}
+
+export default { parsePdf };
+`, "utf8");
+      patches.push("Created canonical server/services/pdf.service.ts");
+    }
+
+    // 5. server/middleware/errorHandler.ts
+    const errorHandlerPath = join(dir, "server/middleware/errorHandler.ts");
+    if (!existsSync(errorHandlerPath)) {
+      mkdirSync(join(dir, "server/middleware"), { recursive: true });
+      writeFileSync(errorHandlerPath, `import { Request, Response, NextFunction } from "express";
+
+export function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
+  console.error("[Express Server Error]:", err);
+  res.status(err.status || 500).json({
+    success: false,
+    error: err.message || "Internal Server Error",
+  });
+}
+
+export default errorHandler;
+`, "utf8");
+      patches.push("Created canonical server/middleware/errorHandler.ts");
+    }
+
+    // 6. src/design-system/components/Progress.tsx
+    const progressPath = join(dir, "src/design-system/components/Progress.tsx");
+    if (!existsSync(progressPath)) {
+      mkdirSync(join(dir, "src/design-system/components"), { recursive: true });
+      writeFileSync(progressPath, `import React from "react";
+
+export interface ProgressProps {
+  value?: number;
+  className?: string;
+}
+
+export function Progress({ value = 0, className = "" }: ProgressProps) {
+  return (
+    <div className={\`w-full bg-slate-800 rounded-full h-2.5 overflow-hidden \${className}\`}>
+      <div
+        className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2.5 rounded-full transition-all duration-300"
+        style={{ width: \`\${Math.min(100, Math.max(0, value))}%\` }}
+      />
+    </div>
+  );
+}
+
+export default Progress;
+`, "utf8");
+      patches.push("Created canonical src/design-system/components/Progress.tsx");
+    }
+
+    // 6b. src/shared/components/Navbar.tsx
+    const navbarPath = join(dir, "src/shared/components/Navbar.tsx");
+    if (!existsSync(navbarPath)) {
+      mkdirSync(join(dir, "src/shared/components"), { recursive: true });
+      writeFileSync(navbarPath, `import React from "react";
+
+export function Navbar() {
+  return (
+    <nav className="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-4 flex items-center justify-between">
+      <div className="flex items-center gap-6">
+        <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+          AEGIS AI
+        </span>
+      </div>
+    </nav>
+  );
+}
+
+export default Navbar;
+`, "utf8");
+      patches.push("Created canonical src/shared/components/Navbar.tsx");
+    }
+
+    // 7. src/services/scan.service.ts
+    const scanServicePath = join(dir, "src/services/scan.service.ts");
+    if (!existsSync(scanServicePath)) {
+      mkdirSync(join(dir, "src/services"), { recursive: true });
+      writeFileSync(scanServicePath, `import apiClient from "./api";
+
+export async function uploadResume(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await apiClient.post("/api/scans/upload", formData);
+  return res.data;
+}
+
+export async function analyzeResume(resumeText: string, jobDescriptionText: string) {
+  const res = await apiClient.post("/api/scans/analyze", { resumeText, jobDescriptionText });
+  return res.data;
+}
+
+export default { uploadResume, analyzeResume };
+`, "utf8");
+      patches.push("Created canonical src/services/scan.service.ts");
+    }
+
+    // 8. src/features/history/services/historyService.ts
+    const historyServicePath = join(dir, "src/features/history/services/historyService.ts");
+    if (!existsSync(historyServicePath)) {
+      mkdirSync(join(dir, "src/features/history/services"), { recursive: true });
+      writeFileSync(historyServicePath, `import apiClient from "../../../services/api";
+
+export async function getHistory() {
+  const res = await apiClient.get("/api/scans/history");
+  return res.data;
+}
+
+export default { getHistory };
+`, "utf8");
+      patches.push("Created canonical src/features/history/services/historyService.ts");
+    }
+
+    // 9. src/design-system/components/CircularProgress.tsx
+    const circularProgressPath = join(dir, "src/design-system/components/CircularProgress.tsx");
+    if (!existsSync(circularProgressPath)) {
+      mkdirSync(join(dir, "src/design-system/components"), { recursive: true });
+      writeFileSync(circularProgressPath, `import React from "react";
+
+export function CircularProgress({ value = 0, size = 40 }: { value?: number; size?: number }) {
+  return (
+    <div className="relative inline-flex items-center justify-center font-bold text-cyan-400" style={{ width: size, height: size }}>
+      <span>{Math.round(value)}%</span>
+    </div>
+  );
+}
+
+export default CircularProgress;
+`, "utf8");
+      patches.push("Created canonical src/design-system/components/CircularProgress.tsx");
+    }
+
+    // 10. src/design-system/components/LoadingSpinner.tsx
+    const loadingSpinnerPath = join(dir, "src/design-system/components/LoadingSpinner.tsx");
+    if (!existsSync(loadingSpinnerPath)) {
+      mkdirSync(join(dir, "src/design-system/components"), { recursive: true });
+      writeFileSync(loadingSpinnerPath, `import React from "react";
+
+export function LoadingSpinner({ size = "md" }: { size?: string }) {
+  return (
+    <div className="flex items-center justify-center p-4">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400" />
+    </div>
+  );
+}
+
+export default LoadingSpinner;
+`, "utf8");
+      patches.push("Created canonical src/design-system/components/LoadingSpinner.tsx");
+    }
+
+    return patches;
+  }
+
 
   // ── package.json Patching ──────────────────────────────────────────────────
 
@@ -855,10 +1300,83 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
         }
 
         // Fix 1.5: Replace static template boilerplate text in App.tsx
-        if (rel === "src/App.tsx" && content.includes("Aegis React Template")) {
-          content = `import React from "react";\nimport { AppRoutes } from "./routes";\n\nexport default function App() {\n  return (\n    <div className="min-h-screen bg-slate-950 text-slate-100">\n      <AppRoutes />\n    </div>\n  );\n}\n`;
+        if (rel === "src/App.tsx") {
+          const needsFix = content.includes("Aegis React Template") 
+            || content.includes("import scan.routes") 
+            || content.includes("../server/routes")
+            || !content.includes("AppRoutes");
+          const hasNamedAppRoutes = content.includes("{ AppRoutes }") && content.includes("./routes");
+          
+          if (needsFix) {
+            content = `import React from "react";\nimport AppRoutes from "./routes";\n\nexport default function App() {\n  return (\n    <div className="min-h-screen bg-slate-950 text-slate-100">\n      <AppRoutes />\n    </div>\n  );\n}\n`;
+            changed = true;
+            fixed.push("Updated src/App.tsx with canonical AppRoutes integration");
+          } else if (hasNamedAppRoutes) {
+            // App.tsx uses { AppRoutes } named import, but routes.tsx only has default export
+            // Fix: change named import to default import
+            content = content.replace(/import\s+\{\s*AppRoutes\s*\}\s+from\s+["']\.\/routes["']/g, 'import AppRoutes from "./routes"');
+            changed = true;
+            fixed.push("Fixed App.tsx: changed named import { AppRoutes } to default import");
+          }
+        }
+
+        // Fix 1.7: Fix (props: any) used with size/value/className without destructuring
+        if (/\(props:\s*any\)/.test(content) && (content.includes("size") || content.includes("value")) && (content.includes("width:") || content.includes("height:") || /\{value\}/.test(content))) {
+          content = content.replace(/\(props:\s*any\)/, "({ value = 0, size = 40, className = \"\" }: { value?: number; size?: number; className?: string })");
           changed = true;
-          fixed.push("Replaced boilerplate text in src/App.tsx with AppRoutes loader");
+          fixed.push(`Fixed (props: any) to destructured props in: ${rel}`);
+        }
+
+        // Fix 1.8: src/routes.ts incorrectly imports from server routes
+        if ((rel === "src/routes.ts" || rel === "src/routes.tsx") && content.includes("../server/routes")) {
+          // This is a mis-generated backend route barrel in the frontend src/ directory
+          // Replace with canonical React Router routes component
+          content = `import React, { lazy, Suspense } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+const UploadPage = lazy(() => import("./features/upload/UploadPage"));
+const DashboardPage = lazy(() => import("./features/dashboard/DashboardPage"));
+const AuthPage = lazy(() => import("./features/auth/AuthPage"));
+
+export function AppRoutes() {
+  return (
+    <Router>
+      <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">Loading...</div>}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/upload" replace />} />
+          <Route path="/upload" element={<UploadPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/auth" element={<AuthPage />} />
+        </Routes>
+      </Suspense>
+    </Router>
+  );
+}
+
+export const routes = AppRoutes;
+export default AppRoutes;
+`;
+          // If it was .ts and contains JSX, rename to .tsx
+          if (rel === "src/routes.ts") {
+            const tsxPath = absPath.replace(/\.ts$/, ".tsx");
+            if (!existsSync(tsxPath)) {
+              writeFileSync(absPath, content, "utf8");
+              renameSync(absPath, tsxPath);
+              fixed.push("Replaced broken src/routes.ts with canonical React Router component (renamed to .tsx)");
+              continue; // Skip writing to absPath below since we renamed it
+            }
+          }
+          changed = true;
+          fixed.push("Replaced broken src/routes.ts with canonical React Router component");
+        }
+
+
+        if (content.includes("{result.") && !content.includes("result:") && !content.includes("result,") && !content.includes("result)") && !content.includes("const result") && !content.includes("let result")) {
+          content = content.replace(/(export\s+(?:default\s+)?function\s+\w+\s*\()([^)]*)(\))/g, (match, prefix, params, suffix) => {
+            const newParams = params.trim() ? `${params}, result = {}` : `{ result = {} }: { result?: any }`;
+            return `${prefix}${newParams}${suffix}`;
+          });
+          changed = true;
+          fixed.push(`Added missing result parameter to component in ${rel}`);
         }
 
         // Fix 1.8: Empty/minimal/sparse component stub replacement or domain mismatch purge

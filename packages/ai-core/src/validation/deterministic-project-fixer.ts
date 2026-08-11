@@ -1,4 +1,4 @@
-﻿import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { ImportResolver } from "../utils/path-resolver.js";
 
@@ -139,7 +139,7 @@ export function DashboardPage() {
     <Layout>
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-white">Resume Keyword Scanner Overview</h1>
-        <MatchDashboard score={data?.avgMatchScore || 85} />
+        <MatchDashboard score={data?.avgMatchScore ?? 0} />
       </div>
     </Layout>
   );

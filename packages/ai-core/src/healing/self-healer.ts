@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { BuildError } from "./build-error.js";
 import type { HealingReport } from "./report.js";
@@ -154,7 +154,6 @@ export class SelfHealer {
     const srcDir = join(projectPath, "src");
     if (!existsSync(srcDir)) return [];
     try {
-      const { readdirSync, statSync } = require("node:fs") as typeof import("node:fs");
       const results: string[] = [];
       const walk = (dir: string) => {
         for (const entry of readdirSync(dir)) {

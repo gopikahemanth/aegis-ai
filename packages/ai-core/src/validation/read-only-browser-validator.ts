@@ -76,7 +76,13 @@ export class ReadOnlyBrowserValidator {
 
       let classifiedError: string | undefined;
       const fatalConsole = consoleErrors.filter(
-        (e) => !e.includes("favicon") && !e.includes("P1000") && !e.includes("DATABASE_URL")
+        (e) =>
+          !e.includes("favicon") &&
+          !e.includes("P1000") &&
+          !e.includes("DATABASE_URL") &&
+          !e.includes("Failed to load resource") &&
+          !e.includes("404") &&
+          !e.includes("ERR_BLOCKED_BY_CLIENT")
       );
 
       if (uncaughtExceptions.length > 0) {

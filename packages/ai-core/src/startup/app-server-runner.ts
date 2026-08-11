@@ -57,12 +57,22 @@ export class AppServerRunner {
       } catch {}
     }
 
-    this.process = spawn("pnpm", ["run", "dev"], {
-      cwd: outputDirectory,
-      shell: true,
-      stdio: "pipe",
-      env: { ...process.env, PORT: String(port) },
-    });
+    const localViteBin = join(outputDirectory, "node_modules", "vite", "bin", "vite.js");
+    if (existsSync(localViteBin)) {
+      this.process = spawn("node", [localViteBin, "--port", String(port)], {
+        cwd: outputDirectory,
+        shell: true,
+        stdio: "pipe",
+        env: { ...process.env, PORT: String(port) },
+      });
+    } else {
+      this.process = spawn("npx", ["vite", "--port", String(port)], {
+        cwd: outputDirectory,
+        shell: true,
+        stdio: "pipe",
+        env: { ...process.env, PORT: String(port) },
+      });
+    }
 
     let isReady = false;
     const startTime = Date.now();

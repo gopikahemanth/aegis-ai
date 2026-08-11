@@ -15,24 +15,31 @@ export class FileWriter {
         .replace(/^(\.\/|\/)+/, "")
         .replace(/^(generated\/project\/|apps\/cli\/generated\/project\/)+/i, "");
 
-      // If a .ts file contains JSX tags, auto-convert extension to .tsx before writing
-      if (cleanRelativePath.endsWith(".ts") && !cleanRelativePath.endsWith(".d.ts")) {
+      // Rule 2: Protect canonical prisma/schema.prisma from LLM overwrite
+      if (cleanRelativePath === "prisma/schema.prisma" || cleanRelativePath.endsWith("schema.prisma")) {
+        const fullSchemaPath = join(outputDir, "prisma/schema.prisma");
+        if (existsSync(fullSchemaPath)) {
+          console.log(`[PRISMA-SCHEMA-WRITE] 🔒 Blocked unauthorized LLM overwrite of canonical prisma/schema.prisma.`);
+          continue;
+        }
+      }
+
+      // Rule 6: Protect backend files (server/ and prisma/) from .ts -> .tsx mutation
+      const isBackendFile = cleanRelativePath.startsWith("server/") || cleanRelativePath.startsWith("prisma/");
+
+      // If a frontend .ts file contains JSX tags, convert extension to .tsx (frontend ONLY)
+      if (!isBackendFile && cleanRelativePath.endsWith(".ts") && !cleanRelativePath.endsWith(".d.ts")) {
         const hasJsx = /<[A-Z][A-Za-z0-9]*[\s/>]/.test(file.content) ||
                        /<(div|span|button|form|input|p|h[1-6]|a|ul|li|section|header|footer|main|nav)[\s/>]/.test(file.content) ||
                        /<\/([A-Za-z0-9]+)>/.test(file.content);
         if (hasJsx) {
           cleanRelativePath = cleanRelativePath.replace(/\.ts$/, ".tsx");
         }
-      } else if (cleanRelativePath.endsWith(".ts") && !cleanRelativePath.endsWith(".d.ts")) {
-        const altTsxPath = join(outputDir, cleanRelativePath.replace(/\.ts$/, ".tsx"));
-        if (existsSync(altTsxPath)) {
-          cleanRelativePath = cleanRelativePath.replace(/\.ts$/, ".tsx");
-        }
       }
 
       const fullPath = join(outputDir, cleanRelativePath);
 
-      // Clean up conflicting alternate extension files (e.g. index.ts when writing index.tsx)
+      // Clean up conflicting alternate extension files
       if (fullPath.endsWith(".tsx")) {
         const altPath = fullPath.replace(/\.tsx$/, ".ts");
         if (existsSync(altPath)) {

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { Parser } from "../generator/parser.js";
 import { FileWriter } from "../writer/writer.js";
 import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
+import { SemanticDuplicateDetector } from "../governance/semantic-duplicate-detector.js";
 
 export class PatchEngine {
   private readonly parser = new Parser();
@@ -11,15 +12,21 @@ export class PatchEngine {
   apply(response: string, projectPath: string): number {
     // 1. Parse standard full file blocks (===FILE: path===)
     const rawFiles = this.parser.parse(response);
-    const validFiles = rawFiles.filter(f => {
-      // Correct path typos if near-match exists on disk (e.g. responsivee-gallery -> responsive-gallery)
+    const validFiles: { path: string; content: string }[] = [];
+
+    for (const f of rawFiles) {
+      // Check semantic duplicates and path authorization
+      const check = SemanticDuplicateDetector.checkBeforeWrite(f.path);
+      if (check.action === "REDIRECT_TO_CANONICAL" && check.canonicalPath) {
+        f.path = check.canonicalPath;
+      } else if (check.action === "DELETE_ORPHAN" && !check.allowed) {
+        console.warn(`[PatchEngine] ⛔ Skipping unauthorized file: ${f.path}`);
+        continue;
+      }
+
+      // Correct path typos if near-match exists on disk
       const absPath = join(projectPath, f.path);
       if (!existsSync(absPath)) {
-        const parts = f.path.split("/");
-        const dirParts = parts.slice(0, -1);
-        const fileName = parts[parts.length - 1];
-        
-        // Correct double-letter typos in path segments
         const normalizedRelPath = f.path
           .replace(/responsivee/g, "responsive")
           .replace(/syystem/g, "system")
@@ -31,13 +38,16 @@ export class PatchEngine {
         }
       }
 
-      if (!f.path.endsWith(".ts") && !f.path.endsWith(".tsx")) return true;
-      const complete = isLikelySyntacticallyComplete(f.content);
-      if (!complete) {
-        console.warn(`[PatchEngine] ⚠️ Refusing to write truncated file to disk: ${f.path}`);
+      if (f.path.endsWith(".ts") || f.path.endsWith(".tsx")) {
+        const complete = isLikelySyntacticallyComplete(f.content);
+        if (!complete) {
+          console.warn(`[PatchEngine] ⚠️ Refusing to write truncated file to disk: ${f.path}`);
+          continue;
+        }
       }
-      return complete;
-    });
+
+      validFiles.push(f);
+    }
 
     if (validFiles.length > 0) {
       this.writer.write(validFiles, projectPath);

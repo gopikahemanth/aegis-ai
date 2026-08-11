@@ -55,7 +55,7 @@ import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-gener
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
 import { TransactionalRepairSystem } from "../healing/index.js";
-import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator, CanonicalArchitectureState, CanonicalManifestGenerator, ProjectFileRegistry, TaskNormalizer } from "../governance/index.js";
+import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator, CanonicalArchitectureState, CanonicalManifestGenerator, CanonicalDataModelContract, CanonicalFileGraph, SemanticDuplicateDetector, ProjectFileRegistry, TaskNormalizer, PlanContractGate, ManifestCompletenessValidator, CanonicalDependencyClosureValidator, SymbolContractValidator } from "../governance/index.js";
 import { DomainModelGuard } from "../governance/domain-model-guard.js";
 import { StagedValidator } from "../validation/staged-validator.js";
 import { FinalSuccessGate } from "../validation/final-success-gate.js";
@@ -657,7 +657,18 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     this.execution.enter(ExecutionPhase.DataModeling);
     console.log("[DataArchitecture] Running Data Architecture Agent...");
     try {
-      const dataArch = await this.dataArchitectureAgent.execute(enrichedRequest, specification);
+      // Pass canonical contract to DataArchitectureAgent so it cannot invent incompatible models
+      const canonicalModelNames = CanonicalDataModelContract.getModelNames();
+      const canonicalSchemaHint = `
+CANONICAL DATA MODELS (IMMUTABLE — DO NOT INVENT NEW MODELS):
+${canonicalModelNames.join(", ")}
+Required relations: User 1:N Resume, User 1:N JobDescription, User 1:N MatchAnalysis,
+Resume 1:N MatchAnalysis, JobDescription 1:N MatchAnalysis
+`;
+      const dataArch = await this.dataArchitectureAgent.execute(
+        enrichedRequest + "\n\n" + canonicalSchemaHint,
+        specification
+      );
       
       // Save data architecture design
       const aegisDir = join(outputDirectory, ".aegis");
@@ -669,13 +680,36 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         JSON.stringify(dataArch, null, 2),
         "utf8"
       );
+
+      // Rule 1, 2, 5: Always write canonical Prisma schema to prisma/schema.prisma
+      const prismaDir = join(outputDirectory, "prisma");
+      if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
+      const schemaPath = join(prismaDir, "schema.prisma");
+      const canonicalSchemaContent = CanonicalDataModelContract.getPrismaSchema();
+      writeFileSync(schemaPath, canonicalSchemaContent, "utf8");
+      console.log(
+        `[PRISMA-SCHEMA-WRITE] caller=orchestrator.ts models=${CanonicalDataModelContract.MODEL_NAMES.join(",")} hash=canonical_v1`
+      );
+
+      // Rule 5: Immediate Disk Persistence Verification
+      const persistedSchema = readFileSync(schemaPath, "utf8");
+      const verification = CanonicalDataModelContract.validateSchema(persistedSchema);
+      if (!verification.valid) {
+        throw new Error(
+          `SCHEMA_PERSISTENCE_FAILURE: prisma/schema.prisma verification failed immediately after write. Missing models: ${verification.missingModels.join(", ")}`
+        );
+      }
+      console.log(`[DATA-CONTRACT] ✓ Schema persistence verified on disk. Models present: ${CanonicalDataModelContract.MODEL_NAMES.join(", ")}.`);
+
       console.log("[DataArchitecture] ✓ Saved data architecture definition.");
 
-      // Build data flow context to bind downstream frontend/backend tasks
+      // Build data flow context — use CANONICAL model names, not LLM-invented ones
       const dataContext = `
 ═══════════════════════════════════════════════════════
 DATA ARCHITECTURE CONTRACTS (STRICTLY CONFORM TO THIS SCHEMA)
 ═══════════════════════════════════════════════════════
+Canonical Database Models: ${canonicalModelNames.join(", ")}
+
 Database models & schemas:
 ${dataArch.databaseSchema}
 
@@ -684,6 +718,13 @@ ${dataArch.apis.map(api => `- ${api.method} ${api.path} (${api.description})`).j
 
 Frontend React Hooks & Queries:
 ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.returns})`).join("\n")}
+
+Analysis API Contract (IMMUTABLE):
+POST /api/analysis/analyze
+Request: { resumeText: string, jobDescriptionText: string }
+Response: { matchScore: number, matchedKeywords: string[], missingKeywords: string[], suggestions: string[] }
+
+NOTE: matchScore MUST be calculated from actual resume/job input — NEVER hardcode a value.
 ═══════════════════════════════════════════════════════
 `;
       enrichedRequest = enrichedRequest + "\n\n" + dataContext;
@@ -693,7 +734,17 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         status: "SUCCESS"
       });
     } catch (daErr: any) {
-      console.warn(`[DataArchitecture] Warning: Data architecture agent failed: ${daErr.message}`);
+      console.warn(`[DataArchitecture] Warning: Data architecture agent failed: ${daErr.message}. Writing canonical schema as fallback.`);
+      // Fallback: always write canonical schema so prisma/schema.prisma is valid
+      try {
+        const prismaDir = join(outputDirectory, "prisma");
+        if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
+        const schemaPath = join(prismaDir, "schema.prisma");
+        if (!existsSync(schemaPath)) {
+          writeFileSync(schemaPath, CanonicalDataModelContract.getPrismaSchema(), "utf8");
+          console.log(`[DATA-CONTRACT] ✓ Wrote canonical fallback Prisma schema to prisma/schema.prisma.`);
+        }
+      } catch { /* best-effort */ }
     }
 
     const coordinator = new TeamCoordinator();
@@ -710,6 +761,22 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     ProjectRootSingleton.setRoot(outputDirectory);
     ProjectPathResolver.assertNoDuplicateRoot(outputDirectory);
 
+    // Rule 4: Run ManifestCompletenessValidator and CanonicalDependencyClosureValidator before implementation
+    const manifestCheck = ManifestCompletenessValidator.validate();
+    if (!manifestCheck.valid) {
+      throw new Error(`MANIFEST_INCOMPLETE_FAILURE: Cannot begin implementation with incomplete manifest. Missing registrations: ${manifestCheck.missingRegistrations.join(", ")}`);
+    }
+
+    const closureCheck = CanonicalDependencyClosureValidator.validate(outputDirectory);
+    if (!closureCheck.valid) {
+      throw new Error(`DEPENDENCY_CLOSURE_FAILURE: Unresolved dependencies in canonical plan: ${closureCheck.missingDependencies.join(", ")}`);
+    }
+
+    const symbolCheck = SymbolContractValidator.validateProject(outputDirectory);
+    if (!symbolCheck.valid) {
+      console.warn(`[SYMBOL-CONTRACT-WARNING] Symbol contract mismatches detected: ${symbolCheck.errors.length}`);
+    }
+
     const activeContractApp = resolvedContract || ArchitectureResolver.loadContract(outputDirectory);
     if (!activeContractApp) {
       throw new Error(`ARCHITECTURE_CONTRACT_MISSING: No architecture contract found in generateApplication for projectPath: ${outputDirectory}`);
@@ -724,6 +791,63 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     if (requiredDomainModels.length > 0) {
       tasks = DomainModelGuard.filterTasks(tasks, requiredDomainModels);
     }
+
+    // Deduplicate and cap initial tasks to max 6 canonical tasks
+    tasks = TaskNormalizer.deduplicateAndCapTasks(tasks, 6);
+
+    // ── HARD TASK CONTRACT GATE — Reject forbidden tech, regenerate up to 3x ──
+    {
+      const MAX_TASK_REGEN = 3;
+      let gateResult = PlanContractGate.verify(tasks, activeContractApp);
+
+      if (!gateResult.valid) {
+        console.warn(`[TASK-CONTRACT] ${gateResult.rejected.length} task(s) rejected. Attempting regeneration...`);
+
+        for (let regen = 0; regen < MAX_TASK_REGEN && !gateResult.valid; regen++) {
+          console.log(`[TASK-CONTRACT] Regeneration attempt ${regen + 1}/${MAX_TASK_REGEN}...`);
+
+          try {
+            const regenSpec = {
+              ...specification,
+              _taskRegenContext: {
+                rejectedTasks: gateResult.rejected.map(r => r.task.title),
+                canonicalFrontend: activeContractApp.frontend.framework,
+                canonicalBackend: activeContractApp.backend.framework,
+                canonicalDatabase: activeContractApp.database.provider,
+                canonicalOrm: activeContractApp.database.orm,
+                canonicalAuth: activeContractApp.authentication,
+                forbiddenTechnologies: canonicalState.forbiddenTechnologies,
+              },
+            };
+
+            // Regenerate the FULL task plan (REPLACE, NOT APPEND)
+            const rawNewTasks = await this.plannerAgent.execute(regenSpec as any);
+            const normalizedNew = rawNewTasks.map(t => TaskNormalizer.normalizeTask(t, activeContractApp).normalizedTask);
+            tasks = TaskNormalizer.deduplicateAndCapTasks(normalizedNew, 6);
+            gateResult = PlanContractGate.verify(tasks, activeContractApp);
+          } catch (regenErr: any) {
+            console.warn(`[TASK-CONTRACT] Regeneration attempt ${regen + 1} failed: ${regenErr.message}`);
+            // Fallback: normalize rejected tasks in-place
+            tasks = tasks.map(t => TaskNormalizer.normalizeTask(t, activeContractApp).normalizedTask);
+            tasks = TaskNormalizer.deduplicateAndCapTasks(tasks, 6);
+            gateResult = PlanContractGate.verify(tasks, activeContractApp);
+          }
+        }
+
+        if (!gateResult.valid) {
+          const failedTitles = gateResult.rejected.map(r => `"${r.task.title}"`).join(", ");
+          throw new Error(
+            `TASK_CONTRACT_FAILURE: ${gateResult.rejected.length} task(s) still contain forbidden technology after ${MAX_TASK_REGEN} regeneration attempts: ${failedTitles}. ` +
+            `Violations: ${gateResult.errors.join("; ")}. Pipeline halted.`
+          );
+        }
+
+        console.log(`[TASK-CONTRACT] All tasks accepted after regeneration. Proceeding with ${gateResult.accepted.length} tasks.`);
+      }
+
+      tasks = gateResult.accepted;
+    }
+
 
     this.execution.enter(
       ExecutionPhase.Architecture,
@@ -775,7 +899,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.log(`\nRunning execution tier ${i + 1}/${parallelTiers.length} with ${tier.length} parallel tasks...`);
 
       const promises = tier.map(async (task) => {
-        console.log(`[Task: ${task.title}] Calling CoderAgent...`);
+        console.log(`[Task: ${task.title}] Calling CoderAgent... Status: PENDING`);
         let result: { response: string; files: GeneratedFile[] } = { response: "", files: [] };
         try {
           result = await this.coderAgent.execute(
@@ -788,7 +912,49 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
             imagePayload,
           );
 
-          // Candidate file completeness validation
+          console.log(`[Task: ${task.title}] Status: GENERATED`);
+
+          // ── STEP A: Filter cross-domain files (prevent cross-task contamination) ──
+          // Frontend tasks must not include backend-only files and vice versa
+          const taskDomain = task.title?.toLowerCase() || "";
+          const isFrontendTask = taskDomain.includes("frontend") || taskDomain.includes("ui") || taskDomain.includes("interface");
+          const isBackendTask = taskDomain.includes("backend") || taskDomain.includes("api") || taskDomain.includes("nlp") || taskDomain.includes("parsing") || taskDomain.includes("core");
+          const isDatabaseTask = taskDomain.includes("database") || taskDomain.includes("schema");
+
+          if (isFrontendTask) {
+            const before = result.files.length;
+            result.files = result.files.filter(f => {
+              const p = f.path.replace(/\\/g, "/");
+              const isBackendFile = p.startsWith("server/") && !p.startsWith("server/routes");
+              if (isBackendFile) {
+                console.log(`[Task: ${task.title}] ⚠️ Filtered cross-domain backend file: ${f.path}`);
+                return false;
+              }
+              return true;
+            });
+            if (result.files.length < before) {
+              console.log(`[Task: ${task.title}] Removed ${before - result.files.length} cross-domain file(s) from frontend task result.`);
+            }
+          }
+
+          // ── STEP B: Deterministic trailing-filename contamination strip ──
+          // When an LLM appends the file path at the end of the content, strip it.
+          for (const file of result.files) {
+            const filePath = file.path.replace(/\\/g, "/");
+            const trimmed = file.content.trimEnd();
+            // Check if the content ends with the file path (response contamination)
+            if (trimmed.endsWith(filePath) || trimmed.endsWith(file.path)) {
+              const pathToStrip = trimmed.endsWith(filePath) ? filePath : file.path;
+              file.content = trimmed.slice(0, trimmed.length - pathToStrip.length).trimEnd();
+              console.log(`[Task: ${task.title}] 🧹 Stripped trailing filename contamination from: ${file.path}`);
+            }
+            // Also strip common response-contamination patterns
+            file.content = file.content
+              .replace(/\n+(?:FILE|file|path|filename|filepath):\s*[\w\/\\.]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "")
+              .replace(/\n+(?:server|src|client|prisma)\/[\w\/]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "");
+          }
+
+          // ── STEP C: Candidate file completeness validation ──
           const invalidCandidates: string[] = [];
           for (const file of result.files) {
             const validation = GeneratedFileValidator.validateCompleteness(file.content, file.path);
@@ -812,15 +978,36 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
             repairAttempts++;
             console.log(`[Self-Healing] Inline Coder repair attempt ${repairAttempts}/3...`);
             try {
+              // Build a structured repair prompt listing ONLY the failing files
+              const failingFileList = result.files
+                .filter(f => {
+                  const v = GeneratedFileValidator.validateCompleteness(f.content, f.path);
+                  return !v.valid;
+                })
+                .map(f => `- ${f.path}: ${GeneratedFileValidator.validateCompleteness(f.content, f.path).issues.map(i => i.message).join("; ")}`)
+                .join("\n");
+
+              const repairContext = `Task: "${task.title}"
+Error: ${lastError.message}
+Failing files:
+${failingFileList || "(see error above)"}
+
+IMPORTANT: Return ONLY the corrected files in this exact format:
+===FILE: path/to/file.ts===
+[complete file content]
+===END===
+
+Do not include any explanation, prose, or markdown outside the file blocks.`;
+
               const repairResponse = await this.repairCoordinator.repair(
                 request,
                 lastError.message,
-                response + `\nAttempted output for task "${task.title}":\n` + (lastError.stack || lastError.message)
+                repairContext
               );
 
               let repairedFiles = this.parser.parse(repairResponse);
               if (repairedFiles.length === 0) {
-                // Fallback XML <FILE path="..."> parsing (Part 10)
+                // Fallback XML <FILE path="..."> parsing
                 const xmlRegex = /<FILE\s+path=["']([^"']+)["']>\s*([\s\S]*?)\s*<\/FILE>/gi;
                 let match: RegExpExecArray | null;
                 while ((match = xmlRegex.exec(repairResponse)) !== null) {
@@ -832,18 +1019,41 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
                 }
               }
 
+              // Apply same trailing-filename strip to healer output
+              for (const file of repairedFiles) {
+                const filePath = file.path.replace(/\\/g, "/");
+                const trimmed = file.content.trimEnd();
+                if (trimmed.endsWith(filePath) || trimmed.endsWith(file.path)) {
+                  const pathToStrip = trimmed.endsWith(filePath) ? filePath : file.path;
+                  file.content = trimmed.slice(0, trimmed.length - pathToStrip.length).trimEnd();
+                }
+                file.content = file.content
+                  .replace(/\n+(?:FILE|file|path|filename|filepath):\s*[\w\/\\.]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "")
+                  .replace(/\n+(?:server|src|client|prisma)\/[\w\/]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "");
+              }
+
               const validRepairedFiles = repairedFiles.filter(f => {
                 const validation = GeneratedFileValidator.validateCompleteness(f.content, f.path);
                 return validation.valid;
               });
 
               if (validRepairedFiles.length > 0) {
+                // Merge valid repaired files back into result, preserving already-valid files
+                const repairedPaths = new Set(validRepairedFiles.map(f => f.path));
+                const keptOriginal = result.files.filter(f => {
+                  const v = GeneratedFileValidator.validateCompleteness(f.content, f.path);
+                  return v.valid && !repairedPaths.has(f.path);
+                });
                 result = {
                   response: repairResponse,
-                  files: validRepairedFiles
+                  files: [...keptOriginal, ...validRepairedFiles]
                 };
                 success = true;
                 console.log(`[Self-Healing] ✓ Coder repair succeeded! Validated completeness for ${validRepairedFiles.length} file(s).`);
+              } else if (repairAttempts < 3) {
+                // On next attempt, try asking for a different strategy
+                lastError = new Error(`REPAIR_RESPONSE_INVALID: Attempt ${repairAttempts} yielded no valid files. Trying different repair strategy.`);
+                console.error(`[Self-Healing] Inline repair attempt ${repairAttempts} yielded no valid files. Retrying with stricter prompt.`);
               } else {
                 throw new Error("REPAIR_RESPONSE_INVALID: No syntactically complete candidate files parsed from repair response.");
               }
@@ -854,11 +1064,14 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
           }
 
           if (!success) {
+            console.error(`[Self-Healing] ❌ Task candidate repair failed after ${repairAttempts} attempt(s). Failing task "${task.title}".`);
             throw coderError;
           }
         }
+        console.log(`[Task: ${task.title}] Status: VALIDATED`);
         return result;
       });
+
 
       const tierResults = await Promise.all(promises);
       const patchEngine = new PatchEngine();
@@ -866,7 +1079,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       for (let j = 0; j < tier.length; j++) {
         const task = tier[j];
         const result = tierResults[j];
-        console.log(`[Task: ${task.title}] CoderAgent finished.`);
+        console.log(`[Task: ${task.title}] Status: SUCCESS`);
 
         response += result.response + "\n";
         
@@ -901,6 +1114,9 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
     }
 
+    // Deterministic preflight sanitation after implementation loop
+    FastDeterministicSanitizer.sanitizeProject(outputDirectory);
+
     this.execution.enter(
       ExecutionPhase.Review,
     );
@@ -922,6 +1138,31 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       files,
       outputDirectory,
     );
+
+    // Deterministic preflight sanitation AFTER files are written to disk
+    FastDeterministicSanitizer.sanitizeProject(outputDirectory);
+
+    // ── CANONICAL PROJECT GRAPH & ORPHAN CLEANUP ────────────────────────────────
+    const orphanCleaned = SemanticDuplicateDetector.removeOrphans(
+      outputDirectory,
+      SemanticDuplicateDetector.detectOrphans(outputDirectory)
+    );
+    if (orphanCleaned.length > 0) {
+      console.log(`[SemanticDuplicate] Cleaned up ${orphanCleaned.length} orphan/duplicate file(s) before build.`);
+    }
+
+    const graphEngine = new ProjectGraphEngine();
+    const graphValidation = graphEngine.validateGraph(outputDirectory);
+    if (!graphValidation.valid) {
+      const errorMessages = graphValidation.issues
+        .filter(i => i.severity === "ERROR")
+        .map(i => i.message)
+        .join("; ");
+      console.error(`[ProjectGraphEngine] ❌ Project Graph Validation Failed:\n${errorMessages}`);
+      throw new Error(`PROJECT_GRAPH_FAILURE: Project graph has critical errors before build: ${errorMessages}`);
+    } else {
+      console.log(`[ProjectGraphEngine] ✓ PASS — Project graph is clean and valid.`);
+    }
 
     // Merge specification inferred libraries into package.json (ensuring they aren't overwritten by reviewer files write)
     const finalPkgPath = join(outputDirectory, "package.json");
@@ -953,6 +1194,17 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
           }
         }
         
+        // ── DEPENDENCY CONTRACT GATE: Scan package.json for forbidden dependencies ──
+        const pkgContractResult = TechnologyConstraintValidator.validatePackageJson(pkg, resolvedContract);
+        if (!pkgContractResult.valid) {
+          console.warn(
+            `[DEPENDENCY-CONTRACT] Removed ${pkgContractResult.forbiddenFound.length} forbidden package(s): ` +
+            `${pkgContractResult.forbiddenFound.join(", ")}`
+          );
+          pkg.dependencies = pkgContractResult.cleaned.dependencies;
+          pkg.devDependencies = pkgContractResult.cleaned.devDependencies;
+        }
+
         writeFileSync(finalPkgPath, JSON.stringify(pkg, null, 2), "utf8");
         console.log(`[Orchestrator] Re-integrated ${libs.length} valid inferred libraries into final package.json.`);
       } catch (err: any) {
@@ -1027,30 +1279,84 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         }
       }
       
-      // Generate Prisma client if schema exists to ensure types exist during build verification
+      // ── PRISMA VALIDATION GATE (separated from db push — schema errors ARE code errors) ──
       const prismaSchema = join(outputDirectory, "prisma/schema.prisma");
       if (existsSync(prismaSchema)) {
-        console.log(`[Orchestrator] Prisma schema detected. Running local Prisma generate in ${outputDirectory}...`);
+        console.log(`[PRISMA] Prisma schema detected at ${prismaSchema}. Running prisma validate...`);
+        
+        // First: validate schema integrity (this IS a code error if it fails)
         try {
           const { execSync } = await import("child_process");
-          if (process.platform === "win32") {
-            try {
-              execSync(`wmic process where "ExecutablePath like '%node.exe%' and CommandLine like '%generated%project%'" call terminate`, { stdio: "ignore" });
-            } catch { /* ignore */ }
-          }
           const prismaBin = "npx prisma@6";
 
-          execSync(`${prismaBin} generate`, { cwd: outputDirectory, stdio: "inherit" });
-          console.log("[Orchestrator] Local Prisma client generation successful.");
-          try {
-            execSync(`${prismaBin} db push --accept-data-loss`, { cwd: outputDirectory, stdio: "inherit" });
-            console.log("[Orchestrator] ✓ SQLite database tables pushed successfully.");
-          } catch (pushErr: any) {
-            console.warn(`[Orchestrator] Warning: SQLite database push non-fatal warning: ${pushErr.message}`);
+          // Validate canonical model completeness BEFORE calling prisma CLI
+          const schemaContent = readFileSync(prismaSchema, "utf8");
+          const schemaValidation = CanonicalDataModelContract.validateSchema(schemaContent);
+          if (!schemaValidation.valid) {
+            console.warn(
+              `[PRISMA] ⚠️ Schema missing canonical models: ${schemaValidation.missingModels.join(", ")}. ` +
+              `Replacing with canonical schema.`
+            );
+            writeFileSync(prismaSchema, CanonicalDataModelContract.getPrismaSchema(), "utf8");
+            console.log(`[PRISMA] ✓ Replaced schema with canonical contract.`);
           }
-        } catch (genErr: any) {
-          console.warn(`[Orchestrator] Warning: Local Prisma client generation failed: ${genErr.message}`);
+
+          // prisma validate — catches syntax errors, missing relations, undefined types
+          try {
+            execSync(`${prismaBin} validate`, { cwd: outputDirectory, stdio: "pipe" });
+            console.log(`[PRISMA] ✓ PASS — prisma validate succeeded.`);
+          } catch (validateErr: any) {
+            const validateStderr = (validateErr.stderr || validateErr.message || "").toString();
+            console.error(`[PRISMA] ❌ FAIL — prisma validate failed:\n${validateStderr}`);
+            // This is a CODE error — throw to stop pipeline
+            throw new Error(`PRISMA_SCHEMA_INVALID: prisma validate failed. Schema errors must be fixed before build. Details: ${validateStderr.slice(0, 500)}`);
+          }
+
+          // prisma generate — only if validate passed
+          try {
+            if (process.platform === "win32") {
+              try {
+                const { execSync: es } = await import("child_process");
+                es(`wmic process where "ExecutablePath like '%node.exe%' and CommandLine like '%generated%project%'" call terminate`, { stdio: "ignore" });
+              } catch { /* ignore */ }
+            }
+            execSync(`${prismaBin} generate`, { cwd: outputDirectory, stdio: "inherit" });
+            console.log(`[PRISMA] ✓ PASS — prisma generate succeeded.`);
+          } catch (genErr: any) {
+            console.warn(`[PRISMA] Warning: prisma generate failed (non-fatal if types already exist): ${genErr.message}`);
+          }
+
+          // prisma db push — SEPARATED, P1000 is DATABASE_STATUS, not CODE_STATUS
+          try {
+            execSync(`${prismaBin} db push --accept-data-loss`, { cwd: outputDirectory, stdio: "pipe" });
+            console.log(`[DATABASE] ✓ CONNECTED — database tables pushed successfully.`);
+          } catch (pushErr: any) {
+            const pushStderr = (pushErr.stderr || pushErr.message || "").toString();
+            const isP1000 = pushStderr.includes("P1000") || pushStderr.includes("authentication failed") || pushStderr.includes("P1003") || pushStderr.includes("Connection refused");
+            const isEnvMissing = pushStderr.includes("Environment variable not found") || pushStderr.includes("DATABASE_URL");
+            if (isP1000 || isEnvMissing) {
+              console.warn(
+                `[DATABASE] ⚠️ BLOCKED — PostgreSQL connection unavailable (environment issue, NOT a code error).\n` +
+                `  DATABASE_STATUS: BLOCKED\n  CODE_STATUS: PASS\n  Detail: ${pushStderr.slice(0, 200)}`
+              );
+              // Do NOT throw — database connectivity is NOT a source-code failure
+            } else {
+              console.warn(`[DATABASE] Warning: db push encountered non-P1000 error: ${pushStderr.slice(0, 200)}`);
+            }
+          }
+        } catch (prismaGateErr: any) {
+          if (prismaGateErr.message?.startsWith("PRISMA_SCHEMA_INVALID")) {
+            throw prismaGateErr; // re-throw code errors
+          }
+          console.warn(`[PRISMA] Non-fatal error during Prisma operations: ${prismaGateErr.message}`);
         }
+      } else {
+        // No prisma/schema.prisma — write canonical schema
+        console.log(`[PRISMA] No schema.prisma found. Writing canonical schema...`);
+        const prismaDir = join(outputDirectory, "prisma");
+        if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
+        writeFileSync(join(prismaDir, "schema.prisma"), CanonicalDataModelContract.getPrismaSchema(), "utf8");
+        console.log(`[PRISMA] ✓ Canonical schema written to prisma/schema.prisma.`);
       }
     } catch (instErr: any) {
       console.warn(`[Orchestrator] Warning: Initial package installation failed: ${instErr.message}`);
@@ -1536,6 +1842,8 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     }
 
     // ─── FINAL SUCCESS GATE (Strict Zero-False-Positive Check) ─────────────
+    // Detect if database is blocked (P1000) — pass as separate signal, not build failure
+    const dbIsBlocked = !!(build.stderr?.includes("P1000") || build.stderr?.includes("authentication failed"));
     const finalGateResult = FinalSuccessGate.verify(
       outputDirectory,
       loadedContract,
@@ -1543,7 +1851,8 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       build.stderr,
       serverInfo.ready,
       browserResult.passed,
-      browserResult.routesChecked
+      browserResult.routesChecked,
+      dbIsBlocked,
     );
     if (!finalGateResult.success) {
       this.execution.complete();
@@ -1676,11 +1985,12 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
       const allDiskFiles = getAllProjectFiles(outputDirectory);
 
-      // Only auto-rename UI component .ts files containing JSX (never server/lib/prisma.ts or pure node services)
+      // Only auto-rename UI component .ts files containing JSX (never server/lib/prisma.ts, services, lib, hooks, types)
       for (const diskFile of allDiskFiles) {
         if (diskFile.fullPath.endsWith(".ts") && !diskFile.fullPath.endsWith(".d.ts")) {
-          const isServerFile = diskFile.relPath.includes("server/") || diskFile.relPath.includes("prisma/") || diskFile.relPath.includes("services/");
-          if (!isServerFile) {
+          const normPath = diskFile.relPath.replace(/\\/g, "/");
+          const isServiceOrServerFile = normPath.includes("server/") || normPath.includes("prisma/") || normPath.includes("services/") || normPath.includes("lib/") || normPath.includes("hooks/") || normPath.includes("types/");
+          if (!isServiceOrServerFile) {
             const hasJsx = /<[A-Z][A-Za-z0-9\.]*[\s/>]/.test(diskFile.content) || /return\s*\(\s*</.test(diskFile.content);
             if (hasJsx) {
               const newTsxPath = diskFile.fullPath.replace(/\.ts$/, ".tsx");

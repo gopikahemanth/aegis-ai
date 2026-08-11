@@ -1,6 +1,7 @@
-﻿import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { ArchitectureContractV1 } from "./architecture-resolver.js";
+import { CANONICAL_FILES, CanonicalFileGraph } from "./canonical-file-graph.js";
 
 export interface ProjectManifestEntry {
   path: string;
@@ -26,20 +27,13 @@ export interface CanonicalManifest {
 
 export class CanonicalManifestGenerator {
   public static generate(contract: ArchitectureContractV1, outputDirectory: string): CanonicalManifest {
-    const files: ProjectManifestEntry[] = [
-      { path: "src/routes.tsx", category: "required", description: "Application React Router configuration" },
-      { path: "src/App.tsx", category: "required", description: "Root React application component with QueryClientProvider" },
-      { path: "src/features/dashboard/DashboardPage.tsx", category: "required", description: "Canonical dashboard view" },
-      { path: "src/features/upload/UploadPage.tsx", category: "required", description: "Canonical resume upload view" },
-      { path: "src/features/auth/LoginPage.tsx", category: "required", description: "Canonical authentication login view" },
-      { path: "src/shared/components/MatchScoreDial.tsx", category: "required", description: "Canonical score gauge dial SVG" },
-      { path: "src/shared/components/Layout.tsx", category: "required", description: "Application layout shell" },
-      { path: "src/services/api.ts", category: "required", description: "Frontend API client service" },
-      { path: "server/controllers/ScanController.ts", category: "required", description: "Express scan controller" },
-      { path: "server/routes/scan.routes.ts", category: "required", description: "Express scan routes definition" },
-      { path: "server/lib/prisma.ts", category: "required", description: "Prisma client instance" },
-      { path: "prisma/schema.prisma", category: "required", description: "Prisma database schema" },
-    ];
+    const files: ProjectManifestEntry[] = CANONICAL_FILES.map(f => ({
+      path: f.canonicalPath,
+      category: f.required ? "required" : "optional",
+      description: f.semanticRole,
+      expectedExports: f.requiredExports,
+      expectedImports: f.allowedImports,
+    }));
 
     const manifest: CanonicalManifest = {
       version: 1,
@@ -51,7 +45,7 @@ export class CanonicalManifestGenerator {
       files,
       routes: contract.requiredRoutes || ["/", "/upload", "/login", "/dashboard"],
       models: contract.requiredModels || ["User", "Resume", "JobDescription", "AnalysisResult"],
-      apiEndpoints: ["POST /api/scans", "GET /api/scans", "POST /api/auth/login"],
+      apiEndpoints: ["POST /api/scans/upload", "POST /api/scans/analyze", "GET /api/scans/history", "POST /api/auth/login", "POST /api/auth/register"],
     };
 
     const aegisDir = join(outputDirectory, ".aegis");

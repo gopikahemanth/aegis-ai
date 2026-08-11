@@ -337,8 +337,8 @@ export default CircularProgress;
         try {
           let content = readFileSync(routesPath, "utf8");
           let changed = false;
-          if (/<Route\s+path=["']\/["']\s+element=\{<(?:LoginPage|AuthPage|LoginForm|Auth|SignIn|Navigate\s+to=["']\/(?:login|auth)["'])[^>]*\/>\}/.test(content) || content.includes('<Route path="/" element={<LoginPage')) {
-            content = content.replace(/<Route\s+path=["']\/["']\s+element=\{[^}]+\}/g, '<Route path="/" element={<DashboardPage />} />');
+          if (/<Route\s+path=["']\/["']\s+element=\{<(?:LoginPage|AuthPage|LoginForm|Auth|SignIn|Navigate)[^>]*\/>\}/.test(content) || content.includes('<Route path="/" element={<LoginPage') || content.includes('element={<Navigate to="/login"')) {
+            content = content.replace(/<Route\s+path=["']\/["']\s+element=\{[^}]+\}\s*\/>/g, '<Route path="/" element={<DashboardPage />} />');
             if (!content.includes("DashboardPage")) {
               content = `import DashboardPage from "./features/dashboard/DashboardPage";\n` + content;
             }

@@ -31,6 +31,7 @@ export interface StartupResult {
  * but it ensures `npm run dev` will work without errors.
  */
 export class ProjectStartupAgent {
+  public lastUnresolvedImports: string[] = [];
 
   async prepare(outputDirectory: string): Promise<StartupResult> {
     const patches: string[] = [];
@@ -159,7 +160,7 @@ export class ProjectStartupAgent {
 
     // ── 8. Resolve missing local imports (create stubs for unresolved @/ and relative imports) ──
     try {
-      this.resolveMissingLocalImports(outputDirectory);
+      this.lastUnresolvedImports = this.resolveMissingLocalImports(outputDirectory);
     } catch (scanErr: unknown) {
       const msg = scanErr instanceof Error ? scanErr.message : String(scanErr);
       console.warn(`[Startup] Pre-build import scan warning: ${msg}`);
@@ -1915,7 +1916,8 @@ export default DataTable;\n`;
     return [...packages];
   }
 
-  private resolveMissingLocalImports(outputDirectory: string): void {
+  private resolveMissingLocalImports(outputDirectory: string): string[] {
+    const unresolved: string[] = [];
     const getAllProjectFiles = (dir: string): { fullPath: string; relPath: string; content: string }[] => {
       const results: { fullPath: string; relPath: string; content: string }[] = [];
       if (!existsSync(dir)) return results;
@@ -1984,10 +1986,13 @@ export default DataTable;\n`;
             writeFileSync(fullStubPath, `import * as Mod from '${relImport}';\nexport * from '${relImport}';\nconst _default = (Mod as any).default || Mod;\nexport const ${componentName} = _default;\nexport default _default;\n`, "utf8");
             console.log(`[Startup] Re-exported existing module: ${relative(outputDirectory, fullStubPath)} -> ${matchingDiskFile.relPath}`);
           } else {
-            console.warn(`[Startup] ⚠️ Missing required import target: ${relative(outputDirectory, fullStubPath)}. Skipping fake stub creation.`);
+            const relUnresolved = relative(outputDirectory, fullStubPath).replace(/\\/g, "/");
+            unresolved.push(relUnresolved);
+            console.warn(`[Startup] ⚠️ Missing required import target: ${relUnresolved}. Skipping fake stub creation.`);
           }
         }
       }
     }
+    return unresolved;
   }
 }

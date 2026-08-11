@@ -31,7 +31,12 @@ export class GitIntegrationEngine {
     const branchName = `feature/${slug || "aegis-update"}`;
 
     console.log(`[GitEngine] Creating and switching to branch '${branchName}'...`);
-    this.runCommand(`git checkout -b ${branchName}`, projectPath);
+    try {
+      this.runCommand(`git checkout -b ${branchName}`, projectPath);
+    } catch {
+      console.log(`[GitEngine] Branch '${branchName}' already exists, checking it out instead.`);
+      this.runCommand(`git checkout ${branchName}`, projectPath);
+    }
     return branchName;
   }
 

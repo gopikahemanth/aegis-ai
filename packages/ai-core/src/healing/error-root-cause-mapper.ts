@@ -9,6 +9,7 @@
  *   Error in: App.tsx(63,9) — 'onRegister' does not exist on IntrinsicAttributes
  *   Real fix: RegisterPage.tsx — missing props interface
  */
+import { dirname, join } from "node:path";
 
 export type ErrorClass =
   | "missing-props-interface"   // Component has no props but caller passes props
@@ -154,13 +155,22 @@ export class ErrorRootCauseMapper {
     // ── TS2307 — cannot find module ───────────────────────────────────────────
     if (code === "TS2307") {
       const modName = message.match(/Cannot find module '([^']+)'/)?.[1];
+      const isLocalImport = modName?.startsWith(".") || modName?.startsWith("@/");
+      const targetPath = isLocalImport ? this.resolveRelativePath(file, modName!) : null;
+      const targetExists = isLocalImport && projectFiles.some(f =>
+        f.replace(/\\/g, "/").replace(/\.(ts|tsx|js|jsx)$/, "") === targetPath
+      );
+      const missingTargetFile = (isLocalImport && !targetExists && targetPath)
+        ? (targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : `${targetPath}.tsx`)
+        : file;
+
       return {
         raw, file, line, col, code, message,
         errorClass: "missing-module",
-        trueSourceFile: file,
-        repairHint: `Module '${modName}' not found. ` +
-          `If it is an npm package, add it to package.json dependencies. ` +
-          `If it is a local file, fix the import path in ${file}.`,
+        trueSourceFile: missingTargetFile,
+        repairHint: (isLocalImport && !targetExists)
+          ? `The file '${modName}' does not exist anywhere in this project. Write a COMPLETE, REAL implementation for it — do not just edit the import statement in ${file}.`
+          : `Module '${modName}' not found. If it is an npm package, add it to package.json dependencies. If it is a local file, fix the import path in ${file}.`,
       };
     }
 
@@ -227,5 +237,15 @@ export class ErrorRootCauseMapper {
 
     const parts = Object.entries(byClass).map(([k, v]) => `${v}× ${k}`);
     return `${errors.length} error(s): ${parts.join(", ")}`;
+  }
+
+  private resolveRelativePath(fromFile: string, relativeImport: string): string {
+    let resolved = relativeImport;
+    if (relativeImport.startsWith("@/")) {
+      resolved = join("src", relativeImport.slice(2));
+    } else if (relativeImport.startsWith(".")) {
+      resolved = join(dirname(fromFile), relativeImport);
+    }
+    return resolved.replace(/\\/g, "/").replace(/\.(ts|tsx|js|jsx)$/, "");
   }
 }

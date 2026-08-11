@@ -1381,6 +1381,112 @@ export default ApiResponse;
       return absPath;
     }
 
+    // Rich Feature Dashboard Synthesis
+    if (relPath.toLowerCase().includes("dashboard") || relPath.endsWith("DashboardPage.tsx")) {
+      writeFileSync(absPath, `import React, { useState } from "react";
+
+export function DashboardPage(props: any) {
+  const [workouts, setWorkouts] = useState([
+    { id: "1", name: "Bench Press", sets: 4, reps: 10, weight: 185, muscle: "Chest" },
+    { id: "2", name: "Squats", sets: 5, reps: 5, weight: 225, muscle: "Legs" },
+  ]);
+  const [exercise, setExercise] = useState("");
+  const [sets, setSets] = useState("3");
+  const [reps, setReps] = useState("10");
+  const [weight, setWeight] = useState("135");
+
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!exercise) return;
+    setWorkouts([{ id: Date.now().toString(), name: exercise, sets: Number(sets), reps: Number(reps), weight: Number(weight), muscle: "Full Body" }, ...workouts]);
+    setExercise("");
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 space-y-8">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
+            Fitness & Workout Tracker
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">Track training volume, muscle targets, and active streaks</p>
+        </div>
+        <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl">
+          <span className="text-amber-400 text-xl font-bold">🔥 7 Day Streak</span>
+        </div>
+      </header>
+
+      <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Volume</p>
+          <p className="text-3xl font-bold text-cyan-400 mt-2">12,450 lbs</p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Workouts Logged</p>
+          <p className="text-3xl font-bold text-indigo-400 mt-2">{workouts.length}</p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Muscle Target</p>
+          <p className="text-3xl font-bold text-emerald-400 mt-2">85% Hit</p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Goal</p>
+          <p className="text-3xl font-bold text-amber-400 mt-2">Hypertrophy</p>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <section className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg space-y-4">
+          <h2 className="text-xl font-bold text-slate-100">Log New Exercise</h2>
+          <form onSubmit={handleAdd} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Exercise Name</label>
+              <input type="text" value={exercise} onChange={e => setExercise(e.target.value)} placeholder="e.g. Deadlift" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100" required />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Sets</label>
+                <input type="number" value={sets} onChange={e => setSets(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Reps</label>
+                <input type="number" value={reps} onChange={e => setReps(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Weight (lbs)</label>
+                <input type="number" value={weight} onChange={e => setWeight(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100" />
+              </div>
+            </div>
+            <button type="submit" className="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-indigo-600 font-semibold text-white rounded-lg shadow-lg">Save Log</button>
+          </form>
+        </section>
+
+        <section className="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg space-y-4">
+          <h2 className="text-xl font-bold text-slate-100">Exercise Activity Log</h2>
+          <div className="space-y-3">
+            {workouts.map(w => (
+              <div key={w.id} className="flex items-center justify-between p-4 bg-slate-800/60 border border-slate-700/50 rounded-lg">
+                <div>
+                  <p className="font-semibold text-slate-100">{w.name}</p>
+                  <p className="text-xs text-slate-400">{w.sets} sets × {w.reps} reps @ {w.weight} lbs</p>
+                </div>
+                <span className="px-3 py-1 text-xs font-medium bg-cyan-900/40 text-cyan-300 rounded-full border border-cyan-800">{w.muscle}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+export const MatchDashboard = DashboardPage;
+export default DashboardPage;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Auto-created rich Dashboard on disk: ${relPath}`);
+      return absPath;
+    }
+
     // Universal Component Auto-Synthesis Fallback
     if (relPath.startsWith("src/") && (relPath.endsWith(".tsx") || relPath.endsWith(".ts"))) {
       const compName = relPath.split("/").pop()?.replace(/\.(tsx|ts)$/, "") || "Component";

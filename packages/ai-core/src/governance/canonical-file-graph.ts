@@ -1352,6 +1352,12 @@ export class CanonicalModuleRegistry {
       return { resolvedPath: "src/types/index.ts", canonicalEntry: null };
     }
 
+    // 5. Any src/ relative or @/ path fallback
+    if (candidatePath.startsWith("src/")) {
+      const resolvedWithExt = (candidatePath.endsWith(".tsx") || candidatePath.endsWith(".ts")) ? candidatePath : `${candidatePath}.tsx`;
+      return { resolvedPath: resolvedWithExt, canonicalEntry: null };
+    }
+
     return { resolvedPath: null, canonicalEntry: null };
   }
 }

@@ -65,18 +65,30 @@ export class CoderAgent extends BaseAgent {
     const selector = new FileSelector();
     const selectedEntries = selector.select(request, codebaseEntries, outputDirectory, `${task.title} ${task.description}`);
 
+    const MAX_FILE_CHARS = 3000; // ~750 tokens per file
+    const MAX_TOTAL_CHARS = 20000; // ~5000 tokens total for relevantFilesContent
+
+    let totalChars = 0;
     const relevantFilesContent = selectedEntries.map(entry => {
       const fullPath = join(outputDirectory, entry.path);
-      if (existsSync(fullPath)) {
-        try {
-          const code = readFileSync(fullPath, "utf8");
-          return `=== FILE: ${entry.path} ===\n${code}\n`;
-        } catch (e) {
-          return `=== FILE: ${entry.path} ===\n(Unable to read file content)\n`;
+      if (!existsSync(fullPath)) return "";
+      try {
+        let code = readFileSync(fullPath, "utf8");
+        if (code.length > MAX_FILE_CHARS) {
+          code = code.slice(0, MAX_FILE_CHARS) + "\n// ...(truncated for prompt token budget)...";
         }
+        if (totalChars + code.length > MAX_TOTAL_CHARS) return "";
+        totalChars += code.length;
+        return `=== FILE: ${entry.path} ===\n${code}\n`;
+      } catch (e) {
+        return `=== FILE: ${entry.path} ===\n(Unable to read file content)\n`;
       }
-      return "";
     }).filter(Boolean).join("\n");
+
+    const manifestList = allFiles.slice(0, 50).join("\n");
+    const manifestText = allFiles.length > 50 
+      ? `${manifestList}\n...[${allFiles.length - 50} more files omitted for prompt token budget]`
+      : manifestList;
 
     // ── Build canonical file contract context for this task ──────────────────────
     // Determine which canonical files this task is responsible for
@@ -163,7 +175,7 @@ Existing relevant files content:
 ${relevantFilesContent}
 
 All existing project files (manifest list):
-${allFiles.join("\n")}
+${manifestText}
 ${archContext}
 ${patternContext}
 

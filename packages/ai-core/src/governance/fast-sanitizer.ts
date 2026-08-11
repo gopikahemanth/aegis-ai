@@ -927,6 +927,16 @@ export default PdfExportButton;
             .replace(/<\/(?:BrowserRouter|Router)>/g, "");
           writeFileSync(appPath, appContent, "utf8");
           console.log("[SyntaxPreflight] 🔧 Removed duplicate <BrowserRouter> from App.tsx (routes.tsx already contains <Router>)");
+        } else if (!appHasRouter && !routesHasRouter) {
+          // Add BrowserRouter to App.tsx
+          if (!appContent.includes("BrowserRouter")) {
+            appContent = `import { BrowserRouter } from "react-router-dom";\n` + appContent;
+          }
+          if (appContent.includes("<AppRoutes")) {
+            appContent = appContent.replace(/(<AppRoutes\b[^>]*\/>)/g, `<BrowserRouter>$1</BrowserRouter>`);
+          }
+          writeFileSync(appPath, appContent, "utf8");
+          console.log("[SyntaxPreflight] 🔧 Wrapped <AppRoutes /> with <BrowserRouter> in App.tsx");
         }
       } catch {}
     }

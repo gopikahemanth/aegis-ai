@@ -776,11 +776,11 @@ export default function DashboardPage() {
 
     // Generate imports and routes for each discovered page
     const imports = pageFiles.map(p => `const ${p.name} = lazy(() => import("${p.path}"));`).join("\n");
-    const defaultRoute = pageFiles[0].route;
+    const primaryPage = pageFiles.find(p => p.name.toLowerCase().includes("dashboard") || p.name.toLowerCase().includes("tracker") || p.name.toLowerCase().includes("scanner") || p.name.toLowerCase().includes("main")) || pageFiles[0];
     const routeElements = pageFiles.map(p => `          <Route path="${p.route}" element={<${p.name} />} />`).join("\n");
 
     return `import React, { lazy, Suspense } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 ${imports}
 
 export function AppRoutes() {
@@ -788,7 +788,7 @@ export function AppRoutes() {
     <Router>
       <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">Loading...</div>}>
         <Routes>
-          <Route path="/" element={<Navigate to="${defaultRoute}" replace />} />
+          <Route path="/" element={<${primaryPage.name} />} />
 ${routeElements}
         </Routes>
       </Suspense>

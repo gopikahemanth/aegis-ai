@@ -1380,10 +1380,11 @@ export function AppRoutes() {
     <Router>
       <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">Loading...</div>}>
         <Routes>
-          <Route path="/" element={<Navigate to="/upload" replace />} />
-          <Route path="/upload" element={<UploadPage />} />
+          <Route path="/" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/upload" element={<DashboardPage />} />
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/login" element={<AuthPage />} />
         </Routes>
       </Suspense>
     </Router>

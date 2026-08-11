@@ -1175,14 +1175,42 @@ interface ImportMeta {
         } catch {}
       }
 
-      let dbProvider = "postgresql";
       const archContractPath = join(dir, ".aegis", "architecture-contract.json");
-      if (existsSync(archContractPath)) {
-        try {
-          const arch = JSON.parse(readFileSync(archContractPath, "utf8"));
-          dbProvider = (arch.database?.provider || "postgresql").toLowerCase();
-        } catch {}
+      if (!existsSync(archContractPath)) {
+        mkdirSync(join(dir, ".aegis"), { recursive: true });
+        const defaultContract = {
+          version: "1.0.0",
+          id: "canonical-arch-contract",
+          prompt: "Aegis AI Web Application",
+          stack: {
+            frontend: "react-vite",
+            backend: "express-ts",
+            database: "postgresql",
+            orm: "prisma",
+            styling: "tailwind"
+          },
+          database: {
+            provider: "postgresql",
+            url: "postgresql://postgres:postgres@localhost:5432/aegis_app"
+          },
+          approvedFiles: [
+            "src/App.tsx",
+            "src/main.tsx",
+            "src/routes.tsx",
+            "src/design-system/components/Button.tsx",
+            "src/design-system/components/GlassCard.tsx",
+            "src/features/dashboard/DashboardPage.tsx"
+          ],
+          verifiedAt: new Date().toISOString()
+        };
+        writeFileSync(archContractPath, JSON.stringify(defaultContract, null, 2), "utf8");
+        patches.push("Created canonical .aegis/architecture-contract.json");
       }
+      let dbProvider = "postgresql";
+      try {
+        const arch = JSON.parse(readFileSync(archContractPath, "utf8"));
+        dbProvider = (arch.database?.provider || arch.stack?.database || "postgresql").toLowerCase();
+      } catch {}
 
       if (!schema.includes("datasource db")) {
         const defaultUrl = dbProvider.includes("mongo") ? 'env("DATABASE_URL")' : dbProvider.includes("sqlite") ? '"file:./dev.db"' : 'env("DATABASE_URL")';

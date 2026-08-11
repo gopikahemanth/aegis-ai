@@ -419,25 +419,11 @@ export interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  let appTitle = "AEGIS System Platform";
-  try {
-    const contractPath = join(dir, ".aegis", "architecture-contract.json");
-    if (existsSync(contractPath)) {
-      const c = JSON.parse(readFileSync(contractPath, "utf8"));
-      const p = (c.prompt || "").toLowerCase();
-      if (p.includes("code") || p.includes("vulnerability") || p.includes("reviewer") || p.includes("security")) {
-        appTitle = "AEGIS AI Code Reviewer & Security Vulnerability Scanner";
-      } else if (p.includes("resume") || p.includes("ats")) {
-        appTitle = "AEGIS Resume Scanner";
-      }
-    }
-  } catch {}
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-          {appTitle}
+          AEGIS System Platform
         </h1>
       </header>
       <main className="flex-1 max-w-7xl w-full mx-auto p-6">{children}</main>
@@ -1076,17 +1062,22 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
       patches.push("Created src/index.css");
     }
 
-    // Ensure vite-env.d.ts is clean and never corrupted with JSX
+    // Ensure vite-env.d.ts is clean and declares ImportMeta.env
     const envDtsPath = join(dir, "src", "vite-env.d.ts");
-    if (existsSync(envDtsPath)) {
-      const envContent = readFileSync(envDtsPath, "utf8");
-      if (envContent.includes("<div") || envContent.includes("return (") || envContent.length > 500) {
-        writeFileSync(envDtsPath, `/// <reference types="vite/client" />\n`, "utf8");
-        patches.push("Reset corrupted src/vite-env.d.ts");
-      }
-    } else {
-      writeFileSync(envDtsPath, `/// <reference types="vite/client" />\n`, "utf8");
-      patches.push("Created src/vite-env.d.ts");
+    const canonicalEnvDts = `/// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  readonly VITE_API_URL?: string;
+  readonly [key: string]: any;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+`;
+    if (!existsSync(envDtsPath) || !readFileSync(envDtsPath, "utf8").includes("ImportMeta")) {
+      writeFileSync(envDtsPath, canonicalEnvDts, "utf8");
+      patches.push("Updated src/vite-env.d.ts with ImportMeta type declaration");
     }
 
     // Auto-create src/utils/cn.ts if missing

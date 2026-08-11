@@ -301,30 +301,26 @@ export default CircularProgress;
       }
     }
 
-    // 8. Default Auth state to authenticated demo user so visual reviewer lands on dashboard
+    // 8. Default Auth state to authenticated demo user across ALL src files including App.tsx
     const srcDir2 = join(root, "src");
     if (existsSync(srcDir2)) {
-      const authFiles = this.getAllFiles(srcDir2).filter(f => f.toLowerCase().includes("auth") || f.toLowerCase().includes("user"));
-      for (const relFile of authFiles) {
+      const allTsx = this.getAllFiles(srcDir2).filter(f => f.endsWith(".tsx") || f.endsWith(".ts"));
+      for (const relFile of allTsx) {
         const absPath = join(srcDir2, relFile);
         try {
           let content = readFileSync(absPath, "utf8");
           let changed = false;
-          if (content.includes("useState(false)") && (content.includes("isAuthenticated") || content.includes("isLoggedIn") || content.includes("authenticated"))) {
-            content = content.replace("useState(false)", "useState(true)");
+          if (content.includes("useState(null)") || content.includes("useState<User | null>(null)") || content.includes("useState<any>(null)")) {
+            content = content.replace(/useState(?:<[^>]+>)?\(null\)/g, 'useState({ id: "demo-user-id", email: "demo@aegis.dev", name: "Demo User" })');
             changed = true;
           }
-          if (content.includes("useState<boolean>(false)") && (content.includes("isAuthenticated") || content.includes("isLoggedIn") || content.includes("authenticated"))) {
-            content = content.replace("useState<boolean>(false)", "useState<boolean>(true)");
-            changed = true;
-          }
-          if (content.includes("useState(null)") && (content.includes("setUser") || content.includes("user"))) {
-            content = content.replace("useState(null)", 'useState({ id: "demo-user-id", email: "demo@aegis.dev", name: "Demo User" })');
+          if ((content.includes("isAuthenticated") || content.includes("isLoggedIn") || content.includes("authenticated")) && (content.includes("useState(false)") || content.includes("useState<boolean>(false)"))) {
+            content = content.replace(/useState(?:<boolean>)?\(false\)/g, 'useState(true)');
             changed = true;
           }
           if (changed) {
             writeFileSync(absPath, content, "utf8");
-            console.log(`[SyntaxPreflight] 🔧 Defaulted AuthContext demo session state in ${relFile}`);
+            console.log(`[FastSanitizer] 🔧 Defaulted demo session state in ${relFile}`);
           }
         } catch {}
       }

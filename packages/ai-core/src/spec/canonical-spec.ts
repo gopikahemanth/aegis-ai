@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { ProjectSpecification, DomainVocabulary } from "../architect/specification.js";
 
 export interface CanonicalProjectSpecification extends ProjectSpecification {
-  domainCategory: "expense-tracker" | "task-manager" | "workout-fitness" | "art-gallery" | "ecommerce" | "blog" | "general-dashboard";
+  domainCategory: "code-reviewer" | "expense-tracker" | "task-manager" | "workout-fitness" | "art-gallery" | "ecommerce" | "blog" | "general-dashboard";
   lockedStack: {
     frontend: string;
     backend: string;
@@ -33,7 +33,9 @@ export class SpecificationNormalizer {
 
     // 1. Detect Domain Category
     let domainCategory: CanonicalProjectSpecification["domainCategory"] = "general-dashboard";
-    if (promptLower.includes("resume") || promptLower.includes("cv") || promptLower.includes("keyword scanner") || promptLower.includes("match score")) {
+    if (promptLower.includes("code") || promptLower.includes("vulnerability") || promptLower.includes("security") || promptLower.includes("reviewer")) {
+      domainCategory = "code-reviewer";
+    } else if (promptLower.includes("resume") || promptLower.includes("cv") || promptLower.includes("keyword scanner") || promptLower.includes("match score")) {
       domainCategory = "resume-scanner" as any;
     } else if (promptLower.includes("workout") || promptLower.includes("fitness") || promptLower.includes("gym") || promptLower.includes("exercise")) {
       domainCategory = "workout-fitness";

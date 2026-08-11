@@ -458,7 +458,20 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     imagePath?: string,
   ) {
     const memoryEngine = new ProjectMemoryEngine(outputDirectory);
-    memoryEngine.initDefaults("project", request);
+    const existingMem = memoryEngine.loadMemory();
+    if (!existingMem || (existingMem.lastRequest && existingMem.lastRequest.trim() !== request.trim())) {
+      console.log("[Memory] 🧹 New prompt detected — wiping stale project memory & architecture checkpoints...");
+      memoryEngine.resetMemory("project", request);
+      const aegisDir = join(outputDirectory, ".aegis");
+      for (const staleFile of ["architecture-contract.json", "canonical-architecture.json", "data-architecture.json", "project-manifest.json", "project-graph.json"]) {
+        const p = join(aegisDir, staleFile);
+        if (existsSync(p)) {
+          try { unlinkSync(p); } catch {}
+        }
+      }
+    } else {
+      memoryEngine.initDefaults("project", request);
+    }
     MetricsTracker.getInstance().reset();
 
     const auditTrail = new AuditTrailEngine(outputDirectory);
@@ -513,10 +526,10 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     }
 
     const existingArch = memoryEngine.loadArchitecture();
-    const existingMem = memoryEngine.loadMemory();
+    const loadedMem = memoryEngine.loadMemory();
 
-    if (existingMem && existingMem.projectName) {
-      console.log(`[Memory] Loaded existing project memory checkpoints for "${existingMem.projectName}".`);
+    if (loadedMem && loadedMem.projectName) {
+      console.log(`[Memory] Loaded existing project memory checkpoints for "${loadedMem.projectName}".`);
     }
 
     // Initialize Git and checkout feature branch
@@ -1563,6 +1576,13 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
               }
             }
           }
+
+          repairedFiles = repairedFiles
+            .filter(f => f && typeof f.path === "string" && f.path.trim().length > 2 && f.content)
+            .map(f => ({
+              path: f.path.replace(/^[\\\/]+/, "").trim(),
+              content: f.content
+            }));
 
           if (repairedFiles.length > 0) {
             const previousAttemptHashes = (this as any)._previousAttemptHashes || new Map<string, string>();

@@ -47,12 +47,17 @@ export class ArchitectureResolver {
     canonicalSpec: CanonicalProjectSpecification,
     outputDirectory?: string
   ): ArchitectureContractV1 {
-    // ── Idempotency Check: Load existing locked contract if available ───────────
+    // ── Idempotency Check: Load existing locked contract ONLY if prompt matches ───────────
     if (outputDirectory) {
       const existing = ArchitectureResolver.loadContract(outputDirectory);
       if (existing && existing.status === "locked") {
-        console.log(`[ArchitectureResolver] 🔒 Reusing existing locked Architecture Contract (DB: ${existing.database.provider}, Frontend: ${existing.frontend.framework})`);
-        return existing;
+        const contractPrompt = (existing as any).prompt || "";
+        if (!contractPrompt || contractPrompt.trim().toLowerCase() === userPrompt.trim().toLowerCase()) {
+          console.log(`[ArchitectureResolver] 🔒 Reusing existing locked Architecture Contract (DB: ${existing.database.provider}, Frontend: ${existing.frontend.framework})`);
+          return existing;
+        } else {
+          console.log(`[ArchitectureResolver] ⚠️ New prompt detected — invalidating stale Architecture Contract from previous run.`);
+        }
       }
     }
 
@@ -162,6 +167,7 @@ export class ArchitectureResolver {
     return Object.freeze({
       version: 1,
       status: "locked",
+      prompt: userPrompt,
       source: hasUserInput ? "user_prompt" : "canonical_spec",
       confidence: (frontendProvenance === "user" && backendProvenance === "user") ? 1.0 : 0.85,
       reason: `Contract locked by ArchitectureResolver. Frontend(${frontendProvenance}), Backend(${backendProvenance}), DB(${dbProvenance}), ORM(${ormProvenance})`,

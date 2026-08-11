@@ -741,6 +741,15 @@ export default { getToken, setToken, removeToken, isAuthenticated, useAuthStore,
       return absPath;
     }
 
+    if (relPath.includes("constants") || relPath.endsWith("constants.ts") || relPath.endsWith("constants.tsx")) {
+      writeFileSync(absPath, `export const API_URL = "/api";
+export const BASE_URL = "/api";
+export default API_URL;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
+      return absPath;
+    }
+
     if (relPath === "src/types/index.ts" || relPath.endsWith("src/types/index.ts")) {
       writeFileSync(absPath, `export interface User {
   id: string;

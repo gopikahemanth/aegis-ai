@@ -339,7 +339,7 @@ export default CircularProgress;
           let changed = false;
           if (/<Route\s+path=["']\/["']\s+element=\{<(?:LoginPage|AuthPage|LoginForm|Auth|SignIn|Navigate)[^>]*\/>\}/.test(content) || content.includes('<Route path="/" element={<LoginPage') || content.includes('element={<Navigate to="/login"')) {
             content = content.replace(/<Route\s+path=["']\/["']\s+element=\{[^}]+\}\s*\/>/g, '<Route path="/" element={<DashboardPage />} />');
-            if (!content.includes("DashboardPage")) {
+            if (!content.includes("import DashboardPage") && !content.includes("import { DashboardPage")) {
               content = `import DashboardPage from "./features/dashboard/DashboardPage";\n` + content;
             }
             changed = true;
@@ -347,6 +347,28 @@ export default CircularProgress;
           if (changed) {
             writeFileSync(routesPath, content, "utf8");
             console.log(`[FastSanitizer] 🎯 Mapped index route '/' directly to DashboardPage in ${routesPath}`);
+          }
+        } catch {}
+      }
+    }
+
+    // 10. Ensure constants.ts exports API_URL and default API_URL
+    const constantsFiles = [join(root, "src", "config", "constants.ts"), join(root, "src", "constants.ts"), join(root, "src", "config", "constants.tsx")];
+    for (const constPath of constantsFiles) {
+      if (existsSync(constPath)) {
+        try {
+          let content = readFileSync(constPath, "utf8");
+          let changed = false;
+          if (!content.includes("API_URL")) {
+            content += "\nexport const API_URL = '/api';\nexport default API_URL;\n";
+            changed = true;
+          } else if (!content.includes("export const API_URL") && !content.includes("export function API_URL")) {
+            content = content.replace(/API_URL/g, "export const API_URL");
+            changed = true;
+          }
+          if (changed) {
+            writeFileSync(constPath, content, "utf8");
+            console.log(`[FastSanitizer] 🔧 Ensured API_URL export in ${constPath}`);
           }
         } catch {}
       }

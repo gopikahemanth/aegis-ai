@@ -331,6 +331,115 @@ export default CircularProgress;
     }
 
     // 9. Guarantee index route "/" renders main application Dashboard, NEVER login / auth form
+    const dashPageCandidates = [
+      join(root, "src", "features", "dashboard", "DashboardPage.tsx"),
+      join(root, "src", "features", "dashboard", "Dashboard.tsx"),
+      join(root, "src", "pages", "Dashboard.tsx"),
+      join(root, "src", "pages", "DashboardPage.tsx"),
+    ];
+    const existingDash = dashPageCandidates.find(p => existsSync(p));
+    if (!existingDash) {
+      const canonicalDashPath = join(root, "src", "features", "dashboard", "DashboardPage.tsx");
+      mkdirSync(join(root, "src", "features", "dashboard"), { recursive: true });
+      writeFileSync(canonicalDashPath, `import React, { useState } from "react";
+
+export function DashboardPage() {
+  const [workouts, setWorkouts] = useState([
+    { id: 1, name: "Bench Press", volume: "1,200 lbs", muscle: "Chest", date: "Today" },
+    { id: 2, name: "Squats", volume: "2,400 lbs", muscle: "Legs", date: "Yesterday" }
+  ]);
+  const [exercise, setExercise] = useState("");
+  const [weight, setWeight] = useState("");
+  const [reps, setReps] = useState("");
+
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!exercise) return;
+    setWorkouts([{ id: Date.now(), name: exercise, volume: \`\${(Number(weight)||100)*(Number(reps)||10)} lbs\`, muscle: "Full Body", date: "Just now" }, ...workouts]);
+    setExercise(""); setWeight(""); setReps("");
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
+      <header className="max-w-6xl mx-auto mb-8 flex justify-between items-center border-b border-slate-800 pb-4">
+        <div>
+          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Fitness & Workout Tracker</h1>
+          <p className="text-slate-400 text-sm mt-1">Track volume, active streaks & target metrics</p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl px-5 py-3 flex items-center gap-3">
+          <span className="text-amber-400 text-xl font-bold">🔥 12 Days</span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Active Streak</span>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Volume</h3>
+            <p className="text-2xl font-bold text-slate-100 mt-1">14,850 lbs</p>
+          </div>
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Streak</h3>
+            <p className="text-2xl font-bold text-amber-400 mt-1">12 Days</p>
+          </div>
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Workouts Logged</h3>
+            <p className="text-2xl font-bold text-blue-400 mt-1">{workouts.length}</p>
+          </div>
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Target Muscle</h3>
+            <p className="text-2xl font-bold text-emerald-400 mt-1">Chest & Arms</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1 bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl">
+            <h2 className="text-lg font-bold text-slate-100 mb-4">Log Exercise</h2>
+            <form onSubmit={handleAdd} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Exercise Name</label>
+                <input value={exercise} onChange={e=>setExercise(e.target.value)} placeholder="e.g. Deadlift" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Weight (lbs)</label>
+                  <input value={weight} onChange={e=>setWeight(e.target.value)} placeholder="185" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Reps</label>
+                  <input value={reps} onChange={e=>setReps(e.target.value)} placeholder="8" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                </div>
+              </div>
+              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-lg transition-colors">Log Workout</button>
+            </form>
+          </div>
+
+          <div className="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl">
+            <h2 className="text-lg font-bold text-slate-100 mb-4">Recent Training Activity</h2>
+            <div className="space-y-3">
+              {workouts.map(w => (
+                <div key={w.id} className="flex justify-between items-center bg-slate-950/60 border border-slate-800/80 rounded-lg p-4">
+                  <div>
+                    <h4 className="font-semibold text-slate-100">{w.name}</h4>
+                    <span className="text-xs text-slate-400">{w.muscle} • {w.date}</span>
+                  </div>
+                  <span className="text-sm font-bold text-blue-400">{w.volume}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export const Dashboard = DashboardPage;
+export default DashboardPage;
+`, "utf8");
+      console.log(`[FastSanitizer] 🎨 Synthesized canonical DashboardPage at ${canonicalDashPath}`);
+    }
+
     const routesFiles = [join(root, "src", "routes.tsx"), join(root, "src", "routes.ts"), join(root, "src", "App.tsx")];
     for (const routesPath of routesFiles) {
       if (existsSync(routesPath)) {

@@ -1431,6 +1431,13 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
       // Fast Deterministic Sanitation (Dependency Closure, Casing, Export contracts, DB URL)
       const sanitizeReport = FastDeterministicSanitizer.sanitizeProject(outputDirectory);
       console.log(`[FastSanitizer] ✓ Pre-build sanitation complete (Collisions resolved: ${sanitizeReport.casingCollisionsResolved}, Imports added: ${sanitizeReport.missingDependenciesAdded.length}, Exports fixed: ${sanitizeReport.exportFixesApplied}, DB URL valid: ${sanitizeReport.databaseUrlValid})`);
+
+      // Re-scan imports post-fixer/sanitizer to ensure packages added by fixers (e.g. @tanstack/react-query, @hookform/resolvers) are installed
+      const postFixMissingPkgs = this.scanAndResolveMissingPackages(outputDirectory);
+      if (postFixMissingPkgs.length > 0) {
+        console.log(`[Orchestrator] Post-sanitization import scan detected ${postFixMissingPkgs.length} uninstalled package(s): ${postFixMissingPkgs.join(", ")}. Installing...`);
+        await this.installer.installPackages("pnpm", outputDirectory, postFixMissingPkgs);
+      }
     } catch (scanErr: any) {
       console.warn(`[Orchestrator] Pre-build import scan non-fatal warning: ${scanErr.message}`);
     }
@@ -2074,8 +2081,66 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
         }
       }
     } catch (scanErr: any) {
-      console.warn(`[Orchestrator] Pre-build import scan non-fatal warning: ${scanErr.message}`);
+      console.warn(`[Orchestrator] resolveMissingLocalImports warning: ${scanErr.message}`);
     }
+  }
+
+  private collectAllFiles(dir: string): string[] {
+    const results: string[] = [];
+    if (!existsSync(dir)) return results;
+    try {
+      const entries = readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          results.push(...this.collectAllFiles(full));
+        } else {
+          results.push(full);
+        }
+      }
+    } catch {}
+    return results;
+  }
+
+  private scanAndResolveMissingPackages(outputDirectory: string): string[] {
+    const missingPkgs: string[] = [];
+    const pkgPath = join(outputDirectory, "package.json");
+    if (existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+        const allDeclared: Record<string, string> = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+        
+        const srcDir = join(outputDirectory, "src");
+        if (existsSync(srcDir)) {
+          const tsFiles = this.collectAllFiles(srcDir).filter(f => f.endsWith(".ts") || f.endsWith(".tsx"));
+          for (const fullPath of tsFiles) {
+            const content = readFileSync(fullPath, "utf8");
+            const matches = content.matchAll(/from\s+["']([^"']+)["']/g);
+            for (const m of matches) {
+              const imp = m[1];
+              if (!imp.startsWith(".") && !imp.startsWith("/") && !imp.startsWith("@/")) {
+                const pkgName = imp.startsWith("@") ? imp.split("/").slice(0, 2).join("/") : imp.split("/")[0];
+                if (!(pkgName in allDeclared) && !pkgName.startsWith("node:")) {
+                  allDeclared[pkgName] = "latest";
+                  pkg.dependencies = pkg.dependencies || {};
+                  pkg.dependencies[pkgName] = "latest";
+                  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2), "utf8");
+                }
+              }
+            }
+          }
+        }
+
+        for (const pkgName of Object.keys(allDeclared)) {
+          if (pkgName.startsWith("node:") || pkgName.startsWith("@types/")) continue;
+          const nodeModulesPkg = join(outputDirectory, "node_modules", pkgName);
+          if (!existsSync(nodeModulesPkg)) {
+            missingPkgs.push(pkgName);
+          }
+        }
+      } catch {}
+    }
+    return missingPkgs;
   }
 
   getProvider() {

@@ -1655,6 +1655,8 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
             console.log("[Self-Healing] === RAW REPAIR RESPONSE ===");
             console.log(repairResponse);
             console.log("[Self-Healing] ===========================");
+            // Re-verify actual disk build status to preserve clean disk state
+            build = await this.runVerification(request, framework, outputDirectory);
             break;
           }
         } catch (error: any) {

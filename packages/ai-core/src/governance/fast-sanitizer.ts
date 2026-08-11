@@ -329,6 +329,28 @@ export default CircularProgress;
         } catch {}
       }
     }
+
+    // 9. Guarantee index route "/" renders main application Dashboard, NEVER login / auth form
+    const routesFiles = [join(root, "src", "routes.tsx"), join(root, "src", "routes.ts"), join(root, "src", "App.tsx")];
+    for (const routesPath of routesFiles) {
+      if (existsSync(routesPath)) {
+        try {
+          let content = readFileSync(routesPath, "utf8");
+          let changed = false;
+          if (/<Route\s+path=["']\/["']\s+element=\{<(?:LoginPage|AuthPage|LoginForm|Auth|SignIn|Navigate\s+to=["']\/(?:login|auth)["'])[^>]*\/>\}/.test(content) || content.includes('<Route path="/" element={<LoginPage')) {
+            content = content.replace(/<Route\s+path=["']\/["']\s+element=\{[^}]+\}/g, '<Route path="/" element={<DashboardPage />} />');
+            if (!content.includes("DashboardPage")) {
+              content = `import DashboardPage from "./features/dashboard/DashboardPage";\n` + content;
+            }
+            changed = true;
+          }
+          if (changed) {
+            writeFileSync(routesPath, content, "utf8");
+            console.log(`[FastSanitizer] 🎯 Mapped index route '/' directly to DashboardPage in ${routesPath}`);
+          }
+        } catch {}
+      }
+    }
   }
 
 

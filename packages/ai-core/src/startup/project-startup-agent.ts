@@ -1467,6 +1467,15 @@ export default AppRoutes;
           fixed.push("Replaced broken src/routes.ts with canonical React Router component");
         }
 
+        // Fix 1.85: Ensure src/routes.tsx or src/routes.ts always has default export for App.tsx
+        if (rel === "src/routes.tsx" || rel === "src/routes.ts") {
+          if (!content.includes("export default")) {
+            content += "\n\nexport const routes = AppRoutes;\nexport default AppRoutes;\n";
+            changed = true;
+            fixed.push("Added missing default export to src/routes.tsx");
+          }
+        }
+
 
         if (content.includes("{result.") && !content.includes("result:") && !content.includes("result,") && !content.includes("result)") && !content.includes("const result") && !content.includes("let result")) {
           content = content.replace(/(export\s+(?:default\s+)?function\s+\w+\s*\()([^)]*)(\))/g, (match, prefix, params, suffix) => {

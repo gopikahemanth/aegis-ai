@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, unlinkSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, unlinkSync, rmSync, mkdirSync } from "node:fs";
 
 import { join } from "node:path";
 
@@ -263,6 +263,15 @@ export default CircularProgress;
           writeFileSync(spinnerPath, content, "utf8");
           console.log("[SyntaxPreflight] 🔧 Added 'export const Spinner = LoadingSpinner' to LoadingSpinner.tsx");
         }
+      } catch {}
+    }
+
+    // Clean up duplicate LoadingSpinner in shared/components/
+    const duplicateSpinnerPath = join(root, "src", "shared", "components", "LoadingSpinner.tsx");
+    if (existsSync(duplicateSpinnerPath)) {
+      try {
+        rmSync(duplicateSpinnerPath, { force: true });
+        console.log("[FastSanitizer] 🗑️ Removed duplicate src/shared/components/LoadingSpinner.tsx");
       } catch {}
     }
 

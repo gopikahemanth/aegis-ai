@@ -1048,7 +1048,25 @@ process.on("SIGTERM", () => { server.kill(); vite.kill(); process.exit(); });
   private fixMainTsx(dir: string): string[] {
     const patches: string[] = [];
     const mainPath = join(dir, "src", "main.tsx");
-    if (!existsSync(mainPath)) return patches;
+    if (!existsSync(mainPath)) {
+      const indexTsxPath = join(dir, "src", "index.tsx");
+      if (existsSync(indexTsxPath)) {
+        writeFileSync(mainPath, readFileSync(indexTsxPath, "utf8"), "utf8");
+      } else {
+        writeFileSync(mainPath, `import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./index.css";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+`, "utf8");
+      }
+      patches.push("Created canonical src/main.tsx entrypoint");
+    }
 
     let content = readFileSync(mainPath, "utf8");
 

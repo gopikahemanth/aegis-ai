@@ -1,4 +1,4 @@
-﻿import { Task } from "../planner/task.js";
+import { Task } from "../planner/task.js";
 
 export interface DomainModelViolation {
   taskId: string;
@@ -197,13 +197,13 @@ export class DomainModelGuard {
       let title = task.title;
       let description = task.description || "";
 
-      // Replace aliases: ResumeScan / ScanResult -> AnalysisResult
+      // Replace generic ScanResult -> AnalysisResult or Scan
       title = title
-        .replace(/ResumeScan|ScanResult/g, "AnalysisResult")
-        .replace(/resumescan|scanresult/gi, "AnalysisResult");
+        .replace(/ScanResult/g, "AnalysisResult")
+        .replace(/scanresult/gi, "AnalysisResult");
       description = description
-        .replace(/ResumeScan|ScanResult/g, "AnalysisResult")
-        .replace(/resumescan|scanresult/gi, "AnalysisResult");
+        .replace(/ScanResult/g, "AnalysisResult")
+        .replace(/scanresult/gi, "AnalysisResult");
 
       return {
         ...task,

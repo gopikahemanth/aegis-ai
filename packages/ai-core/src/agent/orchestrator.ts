@@ -698,21 +698,21 @@ Resume 1:N MatchAnalysis, JobDescription 1:N MatchAnalysis
       const prismaDir = join(outputDirectory, "prisma");
       if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
       const schemaPath = join(prismaDir, "schema.prisma");
-      const canonicalSchemaContent = CanonicalDataModelContract.getPrismaSchema();
+      const canonicalSchemaContent = CanonicalDataModelContract.getPrismaSchema(request);
       writeFileSync(schemaPath, canonicalSchemaContent, "utf8");
       console.log(
-        `[PRISMA-SCHEMA-WRITE] caller=orchestrator.ts models=${CanonicalDataModelContract.MODEL_NAMES.join(",")} hash=canonical_v1`
+        `[PRISMA-SCHEMA-WRITE] caller=orchestrator.ts models=${CanonicalDataModelContract.getModelNames(request).join(",")} hash=canonical_v1`
       );
 
       // Rule 5: Immediate Disk Persistence Verification
       const persistedSchema = readFileSync(schemaPath, "utf8");
-      const verification = CanonicalDataModelContract.validateSchema(persistedSchema);
+      const verification = CanonicalDataModelContract.validateSchema(persistedSchema, request);
       if (!verification.valid) {
         throw new Error(
           `SCHEMA_PERSISTENCE_FAILURE: prisma/schema.prisma verification failed immediately after write. Missing models: ${verification.missingModels.join(", ")}`
         );
       }
-      console.log(`[DATA-CONTRACT] ✓ Schema persistence verified on disk. Models present: ${CanonicalDataModelContract.MODEL_NAMES.join(", ")}.`);
+      console.log(`[DATA-CONTRACT] ✓ Schema persistence verified on disk. Models present: ${CanonicalDataModelContract.getModelNames(request).join(", ")}.`);
 
       console.log("[DataArchitecture] ✓ Saved data architecture definition.");
 

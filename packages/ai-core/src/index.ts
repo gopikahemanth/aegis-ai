@@ -53,3 +53,4 @@ export * from "./semantics/domain-fallback-generator.js";
 export * from "./semantics/domain-consistency-validator.js";
 export * from "./validation/validation-state.js";
 export * from "./governance/index.js";
+export * from "./contract/project-contract.js";

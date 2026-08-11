@@ -98,12 +98,20 @@ export class ArchitectureResolver {
     } else if (promptLower.includes("nestjs") || promptLower.includes("nest.js")) {
       backendFramework = "NestJS";
       backendProvenance = "user";
-    } else if (canonicalSpec.lockedStack?.backend) {
+    } else if (canonicalSpec.lockedStack?.backend && !canonicalSpec.lockedStack.backend.toLowerCase().includes("next")) {
       backendFramework = canonicalSpec.lockedStack.backend;
       backendProvenance = "inferred";
-    } else if (rawSpec.backend) {
+    } else if (rawSpec.backend && !rawSpec.backend.toLowerCase().includes("next")) {
       backendFramework = rawSpec.backend;
       backendProvenance = "inferred";
+    }
+
+    // Force stack alignment: React-Vite frontend REQUIRES Express backend
+    if (frontendFramework.toLowerCase().includes("vite") || frontendFramework.toLowerCase().includes("react")) {
+      if (backendFramework.toLowerCase().includes("next")) {
+        backendFramework = "Express";
+        backendProvenance = "default";
+      }
     }
 
     // ── DATABASE resolution with provenance ─────────────────────────────────

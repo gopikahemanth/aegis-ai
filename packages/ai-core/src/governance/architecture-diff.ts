@@ -47,9 +47,10 @@ export class ArchitectureDiff {
     if (contract.backend.framework && contract.backend.framework.toLowerCase() !== "none") {
       const exp = contract.backend.framework.toLowerCase();
       const act = actual.backendFramework.toLowerCase();
+      const isReactVite = actual.frontendFramework.toLowerCase().includes("vite") || actual.frontendFramework.toLowerCase().includes("react");
       if (exp.includes("express") && act !== "unknown" && !act.includes("express")) {
         violations.push({ field: "backend.framework", expected: contract.backend.framework, actual: actual.backendFramework, severity: "BLOCKER" });
-      } else if (exp.includes("next") && act !== "unknown" && !act.includes("next")) {
+      } else if (exp.includes("next") && act !== "unknown" && !act.includes("next") && (!isReactVite || act !== "express")) {
         violations.push({ field: "backend.framework", expected: contract.backend.framework, actual: actual.backendFramework, severity: "BLOCKER" });
       }
     }

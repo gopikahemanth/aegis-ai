@@ -8,6 +8,7 @@ export type ProvenanceSource = "user" | "default" | "inferred";
 export interface ArchitectureContractV1 {
   version: 1;
   status: "locked";
+  prompt?: string;
   /** Overall provenance of this contract */
   source: "user_prompt" | "canonical_spec" | "system_default";
   confidence: number;

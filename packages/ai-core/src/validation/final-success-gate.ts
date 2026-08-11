@@ -143,6 +143,35 @@ export class FinalSuccessGate {
       critical: true,
     });
 
+    // ── 7b. Product Consistency / Terminology Gate ─────────────────────────────
+    const promptText = (contract?.prompt || "").toLowerCase();
+    const isCodeReviewer = promptText.includes("code") || promptText.includes("vulnerability") || promptText.includes("reviewer") || promptText.includes("security");
+    let staleTermIssues: string[] = [];
+
+    if (isCodeReviewer) {
+      const srcDir = join(projectRoot, "src");
+      if (existsSync(srcDir)) {
+        staleTermIssues = FinalSuccessGate.scanForStaleTerms(srcDir, [
+          "Resume Scanner",
+          "Job Description",
+          "ATS Score",
+          "Matched Keywords",
+          "Missing Skills",
+          "Resume File",
+        ]);
+      }
+    }
+
+    const productConsistent = staleTermIssues.length === 0;
+    items.push({
+      name: "Product Consistency",
+      passed: productConsistent,
+      message: productConsistent
+        ? "No stale cross-domain terminology detected."
+        : `PRODUCT_SCOPE_MISMATCH: Stale terminology found in code: ${staleTermIssues.slice(0, 3).join("; ")}`,
+      critical: true,
+    });
+
     // ── 8. Server & Browser ───────────────────────────────────────────────────
     items.push({
       name: "Server",
@@ -267,6 +296,32 @@ export class FinalSuccessGate {
       } catch { /* skip unreadable file */ }
     }
 
+    return issues;
+  }
+
+  private static scanForStaleTerms(dir: string, terms: string[]): string[] {
+    const issues: string[] = [];
+    const scanDir = (d: string) => {
+      if (!existsSync(d)) return;
+      for (const entry of readdirSync(d)) {
+        if (entry === "node_modules" || entry === ".git" || entry === "dist") continue;
+        const full = join(d, entry);
+        try {
+          if (statSync(full).isDirectory()) {
+            scanDir(full);
+          } else if (/\.(tsx|ts|jsx|js|html)$/.test(entry)) {
+            const content = readFileSync(full, "utf8");
+            for (const term of terms) {
+              if (content.toLowerCase().includes(term.toLowerCase())) {
+                const rel = relative(dir, full).replace(/\\/g, "/");
+                issues.push(`File '${rel}' contains stale term '${term}'`);
+              }
+            }
+          }
+        } catch {}
+      }
+    };
+    scanDir(dir);
     return issues;
   }
 }

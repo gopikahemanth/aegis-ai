@@ -419,11 +419,25 @@ export interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
+  let appTitle = "AEGIS System Platform";
+  try {
+    const contractPath = join(dir, ".aegis", "architecture-contract.json");
+    if (existsSync(contractPath)) {
+      const c = JSON.parse(readFileSync(contractPath, "utf8"));
+      const p = (c.prompt || "").toLowerCase();
+      if (p.includes("code") || p.includes("vulnerability") || p.includes("reviewer") || p.includes("security")) {
+        appTitle = "AEGIS AI Code Reviewer & Security Vulnerability Scanner";
+      } else if (p.includes("resume") || p.includes("ats")) {
+        appTitle = "AEGIS Resume Scanner";
+      }
+    }
+  } catch {}
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-          AEGIS Resume Scanner
+          {appTitle}
         </h1>
       </header>
       <main className="flex-1 max-w-7xl w-full mx-auto p-6">{children}</main>

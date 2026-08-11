@@ -1389,21 +1389,19 @@ interface ImportMeta {
           }
         }
 
-        // Fix 1.5: Replace static template boilerplate text in App.tsx
+        // Fix 1.5: Enforce canonical QueryClientProvider & AppRoutes in App.tsx
         if (rel === "src/App.tsx") {
-          const needsFix = content.includes("Aegis React Template") 
+          const needsFix = !content.includes("QueryClientProvider")
+            || content.includes("Aegis React Template") 
             || content.includes("import scan.routes") 
             || content.includes("../server/routes")
             || !content.includes("AppRoutes");
-          const hasNamedAppRoutes = content.includes("{ AppRoutes }") && content.includes("./routes");
           
           if (needsFix) {
-            content = `import React from "react";\nimport AppRoutes from "./routes";\n\nexport default function App() {\n  return (\n    <div className="min-h-screen bg-slate-950 text-slate-100">\n      <AppRoutes />\n    </div>\n  );\n}\n`;
+            content = `import React from "react";\nimport { QueryClient, QueryClientProvider } from "@tanstack/react-query";\nimport AppRoutes from "./routes";\n\nconst queryClient = new QueryClient({\n  defaultOptions: {\n    queries: {\n      retry: false,\n      refetchOnWindowFocus: false,\n    },\n  },\n});\n\nexport default function App() {\n  return (\n    <QueryClientProvider client={queryClient}>\n      <div className="min-h-screen bg-slate-950 text-slate-100">\n        <AppRoutes />\n      </div>\n    </QueryClientProvider>\n  );\n}\n`;
             changed = true;
-            fixed.push("Updated src/App.tsx with canonical AppRoutes integration");
-          } else if (hasNamedAppRoutes) {
-            // App.tsx uses { AppRoutes } named import, but routes.tsx only has default export
-            // Fix: change named import to default import
+            fixed.push("Updated src/App.tsx with canonical QueryClientProvider & AppRoutes integration");
+          } else if (content.includes("{ AppRoutes }") && content.includes("./routes")) {
             content = content.replace(/import\s+\{\s*AppRoutes\s*\}\s+from\s+["']\.\/routes["']/g, 'import AppRoutes from "./routes"');
             changed = true;
             fixed.push("Fixed App.tsx: changed named import { AppRoutes } to default import");

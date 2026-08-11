@@ -71,19 +71,9 @@ export function App() {
 
 export default App;
 `;
-    if (!existsSync(appPath)) {
+    if (!existsSync(appPath) || !readFileSync(appPath, "utf8").includes("QueryClientProvider")) {
       writeFileSync(appPath, appContent, "utf8");
       createdFiles.push("src/App.tsx");
-    } else {
-      try {
-        let content = readFileSync(appPath, "utf8");
-        if (!content.includes("BrowserRouter")) {
-          content = `import { BrowserRouter } from "react-router-dom";\n` + content;
-          content = content.replace(/(<AppRoutes\b[^>]*\/>)/g, `<BrowserRouter>$1</BrowserRouter>`);
-          writeFileSync(appPath, content, "utf8");
-          modifiedFiles.push("src/App.tsx");
-        }
-      } catch {}
     }
 
     // ── 0b. src/vite-env.d.ts ────────────────────────────────────────────────

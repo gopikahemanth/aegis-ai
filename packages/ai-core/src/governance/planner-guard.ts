@@ -147,25 +147,24 @@ export class PlannerArchitectureGuard {
     let updatedTitle = task.title;
     let updatedDesc = task.description;
 
-    // Adapt Next.js / NextAuth / Server Actions to React + Express REST
-    if (updatedTitle.toLowerCase().includes("nextauth") || updatedDesc.toLowerCase().includes("nextauth")) {
-      updatedTitle = updatedTitle.replace(/NextAuth/gi, "Express JWT Auth");
-      updatedDesc = updatedDesc.replace(/NextAuth/gi, "JWT Authentication using Express middleware and bcrypt");
-    }
+    // Universal replacement for Next.js / NextAuth / App Router / Server Actions to locked contract
+    updatedTitle = updatedTitle
+      .replace(/NextAuth(\.js)?/gi, "Express JWT Auth")
+      .replace(/Next\.js App Router/gi, `${expFrontend} Router`)
+      .replace(/Next\.js API Route(s| handlers)?/gi, `${expBackend} REST Routes`)
+      .replace(/Next\.js/gi, expFrontend)
+      .replace(/Next/gi, expFrontend);
+
+    updatedDesc = updatedDesc
+      .replace(/NextAuth(\.js)?/gi, "JWT Authentication using Express middleware and bcrypt")
+      .replace(/Next\.js App Router/gi, `${expFrontend} with React Router DOM`)
+      .replace(/Next\.js API Route(s| handlers)?/gi, `${expBackend} Router Controllers`)
+      .replace(/Next\.js/gi, expFrontend)
+      .replace(/Next/gi, expFrontend);
 
     if (updatedTitle.toLowerCase().includes("server actions") || updatedDesc.toLowerCase().includes("server actions")) {
       updatedTitle = updatedTitle.replace(/Server Actions/gi, "Express REST API Endpoints");
       updatedDesc = updatedDesc.replace(/server actions/gi, "Express REST endpoints and controller handlers");
-    }
-
-    if (updatedTitle.toLowerCase().includes("next.js app router") || updatedDesc.toLowerCase().includes("next.js app router")) {
-      updatedTitle = updatedTitle.replace(/Next.js App Router/gi, `${expFrontend} Router`);
-      updatedDesc = updatedDesc.replace(/Next.js App Router/gi, `${expFrontend} with React Router DOM`);
-    }
-
-    if (updatedTitle.toLowerCase().includes("next.js api routes") || updatedDesc.toLowerCase().includes("next.js api routes")) {
-      updatedTitle = updatedTitle.replace(/Next.js API Routes/gi, `${expBackend} REST Controller Routes`);
-      updatedDesc = updatedDesc.replace(/Next.js API Routes/gi, `${expBackend} Router Controllers`);
     }
 
     // Adapt database/ORM references to contract

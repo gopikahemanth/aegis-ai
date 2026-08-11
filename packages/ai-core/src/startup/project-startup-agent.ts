@@ -1996,8 +1996,8 @@ export default DataTable;\n`;
             mkdirSync(dirname(fullStubPath), { recursive: true });
             let relImport = relative(dirname(fullStubPath), matchingDiskFile.fullPath).replace(/\\/g, "/");
             if (!relImport.startsWith(".")) relImport = "./" + relImport;
-            relImport = relImport.replace(/\.(ts|tsx|js|jsx)$/, "");
-            writeFileSync(fullStubPath, `import * as Mod from '${relImport}';\nexport * from '${relImport}';\nconst _default = (Mod as any).default || Mod;\nexport const ${componentName} = _default;\nexport default _default;\n`, "utf8");
+            const validExportName = componentName.replace(/[^a-zA-Z0-9_$]/g, "_");
+            writeFileSync(fullStubPath, `import * as Mod from '${relImport}';\nexport * from '${relImport}';\nconst _default = (Mod as any).default || Mod;\nexport const ${validExportName} = _default;\nexport default _default;\n`, "utf8");
             console.log(`[Startup] Re-exported existing module: ${relative(outputDirectory, fullStubPath)} -> ${matchingDiskFile.relPath}`);
           } else {
             const relUnresolved = relative(outputDirectory, fullStubPath).replace(/\\/g, "/");

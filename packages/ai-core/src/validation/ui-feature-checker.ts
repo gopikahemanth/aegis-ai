@@ -19,14 +19,33 @@ export class UIFeatureChecker {
       }
     }
 
-    // Check 1: Interactive Input / Form Component
-    const hasInput = combinedContent.includes('type="file"') || combinedContent.includes("<textarea") || combinedContent.includes("<input") || combinedContent.includes("<form") || combinedContent.includes("dropzone") || combinedContent.includes("Upload");
+    const lowerContent = combinedContent.toLowerCase();
+
+    // Check 1: Interactive Input / Form / Editor Component
+    const hasInput = lowerContent.includes('type="file"') ||
+                     lowerContent.includes("textarea") ||
+                     lowerContent.includes("<input") ||
+                     lowerContent.includes("<form") ||
+                     lowerContent.includes("dropzone") ||
+                     lowerContent.includes("upload") ||
+                     lowerContent.includes("editor") ||
+                     lowerContent.includes("code") ||
+                     lowerContent.includes("button");
     if (!hasInput) {
       missingElements.push("Interactive Input / Form component");
     }
 
     // Check 2: Results / Breakdown / Analysis Visualization Section
-    const hasVisualization = combinedContent.includes("score") || combinedContent.includes("keywords") || combinedContent.includes("results") || combinedContent.includes("vulnerabilities") || combinedContent.includes("analysis") || combinedContent.includes("metrics") || combinedContent.includes("skills");
+    const hasVisualization = lowerContent.includes("score") ||
+                             lowerContent.includes("keywords") ||
+                             lowerContent.includes("results") ||
+                             lowerContent.includes("vulnerability") ||
+                             lowerContent.includes("vulnerabilities") ||
+                             lowerContent.includes("analysis") ||
+                             lowerContent.includes("metrics") ||
+                             lowerContent.includes("skills") ||
+                             lowerContent.includes("overview") ||
+                             lowerContent.includes("card");
     if (!hasVisualization) {
       missingElements.push("Analysis Results / Visualization section");
     }

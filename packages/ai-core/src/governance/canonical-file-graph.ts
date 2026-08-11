@@ -1342,6 +1342,16 @@ export class CanonicalModuleRegistry {
       }
     }
 
+    // 4. General Types fallback resolution
+    if (normImport.includes("types") || normImport.endsWith("types")) {
+      for (const entry of CANONICAL_FILES) {
+        if (entry.canonicalPath.includes("types")) {
+          return { resolvedPath: entry.canonicalPath, canonicalEntry: CanonicalModuleRegistry.getModule(entry.canonicalPath) };
+        }
+      }
+      return { resolvedPath: "src/types/index.ts", canonicalEntry: null };
+    }
+
     return { resolvedPath: null, canonicalEntry: null };
   }
 }

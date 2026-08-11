@@ -1351,6 +1351,17 @@ export default MatchDashboard;
       return absPath;
     }
 
+    if (relPath.includes("types") || relPath.endsWith("types.ts")) {
+      writeFileSync(absPath, `export interface User { id: string; email: string; name?: string; }
+export interface AnalysisResult { id: string; score?: number; [key: string]: any; }
+export interface ScanHistoryItem { id: string; createdAt: string; [key: string]: any; }
+export interface ApiResponse<T = any> { data?: T; error?: string; status?: number; }
+export default ApiResponse;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
+      return absPath;
+    }
+
     return null;
   }
 }

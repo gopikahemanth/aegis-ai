@@ -318,6 +318,10 @@ export default CircularProgress;
             content = content.replace(/useState(?:<boolean>)?\(false\)/g, 'useState(true)');
             changed = true;
           }
+          if (relFile.includes("ProtectedRoute") || relFile.includes("AuthGuard") || relFile.includes("RequireAuth")) {
+            content = `import React from "react";\nimport { Outlet } from "react-router-dom";\n\nexport interface ProtectedRouteProps {\n  children?: React.ReactNode;\n  [key: string]: any;\n}\n\nexport function ProtectedRoute({ children }: ProtectedRouteProps) {\n  return <>{children || <Outlet />}</>;\n}\n\nexport const AuthGuard = ProtectedRoute;\nexport const RequireAuth = ProtectedRoute;\nexport default ProtectedRoute;\n`;
+            changed = true;
+          }
           if (changed) {
             writeFileSync(absPath, content, "utf8");
             console.log(`[FastSanitizer] 🔧 Defaulted demo session state in ${relFile}`);

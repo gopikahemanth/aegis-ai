@@ -33,7 +33,7 @@ export class ArchitectureDiff {
     }
 
     // 1. Compare Frontend Framework
-    if (contract.frontend.framework && actual.frontendFramework !== "Unknown") {
+    if (contract.frontend?.framework && actual?.frontendFramework && actual.frontendFramework !== "Unknown") {
       const exp = contract.frontend.framework.toLowerCase();
       const act = actual.frontendFramework.toLowerCase();
       if (exp.includes("next") && !act.includes("next")) {
@@ -44,10 +44,10 @@ export class ArchitectureDiff {
     }
 
     // 2. Compare Backend Framework
-    if (contract.backend.framework && contract.backend.framework.toLowerCase() !== "none") {
+    if (contract.backend?.framework && contract.backend.framework.toLowerCase() !== "none" && actual?.backendFramework) {
       const exp = contract.backend.framework.toLowerCase();
       const act = actual.backendFramework.toLowerCase();
-      const isReactVite = actual.frontendFramework.toLowerCase().includes("vite") || actual.frontendFramework.toLowerCase().includes("react");
+      const isReactVite = (actual.frontendFramework || "").toLowerCase().includes("vite") || (actual.frontendFramework || "").toLowerCase().includes("react");
       if (exp.includes("express") && act !== "unknown" && !act.includes("express")) {
         violations.push({ field: "backend.framework", expected: contract.backend.framework, actual: actual.backendFramework, severity: "BLOCKER" });
       } else if (exp.includes("next") && act !== "unknown" && !act.includes("next") && (!isReactVite || act !== "express")) {
@@ -56,7 +56,7 @@ export class ArchitectureDiff {
     }
 
     // 3. Compare Database Provider
-    if (contract.database.provider && contract.database.provider.toLowerCase() !== "none") {
+    if (contract.database?.provider && contract.database.provider.toLowerCase() !== "none" && actual?.databaseProvider) {
       const exp = contract.database.provider.toLowerCase();
       const act = actual.databaseProvider.toLowerCase();
       if (exp.includes("postgres") && act !== "unknown" && !act.includes("postgres")) {
@@ -67,7 +67,7 @@ export class ArchitectureDiff {
     }
 
     // 4. Compare ORM
-    if (contract.database.orm && actual.orm !== "Unknown") {
+    if (contract.database?.orm && actual?.orm && actual.orm !== "Unknown") {
       const exp = contract.database.orm.toLowerCase();
       const act = actual.orm.toLowerCase();
       if (exp.includes("drizzle") && !act.includes("drizzle")) {

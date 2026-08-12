@@ -482,11 +482,11 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
       <nav className="bg-slate-900 border-b border-slate-800 px-8 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-lg">⚡</div>
-          <span className="text-xl font-bold text-slate-100 tracking-tight">Executive Operations & Revenue Dashboard</span>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-base">⚡</div>
+          <span className="text-lg font-bold text-slate-100 tracking-tight whitespace-nowrap">Revenue Analytics Dashboard</span>
         </div>
         <div className="flex items-center gap-6 text-sm font-medium text-slate-300">
           <a href="/" className="text-blue-400 font-semibold border-b-2 border-blue-500 pb-1">Dashboard</a>

@@ -433,8 +433,9 @@ export default CircularProgress;
         const fullP = join(srcDir, foundDash);
         try {
           const content = readFileSync(fullP, "utf8");
-          // If file is an empty scaffold stub (e.g. return <div>src/...</div>), replace it with rich canonical dashboard
-          if (content.length > 300 && (content.includes("<main") || content.includes("grid") || content.includes("table") || content.includes("Card"))) {
+          // If file is an empty scaffold stub or stale budget template, replace with rich canonical dashboard
+          const isStaleBudgetTemplate = content.includes("Expense Overview") || content.includes("Category Budgets") || content.includes("Total Expenses") || content.includes("Budget Tracker");
+          if (!isStaleBudgetTemplate && content.length > 300 && (content.includes("<main") || content.includes("grid") || content.includes("table") || content.includes("Card"))) {
             activeDashPath = fullP;
           }
         } catch {}

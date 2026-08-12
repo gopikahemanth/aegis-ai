@@ -424,45 +424,54 @@ export default CircularProgress;
     let activeDashPath: string | undefined = undefined;
     if (existsSync(srcDir)) {
       const allSrcFiles = this.getAllFiles(srcDir);
-      const foundDash = allSrcFiles.find(f => /dashboard/i.test(f) && (f.endsWith(".tsx") || f.endsWith(".ts")));
+      const foundDash = allSrcFiles.find(f => /dashboard/i.test(f) && (f.endsWith(".tsx") || f.endsWith(".ts")) && !f.includes("Kpi") && !f.includes("Card"));
       if (foundDash) {
-        activeDashPath = join(srcDir, foundDash);
+        const fullP = join(srcDir, foundDash);
+        try {
+          const content = readFileSync(fullP, "utf8");
+          // If file is an empty scaffold stub (e.g. return <div>src/...</div>), replace it with rich canonical dashboard
+          if (content.length > 300 && (content.includes("<main") || content.includes("grid") || content.includes("table") || content.includes("Card"))) {
+            activeDashPath = fullP;
+          }
+        } catch {}
       }
     }
+
     if (!activeDashPath) {
       activeDashPath = join(root, "src", "features", "dashboard", "DashboardPage.tsx");
       mkdirSync(join(root, "src", "features", "dashboard"), { recursive: true });
       writeFileSync(activeDashPath, `import React, { useState } from "react";
 
 export function DashboardPage() {
-  const [workouts, setWorkouts] = useState([
-    { id: 1, name: "Bench Press", volume: "1,200 lbs", muscle: "Chest", date: "Today" },
-    { id: 2, name: "Squats", volume: "2,400 lbs", muscle: "Legs", date: "Yesterday" }
+  const [items, setItems] = useState([
+    { id: 1, name: "Enterprise Pro Plan Subscription", metric: "$4,200 / mo", status: "Active", date: "Today" },
+    { id: 2, name: "Growth Tier Subscription Renewal", metric: "$1,850 / mo", status: "Active", date: "Yesterday" },
+    { id: 3, name: "Starter Tier Upgrade", metric: "$450 / mo", status: "Upgraded", date: "3 days ago" }
   ]);
-  const [exercise, setExercise] = useState("");
-  const [weight, setWeight] = useState("");
-  const [reps, setReps] = useState("");
+  const [itemName, setItemName] = useState("");
+  const [itemValue, setItemValue] = useState("");
+  const [itemCategory, setItemCategory] = useState("");
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!exercise) return;
-    setWorkouts([{ id: Date.now(), name: exercise, volume: \`\${(Number(weight)||100)*(Number(reps)||10)} lbs\`, muscle: "Full Body", date: "Just now" }, ...workouts]);
-    setExercise(""); setWeight(""); setReps("");
+    if (!itemName) return;
+    setItems([{ id: Date.now(), name: itemName, metric: \`$\${itemValue || '999'} / mo\`, status: itemCategory || "Active", date: "Just now" }, ...items]);
+    setItemName(""); setItemValue(""); setItemCategory("");
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
       <nav className="bg-slate-900 border-b border-slate-800 px-8 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center gap-1 justify-center text-white font-bold text-lg">⚡</div>
-          <span className="text-xl font-bold text-slate-100 tracking-tight">Fitness & Workout Tracker</span>
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-lg">⚡</div>
+          <span className="text-xl font-bold text-slate-100 tracking-tight">Executive Operations & Revenue Dashboard</span>
         </div>
         <div className="flex items-center gap-6 text-sm font-medium text-slate-300">
           <a href="/" className="text-blue-400 font-semibold border-b-2 border-blue-500 pb-1">Dashboard</a>
-          <a href="/workouts" className="hover:text-slate-100 transition-colors">Log Workouts</a>
-          <a href="/analytics" className="hover:text-slate-100 transition-colors">Volume Analytics</a>
-          <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-xs text-amber-400 font-bold flex items-center gap-1.5">
-            🔥 12-Day Streak
+          <a href="/analytics" className="hover:text-slate-100 transition-colors">Revenue Analytics</a>
+          <a href="/transactions" className="hover:text-slate-100 transition-colors">Transaction History</a>
+          <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-xs text-emerald-400 font-bold flex items-center gap-1.5">
+            ● System Live
           </div>
         </div>
       </nav>
@@ -470,63 +479,67 @@ export function DashboardPage() {
       <div className="p-8">
         <header className="max-w-6xl mx-auto mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-slate-100">Training Analytics & Activity Dashboard</h1>
-            <p className="text-slate-400 text-sm mt-1">Track volume, active streaks & target metrics</p>
+            <h1 className="text-3xl font-bold text-slate-100">Overview & Key Metric Performance</h1>
+            <p className="text-slate-400 text-sm mt-1">Real-time revenue analytics, active subscriptions & customer lifetime metrics</p>
           </div>
         </header>
 
         <main className="max-w-6xl mx-auto space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Volume</h3>
-              <p className="text-2xl font-bold text-slate-100 mt-1">14,850 lbs</p>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Monthly Recurring Revenue (MRR)</h3>
+              <p className="text-2xl font-bold text-slate-100 mt-1">$48,250</p>
+              <span className="text-xs text-emerald-400 font-semibold mt-1 inline-block">+14.2% from last month</span>
             </div>
             <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Streak</h3>
-              <p className="text-2xl font-bold text-amber-400 mt-1">12 Days</p>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Customer Lifetime Value (LTV)</h3>
+              <p className="text-2xl font-bold text-blue-400 mt-1">$6,480</p>
+              <span className="text-xs text-blue-300 font-semibold mt-1 inline-block">3.8x ARPU ratio</span>
             </div>
             <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Workouts Logged</h3>
-              <p className="text-2xl font-bold text-blue-400 mt-1">{workouts.length}</p>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Subscriptions</h3>
+              <p className="text-2xl font-bold text-indigo-400 mt-1">{1240 + items.length}</p>
+              <span className="text-xs text-indigo-300 font-semibold mt-1 inline-block">98.4% Retention</span>
             </div>
             <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Target Muscle</h3>
-              <p className="text-2xl font-bold text-emerald-400 mt-1">Chest & Arms</p>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Churn Rate</h3>
+              <p className="text-2xl font-bold text-emerald-400 mt-1">1.2%</p>
+              <span className="text-xs text-emerald-400 font-semibold mt-1 inline-block">-0.4% MoM Churn</span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1 bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl">
-              <h2 className="text-lg font-bold text-slate-100 mb-4">Log Exercise</h2>
+              <h2 className="text-lg font-bold text-slate-100 mb-4">Quick Plan Management & Logging</h2>
               <form onSubmit={handleAdd} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Exercise Name</label>
-                  <input value={exercise} onChange={e=>setExercise(e.target.value)} placeholder="e.g. Deadlift" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Subscription / Plan Title</label>
+                  <input value={itemName} onChange={e=>setItemName(e.target.value)} placeholder="e.g. Pro Tier Upgrade" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Weight (lbs)</label>
-                    <input value={weight} onChange={e=>setWeight(e.target.value)} placeholder="185" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Value ($)</label>
+                    <input value={itemValue} onChange={e=>setItemValue(e.target.value)} placeholder="1250" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Reps</label>
-                    <input value={reps} onChange={e=>setReps(e.target.value)} placeholder="8" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
+                    <input value={itemCategory} onChange={e=>setItemCategory(e.target.value)} placeholder="Active" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
                   </div>
                 </div>
-                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-lg transition-colors">Log Workout</button>
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-lg transition-colors">Record Entry</button>
               </form>
             </div>
 
             <div className="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl">
-              <h2 className="text-lg font-bold text-slate-100 mb-4">Recent Training Activity</h2>
+              <h2 className="text-lg font-bold text-slate-100 mb-4">Transaction History & Activity Ledger</h2>
               <div className="space-y-3">
-                {workouts.map(w => (
+                {items.map(w => (
                   <div key={w.id} className="flex justify-between items-center bg-slate-950/60 border border-slate-800/80 rounded-lg p-4">
                     <div>
                       <h4 className="font-semibold text-slate-100">{w.name}</h4>
-                      <span className="text-xs text-slate-400">{w.muscle} • {w.date}</span>
+                      <span className="text-xs text-slate-400">{w.status} • {w.date}</span>
                     </div>
-                    <span className="text-sm font-bold text-blue-400">{w.volume}</span>
+                    <span className="text-sm font-bold text-blue-400">{w.metric}</span>
                   </div>
                 ))}
               </div>

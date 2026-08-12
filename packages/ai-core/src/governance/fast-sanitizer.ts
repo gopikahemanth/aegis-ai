@@ -295,25 +295,13 @@ export default CircularProgress;
         try {
           let content = readFileSync(absPath, "utf8");
           let changed = false;
-          if (content.includes("interface ") && content.includes("Props")) {
-            content = content.replace(/(interface\s+\w*Props\s*\{)([^}]+)\}/g, (fullMatch, header, body) => {
-              if (!body.includes("[key: string]: any")) {
-                changed = true;
-                const hasData = /\bdata\s*\?:|\bdata\s*:/i.test(body);
-                const hasHistory = /\bhistory\s*\?:|\bhistory\s*:/i.test(body);
-                const hasScans = /\bscans\s*\?:|\bscans\s*:/i.test(body);
-                let extra = "";
-                if (!hasScans) extra += "\n  scans?: any;";
-                if (!hasHistory) extra += "\n  history?: any;";
-                if (!hasData) extra += "\n  data?: any;";
-                return `${header}${body}${extra}\n  [key: string]: any;\n}`;
-              }
-              return fullMatch;
-            });
-            if (changed) {
-              writeFileSync(absPath, content, "utf8");
-              console.log(`[SyntaxPreflight] 🔧 Added flexible prop index signature to ${relFile}`);
-            }
+          if (content.includes("interface ") && content.includes("Props") && !content.includes("[key: string]: any")) {
+            content = content.replace(/(interface\s+\w*Props\s*\{)/g, `$1\n  [key: string]: any;\n  scans?: any;\n  history?: any;\n  data?: any;`);
+            changed = true;
+          }
+          if (changed) {
+            writeFileSync(absPath, content, "utf8");
+            console.log(`[SyntaxPreflight] 🔧 Added flexible prop index signature to ${relFile}`);
           }
         } catch {}
       }

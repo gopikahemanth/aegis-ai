@@ -574,6 +574,27 @@ export default DashboardPage;
         try {
           let content = readFileSync(routesPath, "utf8");
           let changed = false;
+
+          // Deduplicate import statements with duplicate identifier names
+          const importLines = content.split("\n");
+          const seenImports = new Set<string>();
+          const cleanLines: string[] = [];
+          for (const line of importLines) {
+            const match = line.match(/import\s+(?:\{([^}]+)\}|([a-zA-Z0-9_$]+))\s+from\s+["']([^"']+)["']/);
+            if (match) {
+              const rawNames = match[1] || match[2] || "";
+              const importedName = rawNames.split(",")[0].trim().split(" as ")[0].trim();
+              if (importedName && seenImports.has(importedName)) {
+                changed = true;
+                console.log(`[FastSanitizer] 🧹 Removed duplicate import '${importedName}' in ${routesPath}`);
+                continue;
+              }
+              if (importedName) seenImports.add(importedName);
+            }
+            cleanLines.push(line);
+          }
+          content = cleanLines.join("\n");
+
           if (/<Route\s+path=["']\/["']\s+element=\{<(?:LoginPage|AuthPage|LoginForm|Auth|SignIn|Navigate)[^>]*\/>\}/.test(content) || content.includes('<Route path="/" element={<LoginPage') || content.includes('element={<Navigate to="/login"')) {
             content = content.replace(/<Route\s+path=["']\/["']\s+element=\{[^}]+\}\s*\/>/g, '<Route path="/" element={<DashboardPage />} />');
             if (!content.includes("import DashboardPage") && !content.includes("import { DashboardPage")) {

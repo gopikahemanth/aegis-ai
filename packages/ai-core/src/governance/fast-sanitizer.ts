@@ -387,12 +387,12 @@ export default CircularProgress;
         try {
           let content = readFileSync(absPath, "utf8");
           let changed = false;
-          if (!content.includes("workouts") && (relFile.includes("Workout") || relFile.includes("workout"))) {
-            content += "\nexport const useWorkoutStore = () => ({ workouts: [], addWorkout: () => {}, totalVolume: 14850, activeStreak: 12 });\nexport const useWorkouts = useWorkoutStore;\nexport default useWorkoutStore;\n";
+          if (!content.includes("useWorkoutStore") && !content.includes("useWorkouts") && (relFile.includes("Workout") || relFile.includes("workout"))) {
+            content += "\nexport const useWorkoutStore = () => ({ workouts: [], addWorkout: () => {}, totalVolume: 14850, activeStreak: 12 });\nexport const useWorkouts = useWorkoutStore;\n";
             changed = true;
           }
-          if (!content.includes("data") && (relFile.includes("Dashboard") || relFile.includes("dashboard"))) {
-            content += "\nexport const useDashboardData = () => ({ data: { total: 10, critical: 0, open: 2, riskScore: 98 }, workouts: [], totalVolume: 14850, activeStreak: 12 });\nexport default useDashboardData;\n";
+          if (!content.includes("useDashboardData") && (relFile.includes("Dashboard") || relFile.includes("dashboard"))) {
+            content += "\nexport const useDashboardData = () => ({ data: { total: 10, critical: 0, open: 2, riskScore: 98 }, workouts: [], totalVolume: 14850, activeStreak: 12 });\n";
             changed = true;
           }
           if (changed) {

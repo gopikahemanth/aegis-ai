@@ -377,8 +377,10 @@ export default CircularProgress;
                   if (expName && !targetContent.includes(`export const ${expName}`) && !targetContent.includes(`export function ${expName}`) && !targetContent.includes(`export class ${expName}`) && !targetContent.includes(`export type ${expName}`) && !targetContent.includes(`export interface ${expName}`)) {
                     if (expName.startsWith("use")) {
                       targetContent += `\nexport const ${expName} = (...args: any[]) => ({ mutateAsync: async () => {}, mutate: () => {}, isPending: false, isLoading: false, data: [], error: null, refetch: () => {} });\n`;
+                    } else if (/^[A-Z]/.test(expName)) {
+                      targetContent += `\nexport const ${expName} = (...args: any[]) => null;\nexport type ${expName} = any;\n`;
                     } else {
-                      targetContent += `\nexport const ${expName} = (...args: any[]) => 0;\n`;
+                      targetContent += `\nexport const ${expName} = (...args: any[]) => 0;\nexport type ${expName} = any;\n`;
                     }
                     targetChanged = true;
                   }

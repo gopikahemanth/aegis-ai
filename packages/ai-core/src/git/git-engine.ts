@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { writeFileSync, existsSync, unlinkSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
 export class GitIntegrationEngine {
@@ -42,6 +42,23 @@ export class GitIntegrationEngine {
 
   commitChanges(projectPath: string, request: string) {
     console.log("[GitEngine] Staging and committing changes to Git...");
+
+    // Guarantee .gitignore excludes node_modules to avoid Windows MAX_PATH length limits
+    const gitignorePath = join(projectPath, ".gitignore");
+    const defaultIgnore = "node_modules/\ndist/\n.aegis/\n.env\n*.log\n";
+    if (existsSync(gitignorePath)) {
+      try {
+        const existing = readFileSync(gitignorePath, "utf8");
+        if (!existing.includes("node_modules")) {
+          writeFileSync(gitignorePath, existing + "\n" + defaultIgnore, "utf8");
+        }
+      } catch {
+        writeFileSync(gitignorePath, defaultIgnore, "utf8");
+      }
+    } else {
+      writeFileSync(gitignorePath, defaultIgnore, "utf8");
+    }
+
     const lockFile = join(projectPath, ".git", "index.lock");
     if (existsSync(lockFile)) {
       try {

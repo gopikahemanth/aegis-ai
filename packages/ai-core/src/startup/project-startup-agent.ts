@@ -2066,10 +2066,14 @@ export default DataTable;\n`;
         }
 
         if (!targetFileExists) {
-          const isUiTarget = /[\/\\](pages|components|views|ui|features|shared)[\/\\]/i.test(targetPath) ||
-                            /(button|card|component|page|container|navbar|spinner|dashboard|header|footer|modal|drawer|form|input)/i.test(targetPath);
+          const isUiTarget = /[\/\\](pages|components|views|ui|features|shared|routes)[\/\\]/i.test(targetPath) ||
+                            /(app|routes|button|card|component|page|container|navbar|spinner|dashboard|header|footer|modal|drawer|form|input)/i.test(targetPath) ||
+                            (targetPath.includes("src") && !targetPath.includes("service") && !targetPath.includes("util") && !targetPath.includes("api") && !targetPath.includes("middleware"));
           const stubExt = isUiTarget ? ".tsx" : ".ts";
-          const fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
+          let fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
+          if (isUiTarget && fullStubPath.endsWith(".ts")) {
+            fullStubPath = fullStubPath.slice(0, -3) + ".tsx";
+          }
           const componentName = fullStubPath.split(/[\/\\]/).pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Component";
 
           // Check fuzzy match on disk (support Page / Component suffixes)

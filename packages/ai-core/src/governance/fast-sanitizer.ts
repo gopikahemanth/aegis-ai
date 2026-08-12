@@ -313,9 +313,15 @@ export default CircularProgress;
         try {
           let content = readFileSync(absPath, "utf8");
           let changed = false;
-          if (content.includes("interface ") && content.includes("Props") && !content.includes("[key: string]: any")) {
-            content = content.replace(/(interface\s+\w*Props\s*\{)/g, `$1\n  [key: string]: any;\n  scans?: any;\n  history?: any;\n  data?: any;`);
-            changed = true;
+          if (content.includes("interface ") && content.includes("Props")) {
+            if (!content.includes("[key: string]: any")) {
+              content = content.replace(/(interface\s+\w*Props\s*\{)/g, `$1\n  [key: string]: any;\n  scans?: any;\n  history?: any;\n  data?: any;`);
+              changed = true;
+            }
+            if (/\bchildren\s*:\s*React/g.test(content)) {
+              content = content.replace(/\bchildren\s*:\s*React/g, 'children?: React');
+              changed = true;
+            }
           }
           if (changed) {
             writeFileSync(absPath, content, "utf8");
@@ -590,6 +596,12 @@ export default DashboardPage;
         try {
           let content = readFileSync(routesPath, "utf8");
           let changed = false;
+
+          // Fix merged declaration TS2652 duplicate default exports
+          if (content.includes("export default function AppRoutes") && content.includes("export default AppRoutes;")) {
+            content = content.replace("export default function AppRoutes", "export function AppRoutes");
+            changed = true;
+          }
 
           // Deduplicate import statements with duplicate identifier names
           const importLines = content.split("\n");

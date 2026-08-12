@@ -64,6 +64,24 @@ export class FastDeterministicSanitizer {
         console.log("[SyntaxPreflight] 🗑️ Removed duplicate src/services/api.tsx (api.ts is canonical)");
       } catch {}
     }
+
+    // Fix any backend server files mistakenly created with .tsx extension under server/
+    const serverDir = join(root, "server");
+    if (existsSync(serverDir)) {
+      try {
+        const serverFiles = this.getAllFiles(serverDir).filter(f => f.endsWith(".tsx"));
+        for (const relFile of serverFiles) {
+          const oldPath = join(serverDir, relFile);
+          const newPath = oldPath.slice(0, -1); // .tsx -> .ts
+          try {
+            const content = readFileSync(oldPath, "utf8");
+            writeFileSync(newPath, content, "utf8");
+            unlinkSync(oldPath);
+            console.log(`[FastSanitizer] 🔧 Renamed backend server file: ${relFile} -> ${relFile.slice(0, -1)}`);
+          } catch {}
+        }
+      } catch {}
+    }
   }
 
   /**
@@ -316,6 +334,11 @@ export default CircularProgress;
         try {
           let content = readFileSync(absPath, "utf8");
           let changed = false;
+          if (content.includes("@tanstack/react-table") && (content.includes("useSortBy") || content.includes("usePagination") || content.includes("useTable"))) {
+            content = content.replace(/import\s*\{[^}]*\}\s*from\s*["']@tanstack\/react-table["']/g, 'import { useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel, flexRender } from "@tanstack/react-table"');
+            content = content.replace(/useSortBy|usePagination|useTable|useFilters/g, 'getSortedRowModel');
+            changed = true;
+          }
           if (content.includes("Failed to load") || content.includes("Error loading")) {
             content = content.replace(/if\s*\(\s*(?:error|isError)\s*\)\s*return\s*\(?<div[^>]*>.*?<\/div>\)?;?/gs, '/* Graceful demo fallback */');
             changed = true;

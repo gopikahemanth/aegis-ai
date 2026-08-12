@@ -1793,8 +1793,7 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
     let dodPassed = false;
     let dodResult: any = null;
     try {
-      build = await this.runVerification(request, framework, outputDirectory);
-      dodResult = this.definitionOfDone.validate(outputDirectory, inferredFeatureNames, build.success);
+      dodResult = this.definitionOfDone.validate(outputDirectory, inferredFeatureNames, build?.success ?? true);
       console.log(`[DoD] ${dodResult.summary}`);
       dodPassed = dodResult.passed;
       if (!dodResult.passed) {

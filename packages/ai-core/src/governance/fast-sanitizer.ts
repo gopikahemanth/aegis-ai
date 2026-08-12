@@ -404,13 +404,14 @@ export default CircularProgress;
     }
 
     // 9. Guarantee index route "/" renders main application Dashboard, NEVER login / auth form
-    const dashPageCandidates = [
-      join(root, "src", "features", "dashboard", "DashboardPage.tsx"),
-      join(root, "src", "features", "dashboard", "Dashboard.tsx"),
-      join(root, "src", "pages", "Dashboard.tsx"),
-      join(root, "src", "pages", "DashboardPage.tsx"),
-    ];
-    let activeDashPath = dashPageCandidates.find(p => existsSync(p));
+    let activeDashPath: string | undefined = undefined;
+    if (existsSync(srcDir)) {
+      const allSrcFiles = this.getAllFiles(srcDir);
+      const foundDash = allSrcFiles.find(f => /dashboard/i.test(f) && (f.endsWith(".tsx") || f.endsWith(".ts")));
+      if (foundDash) {
+        activeDashPath = join(srcDir, foundDash);
+      }
+    }
     if (!activeDashPath) {
       activeDashPath = join(root, "src", "features", "dashboard", "DashboardPage.tsx");
       mkdirSync(join(root, "src", "features", "dashboard"), { recursive: true });

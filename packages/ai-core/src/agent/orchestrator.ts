@@ -2115,7 +2115,7 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
           const tsFiles = this.collectAllFiles(srcDir).filter(f => f.endsWith(".ts") || f.endsWith(".tsx"));
           for (const fullPath of tsFiles) {
             const content = readFileSync(fullPath, "utf8");
-            const matches = content.matchAll(/from\s+["']([^"']+)["']/g);
+            const matches = content.matchAll(/(?:from\s+|import\s+)(?:type\s+)?["']([^"']+)["']/g);
             for (const m of matches) {
               const imp = m[1];
               if (!imp.startsWith(".") && !imp.startsWith("/") && !imp.startsWith("@/")) {

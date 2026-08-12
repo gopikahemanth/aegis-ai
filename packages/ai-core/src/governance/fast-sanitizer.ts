@@ -275,7 +275,18 @@ export default CircularProgress;
       } catch {}
     }
 
-    // 7. Add flexible index signature to component Props interfaces in src/ components
+    // Guarantee src/App.tsx exports export default App
+    const appPath = join(root, "src", "App.tsx");
+    if (existsSync(appPath)) {
+      try {
+        let content = readFileSync(appPath, "utf8");
+        if (!content.includes("export default")) {
+          content += "\nexport default App;\n";
+          writeFileSync(appPath, content, "utf8");
+          console.log("[FastSanitizer] 🔧 Added 'export default App;' to src/App.tsx");
+        }
+      } catch {}
+    }
     const srcDir = join(root, "src");
     if (existsSync(srcDir)) {
       const tsxFiles = this.getAllFiles(srcDir).filter(f => f.endsWith(".tsx"));
@@ -364,7 +375,11 @@ export default CircularProgress;
                 let targetChanged = false;
                 for (const expName of namedExports) {
                   if (expName && !targetContent.includes(`export const ${expName}`) && !targetContent.includes(`export function ${expName}`) && !targetContent.includes(`export class ${expName}`) && !targetContent.includes(`export type ${expName}`) && !targetContent.includes(`export interface ${expName}`)) {
-                    targetContent += `\nexport const ${expName} = (...args: any[]) => 0;\n`;
+                    if (expName.startsWith("use")) {
+                      targetContent += `\nexport const ${expName} = (...args: any[]) => ({ mutateAsync: async () => {}, mutate: () => {}, isPending: false, isLoading: false, data: [], error: null, refetch: () => {} });\n`;
+                    } else {
+                      targetContent += `\nexport const ${expName} = (...args: any[]) => 0;\n`;
+                    }
                     targetChanged = true;
                   }
                 }

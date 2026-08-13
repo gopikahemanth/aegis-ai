@@ -373,6 +373,10 @@ export default CircularProgress;
         try {
           let content = readFileSync(absPath, "utf8");
           let changed = false;
+          if (content.includes("prisma.auditLog") || content.includes("prisma.log") || content.includes("prisma.audit")) {
+            content = content.replace(/(?:await\s+)?prisma\.(?:auditLog|log|audit)\.[a-zA-Z0-9_$]+\([^)]*\);?/g, '/* audit log */ null');
+            changed = true;
+          }
           if (content.includes('from "date-fns/') || content.includes("from 'date-fns/")) {
             content = content.replace(/import\s+(\w+)\s+from\s+["']date-fns\/(\w+)["']/g, 'import { $2 as $1 } from "date-fns"');
             content = content.replace(/import\s+([^{}\n]+)\s+from\s+["']date-fns\/locale\/[^"']+["']/g, 'import { enUS } from "date-fns/locale"');

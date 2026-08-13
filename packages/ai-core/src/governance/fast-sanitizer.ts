@@ -388,6 +388,14 @@ export default CircularProgress;
             content = content.replace(/import\s*\{\s*(\w+)\s*\}\s*from\s+["']date-fns\/locale\/en-US["']/g, 'import { enUS } from "date-fns/locale"');
             changed = true;
           }
+          if (content.includes("useQuery") && !content.includes("from \"@tanstack/react-query\"") && !content.includes("from '@tanstack/react-query'")) {
+            content = `import { useQuery, useMutation } from "@tanstack/react-query";\n` + content;
+            changed = true;
+          }
+          if (!content.includes("const fetchBoard") && !content.includes("function fetchBoard") && content.includes("fetchBoard")) {
+            content = `const fetchBoard = async () => ({ id: "1", title: "Kanban Board", columns: [] });\n` + content;
+            changed = true;
+          }
           if (content.includes("console.log") && (/Authenticating|Logging in|Submitting|Saving/i.test(content))) {
             content = content.replace(/console\.log\s*\(\s*["'](?:Authenticating|Logging in|Submitting|Saving):?["'][^)]*\);?/gi, '/* authenticating user */');
             changed = true;

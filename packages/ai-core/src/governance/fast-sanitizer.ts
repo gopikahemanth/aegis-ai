@@ -404,6 +404,10 @@ export default CircularProgress;
             content = content.replace(/\b(id|taskId|columnId|itemId|cardId)\s*:\s*string\b/g, '$1: string | number');
             changed = true;
           }
+          if (content.includes("task.") && !content.includes("const task") && !content.includes("let task") && !content.includes("({ task") && !content.includes("(task")) {
+            content = content.replace(/(export\s+function\s+[A-Za-z0-9_$]+\s*\([^)]*\)\s*\{)/, '$1\n  const task = (typeof props !== "undefined" ? (props as any)?.task || (props as any)?.item || props : {});\n');
+            changed = true;
+          }
           if (content.includes("console.log") && (/Authenticating|Logging in|Submitting|Saving/i.test(content))) {
             content = content.replace(/console\.log\s*\(\s*["'](?:Authenticating|Logging in|Submitting|Saving):?["'][^)]*\);?/gi, '/* authenticating user */');
             changed = true;

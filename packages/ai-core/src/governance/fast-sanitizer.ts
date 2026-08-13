@@ -902,6 +902,14 @@ export default DashboardPage;
             changed = true;
           }
 
+          // Ensure routes.tsx exports export default AppRoutes for App.tsx default imports (TS2613 fix)
+          if (routesPath.endsWith("routes.tsx") || routesPath.endsWith("routes.ts")) {
+            if (content.includes("AppRoutes") && !content.includes("export default")) {
+              content += "\nexport default AppRoutes;\n";
+              changed = true;
+            }
+          }
+
           // Deduplicate import statements with duplicate identifier names
           const importLines = content.split("\n");
           const seenImports = new Set<string>();

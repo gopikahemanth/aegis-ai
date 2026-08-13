@@ -531,16 +531,16 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
-      <nav className="bg-slate-900 border-b border-slate-800 px-8 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-3">
+      <nav className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center gap-4">
+        <div className="flex items-center gap-2.5 shrink-0">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-base">🩺</div>
-          <span className="text-lg font-bold text-slate-100 tracking-tight whitespace-nowrap">Telemedicine Patient Portal</span>
+          <span className="text-base font-bold text-slate-100 tracking-tight whitespace-nowrap">Aegis Telehealth Portal</span>
         </div>
-        <div className="flex items-center gap-6 text-sm font-medium text-slate-300">
-          <a href="/" className="text-cyan-400 font-semibold border-b-2 border-cyan-500 pb-1">Appointments</a>
-          <a href="/prescriptions" className="hover:text-slate-100 transition-colors">Prescriptions</a>
-          <a href="/records" className="hover:text-slate-100 transition-colors">Medical Records</a>
-          <button className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-3 py-1 text-xs font-bold transition-colors">
+        <div className="flex items-center gap-4 text-xs font-medium text-slate-300 overflow-x-auto whitespace-nowrap">
+          <a href="/" className="text-cyan-400 font-semibold border-b-2 border-cyan-500 pb-1 whitespace-nowrap">Appointments</a>
+          <a href="/prescriptions" className="hover:text-slate-100 transition-colors whitespace-nowrap">Prescriptions</a>
+          <a href="/records" className="hover:text-slate-100 transition-colors whitespace-nowrap">Medical Records</a>
+          <button className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-3 py-1 text-xs font-bold transition-colors shrink-0 whitespace-nowrap">
             📹 Join Video Call
           </button>
         </div>

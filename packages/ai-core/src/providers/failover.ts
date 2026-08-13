@@ -141,9 +141,13 @@ export class FailoverProvider implements AIProvider {
           }
 
           if (isFetchFailed) {
-            console.warn(`[FailoverProvider] Connection failed on provider "${provider.name}". Disabling for 10 minutes.`);
-            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 600000);
-            FailoverProvider.healthStates.set(provider.name, "UNAVAILABLE");
+            console.warn(`[FailoverProvider] Connection failed on provider "${provider.name}". Pausing for 15s before retry...`);
+            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 15000);
+            FailoverProvider.healthStates.set(provider.name, "DEGRADED");
+            if (providerAttempts < this.maxRetries) {
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              continue;
+            }
             break;
           }
 
@@ -162,7 +166,7 @@ export class FailoverProvider implements AIProvider {
         }
       }
 
-      FailoverProvider.disabledUntil.set(provider.name, Date.now() + 15000);
+      FailoverProvider.disabledUntil.set(provider.name, Date.now() + 10000);
       FailoverProvider.healthStates.set(provider.name, "DEGRADED");
     }
 

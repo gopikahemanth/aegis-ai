@@ -392,6 +392,10 @@ export default CircularProgress;
             content = `import { useQuery, useMutation } from "@tanstack/react-query";\n` + content;
             changed = true;
           }
+          if (content.includes("useQuery()")) {
+            content = content.replace(/useQuery\(\)/g, 'useQuery({ queryKey: ["boardData"], queryFn: async () => ({ columns: [], tasks: [] }) })');
+            changed = true;
+          }
           if (!content.includes("const fetchBoard") && !content.includes("function fetchBoard") && content.includes("fetchBoard")) {
             content = `const fetchBoard = async () => ({ id: "1", title: "Kanban Board", columns: [] });\n` + content;
             changed = true;

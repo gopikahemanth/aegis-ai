@@ -519,13 +519,15 @@ export default CircularProgress;
       const allSrcFiles = this.getAllFiles(srcDir);
       const isEcommerceProject = allSrcFiles.some(f => /product|cart|checkout|store|order|artwork|catalog/i.test(f));
       const isTelemedicineProject = allSrcFiles.some(f => /appointment|patient|doctor|consultation|prescription|medical|health|telemedicine/i.test(f));
+      const isKanbanProject = allSrcFiles.some(f => /kanban|task|board|column|backlog|sprint|todo/i.test(f));
       const foundDash = allSrcFiles.find(f => /dashboard|storefront|catalog|portal|home/i.test(f) && (f.endsWith(".tsx") || f.endsWith(".ts")) && !f.includes("Kpi") && !f.includes("Card"));
       if (foundDash) {
         const fullP = join(srcDir, foundDash);
         try {
           const content = readFileSync(fullP, "utf8");
-          const isDomainMismatch = (isEcommerceProject && (content.includes("Revenue Analytics") || content.includes("Medical"))) ||
-                                   (isTelemedicineProject && (content.includes("Revenue Analytics") || content.includes("E-Commerce")));
+          const isDomainMismatch = (isEcommerceProject && (content.includes("Revenue Analytics") || content.includes("Medical") || content.includes("Kanban"))) ||
+                                   (isTelemedicineProject && (content.includes("Revenue Analytics") || content.includes("E-Commerce") || content.includes("Kanban"))) ||
+                                   (isKanbanProject && (content.includes("Revenue Analytics") || content.includes("E-Commerce") || content.includes("Medical")));
           const isStaleBudgetTemplate = content.includes("Expense Overview") || content.includes("Category Budgets") || content.includes("Total Expenses") || content.includes("Budget Tracker");
           if (!isDomainMismatch && !isStaleBudgetTemplate && content.length > 300 && (content.includes("<main") || content.includes("grid") || content.includes("table") || content.includes("Card"))) {
             activeDashPath = fullP;
@@ -653,6 +655,118 @@ export const Dashboard = DashboardPage;
 export default DashboardPage;
 `, "utf8");
         console.log(`[FastSanitizer] 🩺 Synthesized Telemedicine Patient Portal Dashboard at ${activeDashPath}`);
+      }
+
+      if (!activeDashPath && isKanbanProject) {
+        activeDashPath = join(root, "src", "features", "dashboard", "DashboardPage.tsx");
+        mkdirSync(join(root, "src", "features", "dashboard"), { recursive: true });
+        const kanbanCode = `import React, { useState } from "react";
+
+export function DashboardPage() {
+  const [tasks, setTasks] = useState([
+    { id: "1", title: "Implement Drag & Drop Core", col: "In Progress", priority: "High", assignee: "Alex Rivera", dueDate: "2026-08-18" },
+    { id: "2", title: "Design Sprint Kanban Columns", col: "To Do", priority: "Medium", assignee: "Sarah Chen", dueDate: "2026-08-20" },
+    { id: "3", title: "Setup Activity Timeline Stream", col: "Completed", priority: "Low", assignee: "Dev Team", dueDate: "2026-08-12" },
+    { id: "4", title: "Add Team Member Assignment Modal", col: "In Progress", priority: "High", assignee: "Elena Rostova", dueDate: "2026-08-19" }
+  ]);
+  const [filterPriority, setFilterPriority] = useState("All");
+
+  const moveTask = (taskId: string, targetCol: string) => {
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, col: targetCol } : t));
+  };
+
+  const columns = ["To Do", "In Progress", "Completed"];
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      <nav className="border-b border-slate-800 bg-slate-900/80 px-8 py-4 backdrop-blur shrink-0">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg">K</div>
+            <span className="text-xl font-bold tracking-tight text-white">Task & Project Kanban Board</span>
+          </div>
+          <div className="flex items-center space-x-4">
+            <select 
+              value={filterPriority} 
+              onChange={e => setFilterPriority(e.target.value)}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="All">All Priorities</option>
+              <option value="High">High Priority</option>
+              <option value="Medium">Medium Priority</option>
+              <option value="Low">Low Priority</option>
+            </select>
+            <span className="bg-indigo-900/60 border border-indigo-700 text-indigo-300 text-xs px-3 py-1.5 rounded-full font-medium">Sprint Active ●</span>
+          </div>
+        </div>
+      </nav>
+
+      <div className="p-8 max-w-7xl mx-auto space-y-8 flex-1 w-full">
+        <header className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-100">Project Workspace Kanban</h1>
+            <p className="text-slate-400 text-sm mt-1">Manage task priority tags, deadline calendar schedule, team assignments & activity timeline</p>
+          </div>
+          <div className="flex space-x-3">
+            <button className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2 rounded-lg transition shadow-lg">+ Add New Task</button>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {columns.map(colName => (
+            <div key={colName} className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 shadow-xl backdrop-blur flex flex-col min-h-[500px]">
+              <div className="flex justify-between items-center pb-4 mb-4 border-b border-slate-800">
+                <h3 className="text-sm font-bold text-slate-200 tracking-wide uppercase">{colName}</h3>
+                <span className="bg-slate-800 text-slate-400 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                  {tasks.filter(t => t.col === colName && (filterPriority === "All" || t.priority === filterPriority)).length}
+                </span>
+              </div>
+              <div className="space-y-4 flex-1">
+                {tasks
+                  .filter(t => t.col === colName && (filterPriority === "All" || t.priority === filterPriority))
+                  .map(task => (
+                    <div key={task.id} className="bg-slate-800/80 border border-slate-700/60 hover:border-indigo-500/80 transition rounded-lg p-4 shadow space-y-3 cursor-grab">
+                      <div className="flex justify-between items-start">
+                        <h4 className="text-sm font-semibold text-slate-100 leading-snug">{task.title}</h4>
+                        <span className={"text-[10px] font-bold px-2 py-0.5 rounded uppercase " + (
+                          task.priority === "High" ? "bg-red-950 text-red-400 border border-red-800" :
+                          task.priority === "Medium" ? "bg-amber-950 text-amber-400 border border-amber-800" :
+                          "bg-slate-800 text-slate-400 border border-slate-700"
+                        )}>
+                          {task.priority}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-slate-400 pt-2 border-t border-slate-700/40">
+                        <span>👤 {task.assignee}</span>
+                        <span>📅 {task.dueDate}</span>
+                      </div>
+                      <div className="flex space-x-1 pt-1">
+                        {columns.filter(c => c !== colName).map(otherCol => (
+                          <button
+                            key={otherCol}
+                            onClick={() => moveTask(task.id, otherCol)}
+                            className="text-[10px] bg-slate-900 hover:bg-indigo-900 text-slate-300 px-2 py-1 rounded transition"
+                          >
+                            Move to {otherCol}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export const Dashboard = DashboardPage;
+export default DashboardPage;
+`;
+        writeFileSync(activeDashPath, kanbanCode, "utf8");
+        console.log("[FastSanitizer] 📋 Synthesized Task & Project Kanban Board Dashboard");
       }
 
       if (!activeDashPath && isEcommerceProject) {

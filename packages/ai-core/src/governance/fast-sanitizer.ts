@@ -293,6 +293,39 @@ export default CircularProgress;
       } catch {}
     }
 
+    // Guarantee core package.json dependencies (react-query, react-table, react-router-dom, etc.)
+    const pkgPath = join(root, "package.json");
+    if (existsSync(pkgPath)) {
+      try {
+        const pkgStr = readFileSync(pkgPath, "utf8");
+        const pkg = JSON.parse(pkgStr);
+        pkg.dependencies = pkg.dependencies || {};
+        const requiredDeps: Record<string, string> = {
+          "react": "^18.3.1",
+          "react-dom": "^18.3.1",
+          "react-router-dom": "^6.26.0",
+          "@tanstack/react-query": "^5.56.2",
+          "@tanstack/react-table": "^8.20.5",
+          "lucide-react": "^0.441.0",
+          "clsx": "^2.1.1",
+          "tailwind-merge": "^2.5.2",
+          "axios": "^1.7.7",
+          "zod": "^3.23.8"
+        };
+        let pkgChanged = false;
+        for (const [depName, depVer] of Object.entries(requiredDeps)) {
+          if (!pkg.dependencies[depName]) {
+            pkg.dependencies[depName] = depVer;
+            pkgChanged = true;
+          }
+        }
+        if (pkgChanged) {
+          writeFileSync(pkgPath, JSON.stringify(pkg, null, 2), "utf8");
+          console.log("[FastSanitizer] 📦 Guaranteed core production dependencies in package.json");
+        }
+      } catch {}
+    }
+
     // Guarantee src/App.tsx exports export default App
     const appPath = join(root, "src", "App.tsx");
     if (existsSync(appPath)) {

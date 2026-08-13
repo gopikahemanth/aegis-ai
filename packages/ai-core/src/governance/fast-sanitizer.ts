@@ -340,6 +340,12 @@ export default CircularProgress;
         try {
           let content = readFileSync(absPath, "utf8");
           let changed = false;
+          if (content.includes('from "date-fns/') || content.includes("from 'date-fns/")) {
+            content = content.replace(/import\s+(\w+)\s+from\s+["']date-fns\/(\w+)["']/g, 'import { $2 as $1 } from "date-fns"');
+            content = content.replace(/import\s+([^{}\n]+)\s+from\s+["']date-fns\/locale\/[^"']+["']/g, 'import { enUS } from "date-fns/locale"');
+            content = content.replace(/import\s*\{\s*(\w+)\s*\}\s*from\s+["']date-fns\/locale\/en-US["']/g, 'import { enUS } from "date-fns/locale"');
+            changed = true;
+          }
           if (content.includes("console.log") && (/Authenticating|Logging in|Submitting|Saving/i.test(content))) {
             content = content.replace(/console\.log\s*\(\s*["'](?:Authenticating|Logging in|Submitting|Saving):?["'][^)]*\);?/gi, '/* authenticating user */');
             changed = true;

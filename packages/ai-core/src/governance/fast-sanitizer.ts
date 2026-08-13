@@ -456,17 +456,141 @@ export default CircularProgress;
     if (existsSync(srcDir)) {
       const allSrcFiles = this.getAllFiles(srcDir);
       const isEcommerceProject = allSrcFiles.some(f => /product|cart|checkout|store|order|artwork|catalog/i.test(f));
-      const foundDash = allSrcFiles.find(f => /dashboard|storefront|catalog|home/i.test(f) && (f.endsWith(".tsx") || f.endsWith(".ts")) && !f.includes("Kpi") && !f.includes("Card"));
+      const isTelemedicineProject = allSrcFiles.some(f => /appointment|patient|doctor|consultation|prescription|medical|health|telemedicine/i.test(f));
+      const foundDash = allSrcFiles.find(f => /dashboard|storefront|catalog|portal|home/i.test(f) && (f.endsWith(".tsx") || f.endsWith(".ts")) && !f.includes("Kpi") && !f.includes("Card"));
       if (foundDash) {
         const fullP = join(srcDir, foundDash);
         try {
           const content = readFileSync(fullP, "utf8");
-          const isDomainMismatch = isEcommerceProject && (content.includes("Revenue Analytics") || content.includes("Expense Overview") || content.includes("Category Budgets") || content.includes("Fitness"));
+          const isDomainMismatch = (isEcommerceProject && (content.includes("Revenue Analytics") || content.includes("Medical"))) ||
+                                   (isTelemedicineProject && (content.includes("Revenue Analytics") || content.includes("E-Commerce")));
           const isStaleBudgetTemplate = content.includes("Expense Overview") || content.includes("Category Budgets") || content.includes("Total Expenses") || content.includes("Budget Tracker");
           if (!isDomainMismatch && !isStaleBudgetTemplate && content.length > 300 && (content.includes("<main") || content.includes("grid") || content.includes("table") || content.includes("Card"))) {
             activeDashPath = fullP;
           }
         } catch {}
+      }
+
+      if (!activeDashPath && isTelemedicineProject) {
+        activeDashPath = join(root, "src", "features", "dashboard", "DashboardPage.tsx");
+        mkdirSync(join(root, "src", "features", "dashboard"), { recursive: true });
+        writeFileSync(activeDashPath, `import React, { useState } from "react";
+
+export function DashboardPage() {
+  const [appointments, setAppointments] = useState([
+    { id: 1, doctor: "Dr. Sarah Jenkins, MD", spec: "Cardiology", time: "Today at 2:30 PM", type: "Video Consult", status: "Upcoming" },
+    { id: 2, doctor: "Dr. Marcus Vance, DO", spec: "General Medicine", time: "Tomorrow at 10:00 AM", type: "In-Person", status: "Confirmed" }
+  ]);
+  const [patientName, setPatientName] = useState("");
+  const [doctorName, setDoctorName] = useState("");
+  const [consultTime, setConsultTime] = useState("");
+
+  const handleSchedule = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!doctorName) return;
+    setAppointments([...appointments, { id: Date.now(), doctor: doctorName, spec: "General Health", time: consultTime || "Scheduled", type: "Video Consult", status: "Upcoming" }]);
+    setDoctorName(""); setConsultTime("");
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
+      <nav className="bg-slate-900 border-b border-slate-800 px-8 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-base">🩺</div>
+          <span className="text-lg font-bold text-slate-100 tracking-tight whitespace-nowrap">Telemedicine Patient Portal</span>
+        </div>
+        <div className="flex items-center gap-6 text-sm font-medium text-slate-300">
+          <a href="/" className="text-cyan-400 font-semibold border-b-2 border-cyan-500 pb-1">Appointments</a>
+          <a href="/prescriptions" className="hover:text-slate-100 transition-colors">Prescriptions</a>
+          <a href="/records" className="hover:text-slate-100 transition-colors">Medical Records</a>
+          <button className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-3 py-1 text-xs font-bold transition-colors">
+            📹 Join Video Call
+          </button>
+        </div>
+      </nav>
+
+      <div className="p-8 max-w-6xl mx-auto space-y-8">
+        <header className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-100">Patient Health & Consultation Portal</h1>
+            <p className="text-slate-400 text-sm mt-1">Schedule doctor consultations, review active prescriptions & medical history</p>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Upcoming Appointments</h3>
+            <p className="text-2xl font-bold text-slate-100 mt-1">2 Consults</p>
+          </div>
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Prescriptions</h3>
+            <p className="text-2xl font-bold text-cyan-400 mt-1">4 Active</p>
+          </div>
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Medical Records</h3>
+            <p className="text-2xl font-bold text-blue-400 mt-1">12 Uploaded</p>
+          </div>
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Care Team Status</h3>
+            <p className="text-2xl font-bold text-emerald-400 mt-1">Online ●</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-100 mb-4">Doctor Consultation Schedule</h3>
+            <div className="space-y-4">
+              {appointments.map(app => (
+                <div key={app.id} className="bg-slate-950 border border-slate-800/80 p-4 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-cyan-950 border border-cyan-700 flex items-center justify-center text-cyan-400 font-bold">👨‍⚕️</div>
+                    <div>
+                      <h4 className="font-semibold text-slate-100 text-sm">{app.doctor}</h4>
+                      <p className="text-xs text-slate-400">{app.spec} • {app.time}</p>
+                    </div>
+                  </div>
+                  <button className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                    Join Session
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <form onSubmit={handleSchedule} className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
+            <h3 className="text-lg font-bold text-slate-100 mb-2">Book Doctor Consultation</h3>
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Select Physician / Specialist</label>
+              <input 
+                value={doctorName} 
+                onChange={e => setDoctorName(e.target.value)} 
+                placeholder="e.g. Dr. Emily Chen, Neurologist" 
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Preferred Date & Time</label>
+              <input 
+                value={consultTime} 
+                onChange={e => setConsultTime(e.target.value)} 
+                placeholder="e.g. Friday at 3:00 PM" 
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500" 
+              />
+            </div>
+            <button type="submit" className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 rounded-lg text-sm transition-colors">
+              Schedule Appointment
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export const Dashboard = DashboardPage;
+export default DashboardPage;
+`, "utf8");
+        console.log(`[FastSanitizer] 🩺 Synthesized Telemedicine Patient Portal Dashboard at ${activeDashPath}`);
       }
 
       if (!activeDashPath && isEcommerceProject) {

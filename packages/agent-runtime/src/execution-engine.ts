@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 
 import {
   ProjectCreator,
+  cleanDirectory,
 } from "@aegis/project-builder";
 
 import { ExecutionPipeline } from "./pipeline/execution-pipeline.js";
@@ -40,19 +41,8 @@ export class ExecutionEngine {
     const projectPath = resolve(process.cwd(), "./generated/project");
 
     // ── Clean existing project directory ────────────────────────────────────
-    try {
-      if (existsSync(projectPath)) {
-        if (process.platform === "win32") {
-          try {
-            const { execSync } = await import("node:child_process");
-            execSync(`powershell -Command "Get-Process node,vite -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*generated*' } | Stop-Process -Force"`, { stdio: "ignore" });
-          } catch { /* ignore */ }
-        }
-        rmSync(projectPath, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
-      }
-    } catch (rmError: any) {
-      console.warn(`[ExecutionEngine] Warning: Could not clean path "${projectPath}" (${rmError.message}). Proceeding in incremental mode.`);
-    }
+    cleanDirectory(projectPath);
+
 
     console.log("Analyzing request...");
 

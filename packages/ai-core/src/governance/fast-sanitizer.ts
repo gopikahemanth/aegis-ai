@@ -400,6 +400,10 @@ export default CircularProgress;
             content = `const fetchBoard = async () => ({ id: "1", title: "Kanban Board", columns: [] });\n` + content;
             changed = true;
           }
+          if (/\b(?:id|taskId|columnId|itemId|cardId)\s*:\s*string\b/g.test(content)) {
+            content = content.replace(/\b(id|taskId|columnId|itemId|cardId)\s*:\s*string\b/g, '$1: string | number');
+            changed = true;
+          }
           if (content.includes("console.log") && (/Authenticating|Logging in|Submitting|Saving/i.test(content))) {
             content = content.replace(/console\.log\s*\(\s*["'](?:Authenticating|Logging in|Submitting|Saving):?["'][^)]*\);?/gi, '/* authenticating user */');
             changed = true;

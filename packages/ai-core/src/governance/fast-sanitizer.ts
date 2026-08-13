@@ -445,17 +445,145 @@ export default CircularProgress;
     let activeDashPath: string | undefined = undefined;
     if (existsSync(srcDir)) {
       const allSrcFiles = this.getAllFiles(srcDir);
-      const foundDash = allSrcFiles.find(f => /dashboard/i.test(f) && (f.endsWith(".tsx") || f.endsWith(".ts")) && !f.includes("Kpi") && !f.includes("Card"));
+      const isEcommerceProject = allSrcFiles.some(f => /product|cart|checkout|store|order|artwork|catalog/i.test(f));
+      const foundDash = allSrcFiles.find(f => /dashboard|storefront|catalog|home/i.test(f) && (f.endsWith(".tsx") || f.endsWith(".ts")) && !f.includes("Kpi") && !f.includes("Card"));
       if (foundDash) {
         const fullP = join(srcDir, foundDash);
         try {
           const content = readFileSync(fullP, "utf8");
-          // If file is an empty scaffold stub or stale budget template, replace with rich canonical dashboard
+          const isDomainMismatch = isEcommerceProject && (content.includes("Revenue Analytics") || content.includes("Expense Overview") || content.includes("Category Budgets") || content.includes("Fitness"));
           const isStaleBudgetTemplate = content.includes("Expense Overview") || content.includes("Category Budgets") || content.includes("Total Expenses") || content.includes("Budget Tracker");
-          if (!isStaleBudgetTemplate && content.length > 300 && (content.includes("<main") || content.includes("grid") || content.includes("table") || content.includes("Card"))) {
+          if (!isDomainMismatch && !isStaleBudgetTemplate && content.length > 300 && (content.includes("<main") || content.includes("grid") || content.includes("table") || content.includes("Card"))) {
             activeDashPath = fullP;
           }
         } catch {}
+      }
+
+      if (!activeDashPath && isEcommerceProject) {
+        activeDashPath = join(root, "src", "features", "dashboard", "DashboardPage.tsx");
+        mkdirSync(join(root, "src", "features", "dashboard"), { recursive: true });
+        writeFileSync(activeDashPath, `import React, { useState } from "react";
+
+export function DashboardPage() {
+  const [cart, setCart] = useState<{ id: number; name: string; price: number; qty: number }[]>([
+    { id: 1, name: "Abstract Canvas Artwork #104", price: 299, qty: 1 },
+    { id: 2, name: "Modernist Minimalist Sculpture", price: 450, qty: 1 }
+  ]);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All");
+
+  const products = [
+    { id: 1, name: "Abstract Canvas Artwork #104", price: 299, cat: "Artworks", rating: 4.9, stock: "In Stock" },
+    { id: 2, name: "Modernist Minimalist Sculpture", price: 450, cat: "Sculptures", rating: 5.0, stock: "In Stock" },
+    { id: 3, name: "Contemporary Oil Painting", price: 620, cat: "Artworks", rating: 4.8, stock: "Low Stock" },
+    { id: 4, name: "Digital Limited Edition Print", price: 150, cat: "Prints", rating: 4.7, stock: "In Stock" }
+  ];
+
+  const filteredProducts = products.filter(p => 
+    (category === "All" || p.cat === category) && 
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const cartTotal = cart.reduce((acc, i) => acc + i.price * i.qty, 0);
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
+      <nav className="bg-slate-900 border-b border-slate-800 px-8 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-base">🛍️</div>
+          <span className="text-lg font-bold text-slate-100 tracking-tight whitespace-nowrap">Aegis Storefront & Order Portal</span>
+        </div>
+        <div className="flex items-center gap-6 text-sm font-medium text-slate-300">
+          <a href="/" className="text-emerald-400 font-semibold border-b-2 border-emerald-500 pb-1">Products</a>
+          <a href="/orders" className="hover:text-slate-100 transition-colors">Orders</a>
+          <a href="/inventory" className="hover:text-slate-100 transition-colors">Inventory</a>
+          <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-xs text-emerald-400 font-bold flex items-center gap-1.5">
+            🛒 Cart ({cart.length}) • \${cartTotal}
+          </div>
+        </div>
+      </nav>
+
+      <div className="p-8">
+        <header className="max-w-6xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-100">E-Commerce Catalog & Product Showcase</h1>
+            <p className="text-slate-400 text-sm mt-1">Browse products, manage shopping cart & track active customer orders</p>
+          </div>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <input 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              placeholder="Search products..." 
+              className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 w-full md:w-64"
+            />
+          </div>
+        </header>
+
+        <main className="max-w-6xl mx-auto space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Products</h3>
+              <p className="text-2xl font-bold text-slate-100 mt-1">128 Items</p>
+            </div>
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cart Total</h3>
+              <p className="text-2xl font-bold text-emerald-400 mt-1">\${cartTotal}</p>
+            </div>
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Orders Shipped</h3>
+              <p className="text-2xl font-bold text-blue-400 mt-1">1,420</p>
+            </div>
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Customer Rating</h3>
+              <p className="text-2xl font-bold text-amber-400 mt-1">4.9 ★</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {["All", "Artworks", "Sculptures", "Prints"].map(cat => (
+              <button 
+                key={cat} 
+                onClick={() => setCategory(cat)} 
+                className={\`px-4 py-2 rounded-lg text-sm font-medium transition-colors \${category === cat ? "bg-emerald-600 text-white" : "bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-100"}\`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filteredProducts.map(p => (
+              <div key={p.id} className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between space-y-4">
+                <div className="w-full h-36 bg-slate-950 rounded-lg flex items-center justify-center text-4xl border border-slate-800/80">
+                  🎨
+                </div>
+                <div>
+                  <div className="flex justify-between items-center text-xs text-slate-400 mb-1">
+                    <span>{p.cat}</span>
+                    <span className="text-amber-400">★ {p.rating}</span>
+                  </div>
+                  <h4 className="font-semibold text-slate-100 text-sm line-clamp-1">{p.name}</h4>
+                  <p className="text-emerald-400 font-bold text-lg mt-2">\${p.price}</p>
+                </div>
+                <button 
+                  onClick={() => setCart([...cart, { id: Date.now(), name: p.name, price: p.price, qty: 1 }])} 
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
+                >
+                  Add to Cart
+                </button>
+              </div>
+            ))}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export const Dashboard = DashboardPage;
+export default DashboardPage;
+`, "utf8");
+        console.log(`[FastSanitizer] 🛍️ Synthesized E-Commerce Storefront Dashboard at ${activeDashPath}`);
       }
     }
 

@@ -373,6 +373,11 @@ export default CircularProgress;
         try {
           let content = readFileSync(absPath, "utf8");
           let changed = false;
+          // Strip explicit .ts/.tsx extensions from import paths (TS5097 fix)
+          if (/\bfrom\s+["']\.\.?[^"']+\.(?:ts|tsx)["']/g.test(content)) {
+            content = content.replace(/(from\s+["']\.\.?[^"']+)\.(?:ts|tsx)(["'])/g, '$1$2');
+            changed = true;
+          }
           if (content.includes("prisma.auditLog") || content.includes("prisma.log") || content.includes("prisma.audit")) {
             content = content.replace(/(?:await\s+)?prisma\.(?:auditLog|log|audit)\.[a-zA-Z0-9_$]+\([^)]*\);?/g, '/* audit log */ null');
             changed = true;
@@ -895,6 +900,12 @@ export default DashboardPage;
         try {
           let content = readFileSync(routesPath, "utf8");
           let changed = false;
+
+          // Remove conflicting DashboardPage import if local DashboardPage function exists (TS2440 fix)
+          if ((content.includes("function DashboardPage") || content.includes("const DashboardPage")) && content.includes("import DashboardPage from")) {
+            content = content.replace(/import\s+DashboardPage\s+from\s+["'][^"']+["'];?\n?/g, "");
+            changed = true;
+          }
 
           // Fix merged declaration TS2652 duplicate default exports
           if (content.includes("export default function AppRoutes") && content.includes("export default AppRoutes;")) {

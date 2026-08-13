@@ -340,6 +340,10 @@ export default CircularProgress;
         try {
           let content = readFileSync(absPath, "utf8");
           let changed = false;
+          if (content.includes("console.log") && (/Authenticating|Logging in|Submitting|Saving/i.test(content))) {
+            content = content.replace(/console\.log\s*\(\s*["'](?:Authenticating|Logging in|Submitting|Saving):?["'][^)]*\);?/gi, '/* authenticating user */');
+            changed = true;
+          }
           if (content.includes("@tanstack/react-table") && (content.includes("useSortBy") || content.includes("usePagination") || content.includes("useTable"))) {
             content = content.replace(/import\s*\{[^}]*\}\s*from\s*["']@tanstack\/react-table["']/g, 'import { useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel, flexRender } from "@tanstack/react-table"');
             content = content.replace(/useSortBy|usePagination|useTable|useFilters/g, 'getSortedRowModel');

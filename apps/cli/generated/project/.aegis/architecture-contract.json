@@ -1,6 +1,7 @@
 {
   "version": 1,
   "status": "locked",
+  "prompt": "Build an AI Code Reviewer & Security Vulnerability Scanner web application with React, Express, static analysis engine, risk score calculation, and interactive code snippet breakdown.",
   "source": "user_prompt",
   "confidence": 1,
   "reason": "Contract locked by ArchitectureResolver. Frontend(user), Backend(user), DB(default), ORM(default)",
@@ -26,39 +27,43 @@
   "packageManager": "pnpm",
   "authentication": "JWT",
   "requiredLibraries": [
-    "pdf-parse",
-    "langchain",
-    "openai",
     "prisma",
     "@prisma/client",
-    "next-auth",
+    "octokit",
+    "simple-git",
     "zod",
     "recharts",
+    "jspdf",
+    "ai",
+    "langchain",
+    "next-auth",
     "lucide-react",
     "clsx",
     "tailwind-merge"
   ],
   "requiredFeatures": [
-    "authentication",
-    "pdf-processing",
-    "job-parsing",
-    "scoring-engine",
-    "gap-analysis",
-    "history-tracking"
+    "repository-ingestion",
+    "vulnerability-scanner",
+    "llm-reasoning",
+    "remediation-engine",
+    "compliance-reporting",
+    "user-dashboard",
+    "auth"
   ],
   "requiredRoutes": [
-    "user-onboarding",
-    "upload-resume-and-job-description",
-    "generate-match-score-and-gaps",
-    "review-actionable-insights",
-    "view-comparison-history"
+    "connect-github-repo",
+    "initiate-security-scan",
+    "review-vulnerability-findings",
+    "apply-automated-remediation",
+    "generate-compliance-report"
   ],
   "requiredModels": [
     "User",
-    "Resume",
-    "JobDescription",
-    "MatchReport",
-    "KeywordGap"
+    "Repository",
+    "Scan",
+    "Vulnerability",
+    "Remediation",
+    "ComplianceReport"
   ],
   "projectStructure": {
     "src": "Frontend source directory",

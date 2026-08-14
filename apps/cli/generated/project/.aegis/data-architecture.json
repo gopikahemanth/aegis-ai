@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "System authenticated user",
+      "description": "Authenticated user accounts",
       "persistence": "database",
       "fields": [
         {
@@ -11,8 +11,7 @@
           "isId": true,
           "isNullable": false,
           "isUnique": true,
-          "relationTo": null,
-          "description": "Primary key"
+          "description": "Unique identifier"
         },
         {
           "name": "email",
@@ -20,23 +19,21 @@
           "isId": false,
           "isNullable": false,
           "isUnique": true,
-          "relationTo": null,
-          "description": "User email"
+          "description": "User email address"
         },
         {
-          "name": "passwordHash",
+          "name": "githubToken",
           "type": "string",
           "isId": false,
-          "isNullable": false,
+          "isNullable": true,
           "isUnique": false,
-          "relationTo": null,
-          "description": "Security hash"
+          "description": "OAuth token for repo access"
         }
       ]
     },
     {
-      "name": "ResumeScan",
-      "description": "Record of a resume versus job description analysis",
+      "name": "Repository",
+      "description": "Connected git repositories",
       "persistence": "database",
       "fields": [
         {
@@ -45,105 +42,168 @@
           "isId": true,
           "isNullable": false,
           "isUnique": true,
-          "relationTo": null,
-          "description": "Scan identifier"
+          "description": "Unique ID"
         },
         {
           "name": "userId",
           "type": "string",
           "isId": false,
           "isNullable": false,
-          "isUnique": false,
           "relationTo": "User",
-          "description": "Owner of the scan"
+          "description": "Owner"
         },
         {
-          "name": "jobTitle",
+          "name": "url",
           "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "relationTo": null,
-          "description": "Target role"
-        },
+          "description": "Repo URL"
+        }
+      ]
+    },
+    {
+      "name": "Scan",
+      "description": "Security analysis execution record",
+      "persistence": "database",
+      "fields": [
         {
-          "name": "matchScore",
-          "type": "number",
-          "isId": false,
+          "name": "id",
+          "type": "string",
+          "isId": true,
           "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Calculated percentage"
+          "isUnique": true,
+          "description": "Unique ID"
         },
         {
-          "name": "matchedKeywords",
-          "type": "Json",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "List of found keywords"
-        },
-        {
-          "name": "missingKeywords",
-          "type": "Json",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "List of gaps"
-        },
-        {
-          "name": "resumeS3Key",
+          "name": "repositoryId",
           "type": "string",
           "isId": false,
           "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Reference to S3 object"
+          "relationTo": "Repository",
+          "description": "Target repo"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "description": "PENDING, RUNNING, COMPLETED, FAILED"
         },
         {
           "name": "createdAt",
           "type": "DateTime",
           "isId": false,
           "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
           "description": "Timestamp"
+        }
+      ]
+    },
+    {
+      "name": "Vulnerability",
+      "description": "Detected security issues",
+      "persistence": "database",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "isId": true,
+          "isNullable": false,
+          "isUnique": true,
+          "description": "Unique ID"
+        },
+        {
+          "name": "scanId",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "relationTo": "Scan",
+          "description": "Scan link"
+        },
+        {
+          "name": "severity",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "description": "CRITICAL, HIGH, MEDIUM, LOW"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "description": "Risk detail"
+        },
+        {
+          "name": "lineNumbers",
+          "type": "Json",
+          "isId": false,
+          "isNullable": false,
+          "description": "Affected lines"
+        }
+      ]
+    },
+    {
+      "name": "Remediation",
+      "description": "Automated fix suggestion",
+      "persistence": "database",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "isId": true,
+          "isNullable": false,
+          "isUnique": true,
+          "description": "Unique ID"
+        },
+        {
+          "name": "vulnerabilityId",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "relationTo": "Vulnerability",
+          "description": "Related issue"
+        },
+        {
+          "name": "suggestedCode",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "description": "AI-generated patch"
         }
       ]
     }
   ],
-  "databaseSchema": "model User { id String @id @default(uuid()) email String @unique passwordHash String scans ResumeScan[] } model ResumeScan { id String @id @default(uuid()) user User @relation(fields: [userId], references: [id]) userId String jobTitle String matchScore Float matchedKeywords Json missingKeywords Json resumeS3Key String createdAt DateTime @default(now()) }",
+  "databaseSchema": "datasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") } model User { id String @id @default(cuid()) email String @unique repositories Repository[] } model Repository { id String @id @default(cuid()) userId String user User @relation(fields: [userId], references: [id]) url String scans Scan[] } model Scan { id String @id @default(cuid()) repositoryId String repository Repository @relation(fields: [repositoryId], references: [id]) status String createdAt DateTime @default(now()) vulnerabilities Vulnerability[] } model Vulnerability { id String @id @default(cuid()) scanId String scan Scan @relation(fields: [scanId], references: [id]) severity String description String lineNumbers Json remediations Remediation[] } model Remediation { id String @id @default(cuid()) vulnerabilityId String vulnerability Vulnerability @relation(fields: [vulnerabilityId], references: [id]) suggestedCode String }",
   "apis": [
     {
-      "path": "/api/v1/scan",
+      "path": "/api/v1/scans",
       "method": "POST",
-      "description": "Upload resume, parse, analyze, and store scan results",
-      "requestBodySchema": "{ resumeFile: File, jobDescription: string, jobTitle: string }",
-      "responseBodySchema": "{ id: string, matchScore: number, matchedKeywords: string[], missingKeywords: string[] }"
+      "description": "Initiate a new repository scan",
+      "requestBodySchema": "{ repositoryId: string }",
+      "responseBodySchema": "{ scanId: string, status: string }"
     },
     {
-      "path": "/api/v1/scan/history",
+      "path": "/api/v1/scans/:id",
       "method": "GET",
-      "description": "Retrieve all scan history for the authenticated user",
-      "responseBodySchema": "ResumeScan[]"
+      "description": "Fetch scan results and vulnerabilities",
+      "responseBodySchema": "{ id: string, vulnerabilities: Vulnerability[], status: string }"
     }
   ],
   "hooks": [
     {
-      "name": "useCreateScan",
-      "type": "mutation",
-      "endpoint": "/api/v1/scan",
-      "params": "formData (resume, jobDescription, jobTitle)",
-      "returns": "ResumeScan"
+      "name": "useScanResult",
+      "type": "query",
+      "endpoint": "/api/v1/scans/:id",
+      "params": "scanId: string",
+      "returns": "Scan & { vulnerabilities: Vulnerability[] }"
     },
     {
-      "name": "useScanHistory",
-      "type": "query",
-      "endpoint": "/api/v1/scan/history",
-      "params": "none",
-      "returns": "ResumeScan[]"
+      "name": "useInitiateScan",
+      "type": "mutation",
+      "endpoint": "/api/v1/scans",
+      "params": "repositoryId: string",
+      "returns": "{ scanId: string }"
     }
   ]
 }

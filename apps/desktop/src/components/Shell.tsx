@@ -39,8 +39,10 @@ import {
   HeartHandshake,
   BookOpen,
   GraduationCap,
-  CheckCheck
+  CheckCheck,
+  Rocket
 } from "lucide-react";
+
 
 
 
@@ -134,7 +136,9 @@ export const Shell: React.FC<ShellProps> = ({
     { id: "knowledge-action", label: "Knowledge Action", icon: Zap },
     { id: "learning-governance", label: "Learning Governance", icon: GraduationCap },
     { id: "product-completion", label: "Product Completion", icon: CheckCheck },
+    { id: "autonomous-builder", label: "Autonomous Builder", icon: Rocket },
   ];
+
 
 
 

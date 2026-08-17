@@ -43,6 +43,8 @@ import { EnterpriseKnowledgeSynthesisView } from "./components/EnterpriseKnowled
 import { EnterpriseKnowledgeActionView } from "./components/EnterpriseKnowledgeActionView.js";
 import { EnterpriseLearningGovernanceView } from "./components/EnterpriseLearningGovernanceView.js";
 import { ProductCompletionView } from "./components/ProductCompletionView.js";
+import { AutonomousProductBuilderView } from "./components/AutonomousProductBuilderView.js";
+
 
 
 
@@ -371,8 +373,10 @@ export function App() {
       {currentView === "knowledge-action" && <EnterpriseKnowledgeActionView />}
       {currentView === "learning-governance" && <EnterpriseLearningGovernanceView />}
       {currentView === "product-completion" && <ProductCompletionView />}
+      {currentView === "autonomous-builder" && <AutonomousProductBuilderView />}
 
       {/* Authorization Modal */}
+
 
 
 

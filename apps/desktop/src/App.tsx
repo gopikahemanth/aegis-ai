@@ -50,6 +50,7 @@ import { UIIntelligenceView } from "./components/UIIntelligenceView.js";
 import { AutonomousProductCenter } from "./components/AutonomousProductCenter.js";
 import { DeepProductBuilderView } from "./components/DeepProductBuilderView.js";
 import { RealProductGenerationView } from "./components/RealProductGenerationView.js";
+import { ProductionDeploymentView } from "./components/ProductionDeploymentView.js";
 
 
 
@@ -392,6 +393,7 @@ export function App() {
       {currentView === "autonomous-product-center" && <AutonomousProductCenter />}
       {currentView === "deep-product-builder" && <DeepProductBuilderView />}
       {currentView === "real-product-generation" && <RealProductGenerationView />}
+      {currentView === "production-deployment" && <ProductionDeploymentView />}
 
       {/* Authorization Modal */}
 

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "status": "locked",
-  "prompt": "Build an AI Code Reviewer & Security Vulnerability Scanner web application with React, Express, static analysis engine, risk score calculation, and interactive code snippet breakdown.",
+  "prompt": "Build an AI Resume Match Analyzer & Job Keyword Scoring web application with React, Express, drag-and-drop resume PDF upload, ATS match score breakdown, and candidate reporting.",
   "source": "user_prompt",
   "confidence": 1,
   "reason": "Contract locked by ArchitectureResolver. Frontend(user), Backend(user), DB(default), ORM(default)",
@@ -23,47 +23,43 @@
     "ormProvenance": "default"
   },
   "language": "TypeScript",
-  "styling": "Tailwind CSS + Shadcn UI",
-  "packageManager": "pnpm",
+  "styling": "vanilla-css",
+  "packageManager": "npm",
   "authentication": "JWT",
   "requiredLibraries": [
-    "prisma",
-    "@prisma/client",
-    "octokit",
-    "simple-git",
-    "zod",
+    "react-dropzone",
+    "pdf-parse",
+    "openai",
+    "natural",
     "recharts",
+    "framer-motion",
+    "mongoose",
+    "axios",
     "jspdf",
-    "ai",
-    "langchain",
-    "next-auth",
-    "lucide-react",
-    "clsx",
-    "tailwind-merge"
+    "jspdf-autotable",
+    "dotenv",
+    "cors",
+    "express-validator"
   ],
   "requiredFeatures": [
-    "repository-ingestion",
-    "vulnerability-scanner",
-    "llm-reasoning",
-    "remediation-engine",
-    "compliance-reporting",
-    "user-dashboard",
+    "pdf-processing",
+    "analysis-engine",
+    "dashboard",
+    "history-management",
+    "report-export",
     "auth"
   ],
   "requiredRoutes": [
-    "connect-github-repo",
-    "initiate-security-scan",
-    "review-vulnerability-findings",
-    "apply-automated-remediation",
-    "generate-compliance-report"
+    "upload-resume-and-jd",
+    "process-semantic-analysis",
+    "view-match-insights",
+    "manage-analysis-history",
+    "download-pdf-report"
   ],
   "requiredModels": [
     "User",
-    "Repository",
-    "Scan",
-    "Vulnerability",
-    "Remediation",
-    "ComplianceReport"
+    "ResumeAnalysis",
+    "JobDescription"
   ],
   "projectStructure": {
     "src": "Frontend source directory",

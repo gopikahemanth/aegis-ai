@@ -1,43 +1,44 @@
-# SentinelCode
+# ATS-Resume-Analyzer
 
-SentinelCode is an AI-powered code review and security vulnerability scanning platform designed to provide automated, real-time feedback on source code quality and security posture.
+An intelligent AI-powered platform designed to parse resumes, extract key qualifications, and provide automated ATS (Applicant Tracking System) compatibility scoring against specific job descriptions.
 
 ## Features
 
-*   **Automated Security Scanning:** Detects OWASP Top 10 vulnerabilities, including SQL injection, XSS, and hardcoded credentials.
-*   **Static Analysis Engine:** Deep AST-based inspection to identify code smells, anti-patterns, and maintainability issues.
-*   **Risk Scoring:** Calculates a severity score (Low to Critical) for each identified vulnerability based on impact and exploitability.
-*   **Interactive Code Breakdowns:** Provides line-by-line visual explanations and remediation suggestions for detected issues.
-*   **Real-time Dashboard:** Centralized view for monitoring project health, scan history, and active alert trends.
+*   **Drag-and-Drop Resume Upload**: Seamless file ingestion supporting PDF formats with real-time preview.
+*   **AI-Powered Keyword Extraction**: Utilizes Natural Language Processing to identify hard skills, soft skills, and industry-specific terminology.
+*   **ATS Match Scoring**: Calculates a percentage-based compatibility score comparing resume content against job requirement parameters.
+*   **Gap Analysis**: Provides actionable feedback on missing keywords or underrepresented experience areas.
+*   **Candidate Reporting**: Generates structured summaries for recruiters to streamline the screening process.
+*   **Secure Data Persistence**: Robust candidate and job metadata storage managed via PostgreSQL.
 
 ## Tech Stack
 
 | Technology | Purpose |
 | :--- | :--- |
-| React | Frontend UI library |
-| Vite | Build tool and development server |
-| TypeScript | Type-safe development |
-| Express | Backend API server |
-| PostgreSQL | Relational database for scan results and user data |
-| ESLint | Static analysis and code linting |
+| **React (Vite)** | Frontend framework for building the user interface |
+| **TypeScript** | Static typing for improved code reliability and maintainability |
+| **Express.js** | Backend REST API server |
+| **PostgreSQL** | Relational database for storing user, resume, and job data |
+| **Prisma** | ORM for database schema management and type-safe queries |
+| **Tailwind CSS** | Utility-first CSS framework for responsive design |
 
 ## Getting Started
 
 ### Prerequisites
 
-*   Node.js (v18.0.0 or higher)
-*   npm (v9.0.0 or higher) or yarn (v1.22.0 or higher)
-*   PostgreSQL (v14 or higher)
+*   Node.js (v18 or higher)
+*   npm or yarn
+*   PostgreSQL instance running locally or via a cloud provider
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-org/sentinel-code.git
-   cd sentinel-code
+   git clone https://github.com/your-username/ats-resume-analyzer.git
+   cd ats-resume-analyzer
    ```
 
-2. Install dependencies:
+2. Install dependencies for both client and server:
    ```bash
    npm install
    ```
@@ -50,33 +51,32 @@ SentinelCode is an AI-powered code review and security vulnerability scanning pl
    ```
 
 2. Open the `.env` file and configure the following variables:
-   *   `DATABASE_URL`: Your PostgreSQL connection string.
-   *   `PORT`: The port for the backend server (default: 3000).
-   *   `JWT_SECRET`: A secure key for user authentication.
+   - `DATABASE_URL`: Connection string for your PostgreSQL database (e.g., `postgresql://user:password@localhost:5432/ats_db`)
+   - `PORT`: Server port (default: 3000)
+   - `OPENAI_API_KEY`: API key for AI-driven parsing services
 
 ### Running Locally
 
-To start the development environment:
+To start the development server:
 ```bash
 npm run dev
 ```
 
 ## Available Scripts
 
-*   `npm run dev`: Starts the application in development mode with hot module replacement.
-*   `npm run build`: Compiles the application for production deployment.
-*   `npm run test`: Executes the test suite using Vitest.
+*   `npm run dev`: Starts the development server with hot-module replacement.
+*   `npm run build`: Compiles the TypeScript code and bundles the application for production.
 *   `npm run lint`: Runs ESLint to check for code quality and style violations.
+*   `npm run test`: Executes the Jest test suite for unit and integration testing.
 
 ## Project Structure
 
-*   `/src/components`: Reusable UI components and shared primitives.
-*   `/src/features`: Domain-specific modules (e.g., `/dashboard`, `/scanner`, `/auth`).
-*   `/src/hooks`: Custom React hooks for global state and API interaction.
-*   `/src/services`: API client definitions and external service integrations.
-*   `/src/types`: Global TypeScript interface and type definitions.
-*   `/server`: Backend Express logic, database models, and security scanning engine.
+*   `/client`: Contains the React/Vite frontend application source code.
+*   `/server`: Contains the Express.js API logic, controllers, and middleware.
+*   `/prisma`: Defines the database schema and migration history.
+*   `/types`: Shared TypeScript interface definitions for frontend/backend consistency.
+*   `/public`: Static assets including fonts and images.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the [MIT License](LICENSE).

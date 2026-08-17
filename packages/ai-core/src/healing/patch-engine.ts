@@ -4,6 +4,7 @@ import { Parser } from "../generator/parser.js";
 import { FileWriter } from "../writer/writer.js";
 import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
 import { SemanticDuplicateDetector } from "../governance/semantic-duplicate-detector.js";
+import { PathValidator } from "./path-validator.js";
 
 export class PatchEngine {
   private readonly parser = new Parser();
@@ -15,6 +16,14 @@ export class PatchEngine {
     const validFiles: { path: string; content: string }[] = [];
 
     for (const f of rawFiles) {
+      // Validate path with PathValidator
+      const pathCheck = PathValidator.validatePath(f.path, projectPath, { allowNewFiles: true });
+      if (!pathCheck.valid) {
+        console.warn(`[PatchEngine] ⛔ Rejecting invalid file path "${f.path}": ${pathCheck.reason}`);
+        continue;
+      }
+      f.path = pathCheck.normalizedRelativePath || f.path;
+
       // Check semantic duplicates and path authorization
       const check = SemanticDuplicateDetector.checkBeforeWrite(f.path);
       if (check.action === "REDIRECT_TO_CANONICAL" && check.canonicalPath) {
@@ -61,10 +70,18 @@ export class PatchEngine {
     while ((patchMatch = patchRegex.exec(response)) !== null) {
       const filePath = patchMatch[1].trim();
       const patchContent = patchMatch[2];
-      const fullPath = join(projectPath, filePath);
+
+      const pathCheck = PathValidator.validatePath(filePath, projectPath, { allowNewFiles: false });
+      if (!pathCheck.valid) {
+        console.warn(`[PatchEngine] ⛔ Rejecting patch target path "${filePath}": ${pathCheck.reason}`);
+        continue;
+      }
+
+      const safeRelPath = pathCheck.normalizedRelativePath || filePath;
+      const fullPath = join(projectPath, safeRelPath);
 
       if (!existsSync(fullPath)) {
-        console.warn(`[PatchEngine] Warning: Cannot apply patch to non-existent file: ${filePath}`);
+        console.warn(`[PatchEngine] Warning: Cannot apply patch to non-existent file: ${safeRelPath}`);
         continue;
       }
 
@@ -88,7 +105,7 @@ export class PatchEngine {
             tempContent = tempContent.replace(cleanSearch, replaceBlock.trim());
             blocksReplaced++;
           } else {
-            console.warn(`[PatchEngine] Warning: Search block not found in ${filePath}:\n${searchBlock}`);
+            console.warn(`[PatchEngine] Warning: Search block not found in ${safeRelPath}:\n${searchBlock}`);
           }
         }
       }
@@ -96,7 +113,7 @@ export class PatchEngine {
       if (blocksReplaced > 0) {
         writeFileSync(fullPath, tempContent, "utf8");
         patchedCount++;
-        console.log(`[PatchEngine] Successfully applied ${blocksReplaced} patches to ${filePath}`);
+        console.log(`[PatchEngine] Successfully applied ${blocksReplaced} patches to ${safeRelPath}`);
       }
     }
 

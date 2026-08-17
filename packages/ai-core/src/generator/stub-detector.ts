@@ -65,4 +65,20 @@ export class StubDetector {
 
     return findings;
   }
+
+  public static detect(content: string): { hasStubs: boolean; suspiciousLines: string[] } {
+    const detector = new StubDetector();
+    const findings = detector.detect(content);
+
+    // Also check for fake button click handlers: onClick={() => console.log(...)}
+    if (/onClick\s*=\s*\{\s*\(\s*\)\s*=>\s*console\.log\([^)]*\)\s*\}/.test(content)) {
+      findings.push("Fake button handler: onClick only calls console.log");
+    }
+
+    return {
+      hasStubs: findings.length > 0,
+      suspiciousLines: findings,
+    };
+  }
 }
+

@@ -68,7 +68,7 @@ export class PlanContractGate {
       for (const term of forbidden) {
         // Use word-boundary aware regex to prevent false positives (e.g. "next" in "nextTick")
         const pattern = new RegExp(
-          `(?:^|[\\s,;:\\(\\[\\{/"'])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:[\\s,;:\\)\\]\\}/"']|$)`,
+          `(?:^|[\\s,;:\\(\\[\\{/"'])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:[\\s,;:\\)\\]\\}/"'.]|^|$)`,
           "gi"
         );
         if (pattern.test(value)) {

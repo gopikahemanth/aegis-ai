@@ -1063,11 +1063,15 @@ export class CanonicalFileGraph {
     if (normalized.startsWith("src/design-system/")) return true;
     // Allow features subdirectories
     if (normalized.startsWith("src/features/")) return true;
+    // Allow server and prisma subdirectories
+    if (normalized.startsWith("server/") || normalized.startsWith("prisma/")) return true;
+
     // Allow config/tooling/declaration/asset files
     if (/\.(json|md|env|css|scss|svg|png|jpg|ico|html|txt|yaml|yml|d\.ts)$/.test(normalized)) return true;
     if (/(vite|tailwind|postcss|tsconfig|eslint|prettier)\.config\./i.test(normalized)) return true;
     if (normalized.startsWith(".")) return true; // dotfiles (.gitignore, .env*)
     return false;
+
   }
 
   /**
@@ -1098,6 +1102,23 @@ export class CanonicalFileGraph {
       .toLowerCase() ?? "";
 
     const isGenericStem = GENERIC_STEMS.has(proposedStem);
+
+    // 1. Check ScoreRadar / ScoreVisualizer duplicate stems
+    if (proposedStem.includes("scoreradar") || proposedStem.includes("scorevisualizer") || proposedStem.includes("scorechart")) {
+      return {
+        isDuplicate: true,
+        canonicalFile: {
+          canonicalPath: "src/features/scoring/components/ScoreGauge.tsx",
+          semanticRole: "Score Gauge Visualizer",
+          semanticAliases: ["ScoreRadar.tsx", "ScoreVisualizer.tsx", "ScoreRadarChart.tsx"],
+          requiredExports: ["ScoreGauge"],
+          allowedImports: [],
+          required: true,
+          category: "frontend-component",
+        },
+        reason: `"${proposedPath}" is a semantic duplicate of canonical "ScoreGauge.tsx"`,
+      };
+    }
 
     // Check all aliases
     for (const entry of CANONICAL_FILES) {
@@ -1138,6 +1159,7 @@ export class CanonicalFileGraph {
 
     return { isDuplicate: false };
   }
+
 
   /**
    * Get the import contract context string for CoderAgent.
@@ -1364,6 +1386,7 @@ export class CanonicalModuleRegistry {
 
 export function isFrameworkSupportFile(filePath: string): boolean {
   const norm = filePath.replace(/\\/g, "/").toLowerCase();
+
   if (norm.endsWith(".d.ts")) return true;
   if (/(vite|tailwind|postcss|tsconfig|eslint|prettier|pnpm-workspace)\.config\./i.test(norm)) return true;
   if (/(vite|tailwind|postcss|tsconfig|eslint|prettier)\.(json|js|ts|cjs|mjs|yaml|yml)$/i.test(norm)) return true;
@@ -1371,3 +1394,4 @@ export function isFrameworkSupportFile(filePath: string): boolean {
   if (norm.startsWith(".") || norm.startsWith(".aegis/")) return true;
   return false;
 }
+

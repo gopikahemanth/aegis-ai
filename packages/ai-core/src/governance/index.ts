@@ -27,3 +27,24 @@ export * from "./plan-contract-gate.js";
 export * from "./manifest-completeness-validator.js";
 export * from "./canonical-dependency-closure-validator.js";
 export * from "./symbol-contract-validator.js";
+
+// ── Phase 2: Contract-First Governance ───────────────────────────────────────
+export * from "./domain-contract.js";
+export * from "./contract-hash-engine.js";
+export * from "./stale-artifact-detector.js";
+export * from "./dynamic-data-model.js";
+export * from "./dynamic-file-graph.js";
+export * from "./domain-contamination-validator.js";
+
+// ── Phase 4: Architecture Selection, Technology & Dependency Contracts ──────
+export * from "./technology-contract.js";
+export * from "./dependency-contract.js";
+export * from "./architecture-decision-record.js";
+export * from "./architecture-drift-validator.js";
+export * from "./file-ownership-registry.js";
+export * from "./import-export-validator.js";
+export * from "./feature-completeness-tracker.js";
+
+
+
+

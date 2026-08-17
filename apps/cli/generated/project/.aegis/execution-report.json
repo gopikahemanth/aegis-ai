@@ -1,0 +1,119 @@
+{
+  "timestamp": "2026-08-15T05:47:43.219Z",
+  "userPrompt": "Build an AI Resume Match Analyzer & Job Keyword Scoring web application with React, Express, drag-and-drop resume PDF upload, ATS match score breakdown, and candidate reporting.",
+  "architectureContract": {
+    "version": 1,
+    "status": "locked",
+    "prompt": "Build an AI Resume Match Analyzer & Job Keyword Scoring web application with React, Express, drag-and-drop resume PDF upload, ATS match score breakdown, and candidate reporting.",
+    "source": "user_prompt",
+    "confidence": 1,
+    "reason": "Contract locked by ArchitectureResolver. Frontend(user), Backend(user), DB(default), ORM(default)",
+    "userSpecified": true,
+    "inferred": false,
+    "overridden": false,
+    "frontend": {
+      "framework": "React-Vite",
+      "provenance": "user"
+    },
+    "backend": {
+      "framework": "Express",
+      "provenance": "user"
+    },
+    "database": {
+      "provider": "PostgreSQL",
+      "orm": "Prisma",
+      "provenance": "default",
+      "ormProvenance": "default"
+    },
+    "language": "TypeScript",
+    "styling": "vanilla-css",
+    "packageManager": "npm",
+    "authentication": "JWT",
+    "requiredLibraries": [
+      "react-dropzone",
+      "pdf-parse",
+      "openai",
+      "natural",
+      "recharts",
+      "framer-motion",
+      "mongoose",
+      "axios",
+      "jspdf",
+      "jspdf-autotable",
+      "dotenv",
+      "cors",
+      "express-validator"
+    ],
+    "requiredFeatures": [
+      "pdf-processing",
+      "analysis-engine",
+      "dashboard",
+      "history-management",
+      "report-export",
+      "auth"
+    ],
+    "requiredRoutes": [
+      "upload-resume-and-jd",
+      "process-semantic-analysis",
+      "view-match-insights",
+      "manage-analysis-history",
+      "download-pdf-report"
+    ],
+    "requiredModels": [
+      "User",
+      "ResumeAnalysis",
+      "JobDescription"
+    ],
+    "projectStructure": {
+      "src": "Frontend source directory",
+      "server": "Backend server directory",
+      "prisma": "Database schema directory"
+    }
+  },
+  "architectureContractStatus": "PASS",
+  "architectureConsistencyStatus": "PASS",
+  "architectureViolations": [],
+  "status": "SUCCESS",
+  "dodScore": 87,
+  "completedFeatures": [
+    "Build Verification",
+    "Empty Application Detector",
+    "Architecture Contract Verification",
+    "Architecture Consistency Verification",
+    "No Hardcoded Business Data",
+    "Form Input Validation",
+    "Data Persistence",
+    "Error States in UI",
+    "Loading States in UI",
+    "Empty States in UI",
+    "Responsive Layouts",
+    "Accessibility (ARIA + Focus)",
+    "README.md Documentation",
+    "Security (XSS / Secrets / Injection)",
+    "Performance (Memoization / Virtualization)",
+    "Feature: PDF Parsing and Text Extraction",
+    "Feature: ATS Semantic Scoring Engine",
+    "Feature: Visual Reporting Dashboard",
+    "Feature: Candidate History and Management",
+    "Feature: Report Export"
+  ],
+  "failedFeatures": [
+    "No Bare console.log",
+    "TypeScript — No 'any'",
+    "Lazy Loading (Routes)"
+  ],
+  "databaseStatus": {
+    "requested": "PostgreSQL",
+    "configured": "PostgreSQL",
+    "isSynced": true
+  },
+  "validationResults": {
+    "typeCheck": true,
+    "build": true,
+    "runtime": true,
+    "realityChecker": true,
+    "visualReviewer": true
+  },
+  "healingAttemptsCount": 0,
+  "unresolvedIssues": []
+}

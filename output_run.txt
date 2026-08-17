@@ -1,0 +1,10 @@
+================================================================================
+AEGIS AI - AUTONOMOUS ZERO-DEFECT GENERATION TEST RUNNER
+================================================================================
+
+Current Active Generation Command:
+pnpm --filter @aegis/cli dev "Build an AI Resume Analyzer & Job Match Tracker with candidate PDF resume upload, keyword extraction, match score breakdown, candidate ranking, and target job description comparison." *>&1 | Out-File -FilePath "terminal_output.txt" -Encoding utf8
+
+Log Output File: terminal_output.txt
+Status: RUNNING... (Monitoring execution in task-31424)
+================================================================================

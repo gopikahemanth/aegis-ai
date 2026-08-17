@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { ArchitectureResolver } from "../governance/architecture-resolver.js";
+import { DomainContractDeriver, DomainEntity, DomainFeature } from "../governance/domain-contract.js";
 
 export interface ProjectContractData {
   contractVersion: number;
@@ -46,32 +48,35 @@ export class ProjectContractManager {
     packageManager: "pnpm" | "npm" | "yarn" = "pnpm",
     requiredModels: string[] = []
   ): ProjectContractData {
-    const pLower = userRequest.toLowerCase();
-    const isSecurity = pLower.includes("code") || pLower.includes("vulnerability") || pLower.includes("reviewer") || pLower.includes("security") || pLower.includes("scanner");
+    // Resolve architecture contract to feed domain contract deriver
+    const archContract = ArchitectureResolver.resolve(userRequest);
+    const archHash = archContract.architectureHash || createHash("sha256").update(JSON.stringify({ frontend, backend, database })).digest("hex").slice(0, 12);
+    const domainContract = DomainContractDeriver.derive(archContract, archHash);
 
-    const productName = isSecurity
-      ? "AI Code Reviewer & Security Vulnerability Scanner"
-      : "AI Resume Keyword Scanner";
+    const productName = domainContract.domainName || "Autonomous Application";
+    const productDescription = domainContract.domainDescription || `Autonomous application implementing verified workflows.`;
 
-    const productDescription = isSecurity
-      ? "Static analysis and vulnerability scanner web application with risk score calculation and code breakdown."
-      : "Resume ATS keyword analysis and compatibility scoring platform.";
+    const allowedDomainTerms = domainContract.allowedTerminology || [];
+    const forbiddenDomainTerms = domainContract.suspiciousTerminology || [];
 
-    const allowedDomainTerms = isSecurity
-      ? ["Code", "Repository", "Source", "File", "Scan", "Scanner", "Vulnerability", "Security", "Risk", "Remediation", "Patch", "Snippet", "Analysis"]
-      : ["Resume", "JobDescription", "KeywordMatch", "MatchScore", "MissingSkills"];
-
-    const forbiddenDomainTerms = isSecurity
-      ? ["Resume", "JobDescription", "KeywordMatch", "KeywordCloud", "MatchDashboard", "MatchScore", "ResumeUpload", "useResumeUpload", "MissingSkills", "Candidate"]
-      : ["Repository", "Vulnerability", "Remediation", "CVE", "CodeSnippet", "StaticAnalysis"];
-
+    const entityNames = domainContract.entities.map((e: DomainEntity) => e.name);
     const models = requiredModels.length > 0
       ? requiredModels
-      : (isSecurity ? ["User", "Repository", "Scan", "Vulnerability", "Remediation", "AnalysisResult"] : ["User", "Resume", "JobDescription", "AnalysisResult", "KeywordMatch"]);
+      : (entityNames.length > 0 ? entityNames : ["User", "Item", "Record"]);
+
+    const featureNames = domainContract.features.map((f: DomainFeature) => f.name);
+    const features = featureNames.length > 0
+      ? featureNames
+      : ["Core Dashboard", "Data Explorer", "Workflow Processing", "Export Report"];
 
     const archObj = { frontend, backend, database, orm, auth, language };
     const architectureHash = createHash("sha256").update(JSON.stringify(archObj)).digest("hex").slice(0, 12);
     const contractHash = createHash("sha256").update(JSON.stringify({ userRequest, archObj, models })).digest("hex").slice(0, 12);
+
+    const isNext = frontend.toLowerCase().includes("next");
+    const forbiddenTech = isNext
+      ? ["NestJS", "Fastify", "MongoDB", "Mongoose"]
+      : ["Next.js", "NextAuth", "NestJS", "MongoDB", "Mongoose", "Drizzle", "Drizzle ORM"];
 
     return {
       contractVersion: 1,
@@ -88,16 +93,14 @@ export class ProjectContractManager {
       packageManager,
       styling: "Vanilla CSS",
       allowedTechnologies: [frontend, backend, database, orm, auth, language, "React", "Express", "Prisma", "TypeScript"],
-      forbiddenTechnologies: ["Next.js", "NextAuth", "NestJS", "MongoDB", "Mongoose", "Drizzle", "Drizzle ORM"],
-      features: isSecurity
-        ? ["Repository Connection", "Static Security Scanner", "Risk Score Calculation", "Interactive Code Explorer", "Remediation Guide"]
-        : ["PDF Resume Upload", "Job Description Parser", "ATS Keyword Matcher", "Skill Gap Analysis", "Export PDF Report"],
+      forbiddenTechnologies: forbiddenTech,
+      features,
       routes: ["/", "/login", "/register", "/dashboard"],
       requiredModels: models,
       allowedDomainTerms,
       forbiddenDomainTerms,
       architectureHash,
-      contractHash
+      contractHash,
     };
   }
 }

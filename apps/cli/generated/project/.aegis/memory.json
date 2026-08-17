@@ -1,0 +1,59 @@
+{
+  "projectName": "project",
+  "lastRequest": "Build an AI Resume Match Analyzer & Job Keyword Scoring web application with React, Express, drag-and-drop resume PDF upload, ATS match score breakdown, and candidate reporting.",
+  "createdFiles": [
+    "Dockerfile",
+    ".dockerignore",
+    ".github/workflows/ci-cd.yml",
+    "docker-compose.yml",
+    "fly.toml"
+  ],
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Initialize PostgreSQL Database and Prisma Schema",
+      "description": "Configure PostgreSQL container, initialize Prisma, and define User, AnalysisResult, and JobDescription models with strict relational integrity.",
+      "completed": true,
+      "stage": "DataModeling",
+      "priority": 1,
+      "dependencies": [],
+      "estimatedComplexity": 3
+    },
+    {
+      "id": 2,
+      "title": "Develop Backend Infrastructure and JWT Authentication",
+      "description": "Implement Express server with JWT middleware, auth controllers for login/signup, and secure API routes for user session management.",
+      "completed": true,
+      "stage": "Backend",
+      "priority": 2,
+      "dependencies": [
+        1
+      ],
+      "estimatedComplexity": 5
+    },
+    {
+      "id": 3,
+      "title": "Implement Analysis Engine and PDF Processing Services",
+      "description": "Build services for PDF text extraction via pdf-parse and integrate OpenAI API for semantic ATS matching and gap analysis.",
+      "completed": true,
+      "stage": "Backend",
+      "priority": 3,
+      "dependencies": [
+        2
+      ],
+      "estimatedComplexity": 8
+    }
+  ],
+  "history": [
+    {
+      "timestamp": "2026-08-15T05:43:58.201Z",
+      "request": "Build an AI Resume Match Analyzer & Job Keyword Scoring web application with React, Express, drag-and-drop resume PDF upload, ATS match score breakdown, and candidate reporting.",
+      "stage": "Initialization"
+    },
+    {
+      "timestamp": "2026-08-15T05:47:02.403Z",
+      "request": "Build an AI Resume Match Analyzer & Job Keyword Scoring web application with React, Express, drag-and-drop resume PDF upload, ATS match score breakdown, and candidate reporting.",
+      "stage": "ExecutionComplete"
+    }
+  ]
+}

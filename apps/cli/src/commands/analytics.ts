@@ -1,9 +1,15 @@
 import { readFileSync, existsSync } from "node:fs";
 
 export async function analyticsCommand() {
-  const metricsPath = "./generated/project/.aegis/metrics.json";
+  const possiblePaths = [
+    "./generated/project/.aegis/metrics.json",
+    "./apps/cli/generated/project/.aegis/metrics.json",
+    "../cli/generated/project/.aegis/metrics.json"
+  ];
   
-  if (!existsSync(metricsPath)) {
+  const metricsPath = possiblePaths.find(p => existsSync(p));
+  
+  if (!metricsPath) {
     console.log("\n❌ No Aegis project metrics found. Run a project generation first to gather build telemetry.\n");
     return;
   }

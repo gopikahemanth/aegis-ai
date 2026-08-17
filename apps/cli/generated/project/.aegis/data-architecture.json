@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "User",
-      "description": "Authenticated user accounts",
+      "description": "Authenticated system user",
       "persistence": "database",
       "fields": [
         {
@@ -11,7 +11,8 @@
           "isId": true,
           "isNullable": false,
           "isUnique": true,
-          "description": "Unique identifier"
+          "relationTo": null,
+          "description": "Primary identifier"
         },
         {
           "name": "email",
@@ -19,21 +20,23 @@
           "isId": false,
           "isNullable": false,
           "isUnique": true,
-          "description": "User email address"
+          "relationTo": null,
+          "description": "User login email"
         },
         {
-          "name": "githubToken",
+          "name": "password",
           "type": "string",
           "isId": false,
-          "isNullable": true,
+          "isNullable": false,
           "isUnique": false,
-          "description": "OAuth token for repo access"
+          "relationTo": null,
+          "description": "Hashed credentials"
         }
       ]
     },
     {
-      "name": "Repository",
-      "description": "Connected git repositories",
+      "name": "JobDescription",
+      "description": "Target job description metadata",
       "persistence": "database",
       "fields": [
         {
@@ -42,29 +45,41 @@
           "isId": true,
           "isNullable": false,
           "isUnique": true,
-          "description": "Unique ID"
+          "relationTo": null,
+          "description": "Primary identifier"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Job title"
+        },
+        {
+          "name": "content",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Full job description text"
         },
         {
           "name": "userId",
           "type": "string",
           "isId": false,
           "isNullable": false,
+          "isUnique": false,
           "relationTo": "User",
           "description": "Owner"
-        },
-        {
-          "name": "url",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "description": "Repo URL"
         }
       ]
     },
     {
-      "name": "Scan",
-      "description": "Security analysis execution record",
+      "name": "ResumeScan",
+      "description": "Core analysis entity linking resume and JD",
       "persistence": "database",
       "fields": [
         {
@@ -73,137 +88,102 @@
           "isId": true,
           "isNullable": false,
           "isUnique": true,
-          "description": "Unique ID"
+          "relationTo": null,
+          "description": "Primary identifier"
         },
         {
-          "name": "repositoryId",
+          "name": "userId",
           "type": "string",
           "isId": false,
           "isNullable": false,
-          "relationTo": "Repository",
-          "description": "Target repo"
+          "isUnique": false,
+          "relationTo": "User",
+          "description": "Owner"
         },
         {
-          "name": "status",
+          "name": "jobDescriptionId",
           "type": "string",
           "isId": false,
           "isNullable": false,
-          "description": "PENDING, RUNNING, COMPLETED, FAILED"
+          "isUnique": false,
+          "relationTo": "JobDescription",
+          "description": "Linked JD"
+        },
+        {
+          "name": "resumeText",
+          "type": "string",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Extracted text content"
+        },
+        {
+          "name": "matchScore",
+          "type": "number",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Calculated score"
+        },
+        {
+          "name": "analysisData",
+          "type": "Json",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
+          "description": "Detailed AI insight report"
         },
         {
           "name": "createdAt",
           "type": "DateTime",
           "isId": false,
           "isNullable": false,
+          "isUnique": false,
+          "relationTo": null,
           "description": "Timestamp"
-        }
-      ]
-    },
-    {
-      "name": "Vulnerability",
-      "description": "Detected security issues",
-      "persistence": "database",
-      "fields": [
-        {
-          "name": "id",
-          "type": "string",
-          "isId": true,
-          "isNullable": false,
-          "isUnique": true,
-          "description": "Unique ID"
-        },
-        {
-          "name": "scanId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "relationTo": "Scan",
-          "description": "Scan link"
-        },
-        {
-          "name": "severity",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "description": "CRITICAL, HIGH, MEDIUM, LOW"
-        },
-        {
-          "name": "description",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "description": "Risk detail"
-        },
-        {
-          "name": "lineNumbers",
-          "type": "Json",
-          "isId": false,
-          "isNullable": false,
-          "description": "Affected lines"
-        }
-      ]
-    },
-    {
-      "name": "Remediation",
-      "description": "Automated fix suggestion",
-      "persistence": "database",
-      "fields": [
-        {
-          "name": "id",
-          "type": "string",
-          "isId": true,
-          "isNullable": false,
-          "isUnique": true,
-          "description": "Unique ID"
-        },
-        {
-          "name": "vulnerabilityId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "relationTo": "Vulnerability",
-          "description": "Related issue"
-        },
-        {
-          "name": "suggestedCode",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "description": "AI-generated patch"
         }
       ]
     }
   ],
-  "databaseSchema": "datasource db { provider = \"postgresql\" url = env(\"DATABASE_URL\") } model User { id String @id @default(cuid()) email String @unique repositories Repository[] } model Repository { id String @id @default(cuid()) userId String user User @relation(fields: [userId], references: [id]) url String scans Scan[] } model Scan { id String @id @default(cuid()) repositoryId String repository Repository @relation(fields: [repositoryId], references: [id]) status String createdAt DateTime @default(now()) vulnerabilities Vulnerability[] } model Vulnerability { id String @id @default(cuid()) scanId String scan Scan @relation(fields: [scanId], references: [id]) severity String description String lineNumbers Json remediations Remediation[] } model Remediation { id String @id @default(cuid()) vulnerabilityId String vulnerability Vulnerability @relation(fields: [vulnerabilityId], references: [id]) suggestedCode String }",
+  "databaseSchema": "model User { id String @id @default(uuid()) email String @unique password String resumes ResumeScan[] jds JobDescription[] } model JobDescription { id String @id @default(uuid()) title String content String userId String user User @relation(fields: [userId], references: [id]) scans ResumeScan[] } model ResumeScan { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) jobDescriptionId String jd JobDescription @relation(fields: [jobDescriptionId], references: [id]) resumeText String matchScore Float analysisData Json createdAt DateTime @default(now()) }",
   "apis": [
     {
       "path": "/api/v1/scans",
       "method": "POST",
-      "description": "Initiate a new repository scan",
-      "requestBodySchema": "{ repositoryId: string }",
-      "responseBodySchema": "{ scanId: string, status: string }"
+      "description": "Upload and perform analysis",
+      "requestBodySchema": "{ resumeFile: File, jobDescription: string }",
+      "responseBodySchema": "{ id: string, matchScore: number, analysisData: object }"
+    },
+    {
+      "path": "/api/v1/scans",
+      "method": "GET",
+      "description": "List history",
+      "responseBodySchema": "ResumeScan[]"
     },
     {
       "path": "/api/v1/scans/:id",
       "method": "GET",
-      "description": "Fetch scan results and vulnerabilities",
-      "responseBodySchema": "{ id: string, vulnerabilities: Vulnerability[], status: string }"
+      "description": "Fetch specific report",
+      "responseBodySchema": "ResumeScan"
     }
   ],
   "hooks": [
     {
-      "name": "useScanResult",
-      "type": "query",
-      "endpoint": "/api/v1/scans/:id",
-      "params": "scanId: string",
-      "returns": "Scan & { vulnerabilities: Vulnerability[] }"
-    },
-    {
-      "name": "useInitiateScan",
+      "name": "useCreateScan",
       "type": "mutation",
       "endpoint": "/api/v1/scans",
-      "params": "repositoryId: string",
-      "returns": "{ scanId: string }"
+      "params": "formData",
+      "returns": "ScanResult"
+    },
+    {
+      "name": "useScanHistory",
+      "type": "query",
+      "endpoint": "/api/v1/scans",
+      "params": "void",
+      "returns": "ResumeScan[]"
     }
   ]
 }

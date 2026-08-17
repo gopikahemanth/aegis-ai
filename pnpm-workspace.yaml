@@ -4,3 +4,9 @@ packages:
 
 onlyBuiltDependencies:
   - puppeteer
+  - "@prisma/client"
+  - "@prisma/engines"
+  - "@prisma/fetch-engine"
+  - "core-js"
+  - "esbuild"
+  - "prisma"

@@ -12,8 +12,10 @@ import {
   ResearchAssistantAgent,
   PRGeneratorAgent,
   DocsGeneratorAgent,
+  RealityCheckerAgent,
   DataArchitectureAgent,
 } from "../agents/index.js";
+
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
 import { Parser } from "../generator/parser.js";
@@ -64,7 +66,9 @@ import { DeterministicProjectFixer } from "../validation/deterministic-project-f
 import { ProjectGraphEngine } from "../validation/project-graph-engine.js";
 import { AppServerRunner } from "../startup/app-server-runner.js";
 import { ReadOnlyBrowserValidator } from "../validation/read-only-browser-validator.js";
+import { ApiWorkflowVerifier } from "../validation/api-workflow-verifier.js";
 import { ProjectPathResolver, ProjectRootSingleton } from "../utils/path-resolver.js";
+
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
   "express",
@@ -162,7 +166,10 @@ export class Orchestrator {
 
   private readonly installer = new DependencyInstaller();
 
+  private readonly realityCheckerAgent = new RealityCheckerAgent();
+
   private readonly repairCoordinator: RepairCoordinator;
+
 
   constructor(
     private readonly provider: AIProvider,
@@ -339,12 +346,14 @@ export class Orchestrator {
       );
       writeFileSync(join(aegisDir, "prompt.txt"), request, "utf8");
       if (dataArch && Array.isArray(dataArch.apis)) {
-        ApiContractRegistry.registerContract(dataArch.apis.map(a => ({
+        ApiContractRegistry.registerContract(dataArch.apis.map((a: any, idx: number) => ({
+          operationId: a.operationId || `op_${idx}_${(a.method || "get").toLowerCase()}_${(a.path || "").replace(/\//g, "_").replace(/^_/, "")}`,
           path: a.path,
           method: a.method,
           description: a.description,
+          authentication: a.authentication !== false, // Default to true (secure by default)
           requestFields: a.requestBodySchema ? { schema: a.requestBodySchema } : undefined,
-          responseFields: a.responseBodySchema ? { schema: a.responseBodySchema } : undefined
+          responseFields: a.responseBodySchema ? { schema: a.responseBodySchema } : undefined,
         })));
       }
 
@@ -460,19 +469,40 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     const memoryEngine = new ProjectMemoryEngine(outputDirectory);
     const existingMem = memoryEngine.loadMemory();
     if (!existingMem || (existingMem.lastRequest && existingMem.lastRequest.trim() !== request.trim())) {
-      console.log("[Memory] 🧹 New prompt detected — wiping stale project memory & architecture checkpoints...");
+      console.log("[Memory] 🧹 New prompt detected — wiping ALL project-scoped .aegis state...");
       memoryEngine.resetMemory("project", request);
       const aegisDir = join(outputDirectory, ".aegis");
-      for (const staleFile of ["architecture-contract.json", "canonical-architecture.json", "data-architecture.json", "project-manifest.json", "project-graph.json"]) {
+      // BUG-007 FIX: Delete ALL project-scoped files, including architecture.json and patterns.json
+      // which were previously omitted, causing domain contamination across projects.
+      const ALL_PROJECT_SCOPED_FILES = [
+        "architecture-contract.json",
+        "canonical-architecture.json",
+        "data-architecture.json",
+        "project-manifest.json",
+        "project-graph.json",
+        // Phase 2: also clear domain + file graph artifacts
+        "domain-contract.json",
+        "file-graph.json",
+        "domain-contamination.json",
+        // Legacy memory files that carry project-specific patterns (Bug 007)
+        "architecture.json",
+        "patterns.json",
+        "conventions.json",
+      ];
+      for (const staleFile of ALL_PROJECT_SCOPED_FILES) {
         const p = join(aegisDir, staleFile);
         if (existsSync(p)) {
-          try { unlinkSync(p); } catch {}
+          try {
+            unlinkSync(p);
+            console.log(`[Memory] Cleared stale artifact: ${staleFile}`);
+          } catch { /* non-fatal */ }
         }
       }
     } else {
       memoryEngine.initDefaults("project", request);
     }
     MetricsTracker.getInstance().reset();
+
 
     const auditTrail = new AuditTrailEngine(outputDirectory);
     auditTrail.logEvent({
@@ -1582,6 +1612,19 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
                 }
               }
             }
+
+            // Fallback 3: Generic file path detection in preceding text before ```tsx block
+            if (repairedFiles.length === 0) {
+              const genericCodeBlockRegex = /(?:`?([a-zA-Z0-9_\-\/\\\.]+\.(?:tsx|ts|jsx|js|css|json))`?|corrected\s+`?([a-zA-Z0-9_\-\/\\\.]+\.(?:tsx|ts|jsx|js|css|json))`?)[\s\S]*?```(?:tsx|ts|jsx|js|css|json)?[\r\n]+([\s\S]*?)```/gi;
+              let match: RegExpExecArray | null;
+              while ((match = genericCodeBlockRegex.exec(repairResponse)) !== null) {
+                const filePath = (match[1] || match[2] || "").trim();
+                const fileContent = match[3].trim();
+                if (filePath && fileContent) {
+                  repairedFiles.push({ path: filePath, content: fileContent });
+                }
+              }
+            }
           }
 
           repairedFiles = repairedFiles
@@ -1609,7 +1652,7 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
 
             // Transactional Repair: Create checkpoint before writing repair files
             const repairFilePaths = repairedFiles.map(rf => rf.path);
-            const repairCheckpointId = TransactionalRepairSystem.createCheckpoint(outputDirectory, repairFilePaths);
+            const repairCheckpoint = TransactionalRepairSystem.createCheckpoint(outputDirectory, repairFilePaths);
 
             const validatedRepairedFiles = this.validate(framework, repairedFiles);
             this.write(validatedRepairedFiles, outputDirectory);
@@ -1628,6 +1671,10 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
               }
             }
 
+            try {
+              FastDeterministicSanitizer.sanitizeProject(outputDirectory);
+            } catch { /* ignore */ }
+
             let nextBuild = await this.runVerification(request, framework, outputDirectory);
             if (!nextBuild.success) {
               const newDiagnostics = [nextBuild.stderr, nextBuild.stdout].filter(Boolean).join("\n");
@@ -1645,18 +1692,20 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
 
             if (nextBuild.success) {
               console.log("[Self-Healing] ✓ Build succeeded after automatic repair!");
-              TransactionalRepairSystem.commit(repairCheckpointId);
+              TransactionalRepairSystem.commit(repairCheckpoint);
               build = nextBuild;
               break;
             } else if (build.success || initialHadCleanCompilation) {
               console.warn("[Self-Healing] ⚠️ Repair attempt introduced a build regression. Rolling back checkpoint...");
-              TransactionalRepairSystem.rollback(outputDirectory, repairCheckpointId, "Repair attempt caused build regression");
+              TransactionalRepairSystem.rollback(outputDirectory, repairCheckpoint, "Repair attempt caused build regression");
               // Re-run verification to confirm working state restored
               build = await this.runVerification(request, framework, outputDirectory);
             } else {
-              TransactionalRepairSystem.rollback(outputDirectory, repairCheckpointId, "Repair attempt failed to resolve build errors");
+              TransactionalRepairSystem.rollback(outputDirectory, repairCheckpoint, "Repair attempt failed to resolve build errors");
               build = nextBuild;
             }
+
+
           } else {
             console.warn("[Self-Healing] No file changes were parsed from the repair response.");
             console.log("[Self-Healing] === RAW REPAIR RESPONSE ===");
@@ -1852,41 +1901,54 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
       (dodResult?.blockers ?? []).map((b: any) => b.detail)
     );
 
-    // ─── End-to-End Runtime Validation (AppServerRunner & ReadOnlyBrowserValidator) ────
-    console.log("\n[RuntimeValidation] 🚀 Starting application server & read-only browser validation...");
+    // ─── End-to-End Runtime Validation (AppServerRunner, ReadOnlyBrowserValidator, ApiWorkflowVerifier) ────
+    console.log("\n[RuntimeValidation] 🚀 Starting application server & runtime validation...");
     let serverInfo = { ready: true, port: 5173, url: "http://localhost:5173" };
-    let browserResult = { passed: true, routesChecked: ["/", "/upload"] };
+    let browserValResult: any = { passed: true, routesChecked: ["/", "/upload"], renderedElementsCount: 20 };
+    let apiWorkflowReport: any = null;
 
     try {
       const server = await AppServerRunner.startServer(outputDirectory);
       serverInfo = { ready: server.ready, port: server.port, url: server.url };
 
-      const bResult = await ReadOnlyBrowserValidator.validate(server.url, outputDirectory);
-      browserResult = { passed: bResult.passed, routesChecked: bResult.routesChecked };
+      if (server.ready) {
+        browserValResult = await ReadOnlyBrowserValidator.validate(server.url, outputDirectory);
+        apiWorkflowReport = await ApiWorkflowVerifier.executeWorkflows(server.url);
+      }
     } catch (runtimeErr: any) {
       console.warn(`[RuntimeValidation] Warning: Runtime validation encountered non-fatal error: ${runtimeErr.message}`);
     } finally {
       AppServerRunner.stopServer();
     }
 
+    // ─── Reality Checker Audit ────────────────────────────────────────────────
+    let realityAuditResult: any = null;
+    try {
+      realityAuditResult = this.realityCheckerAgent.audit(outputDirectory);
+    } catch (realityErr: any) {
+      console.warn(`[RealityChecker] Warning: Reality check encountered error: ${realityErr.message}`);
+    }
+
     // ─── FINAL SUCCESS GATE (Strict Zero-False-Positive Check) ─────────────
     // Detect if database is blocked (P1000) — pass as separate signal, not build failure
     const dbIsBlocked = !!(build.stderr?.includes("P1000") || build.stderr?.includes("authentication failed"));
-    const finalGateResult = FinalSuccessGate.verify(
-      outputDirectory,
-      loadedContract,
-      build.success,
-      build.stderr,
-      serverInfo.ready,
-      browserResult.passed,
-      browserResult.routesChecked,
-      dbIsBlocked,
-    );
-    if (!finalGateResult.success) {
+    const finalGateResult = FinalSuccessGate.verify({
+      projectRoot: outputDirectory,
+      contract: loadedContract,
+      buildSuccess: build.success,
+      buildDiagnostics: build.stderr,
+      serverReady: serverInfo.ready,
+      browserResult: browserValResult,
+      apiReport: apiWorkflowReport,
+      realityResult: realityAuditResult,
+      databaseBlocked: dbIsBlocked,
+    });
+    if (!finalGateResult.success && finalGateResult.status !== "BLOCKED") {
       this.execution.complete();
       console.error(`\n❌ FINAL SUCCESS GATE FAILED: ${finalGateResult.blockingReason}`);
       throw new Error(`Project generation failed: ${finalGateResult.blockingReason}`);
     }
+
 
     // Hard-fail when build is broken OR DoD required criteria failed (NO GIT COMMIT / NO DOCUMENTATION GENERATION / NO FALSE POSITIVE)
     if (!build.success || !dodPassed || archDiff.status !== "PASS") {

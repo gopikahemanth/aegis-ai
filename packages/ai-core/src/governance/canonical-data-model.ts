@@ -244,7 +244,10 @@ model KeywordMatch {
 }
 
 export class CanonicalPrismaModelRegistry {
-  public static readonly MODEL_DELEGATES = ["user", "resume", "jobDescription", "analysisResult", "keywordMatch"] as const;
+  public static readonly MODEL_DELEGATES = [
+    "user", "resume", "jobDescription", "analysisResult", "keywordMatch",
+    "repository", "scan", "vulnerability", "remediation", "task", "project"
+  ] as const;
 
   public static getRegistry(): Record<string, string> {
     return {
@@ -253,11 +256,20 @@ export class CanonicalPrismaModelRegistry {
       jobDescription: "JobDescription",
       analysisResult: "AnalysisResult",
       keywordMatch: "KeywordMatch",
+      repository: "Repository",
+      scan: "Scan",
+      vulnerability: "Vulnerability",
+      remediation: "Remediation",
+      task: "Task",
+      project: "Project",
     };
   }
 
   public static isValidDelegate(delegateName: string): boolean {
-    const validDelegates = new Set(["user", "resume", "jobdescription", "analysisresult", "keywordmatch"]);
+    const validDelegates = new Set([
+      "user", "resume", "jobdescription", "analysisresult", "keywordmatch",
+      "repository", "scan", "vulnerability", "remediation", "task", "project"
+    ]);
     return validDelegates.has(delegateName.toLowerCase());
   }
 }
@@ -293,7 +305,7 @@ export class CanonicalPrismaFieldRegistry {
     const lower = modelName.toLowerCase();
     switch (lower) {
       case "user":
-        return new Set(["id", "email", "passwordHash", "createdAt", "updatedAt", "resumes", "jobDescs", "analyses"]);
+        return new Set(["id", "email", "passwordHash", "createdAt", "updatedAt", "resumes", "jobDescs", "analyses", "repositories", "scans"]);
       case "resume":
         return new Set(["id", "userId", "filename", "extractedText", "createdAt", "user", "analyses"]);
       case "jobdescription":
@@ -302,10 +314,18 @@ export class CanonicalPrismaFieldRegistry {
         return new Set([
           "id", "userId", "resumeId", "jobDescriptionId", "matchScore",
           "matchedKeywords", "missingKeywords", "suggestions", "createdAt",
-          "user", "resume", "jobDescription", "keywordMatches"
+          "user", "resume", "jobDescription", "keywordMatches", "status", "riskScore"
         ]);
       case "keywordmatch":
         return new Set(["id", "analysisResultId", "keyword", "category", "isMatched", "analysisResult"]);
+      case "repository":
+        return new Set(["id", "userId", "name", "url", "branch", "createdAt", "updatedAt", "user", "scans"]);
+      case "scan":
+        return new Set(["id", "userId", "repositoryId", "status", "riskScore", "criticalCount", "highCount", "mediumCount", "lowCount", "createdAt", "updatedAt", "user", "repository", "vulnerabilities"]);
+      case "vulnerability":
+        return new Set(["id", "scanId", "severity", "title", "cve", "file", "line", "status", "desc", "remediation", "createdAt", "updatedAt", "scan"]);
+      case "remediation":
+        return new Set(["id", "vulnerabilityId", "title", "codeFix", "status", "createdAt", "updatedAt"]);
       default:
         return null;
     }

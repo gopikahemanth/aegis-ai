@@ -43,12 +43,7 @@ export class SemanticDuplicateDetector {
     try {
       const normalized = proposedPath.replace(/\\/g, "/");
 
-      // If it's canonical, always allow
-      if (CanonicalFileGraph.isAuthorized(normalized)) {
-        return { allowed: true, action: "ALLOW" };
-      }
-
-      // Check semantic duplicate
+      // 1. Check semantic duplicate FIRST before general prefix authorization
       const dupCheck = CanonicalFileGraph.detectSemanticDuplicate(normalized);
       if (dupCheck.isDuplicate && dupCheck.canonicalFile) {
         console.warn(
@@ -62,6 +57,12 @@ export class SemanticDuplicateDetector {
           action: "DELETE_ORPHAN",
         };
       }
+
+      // 2. If it's authorized in canonical graph or feature structure, allow
+      if (CanonicalFileGraph.isAuthorized(normalized)) {
+        return { allowed: true, action: "ALLOW" };
+      }
+
 
       // Not canonical, not a known duplicate — flag as unauthorized
       console.warn(

@@ -1,0 +1,58 @@
+{
+  "contractVersion": 1,
+  "architectureHash": "f50bc363584f",
+  "frontend": "React-Vite",
+  "backend": "Express",
+  "database": "PostgreSQL",
+  "orm": "Prisma",
+  "authentication": "JWT",
+  "language": "TypeScript",
+  "styling": "vanilla-css",
+  "packageManager": "npm",
+  "requiredLibraries": [
+    "react-dropzone",
+    "pdf-parse",
+    "openai",
+    "natural",
+    "recharts",
+    "framer-motion",
+    "mongoose",
+    "axios",
+    "jspdf",
+    "jspdf-autotable",
+    "dotenv",
+    "cors",
+    "express-validator"
+  ],
+  "requiredFeatures": [
+    "pdf-processing",
+    "analysis-engine",
+    "dashboard",
+    "history-management",
+    "report-export",
+    "auth"
+  ],
+  "requiredRoutes": [
+    "upload-resume-and-jd",
+    "process-semantic-analysis",
+    "view-match-insights",
+    "manage-analysis-history",
+    "download-pdf-report"
+  ],
+  "requiredModels": [
+    "User",
+    "ResumeAnalysis",
+    "JobDescription"
+  ],
+  "forbiddenTechnologies": [
+    "Next.js",
+    "App Router",
+    "NextAuth",
+    "Server Actions",
+    "Next.js API Routes",
+    "MongoDB",
+    "Mongoose",
+    "Drizzle",
+    "Drizzle ORM"
+  ]
+}

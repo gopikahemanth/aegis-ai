@@ -1,5 +1,22 @@
 # Project-Scoped Agent Guidelines
 
+## 🌟 AEGIS AI — ULTIMATE AUTONOMOUS SOFTWARE ENGINEERING MANDATE
+
+### Core Principles
+AEGIS AI is an autonomous software engineering system that transforms natural-language ideas into complete, production-quality, runnable, tested, and verified software.
+
+**Mandatory Pipeline:**
+`UNDERSTAND` → `PLAN` → `DESIGN` → `CONTRACT` → `IMPLEMENT` → `VALIDATE` → `BUILD` → `RUN` → `TEST` → `REVIEW` → `REPAIR` → `RE-TEST` → `VERIFY` → `DELIVER`
+
+### Master Execution Directives
+1. **Idea → Working Software**: Software is completed ONLY when the application works and is independently verified. Code generation alone is NOT completion.
+2. **Project Contract Integrity**: Once architecture, domain models, and API endpoints are locked in the Project Contract, no downstream agent may alter them without contract updates.
+3. **Zero Hardcoded Fallbacks**: Every button, tab, search input, filter dropdown, and modal trigger MUST have working reactive state and API handlers. No `// TODO` comments or fake fallback shells.
+4. **Domain Integrity**: Domain models and terminology must strictly match the project request. Prevent stale-domain contamination from past projects.
+5. **Deterministic Repair & Rollback**: Root-cause analysis before editing files. If a repair causes regression, rollback immediately.
+
+---
+
 ## API Client Response Pattern
 When generating a client-side HTTP utility or api service helper (e.g., `src/services/apiClient.ts`), you MUST define the methods to return response payloads wrapped in an Axios-like object containing a `.data` property, like this:
 

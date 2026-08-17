@@ -11,9 +11,13 @@
     "dev": "tsx src/index.ts"
   },
   "dependencies": {
-  "@aegis/agent-runtime": "workspace:*",
-  "@aegis/ai-core": "workspace:*"
-},
+    "@aegis/agent-runtime": "workspace:*",
+    "@aegis/ai-core": "workspace:*",
+    "@tanstack/react-query": "^5.101.4",
+    "react-dom": "^19.2.8",
+    "react-dropzone": "^20.1.0",
+    "react-router-dom": "^7.18.2"
+  },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "tsx": "^4.22.4",

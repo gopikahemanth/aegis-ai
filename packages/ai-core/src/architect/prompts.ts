@@ -1,6 +1,6 @@
 import type { ProjectSpecification } from "./specification.js";
 
-export class PromptBuilder {
+export class ArchitectPromptBuilder {
   build(spec: ProjectSpecification): string {
     return `
 Generate a production-ready project.

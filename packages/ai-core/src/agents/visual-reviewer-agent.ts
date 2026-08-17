@@ -6,10 +6,14 @@ export interface VisualIssue {
   element: string;
   bug: string;
   severity: "high" | "medium" | "low";
+  isVisualOnly: boolean;
+  suggestedCssFix?: string;
 }
 
 export class VisualReviewerAgent extends BaseAgent {
   readonly name = "Visual Reviewer Agent";
+  private static readonly MAX_VISUAL_REPAIRS = 2;
+  private repairCount = 0;
 
   async execute(
     request: string,
@@ -35,23 +39,23 @@ Analyze the screenshot for:
 2. Elements overlapping inappropriately.
 3. Spacing, alignment, contrast, or typography errors.
 
-STRICT COMPONENT API CONSTRAINTS:
-Do NOT suggest or invent non-existent props on existing components (e.g. do NOT introduce variant="outline" if Button component only accepts primary/secondary/ghost/danger).
+IMPORTANT: Differentiate between a Functional Error (e.g. blank page because React crashed or API failed) vs a purely Visual/CSS Issue (e.g. button padding, container width, font size).
+If the page is completely blank or showing an unhandled error screen, note isVisualOnly: false.
 
-You MUST respond ONLY with a raw JSON block in this exact schema (no markdown formatting, no code blocks):
+STRICT COMPONENT API CONSTRAINTS:
+Do NOT suggest non-existent props on components. Focus on CSS/Tailwind layout classes.
+
+Respond ONLY with raw JSON:
 {
   "issues": [
     {
-      "element": "The selector/region (e.g., '.hero-button', 'navbar header')",
-      "bug": "Detailed description of the visual issue observed",
-      "severity": "high" or "medium" or "low"
+      "element": ".hero-button",
+      "bug": "Button text is clipped by container margin",
+      "severity": "high",
+      "isVisualOnly": true,
+      "suggestedCssFix": "Add flex-wrap and p-4 to hero container"
     }
   ]
-}
-
-If everything looks clean and correctly rendered according to the request, return:
-{
-  "issues": []
 }`;
 
       const responseText = await this.provider.chat(
@@ -78,12 +82,30 @@ If everything looks clean and correctly rendered according to the request, retur
 
       const parsed = JSON.parse(cleanJson);
       if (parsed && Array.isArray(parsed.issues)) {
-        return parsed.issues;
+        return parsed.issues.map((i: any) => ({
+          element: i.element || "unknown",
+          bug: i.bug || "Visual issue",
+          severity: i.severity || "medium",
+          isVisualOnly: i.isVisualOnly !== false,
+          suggestedCssFix: i.suggestedCssFix,
+        }));
       }
     } catch (err: any) {
       console.warn(`[VisualReviewer] Warning: Failed to execute multimodal visual review: ${err.message}`);
     }
 
     return [];
+  }
+
+  public canAttemptRepair(): boolean {
+    return this.repairCount < VisualReviewerAgent.MAX_VISUAL_REPAIRS;
+  }
+
+  public recordRepair(): void {
+    this.repairCount++;
+  }
+
+  public reset(): void {
+    this.repairCount = 0;
   }
 }

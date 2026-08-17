@@ -1,0 +1,648 @@
+[
+  [
+    "postcss.config.js",
+    {
+      "path": "postcss.config.js",
+      "language": "js",
+      "imports": [],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "scripts/dev.js",
+    {
+      "path": "scripts/dev.js",
+      "language": "js",
+      "imports": [],
+      "exports": [],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/controllers/auth.controller.ts",
+    {
+      "path": "server/controllers/auth.controller.ts",
+      "language": "ts",
+      "imports": [
+        "../lib/prisma"
+      ],
+      "exports": [
+        "register",
+        "login"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/controllers/scan.controller.ts",
+    {
+      "path": "server/controllers/scan.controller.ts",
+      "language": "ts",
+      "imports": [
+        "../lib/prisma",
+        "../services/pdf.service",
+        "../services/keyword.service",
+        "../middleware/upload.middleware"
+      ],
+      "exports": [
+        "uploadResume",
+        "analyzeResume"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/index.ts",
+    {
+      "path": "server/index.ts",
+      "language": "ts",
+      "imports": [
+        "./routes/auth.routes",
+        "./routes/scan.routes",
+        "./middleware/errorHandler"
+      ],
+      "exports": [
+        "prisma"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/lib/prisma.ts",
+    {
+      "path": "server/lib/prisma.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "prisma",
+        "db",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/middleware/auth.middleware.ts",
+    {
+      "path": "server/middleware/auth.middleware.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "authMiddleware"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/middleware/errorHandler.ts",
+    {
+      "path": "server/middleware/errorHandler.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "errorHandler",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/middleware/upload.middleware.ts",
+    {
+      "path": "server/middleware/upload.middleware.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "uploadMiddleware",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/routes/auth.routes.ts",
+    {
+      "path": "server/routes/auth.routes.ts",
+      "language": "ts",
+      "imports": [
+        "../lib/prisma"
+      ],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/routes/scan.routes.ts",
+    {
+      "path": "server/routes/scan.routes.ts",
+      "language": "ts",
+      "imports": [
+        "../controllers/scan.controller",
+        "../middleware/auth.middleware"
+      ],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/services/keyword.service.ts",
+    {
+      "path": "server/services/keyword.service.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "analyzeKeywords",
+        "analyzeResume",
+        "extractKeywords",
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "server/services/pdf.service.ts",
+    {
+      "path": "server/services/pdf.service.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "extractTextFromPdf",
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/App.tsx",
+    {
+      "path": "src/App.tsx",
+      "language": "tsx",
+      "imports": [
+        "./routes"
+      ],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/components/Button.tsx",
+    {
+      "path": "src/design-system/components/Button.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "Button",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/components/CircularProgress.tsx",
+    {
+      "path": "src/design-system/components/CircularProgress.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "CircularProgress",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/components/EmptyState.tsx",
+    {
+      "path": "src/design-system/components/EmptyState.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "EmptyState",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/components/GlassCard.tsx",
+    {
+      "path": "src/design-system/components/GlassCard.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "GlassCard",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/components/LoadingSpinner.tsx",
+    {
+      "path": "src/design-system/components/LoadingSpinner.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "LoadingSpinner",
+        "Spinner",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/components/Progress.tsx",
+    {
+      "path": "src/design-system/components/Progress.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "Progress",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/components/Skeleton.tsx",
+    {
+      "path": "src/design-system/components/Skeleton.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "Skeleton",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/index.ts",
+    {
+      "path": "src/design-system/index.ts",
+      "language": "ts",
+      "imports": [
+        "./tokens",
+        "./components/Button",
+        "./components/Skeleton",
+        "./components/EmptyState",
+        "./components/GlassCard"
+      ],
+      "exports": [],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/design-system/tokens.ts",
+    {
+      "path": "src/design-system/tokens.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "colors",
+        "spacing",
+        "radius",
+        "typography",
+        "shadows",
+        "animations"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/analysis-engine/hooks/useAnalysis.ts",
+    {
+      "path": "src/features/analysis-engine/hooks/useAnalysis.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "useAnalysis",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/analyzer/AnalyzePage.tsx",
+    {
+      "path": "src/features/analyzer/AnalyzePage.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "AnalyzePage",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/auth/LoginPage.tsx",
+    {
+      "path": "src/features/auth/LoginPage.tsx",
+      "language": "tsx",
+      "imports": [
+        "../../services/api"
+      ],
+      "exports": [
+        "LoginPage",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/dashboard/DashboardPage.tsx",
+    {
+      "path": "src/features/dashboard/DashboardPage.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "DashboardPage",
+        "Dashboard",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/dashboard/hooks/useDashboardData.tsx",
+    {
+      "path": "src/features/dashboard/hooks/useDashboardData.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "useDashboardData",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/history/HistoryPage.tsx",
+    {
+      "path": "src/features/history/HistoryPage.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "HistoryPage",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/history/services/historyService.ts",
+    {
+      "path": "src/features/history/services/historyService.ts",
+      "language": "ts",
+      "imports": [
+        "../../../services/api"
+      ],
+      "exports": [
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/rules/RulesPage.tsx",
+    {
+      "path": "src/features/rules/RulesPage.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "RulesPage",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/lib/auth.ts",
+    {
+      "path": "src/lib/auth.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "getToken",
+        "setToken",
+        "removeToken",
+        "isAuthenticated",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/main.tsx",
+    {
+      "path": "src/main.tsx",
+      "language": "tsx",
+      "imports": [
+        "./App",
+        "./index.css"
+      ],
+      "exports": [],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/routes.tsx",
+    {
+      "path": "src/routes.tsx",
+      "language": "tsx",
+      "imports": [
+        "./features/dashboard/DashboardPage",
+        "./features/analyzer/AnalyzePage",
+        "./features/history/HistoryPage",
+        "./features/rules/RulesPage",
+        "./features/auth/LoginPage"
+      ],
+      "exports": [
+        "AppRoutes",
+        "routes",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/services/api.ts",
+    {
+      "path": "src/services/api.ts",
+      "language": "ts",
+      "imports": [
+        "../lib/auth",
+        "../types/index"
+      ],
+      "exports": [
+        "apiClient",
+        "api",
+        "resumeApi",
+        "scanApi",
+        "authApi",
+        "loginUser",
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/services/scan.service.ts",
+    {
+      "path": "src/services/scan.service.ts",
+      "language": "ts",
+      "imports": [
+        "./api"
+      ],
+      "exports": [
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/components/Card.tsx",
+    {
+      "path": "src/shared/components/Card.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "Card",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/components/Layout.tsx",
+    {
+      "path": "src/shared/components/Layout.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/components/Navbar.tsx",
+    {
+      "path": "src/shared/components/Navbar.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "Navbar",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/shared/components/PdfExportButton.tsx",
+    {
+      "path": "src/shared/components/PdfExportButton.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "PdfExportButton",
+        "exportPDFReport",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/types/index.ts",
+    {
+      "path": "src/types/index.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/utils/cn.ts",
+    {
+      "path": "src/utils/cn.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "cn",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/vite-env.d.ts",
+    {
+      "path": "src/vite-env.d.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "tailwind.config.js",
+    {
+      "path": "tailwind.config.js",
+      "language": "js",
+      "imports": [],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "vite.config.ts",
+    {
+      "path": "vite.config.ts",
+      "language": "ts",
+      "imports": [],
+      "exports": [
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ]
+]

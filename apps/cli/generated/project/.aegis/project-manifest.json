@@ -1,0 +1,601 @@
+{
+  "version": 1,
+  "contractVersion": 1,
+  "frontend": "React-Vite",
+  "backend": "Express",
+  "database": "PostgreSQL",
+  "orm": "Prisma",
+  "files": [
+    {
+      "path": "package.json",
+      "category": "required",
+      "description": "Package Manifest",
+      "expectedExports": [],
+      "expectedImports": []
+    },
+    {
+      "path": "tsconfig.json",
+      "category": "required",
+      "description": "TypeScript Config",
+      "expectedExports": [],
+      "expectedImports": []
+    },
+    {
+      "path": "vite.config.ts",
+      "category": "required",
+      "description": "Vite Config",
+      "expectedExports": [],
+      "expectedImports": []
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "category": "required",
+      "description": "Prisma Schema",
+      "expectedExports": [],
+      "expectedImports": []
+    },
+    {
+      "path": "server/index.ts",
+      "category": "required",
+      "description": "Express Entry Point",
+      "expectedExports": [],
+      "expectedImports": [
+        "server/routes/scan.routes",
+        "server/routes/auth.routes"
+      ]
+    },
+    {
+      "path": "server/lib/prisma.ts",
+      "category": "required",
+      "description": "Prisma Client Instance",
+      "expectedExports": [
+        "prisma"
+      ],
+      "expectedImports": [
+        "@prisma/client"
+      ]
+    },
+    {
+      "path": "server/db/index.ts",
+      "category": "required",
+      "description": "Database Module Index",
+      "expectedExports": [
+        "prisma"
+      ],
+      "expectedImports": [
+        "server/lib/prisma"
+      ]
+    },
+    {
+      "path": "server/routes/scan.routes.ts",
+      "category": "required",
+      "description": "Scan Routes",
+      "expectedExports": [
+        "router"
+      ],
+      "expectedImports": [
+        "server/controllers/scan.controller",
+        "server/middleware/auth.middleware",
+        "server/middleware/upload.middleware"
+      ]
+    },
+    {
+      "path": "server/routes/auth.routes.ts",
+      "category": "required",
+      "description": "Auth Routes",
+      "expectedExports": [
+        "router"
+      ],
+      "expectedImports": [
+        "server/controllers/auth.controller"
+      ]
+    },
+    {
+      "path": "server/controllers/scan.controller.ts",
+      "category": "required",
+      "description": "Scan Controller",
+      "expectedExports": [
+        "uploadResume",
+        "analyzeResume",
+        "getScanHistory"
+      ],
+      "expectedImports": [
+        "server/services/pdf.service",
+        "server/services/keyword.service",
+        "server/lib/prisma",
+        "server/middleware/upload.middleware"
+      ]
+    },
+    {
+      "path": "server/controllers/auth.controller.ts",
+      "category": "required",
+      "description": "Auth Controller",
+      "expectedExports": [
+        "login",
+        "register"
+      ],
+      "expectedImports": [
+        "server/lib/prisma"
+      ]
+    },
+    {
+      "path": "server/services/pdf.service.ts",
+      "category": "required",
+      "description": "PDF Extraction Service",
+      "expectedExports": [
+        "extractTextFromPdf"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "server/services/keyword.service.ts",
+      "category": "required",
+      "description": "Keyword Analysis Service",
+      "expectedExports": [
+        "analyzeKeywords",
+        "calculateMatchScore"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "server/middleware/auth.middleware.ts",
+      "category": "required",
+      "description": "JWT Auth Middleware",
+      "expectedExports": [
+        "authMiddleware"
+      ],
+      "expectedImports": [
+        "server/lib/prisma"
+      ]
+    },
+    {
+      "path": "server/middleware/upload.middleware.ts",
+      "category": "required",
+      "description": "Multer Upload Middleware",
+      "expectedExports": [
+        "uploadMiddleware",
+        "MulterRequest"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "server/middleware/errorHandler.ts",
+      "category": "required",
+      "description": "Express Error Handler Middleware",
+      "expectedExports": [
+        "errorHandler"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/main.tsx",
+      "category": "required",
+      "description": "React Entry Point",
+      "expectedExports": [],
+      "expectedImports": [
+        "src/App"
+      ]
+    },
+    {
+      "path": "src/App.tsx",
+      "category": "required",
+      "description": "App Root",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": [
+        "src/routes"
+      ]
+    },
+    {
+      "path": "src/routes.tsx",
+      "category": "required",
+      "description": "Route Config",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": [
+        "src/features/analyzer/AnalyzePage",
+        "src/features/dashboard/DashboardPage",
+        "src/features/auth/LoginPage",
+        "src/features/auth/RegisterPage",
+        "src/shared/components/Layout"
+      ]
+    },
+    {
+      "path": "src/features/analyzer/AnalyzePage.tsx",
+      "category": "required",
+      "description": "Analyze Page",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": [
+        "src/features/upload/components/UploadForm",
+        "src/features/analyzer/components/ResultsPanel",
+        "src/features/parser/hooks/useResumeUpload",
+        "src/services/api",
+        "src/shared/components/Layout"
+      ]
+    },
+    {
+      "path": "src/features/dashboard/DashboardPage.tsx",
+      "category": "required",
+      "description": "Dashboard Page",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": [
+        "src/features/dashboard/components/MatchDashboard",
+        "src/features/dashboard/hooks/useDashboardData",
+        "src/shared/components/Layout"
+      ]
+    },
+    {
+      "path": "src/features/auth/LoginPage.tsx",
+      "category": "required",
+      "description": "Login Page",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": [
+        "src/services/api",
+        "src/hooks/useAuth"
+      ]
+    },
+    {
+      "path": "src/features/auth/RegisterPage.tsx",
+      "category": "required",
+      "description": "Register Page",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": [
+        "src/services/api",
+        "src/hooks/useAuth"
+      ]
+    },
+    {
+      "path": "src/features/dashboard/components/MatchDashboard.tsx",
+      "category": "required",
+      "description": "Match Dashboard",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": [
+        "src/features/dashboard/components/ScoreGauge",
+        "src/shared/components/Badge",
+        "src/shared/components/Card",
+        "src/types/index"
+      ]
+    },
+    {
+      "path": "src/features/dashboard/components/ScoreGauge.tsx",
+      "category": "required",
+      "description": "Score Gauge",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/features/analyzer/components/KeywordCloud.tsx",
+      "category": "optional",
+      "description": "Keyword Cloud",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": [
+        "src/shared/components/Badge",
+        "src/types/index"
+      ]
+    },
+    {
+      "path": "src/features/analyzer/components/ResultsPanel.tsx",
+      "category": "optional",
+      "description": "Results Panel",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": [
+        "src/features/analyzer/components/KeywordCloud",
+        "src/shared/components/Badge",
+        "src/shared/components/Card",
+        "src/types/index"
+      ]
+    },
+    {
+      "path": "src/features/upload/components/UploadForm.tsx",
+      "category": "required",
+      "description": "Upload Form",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": [
+        "src/features/parser/hooks/useResumeUpload",
+        "src/shared/components/Spinner"
+      ]
+    },
+    {
+      "path": "src/shared/components/Layout.tsx",
+      "category": "required",
+      "description": "Layout Shell",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": [
+        "src/shared/components/Navbar"
+      ]
+    },
+    {
+      "path": "src/shared/components/Navbar.tsx",
+      "category": "required",
+      "description": "Navbar",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": [
+        "src/hooks/useAuth"
+      ]
+    },
+    {
+      "path": "src/shared/components/Badge.tsx",
+      "category": "required",
+      "description": "Badge",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/shared/components/Card.tsx",
+      "category": "required",
+      "description": "Card",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/design-system/components/Progress.tsx",
+      "category": "required",
+      "description": "Progress Bar Component",
+      "expectedExports": [
+        "default",
+        "Progress"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/services/scan.service.ts",
+      "category": "required",
+      "description": "Frontend Scan API Service",
+      "expectedExports": [
+        "uploadResume",
+        "analyzeResume",
+        "default"
+      ],
+      "expectedImports": [
+        "src/services/api"
+      ]
+    },
+    {
+      "path": "src/features/history/services/historyService.ts",
+      "category": "required",
+      "description": "Scan History Service",
+      "expectedExports": [
+        "getHistory",
+        "default"
+      ],
+      "expectedImports": [
+        "src/services/api"
+      ]
+    },
+    {
+      "path": "src/design-system/components/CircularProgress.tsx",
+      "category": "required",
+      "description": "Circular Progress Component",
+      "expectedExports": [
+        "default",
+        "CircularProgress"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/design-system/components/LoadingSpinner.tsx",
+      "category": "required",
+      "description": "Loading Spinner Component",
+      "expectedExports": [
+        "default",
+        "LoadingSpinner"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/shared/components/Spinner.tsx",
+      "category": "optional",
+      "description": "Spinner",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/shared/components/ProgressBar.tsx",
+      "category": "optional",
+      "description": "Progress Bar",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/design-system/tokens.ts",
+      "category": "optional",
+      "description": "Design System Tokens",
+      "expectedExports": [],
+      "expectedImports": []
+    },
+    {
+      "path": "src/design-system/index.ts",
+      "category": "optional",
+      "description": "Design System Index",
+      "expectedExports": [],
+      "expectedImports": []
+    },
+    {
+      "path": "src/design-system/components/Button.tsx",
+      "category": "optional",
+      "description": "Design System Button",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/design-system/components/GlassCard.tsx",
+      "category": "optional",
+      "description": "Design System GlassCard",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/design-system/components/Skeleton.tsx",
+      "category": "optional",
+      "description": "Design System Skeleton",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/design-system/components/EmptyState.tsx",
+      "category": "optional",
+      "description": "Design System EmptyState",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/features/dashboard/components/ScoreOverview.tsx",
+      "category": "optional",
+      "description": "Score Overview",
+      "expectedExports": [
+        "default"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/features/reporting/services/pdfGeneratorService.ts",
+      "category": "optional",
+      "description": "PDF Report Generator",
+      "expectedExports": [
+        "generatePdfReport"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/services/api.ts",
+      "category": "required",
+      "description": "API Client",
+      "expectedExports": [
+        "analyzeScan",
+        "getScanHistory",
+        "login",
+        "register",
+        "uploadResume"
+      ],
+      "expectedImports": [
+        "src/types/index"
+      ]
+    },
+    {
+      "path": "src/features/parser/hooks/useResumeUpload.ts",
+      "category": "required",
+      "description": "useResumeUpload hook",
+      "expectedExports": [
+        "useResumeUpload"
+      ],
+      "expectedImports": [
+        "src/services/api",
+        "src/types/index"
+      ]
+    },
+    {
+      "path": "src/features/dashboard/hooks/useDashboardData.ts",
+      "category": "required",
+      "description": "useDashboardData hook",
+      "expectedExports": [
+        "useDashboardData"
+      ],
+      "expectedImports": [
+        "src/services/api",
+        "src/types/index"
+      ]
+    },
+    {
+      "path": "src/hooks/useAuth.ts",
+      "category": "required",
+      "description": "useAuth hook",
+      "expectedExports": [
+        "useAuth"
+      ],
+      "expectedImports": [
+        "src/services/api",
+        "src/types/index"
+      ]
+    },
+    {
+      "path": "src/lib/queryClient.ts",
+      "category": "required",
+      "description": "React Query Client",
+      "expectedExports": [
+        "queryClient"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "category": "required",
+      "description": "Auth Helpers (frontend)",
+      "expectedExports": [
+        "getToken",
+        "setToken",
+        "removeToken"
+      ],
+      "expectedImports": []
+    },
+    {
+      "path": "src/types/index.ts",
+      "category": "required",
+      "description": "Shared Types",
+      "expectedExports": [
+        "MatchAnalysis",
+        "ScanHistoryItem",
+        "AnalysisResult"
+      ],
+      "expectedImports": []
+    }
+  ],
+  "routes": [
+    "upload-resume-and-jd",
+    "process-semantic-analysis",
+    "view-match-insights",
+    "manage-analysis-history",
+    "download-pdf-report"
+  ],
+  "models": [
+    "User",
+    "ResumeAnalysis",
+    "JobDescription"
+  ],
+  "apiEndpoints": [
+    "POST /api/scans/upload",
+    "POST /api/scans/analyze",
+    "GET /api/scans/history",
+    "POST /api/auth/login",
+    "POST /api/auth/register"
+  ]
+}

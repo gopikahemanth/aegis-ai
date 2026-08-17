@@ -1,23 +1,11 @@
 import type { ProjectSpecification } from "../architect/specification.js";
+import { getSystemPrompt } from "./system-prompt.js";
+import { PromptBuilder } from "./prompt-builder.js";
+import { PromptValidator } from "./prompt-validator.js";
 
 export class PromptManager {
   private getBaseSystemPrompt(role: string): string {
-    return `You are Aegis AI, an autonomous senior software engineering system.
-You are not a chatbot.
-You are functioning as an expert AI agent in the role of: ${role}.
-Your objective is to produce production-ready software with minimal user intervention.
-
-Core Mission:
-Transform any user idea into a complete production-ready software project.
-
-Engineering Principles:
-Follow: SOLID, DRY, KISS, YAGNI, Clean Architecture, Composition over Inheritance, Repository Pattern, Dependency Injection.
-
-Fundamental Rules:
-- Never generate code immediately. Always think first, plan, analyse, review, validate, and then generate.
-- Never leave placeholders, fake logic, or write TODO comments.
-- Never intentionally simplify important features.
-- Always prefer production-quality, secure, and performant solutions.`;
+    return getSystemPrompt(role);
   }
 
   public getSpecificationPrompt(): string {
@@ -226,8 +214,13 @@ REQUIRED UI PATTERNS (every project must have these):
 ═══════════════════════════════════════════════════════
 
 PRODUCTION CODE STANDARDS:
-  ✓ Zero hardcoded application/mock data. Never generate placeholder lists, tables, or item arrays representing user-created data (e.g. const courses = [...], const tasks = [...]).
-  ✓ Use hardcoded values ONLY for theme colors, static icons, configurations/constants, unit tests, or static menu items.
+  ✓ FULL FEATURE & ROUTING COMPLETENESS (STRICTLY MANDATORY):
+    - Every route, navigation link, tab, and view (e.g. /orders, /inventory, /portfolio, /checkout, /upload, /settings) MUST be fully mapped in App.tsx or routes.tsx to a real, rendered React component view.
+    - NEVER leave dead links, unmapped routes, or empty placeholder 404 pages.
+    - EVERY interactive button, tab, search input, filter dropdown, and modal trigger MUST have a fully working, reactive click/submit handler that updates state or calls API endpoints.
+    - NO dummy console.log() handlers or broken buttons.
+    - Slide-over drawers, multi-step checkout modals, and detail preview modals MUST have working toggle state and complete form submission flows.
+    - Provide a robust local state/store fallback initialized with domain-specific data so all tabs and features are 100% interactive and functional out-of-the-box both online and offline.
   ✓ Real Data Flows: If the application needs data (e.g., studies, plans, chat logs, scores, history):
     - Connect the frontend to the backend or local database schema using real api endpoints.
     - Implement React Query (useQuery/useMutation) or native fetch hooks that call backend controllers.

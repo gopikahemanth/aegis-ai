@@ -154,6 +154,7 @@ export const Shell: React.FC<ShellProps> = ({
     { id: "product-evolution", label: "Product Evolution", icon: GitPullRequest },
     { id: "autonomous-repair", label: "Autonomous Repair", icon: Wrench },
     { id: "security-intelligence", label: "Security & Trust", icon: ShieldCheck },
+    { id: "performance-optimization", label: "Performance", icon: Zap },
   ];
 
 

@@ -41,8 +41,10 @@ import {
   GraduationCap,
   CheckCheck,
   Rocket,
-  Globe
+  Globe,
+  Palette
 } from "lucide-react";
+
 
 
 
@@ -141,7 +143,9 @@ export const Shell: React.FC<ShellProps> = ({
     { id: "autonomous-builder", label: "Autonomous Builder", icon: Rocket },
     { id: "real-validation", label: "Real Validation", icon: ShieldCheck },
     { id: "universal-builder", label: "Universal Builder", icon: Globe },
+    { id: "ui-intelligence", label: "UI Intelligence", icon: Palette },
   ];
+
 
 
 

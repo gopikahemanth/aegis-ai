@@ -22,6 +22,7 @@ import {
   Check,
   Server,
   Radio,
+  Brain,
   BrainCircuit,
   Compass,
   Cpu,
@@ -155,6 +156,7 @@ export const Shell: React.FC<ShellProps> = ({
     { id: "autonomous-repair", label: "Autonomous Repair", icon: Wrench },
     { id: "security-intelligence", label: "Security & Trust", icon: ShieldCheck },
     { id: "performance-optimization", label: "Performance", icon: Zap },
+    { id: "product-intelligence", label: "Product Intelligence", icon: Brain },
   ];
 
 

@@ -55,6 +55,7 @@ import { ProductionInfrastructureView } from "./components/ProductionInfrastruct
 import { ProductionOperationsView } from "./components/ProductionOperationsView.js";
 import { ProductEvolutionView } from "./components/ProductEvolutionView.js";
 import { AutonomousRepairView } from "./components/AutonomousRepairView.js";
+import { SecurityIntelligenceView } from "./components/SecurityIntelligenceView.js";
 
 
 
@@ -402,6 +403,7 @@ export function App() {
       {currentView === "production-operations" && <ProductionOperationsView />}
       {currentView === "product-evolution" && <ProductEvolutionView />}
       {currentView === "autonomous-repair" && <AutonomousRepairView />}
+      {currentView === "security-intelligence" && <SecurityIntelligenceView />}
 
       {/* Authorization Modal */}
 

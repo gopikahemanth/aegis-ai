@@ -47,6 +47,8 @@ import { AutonomousProductBuilderView } from "./components/AutonomousProductBuil
 import { RealProductValidationView } from "./components/RealProductValidationView.js";
 import { UniversalProductBuilderView } from "./components/UniversalProductBuilderView.js";
 import { UIIntelligenceView } from "./components/UIIntelligenceView.js";
+import { AutonomousProductCenter } from "./components/AutonomousProductCenter.js";
+
 
 
 
@@ -383,8 +385,10 @@ export function App() {
       {currentView === "real-validation" && <RealProductValidationView />}
       {currentView === "universal-builder" && <UniversalProductBuilderView />}
       {currentView === "ui-intelligence" && <UIIntelligenceView />}
+      {currentView === "autonomous-product-center" && <AutonomousProductCenter />}
 
       {/* Authorization Modal */}
+
 
 
 

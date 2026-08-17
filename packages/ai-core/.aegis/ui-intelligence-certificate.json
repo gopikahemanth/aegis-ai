@@ -2,7 +2,7 @@
   "gate": "UIIntelligenceGate",
   "tier": 36,
   "status": "CERTIFIED",
-  "certificateId": "cert_ui_intel_1786973874971",
+  "certificateId": "cert_ui_intel_1786975726372",
   "pagesVerified": 3,
   "desktopVerified": true,
   "tabletVerified": true,
@@ -11,6 +11,6 @@
   "criticalVisualDefects": 0,
   "criticalUXDefects": 0,
   "uiQualityScore": 95,
-  "signature": "sha256_ui_sig_oz09saeyyc",
-  "certifiedAt": "2026-08-17T13:37:54.971Z"
+  "signature": "sha256_ui_sig_sudq0vv591",
+  "certifiedAt": "2026-08-17T14:08:46.372Z"
 }

@@ -59,13 +59,17 @@ export class UniversalRequirementInterpreter {
     const p = prompt.toLowerCase();
 
     // 1. Product Name
-    let productName = customProductName || "UniversalApp";
-    if (domain === "ECOMMERCE") productName = "AegisCommercePlatform";
-    else if (domain === "EDUCATION") productName = "AegisLMSPlatform";
-    else if (domain === "CRM") productName = "AegisCRMEnterprise";
-    else if (domain === "HEALTHCARE") productName = "AegisHealthPortal";
-    else if (domain === "BOOKING") productName = "AegisBookingSuite";
-    else if (domain === "GYM_MANAGEMENT") productName = "AegisGymPlatform";
+    let productName = customProductName;
+    if (!productName) {
+      if (domain === "ECOMMERCE") productName = "AegisCommercePlatform";
+      else if (domain === "EDUCATION") productName = "AegisLMSPlatform";
+      else if (domain === "CRM") productName = "AegisCRMEnterprise";
+      else if (domain === "HEALTHCARE") productName = "AegisHealthPortal";
+      else if (domain === "BOOKING") productName = "AegisBookingSuite";
+      else if (domain === "GYM_MANAGEMENT") productName = "AegisGymPlatform";
+      else productName = "UniversalApp";
+    }
+
 
     // 2. User Roles
     const users: UniversalProductSpecification["users"] = [

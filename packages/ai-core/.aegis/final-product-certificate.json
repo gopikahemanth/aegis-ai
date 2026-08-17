@@ -1,0 +1,18 @@
+{
+  "gate": "FinalProductGate",
+  "tier": 37,
+  "status": "CERTIFIED",
+  "certificateId": "cert_final_1786975703984",
+  "product": "AegisBooking",
+  "domain": "CUSTOM",
+  "requirementsVerified": true,
+  "buildVerified": true,
+  "runtimeVerified": true,
+  "workflowsVerified": true,
+  "uiVerified": true,
+  "responsiveVerified": true,
+  "accessibilityVerified": true,
+  "criticalDefects": 0,
+  "cryptographicSignature": "sha256_final_prod_dck0su1sya",
+  "certifiedAt": "2026-08-17T14:08:23.984Z"
+}

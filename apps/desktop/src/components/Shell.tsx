@@ -150,6 +150,7 @@ export const Shell: React.FC<ShellProps> = ({
     { id: "real-product-generation", label: "Real Product Generation", icon: Rocket },
     { id: "production-deployment", label: "Production Deployment", icon: Globe },
     { id: "production-infrastructure", label: "Production Infrastructure", icon: Cloud },
+    { id: "production-operations", label: "Production Operations", icon: Activity },
   ];
 
 

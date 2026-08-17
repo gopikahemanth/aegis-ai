@@ -40,8 +40,10 @@ import {
   BookOpen,
   GraduationCap,
   CheckCheck,
-  Rocket
+  Rocket,
+  Globe
 } from "lucide-react";
+
 
 
 
@@ -138,7 +140,9 @@ export const Shell: React.FC<ShellProps> = ({
     { id: "product-completion", label: "Product Completion", icon: CheckCheck },
     { id: "autonomous-builder", label: "Autonomous Builder", icon: Rocket },
     { id: "real-validation", label: "Real Validation", icon: ShieldCheck },
+    { id: "universal-builder", label: "Universal Builder", icon: Globe },
   ];
+
 
 
 

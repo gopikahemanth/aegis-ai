@@ -86,6 +86,8 @@ export * from "./learning-governance/index.js";
 export * from "./product-completion/index.js";
 export * from "./autonomous-product-builder/index.js";
 export * from "./real-product-validation/index.js";
+export * from "./universal-product-builder/index.js";
+
 
 
 

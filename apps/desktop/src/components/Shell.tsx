@@ -42,7 +42,8 @@ import {
   CheckCheck,
   Rocket,
   Globe,
-  Palette
+  Palette,
+  Cloud
 } from "lucide-react";
 
 
@@ -148,6 +149,7 @@ export const Shell: React.FC<ShellProps> = ({
     { id: "deep-product-builder", label: "Deep Implementation", icon: Cpu },
     { id: "real-product-generation", label: "Real Product Generation", icon: Rocket },
     { id: "production-deployment", label: "Production Deployment", icon: Globe },
+    { id: "production-infrastructure", label: "Production Infrastructure", icon: Cloud },
   ];
 
 

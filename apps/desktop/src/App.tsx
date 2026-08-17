@@ -51,6 +51,7 @@ import { AutonomousProductCenter } from "./components/AutonomousProductCenter.js
 import { DeepProductBuilderView } from "./components/DeepProductBuilderView.js";
 import { RealProductGenerationView } from "./components/RealProductGenerationView.js";
 import { ProductionDeploymentView } from "./components/ProductionDeploymentView.js";
+import { ProductionInfrastructureView } from "./components/ProductionInfrastructureView.js";
 
 
 
@@ -394,6 +395,7 @@ export function App() {
       {currentView === "deep-product-builder" && <DeepProductBuilderView />}
       {currentView === "real-product-generation" && <RealProductGenerationView />}
       {currentView === "production-deployment" && <ProductionDeploymentView />}
+      {currentView === "production-infrastructure" && <ProductionInfrastructureView />}
 
       {/* Authorization Modal */}
 

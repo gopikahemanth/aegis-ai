@@ -53,6 +53,7 @@ import { RealProductGenerationView } from "./components/RealProductGenerationVie
 import { ProductionDeploymentView } from "./components/ProductionDeploymentView.js";
 import { ProductionInfrastructureView } from "./components/ProductionInfrastructureView.js";
 import { ProductionOperationsView } from "./components/ProductionOperationsView.js";
+import { ProductEvolutionView } from "./components/ProductEvolutionView.js";
 
 
 
@@ -398,6 +399,7 @@ export function App() {
       {currentView === "production-deployment" && <ProductionDeploymentView />}
       {currentView === "production-infrastructure" && <ProductionInfrastructureView />}
       {currentView === "production-operations" && <ProductionOperationsView />}
+      {currentView === "product-evolution" && <ProductEvolutionView />}
 
       {/* Authorization Modal */}
 

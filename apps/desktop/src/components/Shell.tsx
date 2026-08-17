@@ -127,7 +127,9 @@ export const Shell: React.FC<ShellProps> = ({
     { id: "customer-lifecycle", label: "Customer Lifecycle", icon: HeartHandshake },
     { id: "institutional-knowledge", label: "Institutional Knowledge", icon: BookOpen },
     { id: "knowledge-synthesis", label: "Knowledge Synthesis", icon: BrainCircuit },
+    { id: "knowledge-action", label: "Knowledge Action", icon: Zap },
   ];
+
 
 
 

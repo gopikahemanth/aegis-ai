@@ -40,6 +40,8 @@ import { EnterpriseProductIntelligenceView } from "./components/EnterpriseProduc
 import { EnterpriseCustomerLifecycleView } from "./components/EnterpriseCustomerLifecycleView.js";
 import { EnterpriseKnowledgeView } from "./components/EnterpriseKnowledgeView.js";
 import { EnterpriseKnowledgeSynthesisView } from "./components/EnterpriseKnowledgeSynthesisView.js";
+import { EnterpriseKnowledgeActionView } from "./components/EnterpriseKnowledgeActionView.js";
+
 
 
 
@@ -362,8 +364,10 @@ export function App() {
       {currentView === "customer-lifecycle" && <EnterpriseCustomerLifecycleView />}
       {currentView === "institutional-knowledge" && <EnterpriseKnowledgeView />}
       {currentView === "knowledge-synthesis" && <EnterpriseKnowledgeSynthesisView />}
+      {currentView === "knowledge-action" && <EnterpriseKnowledgeActionView />}
 
       {/* Authorization Modal */}
+
 
 
 

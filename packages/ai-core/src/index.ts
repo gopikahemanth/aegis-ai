@@ -83,6 +83,8 @@ export * from "./institutional-knowledge/index.js";
 export * from "./knowledge-synthesis/index.js";
 export * from "./knowledge-action/index.js";
 export * from "./learning-governance/index.js";
+export * from "./product-completion/index.js";
+
 
 
 

@@ -1,112 +1,112 @@
 {
-  "certificateId": "cert_ent_learn_1786961931845",
+  "certificateId": "cert_ent_learn_1786963135302",
   "gate": "EnterpriseLearningGovernanceGate",
   "tier": 33,
   "status": "ENTERPRISE_LEARNING_GOVERNANCE_CERTIFIED",
   "previousTierCount": 32,
   "enterpriseKnowledgeActionCertificate": {
-    "certificateId": "cert_ent_act_1786961931842",
-    "issuedAt": "2026-08-17T10:18:51.842Z",
+    "certificateId": "cert_ent_act_1786963135301",
+    "issuedAt": "2026-08-17T10:38:55.301Z",
     "status": "ENTERPRISE_KNOWLEDGE_ACTION_CERTIFIED",
     "enterpriseKnowledgeSynthesisCertificate": {
-      "certificateId": "cert_ent_synth_1786961931840",
-      "issuedAt": "2026-08-17T10:18:51.840Z",
+      "certificateId": "cert_ent_synth_1786963135300",
+      "issuedAt": "2026-08-17T10:38:55.300Z",
       "status": "ENTERPRISE_KNOWLEDGE_SYNTHESIS_CERTIFIED",
       "enterpriseKnowledgeCertificate": {
-        "certificateId": "cert_ent_know_1786961931837",
-        "issuedAt": "2026-08-17T10:18:51.837Z",
+        "certificateId": "cert_ent_know_1786963135299",
+        "issuedAt": "2026-08-17T10:38:55.299Z",
         "status": "ENTERPRISE_KNOWLEDGE_CERTIFIED",
         "enterpriseInnovationCertificate": {
-          "certificateId": "cert_ent_innov_1786961931835",
-          "issuedAt": "2026-08-17T10:18:51.835Z",
+          "certificateId": "cert_ent_innov_1786963135298",
+          "issuedAt": "2026-08-17T10:38:55.298Z",
           "status": "ENTERPRISE_INNOVATION_CERTIFIED",
           "enterpriseEvolutionCertificate": {
-            "certificateId": "cert_ent_evol_1786961931832",
-            "issuedAt": "2026-08-17T10:18:51.832Z",
+            "certificateId": "cert_ent_evol_1786963135297",
+            "issuedAt": "2026-08-17T10:38:55.297Z",
             "status": "ENTERPRISE_EVOLUTION_CERTIFIED",
             "customerLifecycleCertificate": {
-              "certificateId": "cert_cust_life_1786961931830",
-              "issuedAt": "2026-08-17T10:18:51.830Z",
+              "certificateId": "cert_cust_life_1786963135296",
+              "issuedAt": "2026-08-17T10:38:55.296Z",
               "status": "CUSTOMER_LIFECYCLE_CERTIFIED",
               "enterpriseProductIntelligenceCertificate": {
-                "certificateId": "cert_prod_intel_1786961931829",
-                "issuedAt": "2026-08-17T10:18:51.829Z",
+                "certificateId": "cert_prod_intel_1786963135295",
+                "issuedAt": "2026-08-17T10:38:55.295Z",
                 "status": "ENTERPRISE_PRODUCT_INTELLIGENCE_CERTIFIED",
                 "enterpriseInnovationGovernanceCertificate": {
-                  "certificateId": "cert_innov_gov_1786961931826",
-                  "issuedAt": "2026-08-17T10:18:51.826Z",
+                  "certificateId": "cert_innov_gov_1786963135294",
+                  "issuedAt": "2026-08-17T10:38:55.294Z",
                   "status": "ENTERPRISE_INNOVATION_GOVERNANCE_CERTIFIED",
                   "enterpriseEvolutionGovernanceCertificate": {
-                    "certificateId": "cert_evo_gov_1786961931823",
-                    "issuedAt": "2026-08-17T10:18:51.823Z",
+                    "certificateId": "cert_evo_gov_1786963135293",
+                    "issuedAt": "2026-08-17T10:38:55.293Z",
                     "status": "ENTERPRISE_EVOLUTION_GOVERNANCE_CERTIFIED",
                     "enterpriseChangeGovernanceCertificate": {
-                      "certificateId": "cert_chg_gov_1786961931820",
-                      "issuedAt": "2026-08-17T10:18:51.820Z",
+                      "certificateId": "cert_chg_gov_1786963135292",
+                      "issuedAt": "2026-08-17T10:38:55.292Z",
                       "status": "ENTERPRISE_CHANGE_GOVERNANCE_CERTIFIED",
                       "enterpriseAutonomousExecutionCertificate": {
-                        "certificateId": "cert_auto_exec_1786961931816",
-                        "issuedAt": "2026-08-17T10:18:51.816Z",
+                        "certificateId": "cert_auto_exec_1786963135290",
+                        "issuedAt": "2026-08-17T10:38:55.290Z",
                         "status": "ENTERPRISE_AUTONOMOUS_EXECUTION_CERTIFIED",
                         "enterprisePredictivePlanningCertificate": {
-                          "certificateId": "cert_pred_plan_1786961931813",
-                          "issuedAt": "2026-08-17T10:18:51.813Z",
+                          "certificateId": "cert_pred_plan_1786963135289",
+                          "issuedAt": "2026-08-17T10:38:55.289Z",
                           "status": "ENTERPRISE_PREDICTIVE_PLANNING_CERTIFIED",
                           "enterpriseDecisionIntelligenceCertificate": {
-                            "certificateId": "cert_dec_intel_1786961931810",
-                            "issuedAt": "2026-08-17T10:18:51.810Z",
+                            "certificateId": "cert_dec_intel_1786963135287",
+                            "issuedAt": "2026-08-17T10:38:55.287Z",
                             "status": "ENTERPRISE_DECISION_INTELLIGENCE_CERTIFIED",
                             "enterpriseReliabilityCertificate": {
-                              "certificateId": "cert_ent_rel_1786961931808",
-                              "issuedAt": "2026-08-17T10:18:51.808Z",
+                              "certificateId": "cert_ent_rel_1786963135286",
+                              "issuedAt": "2026-08-17T10:38:55.286Z",
                               "status": "ENTERPRISE_RELIABILITY_CERTIFIED",
                               "predictiveResilienceCertificate": {
-                                "certificateId": "cert_pred_resil_1786961931805",
-                                "issuedAt": "2026-08-17T10:18:51.805Z",
+                                "certificateId": "cert_pred_resil_1786963135286",
+                                "issuedAt": "2026-08-17T10:38:55.286Z",
                                 "status": "PREDICTIVE_RESILIENCE_CERTIFIED",
                                 "enterpriseContinuityCertificate": {
-                                  "certificateId": "cert_ent_cont_1786961931802",
-                                  "issuedAt": "2026-08-17T10:18:51.802Z",
+                                  "certificateId": "cert_ent_cont_1786963135285",
+                                  "issuedAt": "2026-08-17T10:38:55.285Z",
                                   "status": "ENTERPRISE_CONTINUITY_CERTIFIED",
                                   "enterpriseResilienceCertificate": {
-                                    "certificateId": "cert_ent_resil_1786961931799",
-                                    "issuedAt": "2026-08-17T10:18:51.799Z",
+                                    "certificateId": "cert_ent_resil_1786963135284",
+                                    "issuedAt": "2026-08-17T10:38:55.284Z",
                                     "status": "ENTERPRISE_RESILIENCE_CERTIFIED",
                                     "enterpriseValueCertificate": {
-                                      "certificateId": "cert_ent_val_1786961931797",
-                                      "issuedAt": "2026-08-17T10:18:51.797Z",
+                                      "certificateId": "cert_ent_val_1786963135283",
+                                      "issuedAt": "2026-08-17T10:38:55.283Z",
                                       "status": "ENTERPRISE_VALUE_CERTIFIED",
                                       "enterpriseOptimizationCertificate": {
-                                        "certificateId": "cert_ent_opt_1786961931794",
-                                        "issuedAt": "2026-08-17T10:18:51.795Z",
+                                        "certificateId": "cert_ent_opt_1786963135283",
+                                        "issuedAt": "2026-08-17T10:38:55.283Z",
                                         "status": "ENTERPRISE_OPTIMIZATION_CERTIFIED",
                                         "strategicExecutionCertificate": {
-                                          "certificateId": "cert_strat_exec_1786961931793",
-                                          "issuedAt": "2026-08-17T10:18:51.793Z",
+                                          "certificateId": "cert_strat_exec_1786963135282",
+                                          "issuedAt": "2026-08-17T10:38:55.282Z",
                                           "status": "STRATEGIC_EXECUTION_CERTIFIED",
                                           "strategicEngineeringCertificate": {
-                                            "certificateId": "cert_strat_eng_1786961931790",
-                                            "issuedAt": "2026-08-17T10:18:51.790Z",
+                                            "certificateId": "cert_strat_eng_1786963135281",
+                                            "issuedAt": "2026-08-17T10:38:55.281Z",
                                             "status": "STRATEGIC_ENGINEERING_CERTIFIED",
                                             "enterpriseCollaborationCertificate": {
-                                              "certificateId": "cert_collab_1786961931788",
-                                              "issuedAt": "2026-08-17T10:18:51.788Z",
+                                              "certificateId": "cert_collab_1786963135280",
+                                              "issuedAt": "2026-08-17T10:38:55.280Z",
                                               "status": "COLLABORATION_CERTIFIED",
                                               "enterpriseGovernanceCertificate": {
-                                                "certificateId": "cert_ent_gov_1786961931786",
-                                                "issuedAt": "2026-08-17T10:18:51.786Z",
+                                                "certificateId": "cert_ent_gov_1786963135280",
+                                                "issuedAt": "2026-08-17T10:38:55.280Z",
                                                 "status": "ENTERPRISE_GOVERNANCE_CERTIFIED",
                                                 "selfManagementCertificate": {
-                                                  "certificateId": "cert_self_mgmt_1786961931780",
-                                                  "issuedAt": "2026-08-17T10:18:51.780Z",
+                                                  "certificateId": "cert_self_mgmt_1786963135278",
+                                                  "issuedAt": "2026-08-17T10:38:55.278Z",
                                                   "status": "SELF_MANAGEMENT_CERTIFIED",
                                                   "productionValidationCertificate": {
-                                                    "certificateId": "cert_prod_val_1786961931778",
-                                                    "issuedAt": "2026-08-17T10:18:51.778Z",
+                                                    "certificateId": "cert_prod_val_1786963135277",
+                                                    "issuedAt": "2026-08-17T10:38:55.277Z",
                                                     "status": "PRODUCTION_VALIDATED",
                                                     "platformCertificate": {
-                                                      "certificateId": "cert_supreme_platform_1786961931775",
-                                                      "issuedAt": "2026-08-17T10:18:51.775Z",
+                                                      "certificateId": "cert_supreme_platform_1786963135275",
+                                                      "issuedAt": "2026-08-17T10:38:55.275Z",
                                                       "status": "PLATFORM_CERTIFIED",
                                                       "governanceGatesPassed": 7,
                                                       "totalFleetProjects": 0,
@@ -117,8 +117,8 @@
                                                       "summary": "AEGIS SUPREME PLATFORM CERTIFICATE: ISSUED. 7/7 governance layers passed across 0 fleet projects."
                                                     },
                                                     "securityCertificate": {
-                                                      "certificateId": "cert_sec_1786961931777",
-                                                      "issuedAt": "2026-08-17T10:18:51.777Z",
+                                                      "certificateId": "cert_sec_1786963135276",
+                                                      "issuedAt": "2026-08-17T10:38:55.276Z",
                                                       "status": "SECURITY_CERTIFIED",
                                                       "dimensionsAudited": 14,
                                                       "secretIsolationPassed": true,
@@ -133,7 +133,7 @@
                                                   },
                                                   "platformSelfHealth": {
                                                     "overallStatus": "HEALTHY",
-                                                    "timestamp": "2026-08-17T10:18:51.780Z",
+                                                    "timestamp": "2026-08-17T10:38:55.278Z",
                                                     "subsystems": [
                                                       {
                                                         "subsystem": "AI Core & Pipeline",
@@ -174,8 +174,8 @@
                                                   "summary": "AEGIS SELF-MANAGEMENT GATE: CERTIFIED. Platform is autonomously governed, verified, and self-managing across all 9 governance tiers."
                                                 },
                                                 "complianceCertificate": {
-                                                  "certificateId": "cert_compliance_1786961931784",
-                                                  "issuedAt": "2026-08-17T10:18:51.784Z",
+                                                  "certificateId": "cert_compliance_1786963135279",
+                                                  "issuedAt": "2026-08-17T10:38:55.279Z",
                                                   "status": "COMPLIANT",
                                                   "frameworksValidated": [
                                                     "SOC2_TYPE_II",
@@ -315,7 +315,7 @@
   "authorizationBypassesAttempted": 0,
   "tenantIsolationViolations": 0,
   "ledgerIntegrityVerified": true,
-  "learningLedgerEntriesCount": 1,
+  "learningLedgerEntriesCount": 0,
   "blockers": [],
   "summary": "AEGIS ENTERPRISE LEARNING GOVERNANCE GATE: CERTIFIED. Institutional learning registry, lesson extraction, knowledge revalidation, contradiction detection, learning graph, zero-mutation simulation, and closed-loop confidence calibration validated across all 33 governance tiers without safety policy mutation."
 }

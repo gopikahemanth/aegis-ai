@@ -58,6 +58,7 @@ import { AutonomousRepairView } from "./components/AutonomousRepairView.js";
 import { SecurityIntelligenceView } from "./components/SecurityIntelligenceView.js";
 import { PerformanceOptimizationView } from "./components/PerformanceOptimizationView.js";
 import { ProductIntelligenceView } from "./components/ProductIntelligenceView.js";
+import { RequirementIntelligenceView } from "./components/RequirementIntelligenceView.js";
 
 
 
@@ -408,6 +409,7 @@ export function App() {
       {currentView === "security-intelligence" && <SecurityIntelligenceView />}
       {currentView === "performance-optimization" && <PerformanceOptimizationView />}
       {currentView === "product-intelligence" && <ProductIntelligenceView />}
+      {currentView === "requirement-intelligence" && <RequirementIntelligenceView />}
 
       {/* Authorization Modal */}
 

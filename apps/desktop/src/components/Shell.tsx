@@ -145,7 +145,9 @@ export const Shell: React.FC<ShellProps> = ({
     { id: "universal-builder", label: "Universal Builder", icon: Globe },
     { id: "ui-intelligence", label: "UI Intelligence", icon: Palette },
     { id: "autonomous-product-center", label: "Master Product Center", icon: Sparkles },
+    { id: "deep-product-builder", label: "Deep Implementation", icon: Cpu },
   ];
+
 
 
 

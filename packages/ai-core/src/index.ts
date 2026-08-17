@@ -88,6 +88,8 @@ export * from "./autonomous-product-builder/index.js";
 export * from "./real-product-validation/index.js";
 export * from "./universal-product-builder/index.js";
 export * from "./ui-intelligence/index.js";
+export * from "./deep-product-builder/index.js";
+
 
 
 

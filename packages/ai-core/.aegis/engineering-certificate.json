@@ -1,0 +1,10 @@
+{
+  "certificateId": "cert_master_eng_1786961931774",
+  "issuedAt": "2026-08-17T10:18:51.774Z",
+  "status": "ENGINEERING_CERTIFIED",
+  "totalFleetProjects": 0,
+  "learningAccuracyPercent": 100,
+  "forecastStatus": "LOW",
+  "blockers": [],
+  "summary": "AEGIS MASTER ENGINEERING CERTIFICATE: ISSUED. 0 fleet projects certified with 100% prediction accuracy."
+}

@@ -1,0 +1,77 @@
+{
+  "certificateId": "cert_self_mgmt_1786961931780",
+  "issuedAt": "2026-08-17T10:18:51.780Z",
+  "status": "SELF_MANAGEMENT_CERTIFIED",
+  "productionValidationCertificate": {
+    "certificateId": "cert_prod_val_1786961931778",
+    "issuedAt": "2026-08-17T10:18:51.778Z",
+    "status": "PRODUCTION_VALIDATED",
+    "platformCertificate": {
+      "certificateId": "cert_supreme_platform_1786961931775",
+      "issuedAt": "2026-08-17T10:18:51.775Z",
+      "status": "PLATFORM_CERTIFIED",
+      "governanceGatesPassed": 7,
+      "totalFleetProjects": 0,
+      "learningAccuracyPercent": 100,
+      "tenantIsolationEnforced": true,
+      "workerReliabilityValidated": true,
+      "blockers": [],
+      "summary": "AEGIS SUPREME PLATFORM CERTIFICATE: ISSUED. 7/7 governance layers passed across 0 fleet projects."
+    },
+    "securityCertificate": {
+      "certificateId": "cert_sec_1786961931777",
+      "issuedAt": "2026-08-17T10:18:51.777Z",
+      "status": "SECURITY_CERTIFIED",
+      "dimensionsAudited": 14,
+      "secretIsolationPassed": true,
+      "tenantIsolationPassed": true,
+      "authorizationPassed": true,
+      "blockers": [],
+      "summary": "AEGIS SECURITY CERTIFICATION GATE: PASSED. All 14 security dimensions verified."
+    },
+    "totalCertifiedGates": 8,
+    "blockers": [],
+    "summary": "AEGIS PRODUCTION VALIDATION CERTIFICATE: ISSUED. 8/8 governance layers certified under realistic operational conditions."
+  },
+  "platformSelfHealth": {
+    "overallStatus": "HEALTHY",
+    "timestamp": "2026-08-17T10:18:51.780Z",
+    "subsystems": [
+      {
+        "subsystem": "AI Core & Pipeline",
+        "status": "HEALTHY",
+        "message": "Canonical pipelines active"
+      },
+      {
+        "subsystem": "Control Plane & Job Store",
+        "status": "HEALTHY",
+        "message": "Job state store responsive"
+      },
+      {
+        "subsystem": "Worker Node Manager",
+        "status": "HEALTHY",
+        "message": "Lease allocation operational"
+      },
+      {
+        "subsystem": "Identity & Secret Manager",
+        "status": "HEALTHY",
+        "message": "Tenant & secret boundaries locked"
+      },
+      {
+        "subsystem": "Integrations & Gateways",
+        "status": "HEALTHY",
+        "message": "Repository/CI adapters ready"
+      },
+      {
+        "subsystem": "Governance & Certification",
+        "status": "HEALTHY",
+        "message": "All 8 verification gates operational"
+      }
+    ],
+    "summary": "Platform Self-Health: HEALTHY. 6 subsystems operating nominally."
+  },
+  "policyIntegrityValidated": true,
+  "totalCertifiedGates": 9,
+  "blockers": [],
+  "summary": "AEGIS SELF-MANAGEMENT GATE: CERTIFIED. Platform is autonomously governed, verified, and self-managing across all 9 governance tiers."
+}

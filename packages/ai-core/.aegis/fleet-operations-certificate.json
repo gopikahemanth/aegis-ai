@@ -1,0 +1,17 @@
+{
+  "certificateId": "cert_fleet_1786961931772",
+  "issuedAt": "2026-08-17T10:18:51.772Z",
+  "status": "FLEET_OPERATIONAL",
+  "fleetHealth": {
+    "totalProjects": 0,
+    "healthyProjects": 0,
+    "atRiskProjects": 0,
+    "totalActiveIncidents": 0,
+    "fleetAvailabilityPercent": 0,
+    "timestamp": "2026-08-17T10:18:51.772Z",
+    "projects": []
+  },
+  "totalProjects": 0,
+  "blockers": [],
+  "summary": "AEGIS FLEET OPERATIONS GATE: PASSED. 0 project(s) certified operational."
+}

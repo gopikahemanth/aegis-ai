@@ -1,0 +1,11 @@
+{
+  "certificateId": "cert_sec_1786961931777",
+  "issuedAt": "2026-08-17T10:18:51.777Z",
+  "status": "SECURITY_CERTIFIED",
+  "dimensionsAudited": 14,
+  "secretIsolationPassed": true,
+  "tenantIsolationPassed": true,
+  "authorizationPassed": true,
+  "blockers": [],
+  "summary": "AEGIS SECURITY CERTIFICATION GATE: PASSED. All 14 security dimensions verified."
+}

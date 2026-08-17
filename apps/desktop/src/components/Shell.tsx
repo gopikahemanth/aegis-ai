@@ -37,8 +37,10 @@ import {
   Network,
   Lightbulb,
   HeartHandshake,
-  BookOpen
+  BookOpen,
+  GraduationCap
 } from "lucide-react";
+
 
 
 
@@ -128,7 +130,9 @@ export const Shell: React.FC<ShellProps> = ({
     { id: "institutional-knowledge", label: "Institutional Knowledge", icon: BookOpen },
     { id: "knowledge-synthesis", label: "Knowledge Synthesis", icon: BrainCircuit },
     { id: "knowledge-action", label: "Knowledge Action", icon: Zap },
+    { id: "learning-governance", label: "Learning Governance", icon: GraduationCap },
   ];
+
 
 
 

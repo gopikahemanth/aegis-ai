@@ -44,6 +44,8 @@ import { EnterpriseKnowledgeActionView } from "./components/EnterpriseKnowledgeA
 import { EnterpriseLearningGovernanceView } from "./components/EnterpriseLearningGovernanceView.js";
 import { ProductCompletionView } from "./components/ProductCompletionView.js";
 import { AutonomousProductBuilderView } from "./components/AutonomousProductBuilderView.js";
+import { RealProductValidationView } from "./components/RealProductValidationView.js";
+
 
 
 
@@ -374,8 +376,10 @@ export function App() {
       {currentView === "learning-governance" && <EnterpriseLearningGovernanceView />}
       {currentView === "product-completion" && <ProductCompletionView />}
       {currentView === "autonomous-builder" && <AutonomousProductBuilderView />}
+      {currentView === "real-validation" && <RealProductValidationView />}
 
       {/* Authorization Modal */}
+
 
 
 

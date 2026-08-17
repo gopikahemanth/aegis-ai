@@ -1,0 +1,19 @@
+{
+  "gate": "RealProductValidationGate",
+  "tier": 35,
+  "status": "CERTIFIED",
+  "certificateId": "cert_real_prod_1786970478536",
+  "product": "Gym Management Platform",
+  "requirementsVerified": true,
+  "buildVerified": true,
+  "runtimeVerified": true,
+  "apiVerified": true,
+  "databaseVerified": true,
+  "browserWorkflowsVerified": true,
+  "securityVerified": true,
+  "criticalDefects": 0,
+  "productAccepted": true,
+  "evidenceReference": "ev_bundle_1786970478536",
+  "signature": "sha256_sig_6fpb1d3ril",
+  "certifiedAt": "2026-08-17T12:41:18.536Z"
+}

@@ -12,60 +12,31 @@
     }
   ],
   [
-    "scripts/dev.js",
-    {
-      "path": "scripts/dev.js",
-      "language": "js",
-      "imports": [],
-      "exports": [],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "server/controllers/auth.controller.ts",
-    {
-      "path": "server/controllers/auth.controller.ts",
-      "language": "ts",
-      "imports": [
-        "../lib/prisma"
-      ],
-      "exports": [
-        "register",
-        "login"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
     "server/controllers/scan.controller.ts",
     {
       "path": "server/controllers/scan.controller.ts",
       "language": "ts",
       "imports": [
         "../lib/prisma",
-        "../services/pdf.service",
-        "../services/keyword.service",
-        "../middleware/upload.middleware"
+        "../services/keyword.service"
       ],
       "exports": [
-        "uploadResume",
-        "analyzeResume"
+        "default"
       ],
       "referencedFiles": []
     }
   ],
   [
-    "server/index.ts",
+    "server/controllers/task.controller.ts",
     {
-      "path": "server/index.ts",
+      "path": "server/controllers/task.controller.ts",
       "language": "ts",
       "imports": [
-        "./routes/auth.routes",
-        "./routes/scan.routes",
-        "./middleware/errorHandler"
+        "../lib/prisma"
       ],
       "exports": [
-        "prisma"
+        "getTasks",
+        "createTask"
       ],
       "referencedFiles": []
     }
@@ -80,18 +51,6 @@
         "prisma",
         "db",
         "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "server/middleware/auth.middleware.ts",
-    {
-      "path": "server/middleware/auth.middleware.ts",
-      "language": "ts",
-      "imports": [],
-      "exports": [
-        "authMiddleware"
       ],
       "referencedFiles": []
     }
@@ -123,29 +82,16 @@
     }
   ],
   [
-    "server/routes/auth.routes.ts",
-    {
-      "path": "server/routes/auth.routes.ts",
-      "language": "ts",
-      "imports": [
-        "../lib/prisma"
-      ],
-      "exports": [
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
     "server/routes/scan.routes.ts",
     {
       "path": "server/routes/scan.routes.ts",
       "language": "ts",
       "imports": [
         "../controllers/scan.controller",
-        "../middleware/auth.middleware"
+        "../middleware/upload.middleware"
       ],
       "exports": [
+        "router",
         "default"
       ],
       "referencedFiles": []
@@ -158,14 +104,7 @@
       "language": "ts",
       "imports": [],
       "exports": [
-        "analyzeKeywords",
-        "analyzeResume",
-        "extractKeywords",
-        "getAll",
-        "get",
-        "create",
-        "update",
-        "remove",
+        "keyword_service",
         "default"
       ],
       "referencedFiles": []
@@ -178,12 +117,12 @@
       "language": "ts",
       "imports": [],
       "exports": [
-        "extractTextFromPdf",
         "getAll",
         "get",
         "create",
         "update",
-        "remove"
+        "remove",
+        "default"
       ],
       "referencedFiles": []
     }
@@ -197,6 +136,7 @@
         "./routes"
       ],
       "exports": [
+        "App",
         "default"
       ],
       "referencedFiles": []
@@ -328,55 +268,13 @@
     }
   ],
   [
-    "src/features/analysis-engine/hooks/useAnalysis.ts",
-    {
-      "path": "src/features/analysis-engine/hooks/useAnalysis.ts",
-      "language": "ts",
-      "imports": [],
-      "exports": [
-        "useAnalysis",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/analyzer/AnalyzePage.tsx",
-    {
-      "path": "src/features/analyzer/AnalyzePage.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "AnalyzePage",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
     "src/features/auth/LoginPage.tsx",
     {
       "path": "src/features/auth/LoginPage.tsx",
       "language": "tsx",
-      "imports": [
-        "../../services/api"
-      ],
-      "exports": [
-        "LoginPage",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/dashboard/DashboardPage.tsx",
-    {
-      "path": "src/features/dashboard/DashboardPage.tsx",
-      "language": "tsx",
       "imports": [],
       "exports": [
-        "DashboardPage",
-        "Dashboard",
+        "LoginPage",
         "default"
       ],
       "referencedFiles": []
@@ -390,19 +288,6 @@
       "imports": [],
       "exports": [
         "useDashboardData",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/features/history/HistoryPage.tsx",
-    {
-      "path": "src/features/history/HistoryPage.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "HistoryPage",
         "default"
       ],
       "referencedFiles": []
@@ -428,13 +313,29 @@
     }
   ],
   [
-    "src/features/rules/RulesPage.tsx",
+    "src/features/kanban/components/Board.tsx",
     {
-      "path": "src/features/rules/RulesPage.tsx",
+      "path": "src/features/kanban/components/Board.tsx",
+      "language": "tsx",
+      "imports": [
+        "@/services/store",
+        "./Column"
+      ],
+      "exports": [
+        "Board",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/kanban/components/Column.tsx",
+    {
+      "path": "src/features/kanban/components/Column.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "RulesPage",
+        "Column",
         "default"
       ],
       "referencedFiles": []
@@ -474,13 +375,7 @@
     {
       "path": "src/routes.tsx",
       "language": "tsx",
-      "imports": [
-        "./features/dashboard/DashboardPage",
-        "./features/analyzer/AnalyzePage",
-        "./features/history/HistoryPage",
-        "./features/rules/RulesPage",
-        "./features/auth/LoginPage"
-      ],
+      "imports": [],
       "exports": [
         "AppRoutes",
         "routes",
@@ -503,8 +398,6 @@
         "api",
         "resumeApi",
         "scanApi",
-        "authApi",
-        "loginUser",
         "getAll",
         "get",
         "create",
@@ -535,6 +428,24 @@
     }
   ],
   [
+    "src/services/store.tsx",
+    {
+      "path": "src/services/store.tsx",
+      "language": "tsx",
+      "imports": [],
+      "exports": [
+        "store",
+        "getAll",
+        "get",
+        "create",
+        "update",
+        "remove",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
     "src/shared/components/Card.tsx",
     {
       "path": "src/shared/components/Card.tsx",
@@ -542,6 +453,7 @@
       "imports": [],
       "exports": [
         "Card",
+        "GlassCard",
         "default"
       ],
       "referencedFiles": []
@@ -567,20 +479,6 @@
       "imports": [],
       "exports": [
         "Navbar",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/shared/components/PdfExportButton.tsx",
-    {
-      "path": "src/shared/components/PdfExportButton.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "PdfExportButton",
-        "exportPDFReport",
         "default"
       ],
       "referencedFiles": []

@@ -5,5 +5,4 @@ export const GlassCard: React.FC<any> = ({ children, className = '', ...props })
     {children}
   </div>
 );
-
 export default GlassCard;

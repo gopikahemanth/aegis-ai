@@ -1,19 +1,23 @@
-import React from 'react';
+import React from "react";
 
-interface CardProps {
-  [key: string]: any;
-  scans?: any;
-  history?: any;
-  data?: any;
+export interface CardProps {
   children?: React.ReactNode;
   className?: string;
+  title?: string;
+  value?: string | number;
+  [key: string]: any;
 }
 
-export const Card: React.FC<any> = ({ children, className = '' }) => (
-  <div className={`bg-slate-900 border border-slate-800 rounded-lg p-6 ${className}`}>
-    {children}
-  </div>
-);
-export default Card;
+export function Card(props: CardProps) {
+  const { children, className = "", title, value, ...rest } = props || {};
+  return (
+    <div className={`bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur ${className}`} {...rest}>
+      {title && <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{title}</h3>}
+      {value && <p className="text-2xl font-bold text-slate-100 mt-1">{value}</p>}
+      {children}
+    </div>
+  );
+}
 
-export type { CardProps };
+export const GlassCard = Card;
+export default Card;

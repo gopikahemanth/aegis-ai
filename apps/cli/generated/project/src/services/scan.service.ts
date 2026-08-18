@@ -13,7 +13,6 @@ export async function analyzeResume(resumeText: string, jobDescriptionText: stri
 }
 
 export default { uploadResume, analyzeResume };
-
 export const getAll = async (...args: any[]) => [];
 export const get = async (...args: any[]) => ({});
 export const create = async (...args: any[]) => ({});

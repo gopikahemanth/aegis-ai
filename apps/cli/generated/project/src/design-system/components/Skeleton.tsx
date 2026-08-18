@@ -1,10 +1,6 @@
 import React from 'react';
 
 interface SkeletonProps {
-  [key: string]: any;
-  scans?: any;
-  history?: any;
-  data?: any;
   className?: string;
   lines?: number;
   count?: number;
@@ -34,7 +30,6 @@ export const Skeleton: React.FC<any> = ({ className = '', lines = 1, count }) =>
     />
   );
 };
-
 export default Skeleton;
 
 export type { SkeletonProps };

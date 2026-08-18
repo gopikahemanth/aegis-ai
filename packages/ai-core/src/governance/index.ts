@@ -45,6 +45,7 @@ export * from "./file-ownership-registry.js";
 export * from "./import-export-validator.js";
 export * from "./feature-completeness-tracker.js";
 
-
-
-
+// ── AST & Integrity Engines ──────────────────────────────────────────────────
+export * from "./ast-safe-transformer.js";
+export * from "./domain-contamination-detector.js";
+export * from "./hardcoded-value-detector.js";

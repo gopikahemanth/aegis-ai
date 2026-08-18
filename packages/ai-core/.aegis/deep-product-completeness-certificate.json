@@ -2,24 +2,24 @@
   "gate": "DeepProductCompletenessGate",
   "tier": 38,
   "status": "ACCEPTED",
-  "certificateId": "cert_deep_complete_1786977924952",
-  "product": "AegisGymPro",
+  "certificateId": "cert_deep_complete_1787039410008",
+  "product": "AegisPlatform",
   "requirements": {
-    "total": 4,
-    "complete": 4,
+    "total": 24,
+    "complete": 24,
     "criticalIncomplete": 0
   },
   "features": {
-    "total": 8,
-    "complete": 8,
+    "total": 48,
+    "complete": 48,
     "partial": 0,
     "missing": 0
   },
   "workflows": {
-    "required": 1,
-    "verified": 1
+    "required": 18,
+    "verified": 18
   },
   "criticalDefects": 0,
-  "signature": "sha256_deep_cert_06thyvwal8",
-  "certifiedAt": "2026-08-17T14:45:24.952Z"
+  "signature": "sha256_deep_cert_a235b93gmx",
+  "certifiedAt": "2026-08-18T07:50:10.008Z"
 }

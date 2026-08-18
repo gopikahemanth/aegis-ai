@@ -1,0 +1,1532 @@
+﻿
+ÔòöÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòù
+Ôòæ                                      Ôòæ
+Ôòæ           ­ƒÜÇ  AEGIS AI               Ôòæ
+Ôòæ      Autonomous Software Engineer    Ôòæ
+Ôòæ                                      Ôòæ
+ÔòÜÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòØ
+
+Initializing FailoverProvider with active chain: gemini -> gemini-2 -> gemini-3 -> openrouter -> cerebras -> groq -> ollama
+Generating project...
+Analyzing request...
+
+=== Requirements ===
+[Inference] Expanding prompt into full feature specification...
+[FailoverProvider] Proactively routed agent "architect" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+node : (node:22240) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland 
+alternative instead.
+At line:3 char:1
++ node apps/cli/dist/index.js create $prompt 2>&1 | Tee-Object -FilePat ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:22240) [D...native instead.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[Inference] Inferred 6 features: Role-Based Authentication, Member & Trainer Management, Payment & Subscription Engine, Attendance Tracking, Analytics & Reporting, Notification System
+[Inference] Inferred libraries: next-auth, bcryptjs, jsonwebtoken, prisma, zod, react-hook-form, stripe, axios, react-qr-code, date-fns, recharts, tanstack-table, nodemailer, resend, react-email
+[FailoverProvider] Proactively routed agent "architect" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[FailoverProvider] Proactively routed agent "architect" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[ArchitectureResolver] ­ƒöÆ Locked Architecture Contract (NEXTJS_FULLSTACK):
+  Application: FULLSTACK_WEB_APPLICATION
+  Frontend:    Next.js 14 (App Router) [inferred]
+  Backend:     Express [default]
+  Database:    PostgreSQL [default]
+  ORM:         Prisma [default]
+  Auth:        JWT
+  Hashes:      Arch[e997d21e8642] Tech[bf85dd38155d] Dep[65c882be5af0]
+[ArchitectureContractManager] ­ƒöÆ Reusing existing locked contract (DB: PostgreSQL)
+[DEPENDENCY-CONTRACT] ­ƒÜ½ Rejected absolutely forbidden library "next-auth" (canonical stack violation).
+[TechnologyConstraint] Filtered 1 forbidden library(ies): next-auth
+[ContractGate] ÔÜá´©Å Unusual stack: Next.js frontend with Express backend. Ensure this is intentional.
+
+=== CONTRACT VERIFIED ===
+Frontend:          Next.js 14 (App Router) [inferred]
+Backend:           Express [default]
+Database:          PostgreSQL [default]
+ORM:               Prisma [default]
+Language:          TypeScript
+Auth:              JWT
+Models:            User, Membership, Gym, Attendance, Invoice, Notification
+Features:          auth, membership-management, billing +4 more
+Architecture Hash: 7493f4b6a1d2
+Status:            VALID
+=========================
+
+[ContractNormalizer] ÔØî CONTRACT_CONFLICT detected:
+  Field:    backend
+  Expected: Express [default]
+  Actual:   Next.js API Routes / Node.js [llm_inference]
+  ÔåÆ Keeping locked contract value. Specification drift will be corrected.
+[ContractNormalizer] ÔØî CONTRACT_CONFLICT detected:
+  Field:    database
+  Expected: PostgreSQL [default]
+  Actual:   PostgreSQL with Prisma ORM [llm_inference]
+  ÔåÆ Keeping locked contract value. Specification drift will be corrected.
+[ContractNormalizer] ­ƒöÆ Applied 2 contract correction(s). Specification normalized to locked contract.
+
+=== DataModeling ===
+[DataArchitecture] Running Data Architecture Agent in project builder...
+[DataArchitectureAgent] Planning real data architectures and schemas...
+[FailoverProvider] Proactively routed agent "architect" (complexity: 8) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[FailoverProvider] Provider gemini failed: {"error":{"code":503,"message":"This model is currently experiencing high 
+demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}
+[FailoverProvider] Proactively routed agent "architect" (complexity: 8) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 2/3)
+[ApiContractRegistry] ­ƒöÆ Locked 3 API endpoint contracts as single source of truth for frontend & backend.
+[Coordinator] Enlisted marketplace agent specialist [Localization Lead] via extension: Mock Localization Extension
+
+[Coordinator] Coordinating Dynamic AI Specialist Team for this project:
+ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
+Ôöé (index) Ôöé Role                Ôöé Description                                                                                                       Ôöé
+Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
+Ôöé 0       Ôöé 'CEO Agent'         Ôöé 'Supervises overall progress, milestones alignment, and final review acceptance'                                  Ôöé
+Ôöé 1       Ôöé 'Project Manager'   Ôöé 'Maintains the planning DAG execution tiers, scheduler mappings, and self-healing retries'                        Ôöé
+Ôöé 2       Ôöé 'Architect'         Ôöé 'Decides naming conventions, directory maps, framework templates, and style frameworks'                           Ôöé
+Ôöé 3       Ôöé 'Reviewer'          Ôöé 'Validates code quality, lint criteria, styling layouts, and patch accuracy'                                      Ôöé
+Ôöé 4       Ôöé 'DevOps Lead'       Ôöé 'Builds Docker settings, Docker Compose service boundaries, and CI/CD actions'                                    Ôöé
+Ôöé 5       Ôöé 'Frontend Lead'     Ôöé 'Implements components, hooks, styles, navigation, assets, and React context states'                              Ôöé
+Ôöé 6       Ôöé 'Backend Lead'      Ôöé 'Implements route endpoints, JSON payloads schema checkers, servers, and controllers'                             Ôöé
+Ôöé 7       Ôöé 'Database Lead'     Ôöé 'Orchestrates schema designs, configuration connections, and persistence managers for PostgreSQL with Prisma ORM' Ôöé
+Ôöé 8       Ôöé 'Localization Lead' Ôöé 'Translates structural UI copies, generates i18n configurations, and validates cultural layouts'                  Ôöé
+ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
+
+=== Planning ===
+[FailoverProvider] Proactively routed agent "planner" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+(node:22240) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of 
+file:///C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/.aegis/plugins/specialist-plugin.js is not specified and it 
+doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\package.json.
+========== RAW RESPONSE ==========
+[
+  {
+    "id": 1,
+    "title": "Prisma Schema Design",
+    "description": "Define PostgreSQL schema for GymSync including Gyms, Members, Memberships, Attendance, Invoices, and Notifications.",
+    "completed": false,
+    "stage": "DataModeling",
+    "priority": 1,
+    "dependencies": [],
+    "estimatedComplexity": 3
+  },
+  {
+    "id": 2,
+    "title": "Auth & Backend API Implementation",
+    "description": "Implement NextAuth.js JWT authentication and secure Next.js API route handlers for business logic.",
+    "completed": false,
+    "stage": "Backend",
+    "priority": 2,
+    "dependencies": [1],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 3,
+    "title": "Stripe & Notification Services",
+    "description": "Integrate Stripe for billing workflows and Resend for automated member notifications.",
+    "completed": false,
+    "stage": "Backend",
+    "priority": 3,
+    "dependencies": [2],
+    "estimatedComplexity": 4
+  },
+  {
+    "id": 4,
+    "title": "Core Frontend Application",
+    "description": "Develop Next.js 14 UI components for dashboards, member management, and QR-based attendance using Shadcn/UI.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 4,
+    "dependencies": [2],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 5,
+    "title": "Analytics and Reporting Dashboard",
+    "description": "Implement Recharts visualization for revenue and attendance metrics based on aggregated backend data.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 5,
+    "dependencies": [4],
+    "estimatedComplexity": 3
+  }
+]
+========== EXTRACTED JSON ==========
+[
+  {
+    "id": 1,
+    "title": "Prisma Schema Design",
+    "description": "Define PostgreSQL schema for GymSync including Gyms, Members, Memberships, Attendance, Invoices, and Notifications.",
+    "completed": false,
+    "stage": "DataModeling",
+    "priority": 1,
+    "dependencies": [],
+    "estimatedComplexity": 3
+  },
+  {
+    "id": 2,
+    "title": "Auth & Backend API Implementation",
+    "description": "Implement NextAuth.js JWT authentication and secure Next.js API route handlers for business logic.",
+    "completed": false,
+    "stage": "Backend",
+    "priority": 2,
+    "dependencies": [1],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 3,
+    "title": "Stripe & Notification Services",
+    "description": "Integrate Stripe for billing workflows and Resend for automated member notifications.",
+    "completed": false,
+    "stage": "Backend",
+    "priority": 3,
+    "dependencies": [2],
+    "estimatedComplexity": 4
+  },
+  {
+    "id": 4,
+    "title": "Core Frontend Application",
+    "description": "Develop Next.js 14 UI components for dashboards, member management, and QR-based attendance using Shadcn/UI.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 4,
+    "dependencies": [2],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 5,
+    "title": "Analytics and Reporting Dashboard",
+    "description": "Implement Recharts visualization for revenue and attendance metrics based on aggregated backend data.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 5,
+    "dependencies": [4],
+    "estimatedComplexity": 3
+  }
+]
+===================================
+[TaskPlanner] DAG dependency validation check successful.
+Implementation Tasks:
+ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
+Ôöé (index) Ôöé id Ôöé title                               Ôöé description                                                                                                                           Ôöé completed Ôöé stage          Ôöé priority Ôöé dependencies Ôöé estimatedComplexity Ôöé contractVersion Ôöé architectureHash Ôöé allowedTechnologies                                                      Ôöé
+Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
+Ôöé 0       Ôöé 1  Ôöé 'Prisma Schema Design'              Ôöé 'Define PostgreSQL with Prisma ORM schema for GymSync including Gyms, Members, Memberships, Attendance, Invoices, and Notifications.' Ôöé false     Ôöé 'DataModeling' Ôöé 1        Ôöé []           Ôöé 3                   Ôöé 1               Ôöé 'd47ee52a7c11'   Ôöé [ 'Next.js 14 (App Router)', 'Express', 'PostgreSQL', ... 2 more items ] Ôöé
+Ôöé 1       Ôöé 2  Ôöé 'Auth & Backend API Implementation' Ôöé 'Implement Express JWT Auth.js JWT authentication and secure Next.js 14 (App Router) API route handlers for business logic.'          Ôöé false     Ôöé 'Backend'      Ôöé 2        Ôöé [ 1 ]        Ôöé 5                   Ôöé 1               Ôöé 'd47ee52a7c11'   Ôöé [ 'Next.js 14 (App Router)', 'Express', 'PostgreSQL', ... 2 more items ] Ôöé
+Ôöé 2       Ôöé 3  Ôöé 'Stripe & Notification Services'    Ôöé 'Integrate Stripe for billing workflows and Resend for automated member notifications.'                                               Ôöé false     Ôöé 'Backend'      Ôöé 3        Ôöé [ 2 ]        Ôöé 4                   Ôöé 1               Ôöé 'd47ee52a7c11'   Ôöé [ 'Next.js 14 (App Router)', 'Express', 'PostgreSQL', ... 2 more items ] Ôöé
+Ôöé 3       Ôöé 4  Ôöé 'Core Frontend Application'         Ôöé 'Develop Next.js 14 (App Router) UI components for dashboards, member management, and QR-based attendance using Shadcn/UI.'           Ôöé false     Ôöé 'Frontend'     Ôöé 4        Ôöé [ 2 ]        Ôöé 5                   Ôöé 1               Ôöé 'd47ee52a7c11'   Ôöé [ 'Next.js 14 (App Router)', 'Express', 'PostgreSQL', ... 2 more items ] Ôöé
+Ôöé 4       Ôöé 5  Ôöé 'Analytics and Reporting Dashboard' Ôöé 'Implement Recharts visualization for revenue and attendance metrics based on aggregated backend data.'                               Ôöé false     Ôöé 'Frontend'     Ôöé 5        Ôöé [ 4 ]        Ôöé 3                   Ôöé 1               Ôöé 'd47ee52a7c11'   Ôöé [ 'Next.js 14 (App Router)', 'Express', 'PostgreSQL', ... 2 more items ] Ôöé
+ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
+
+========== EXECUTION ==========
+
+ÔûÂ Prisma Schema Design
+Executing: Prisma Schema Design
+[Execution] Running stage "DataModeling" for task: "Prisma Schema Design"
+
+[Implementation] Prisma Schema Design
+Ô£ô Prisma Schema Design
+
+ÔûÂ Auth & Backend API Implementation
+Executing: Auth & Backend API Implementation
+[Execution] Running stage "Backend" for task: "Auth & Backend API Implementation"
+
+[Implementation] Auth & Backend API Implementation
+Ô£ô Auth & Backend API Implementation
+
+ÔûÂ Stripe & Notification Services
+Executing: Stripe & Notification Services
+[Execution] Running stage "Backend" for task: "Stripe & Notification Services"
+
+[Implementation] Stripe & Notification Services
+Ô£ô Stripe & Notification Services
+
+ÔûÂ Core Frontend Application
+Executing: Core Frontend Application
+[Execution] Running stage "Frontend" for task: "Core Frontend Application"
+
+[Implementation] Core Frontend Application
+Ô£ô Core Frontend Application
+
+ÔûÂ Analytics and Reporting Dashboard
+Executing: Analytics and Reporting Dashboard
+[Execution] Running stage "Frontend" for task: "Analytics and Reporting Dashboard"
+
+[Implementation] Analytics and Reporting Dashboard
+Ô£ô Analytics and Reporting Dashboard
+
+========== COMPLETE ==========
+
+ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
+Ôöé (index) Ôöé Task Ôöé Status    Ôöé Message                     Ôöé
+Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
+Ôöé 0       Ôöé 1    Ôöé 'SUCCESS' Ôöé 'Implementation completed.' Ôöé
+Ôöé 1       Ôöé 2    Ôöé 'SUCCESS' Ôöé 'Implementation completed.' Ôöé
+Ôöé 2       Ôöé 3    Ôöé 'SUCCESS' Ôöé 'Implementation completed.' Ôöé
+Ôöé 3       Ôöé 4    Ôöé 'SUCCESS' Ôöé 'Implementation completed.' Ôöé
+Ôöé 4       Ôöé 5    Ôöé 'SUCCESS' Ôöé 'Implementation completed.' Ôöé
+ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
+
+=== Architecture ===
+AI Specification:
+{
+  name: 'GymSync',
+  type: 'saas',
+  frontend: 'Next.js 14 (App Router)',
+  backend: 'Next.js API Routes / Node.js',
+  database: 'PostgreSQL with Prisma ORM',
+  language: 'TypeScript',
+  styling: 'TailwindCSS + Shadcn/UI',
+  packageManager: 'pnpm',
+  features: [
+    'auth',
+    'membership-management',
+    'billing',
+    'attendance',
+    'reporting',
+    'location-management',
+    'notifications'
+  ],
+  inferredLibraries: [
+    'next-auth',
+    'prisma',
+    '@prisma/client',
+    'stripe',
+    'qrcode.react',
+    'react-qr-reader',
+    'recharts',
+    'zod',
+    'react-hook-form',
+    'tanstack/react-query',
+    'date-fns',
+    'resend',
+    'clsx',
+    'tailwind-merge'
+  ],
+  userFlows: [
+    'member-check-in',
+    'process-membership-renewal',
+    'generate-revenue-report',
+    'manage-gym-locations',
+    'bulk-send-notifications'
+  ],
+  dataModels: [
+    'User',
+    'Membership',
+    'Gym',
+    'Attendance',
+    'Invoice',
+    'Notification'
+  ],
+  featureDescriptions: {
+    auth: 'Role-based access control for Admins, Trainers, and Members using NextAuth.',
+    'membership-management': 'Handles CRUD operations for member status, plan selection, and lifecycle transitions.',
+    billing: 'Automated invoice generation and payment processing integration using Stripe.',
+    attendance: 'QR-code generation for members and scanner interface for tracking check-ins.',
+    reporting: 'Data visualization dashboard aggregating membership counts, revenue, and attendance metrics.',
+    'location-management': 'Multi-tenant architecture allowing configuration and management of multiple gym branches.',
+    notifications: 'Automated email and in-app triggers for payment reminders and class updates.'
+  },
+  auth: 'NextAuth.js (JWT + OAuth)',
+  deployment: 'Vercel + Supabase',
+  domainVocabulary: {
+    entityName: 'Member',
+    entityPlural: 'Members',
+    primaryMetrics: [
+      'Monthly Recurring Revenue',
+      'Active Members',
+      'Daily Attendance',
+      'Retention Rate'
+    ],
+    actionVerbs: [
+      'Check In',
+      'Process Payment',
+      'Upgrade Plan',
+      'Suspend Membership'
+    ],
+    domainPrefix: 'gym'
+  }
+}
+Framework: next
+[ExecutionEngine] generateProject result: framework=next, tasks=5
+[ExecutionEngine] Ô£ô Backed up architecture-contract.json before template creation.
+Creating project template...
+[ExecutionEngine] Using framework template: "next" (from "next")
+[PluginManager] Ô£ô Loaded extension: Mock Localization Extension
+[ExecutionEngine] Ô£ô Restored architecture-contract.json after template creation.
+Generating application...
+[Memory] ­ƒº╣ New prompt detected ÔÇö wiping ALL project-scoped .aegis state...
+[Memory] Cleared stale artifact: architecture-contract.json
+[Memory] Cleared stale artifact: data-architecture.json
+[Memory] Cleared stale artifact: architecture.json
+[Inference] Expanding prompt into full feature specification...
+[FailoverProvider] Proactively routed agent "architect" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[Inference] Ô£ô Inferred 5 features: Role-Based Authentication, Member & Trainer Management, Payment & Membership Engine, Attendance Tracking, Reporting & Analytics
+[Research] Running AI Research Assistant to retrieve optimal coding patterns...
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[Memory] Loaded existing project memory checkpoints for "project".
+[GitEngine] Initializing fresh git repository...
+[GitEngine] Creating and switching to branch 'feature/build-a-complete-production-re'...
+
+=== Requirements ===
+[FailoverProvider] Proactively routed agent "architect" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[FailoverProvider] Proactively routed agent "architect" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[ArchitectureResolver] ­ƒöÆ Locked Architecture Contract (NEXTJS_FULLSTACK):
+  Application: FULLSTACK_WEB_APPLICATION
+  Frontend:    Next.js 14 (App Router) [inferred]
+  Backend:     Express [default]
+  Database:    PostgreSQL [default]
+  ORM:         Prisma [default]
+  Auth:        JWT
+  Hashes:      Arch[e997d21e8642] Tech[435825afb3fc] Dep[65c882be5af0]
+[ArchitectureContractManager] ­ƒöÆ Reusing existing locked contract (DB: PostgreSQL)
+
+=== CONTRACT VERIFIED ===
+Frontend:          Next.js 14 (App Router) [inferred]
+Backend:           Express [default]
+Database:          PostgreSQL [default]
+ORM:               Prisma [default]
+Language:          TypeScript
+Auth:              JWT
+Models:            User, Membership, Attendance, Payment, WorkoutPlan
+Features:          auth, members, trainers +3 more
+Architecture Hash: 7493f4b6a1d2
+Status:            VALID
+=========================
+
+[ContractNormalizer] ­ƒöÆ Applied 1 contract correction(s). Specification normalized to locked contract.
+
+[CANONICAL ARCHITECTURE]
+  Frontend:              Next.js 14 (App Router)
+  Backend:               Express
+  Database:              PostgreSQL
+  ORM:                   Prisma
+  Auth:                  JWT
+  Language:              TypeScript
+  Models:                [User, Membership, Attendance, Payment, WorkoutPlan]
+  Routes:                [member-sign-up-and-subscription, trainer-manage-member-profiles, admin-revenue-reporting, member-attendance-check-in, automated-payment-reconciliation]
+  Forbidden Technologies: [Next.js API Routes, MongoDB, Mongoose, Drizzle, Drizzle ORM]
+  Architecture Hash:     6373ebf9d690
+
+[DEPENDENCY-CONTRACT] ­ƒÜ½ Rejected absolutely forbidden library "next-auth" (canonical stack violation).
+[ContractGate] ÔÜá´©Å Unusual stack: Next.js frontend with Express backend. Ensure this is intentional.
+[ContractNormalizer] ÔØî CONTRACT_CONFLICT detected:
+  Field:    backend
+  Expected: Express [default]
+  Actual:   Next.js API Routes [llm_inference]
+  ÔåÆ Keeping locked contract value. Specification drift will be corrected.
+[CanonicalManifest] ­ƒôä Generated canonical project manifest with 54 file entries.
+[DesignSystem] Generating design tokens and base components...
+Framework: html
+Files from AI:
+- src/design-system/tokens.ts
+- src/design-system/components/Button.tsx
+- src/design-system/components/Skeleton.tsx
+- src/design-system/components/EmptyState.tsx
+- src/design-system/components/GlassCard.tsx
+- src/design-system/index.ts
+[DesignSystem] Ô£ô Wrote 6 design system files.
+
+=== DataModeling ===
+[DataArchitecture] Running Data Architecture Agent...
+[DataArchitectureAgent] Planning real data architectures and schemas...
+[FailoverProvider] Proactively routed agent "architect" (complexity: 8) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[PRISMA-SCHEMA-WRITE] caller=orchestrator.ts models=User,Repository,Scan,Vulnerability,Remediation,AnalysisResult hash=canonical_v1
+[DATA-CONTRACT] Ô£ô Schema persistence verified on disk. Models present: User, Repository, Scan, Vulnerability, Remediation, AnalysisResult.
+[DataArchitecture] Ô£ô Saved data architecture definition.
+[Coordinator] Enlisted marketplace agent specialist [Localization Lead] via extension: Mock Localization Extension
+
+[Coordinator] Coordinating Dynamic AI Specialist Team for this project:
+ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
+Ôöé (index) Ôöé Role                Ôöé Description                                                                                       Ôöé
+Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
+Ôöé 0       Ôöé 'CEO Agent'         Ôöé 'Supervises overall progress, milestones alignment, and final review acceptance'                  Ôöé
+Ôöé 1       Ôöé 'Project Manager'   Ôöé 'Maintains the planning DAG execution tiers, scheduler mappings, and self-healing retries'        Ôöé
+Ôöé 2       Ôöé 'Architect'         Ôöé 'Decides naming conventions, directory maps, framework templates, and style frameworks'           Ôöé
+Ôöé 3       Ôöé 'Reviewer'          Ôöé 'Validates code quality, lint criteria, styling layouts, and patch accuracy'                      Ôöé
+Ôöé 4       Ôöé 'DevOps Lead'       Ôöé 'Builds Docker settings, Docker Compose service boundaries, and CI/CD actions'                    Ôöé
+Ôöé 5       Ôöé 'Frontend Lead'     Ôöé 'Implements components, hooks, styles, navigation, assets, and React context states'              Ôöé
+Ôöé 6       Ôöé 'Backend Lead'      Ôöé 'Implements route endpoints, JSON payloads schema checkers, servers, and controllers'             Ôöé
+Ôöé 7       Ôöé 'Database Lead'     Ôöé 'Orchestrates schema designs, configuration connections, and persistence managers for PostgreSQL' Ôöé
+Ôöé 8       Ôöé 'Localization Lead' Ôöé 'Translates structural UI copies, generates i18n configurations, and validates cultural layouts'  Ôöé
+ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
+[FailoverProvider] Proactively routed agent "planner" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+========== RAW RESPONSE ==========
+[
+  {
+    "id": 1,
+    "title": "Initialize Project & Prisma Schema",
+    "description": "Configure monorepo, setup PostgreSQL connection via Prisma, and define User, Membership, Attendance, Payment, and WorkoutPlan schemas.",
+    "completed": false,
+    "stage": "Database",
+    "priority": 1,
+    "dependencies": [],
+    "estimatedComplexity": 3
+  },
+  {
+    "id": 2,
+    "title": "Develop Express Backend & Auth",
+    "description": "Implement Express server, JWT authentication middleware, and robust API endpoints for member and trainer operations.",
+    "completed": false,
+    "stage": "Backend",
+    "priority": 2,
+    "dependencies": [1],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 3,
+    "title": "Implement Core API Business Logic",
+    "description": "Develop controllers for Stripe billing integration, attendance logging, and complex analytics data aggregation.",
+    "completed": false,
+    "stage": "ApiDesign",
+    "priority": 3,
+    "dependencies": [2],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 4,
+    "title": "Build Next.js Frontend UI",
+    "description": "Develop App Router pages, Zod-validated forms, and state management using React Query for all core gym management flows.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 4,
+    "dependencies": [3],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 5,
+    "title": "Integration, Validation & Audit",
+    "description": "Connect frontend to backend, verify API contracts, perform end-to-end tests, and execute final system audit.",
+    "completed": false,
+    "stage": "Validation",
+    "priority": 5,
+    "dependencies": [4],
+    "estimatedComplexity": 4
+  }
+]
+========== EXTRACTED JSON ==========
+[
+  {
+    "id": 1,
+    "title": "Initialize Project & Prisma Schema",
+    "description": "Configure monorepo, setup PostgreSQL connection via Prisma, and define User, Membership, Attendance, Payment, and WorkoutPlan schemas.",
+    "completed": false,
+    "stage": "Database",
+    "priority": 1,
+    "dependencies": [],
+    "estimatedComplexity": 3
+  },
+  {
+    "id": 2,
+    "title": "Develop Express Backend & Auth",
+    "description": "Implement Express server, JWT authentication middleware, and robust API endpoints for member and trainer operations.",
+    "completed": false,
+    "stage": "Backend",
+    "priority": 2,
+    "dependencies": [1],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 3,
+    "title": "Implement Core API Business Logic",
+    "description": "Develop controllers for Stripe billing integration, attendance logging, and complex analytics data aggregation.",
+    "completed": false,
+    "stage": "ApiDesign",
+    "priority": 3,
+    "dependencies": [2],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 4,
+    "title": "Build Next.js Frontend UI",
+    "description": "Develop App Router pages, Zod-validated forms, and state management using React Query for all core gym management flows.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 4,
+    "dependencies": [3],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 5,
+    "title": "Integration, Validation & Audit",
+    "description": "Connect frontend to backend, verify API contracts, perform end-to-end tests, and execute final system audit.",
+    "completed": false,
+    "stage": "Validation",
+    "priority": 5,
+    "dependencies": [4],
+    "estimatedComplexity": 4
+  }
+]
+===================================
+[TaskPlanner] DAG dependency validation check successful.
+[MANIFEST-COMPLETENESS] Required modules: 42, Registered modules: 54, Missing registrations: 0, Unplanned modules: 0, Status: VALID
+[CANONICAL-IMPORT-RESOLUTION] importer=server/index.ts requested=server/routes/scan.routes resolved=server/routes/scan.routes.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=server/index.ts requested=server/routes/auth.routes resolved=server/routes/auth.routes.ts
+[EXTERNAL-DEPENDENCY] package=@prisma/client importer=server/lib/prisma.ts status=VALID
+[CANONICAL-IMPORT-RESOLUTION] importer=server/db/index.ts requested=server/lib/prisma resolved=server/lib/prisma.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=server/routes/scan.routes.ts requested=server/controllers/scan.controller resolved=server/controllers/scan.controller.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=server/routes/scan.routes.ts requested=server/middleware/auth.middleware resolved=server/middleware/auth.middleware.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=server/routes/scan.routes.ts requested=server/middleware/upload.middleware resolved=server/middleware/upload.middleware.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=server/routes/auth.routes.ts requested=server/controllers/auth.controller resolved=server/controllers/auth.controller.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=server/controllers/scan.controller.ts requested=server/services/pdf.service resolved=server/services/pdf.service.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=server/controllers/scan.controller.ts requested=server/services/keyword.service resolved=server/services/keyword.service.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=server/controllers/scan.controller.ts requested=server/lib/prisma resolved=server/lib/prisma.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=server/controllers/scan.controller.ts requested=server/middleware/upload.middleware resolved=server/middleware/upload.middleware.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=server/controllers/auth.controller.ts requested=server/lib/prisma resolved=server/lib/prisma.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=server/middleware/auth.middleware.ts requested=server/lib/prisma resolved=server/lib/prisma.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/main.tsx requested=src/App resolved=src/App.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/App.tsx requested=src/routes resolved=src/routes.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/routes.tsx requested=src/features/analyzer/AnalyzePage resolved=src/features/analyzer/AnalyzePage.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/routes.tsx requested=src/features/dashboard/DashboardPage resolved=src/features/dashboard/DashboardPage.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/routes.tsx requested=src/features/auth/LoginPage resolved=src/features/auth/LoginPage.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/routes.tsx requested=src/features/auth/RegisterPage resolved=src/features/auth/RegisterPage.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/routes.tsx requested=src/shared/components/Layout resolved=src/shared/components/Layout.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/analyzer/AnalyzePage.tsx requested=src/features/upload/components/UploadForm resolved=src/features/upload/components/UploadForm.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/analyzer/AnalyzePage.tsx requested=src/features/analyzer/components/ResultsPanel resolved=src/features/analyzer/components/ResultsPanel.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/analyzer/AnalyzePage.tsx requested=src/features/parser/hooks/useResumeUpload resolved=src/features/parser/hooks/useResumeUpload.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/analyzer/AnalyzePage.tsx requested=src/services/api resolved=src/services/api.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/analyzer/AnalyzePage.tsx requested=src/shared/components/Layout resolved=src/shared/components/Layout.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/dashboard/DashboardPage.tsx requested=src/features/dashboard/components/MatchDashboard resolved=src/features/dashboard/components/MatchDashboard.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/dashboard/DashboardPage.tsx requested=src/features/dashboard/hooks/useDashboardData resolved=src/features/dashboard/hooks/useDashboardData.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/dashboard/DashboardPage.tsx requested=src/shared/components/Layout resolved=src/shared/components/Layout.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/auth/LoginPage.tsx requested=src/services/api resolved=src/services/api.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/auth/LoginPage.tsx requested=src/hooks/useAuth resolved=src/hooks/useAuth.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/auth/RegisterPage.tsx requested=src/services/api resolved=src/services/api.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/auth/RegisterPage.tsx requested=src/hooks/useAuth resolved=src/hooks/useAuth.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/dashboard/components/MatchDashboard.tsx requested=src/features/dashboard/components/ScoreGauge resolved=src/features/dashboard/components/ScoreGauge.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/dashboard/components/MatchDashboard.tsx requested=src/shared/components/Badge resolved=src/shared/components/Badge.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/dashboard/components/MatchDashboard.tsx requested=src/shared/components/Card resolved=src/shared/components/Card.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/dashboard/components/MatchDashboard.tsx requested=src/types/index resolved=src/types/index.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/analyzer/components/KeywordCloud.tsx requested=src/shared/components/Badge resolved=src/shared/components/Badge.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/analyzer/components/KeywordCloud.tsx requested=src/types/index resolved=src/types/index.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/analyzer/components/ResultsPanel.tsx requested=src/features/analyzer/components/KeywordCloud resolved=src/features/analyzer/components/KeywordCloud.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/analyzer/components/ResultsPanel.tsx requested=src/shared/components/Badge resolved=src/shared/components/Badge.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/analyzer/components/ResultsPanel.tsx requested=src/shared/components/Card resolved=src/shared/components/Card.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/analyzer/components/ResultsPanel.tsx requested=src/types/index resolved=src/types/index.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/upload/components/UploadForm.tsx requested=src/features/parser/hooks/useResumeUpload resolved=src/features/parser/hooks/useResumeUpload.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/upload/components/UploadForm.tsx requested=src/shared/components/Spinner resolved=src/shared/components/Spinner.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/shared/components/Layout.tsx requested=src/shared/components/Navbar resolved=src/shared/components/Navbar.tsx
+[CANONICAL-IMPORT-RESOLUTION] importer=src/shared/components/Navbar.tsx requested=src/hooks/useAuth resolved=src/hooks/useAuth.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/services/scan.service.ts requested=src/services/api resolved=src/services/api.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/history/services/historyService.ts requested=src/services/api resolved=src/services/api.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/services/api.ts requested=src/types/index resolved=src/types/index.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/parser/hooks/useResumeUpload.ts requested=src/services/api resolved=src/services/api.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/parser/hooks/useResumeUpload.ts requested=src/types/index resolved=src/types/index.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/dashboard/hooks/useDashboardData.ts requested=src/services/api resolved=src/services/api.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/features/dashboard/hooks/useDashboardData.ts requested=src/types/index resolved=src/types/index.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/hooks/useAuth.ts requested=src/services/api resolved=src/services/api.ts
+[CANONICAL-IMPORT-RESOLUTION] importer=src/hooks/useAuth.ts requested=src/types/index resolved=src/types/index.ts
+
+[CANONICAL GRAPH]
+Local missing dependencies: 0
+External package failures: 0
+Unauthorized dependencies: 0
+Ownership conflicts: 0
+
+[IMPORT CONTRACT]
+Unresolved local imports: 0
+
+[PACKAGE CONTRACT]
+Missing packages: 0
+
+[BUILD GATE]
+PASS
+
+
+[SYMBOL CONTRACT]
+Modules checked: 7
+Symbol mismatches: 0
+Status: PASS
+
+[TaskNormalizer] Ô£é´©Å Deduplicated duplicate task #4 "Build Next.js 14 (App Router) 14 (App Router) Frontend UI" (semantic role: API_LAYER)
+[TaskNormalizer] Ô£é´©Å Deduplicated duplicate task #5 "Integration, Validation & Audit" (semantic role: BACKEND_INFRASTRUCTURE)
+[TASK-CONTRACT] Task "Initialize Project & Prisma Schema" (#1): FAIL
+  Reason: Forbidden technology detected ÔÇö architectureHash="d47ee52a7c11"
+[TASK-CONTRACT] Gate complete ÔÇö Accepted: 0, Rejected: 3 / 3 total
+[TASK-CONTRACT] Regeneration attempt 1/3...
+[FailoverProvider] Proactively routed agent "planner" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[TASK-CONTRACT] Task "Develop Express Backend & Auth" (#2): FAIL
+  Reason: Forbidden technology detected ÔÇö architectureHash="d47ee52a7c11"
+[TASK-CONTRACT] Task "Implement Core API Business Logic" (#3): FAIL
+  Reason: Forbidden technology detected ÔÇö architectureHash="d47ee52a7c11"
+[TASK-CONTRACT] 3 task(s) rejected. Attempting regeneration...
+========== RAW RESPONSE ==========
+[
+  {
+    "id": 1,
+    "title": "Initialize Project & Prisma Schema",
+    "description": "Initialize monorepo, configure PostgreSQL connection, and define Prisma models: User, Membership, Attendance, Payment, WorkoutPlan.",
+    "completed": false,
+    "stage": "Database",
+    "priority": 1,
+    "dependencies": [],
+    "estimatedComplexity": 3
+  },
+  {
+    "id": 2,
+    "title": "Express Backend & JWT Auth Infrastructure",
+    "description": "Configure Express server, setup JWT middleware for role-based access control, and implement auth controllers for login/registration.",
+    "completed": false,
+    "stage": "Backend",
+    "priority": 2,
+    "dependencies": [1],
+    "estimatedComplexity": 4
+  },
+  {
+    "id": 3,
+    "title": "Business Logic API Implementation",
+    "description": "Develop RESTful endpoints for members, trainers, billing (Stripe), attendance tracking, and analytics aggregation.",
+    "completed": false,
+    "stage": "ApiDesign",
+    "priority": 3,
+    "dependencies": [2],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 4,
+    "title": "Next.js 14 Frontend Core & Layouts",
+    "description": "Implement App Router shell, global styles with Tailwind, authentication state management, and protected dashboard layouts.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 4,
+    "dependencies": [3],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 5,
+    "title": "Feature Integration & Validation",
+    "description": "Develop UI modules for member management, billing checkout, attendance check-in, and Recharts analytics dashboards.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 5,
+    "dependencies": [4],
+    "estimatedComplexity": 5
+  }
+]
+========== EXTRACTED JSON ==========
+[
+  {
+    "id": 1,
+    "title": "Initialize Project & Prisma Schema",
+    "description": "Initialize monorepo, configure PostgreSQL connection, and define Prisma models: User, Membership, Attendance, Payment, WorkoutPlan.",
+    "completed": false,
+    "stage": "Database",
+    "priority": 1,
+    "dependencies": [],
+    "estimatedComplexity": 3
+  },
+  {
+    "id": 2,
+    "title": "Express Backend & JWT Auth Infrastructure",
+    "description": "Configure Express server, setup JWT middleware for role-based access control, and implement auth controllers for login/registration.",
+    "completed": false,
+    "stage": "Backend",
+    "priority": 2,
+    "dependencies": [1],
+    "estimatedComplexity": 4
+  },
+  {
+    "id": 3,
+    "title": "Business Logic API Implementation",
+    "description": "Develop RESTful endpoints for members, trainers, billing (Stripe), attendance tracking, and analytics aggregation.",
+    "completed": false,
+    "stage": "ApiDesign",
+    "priority": 3,
+    "dependencies": [2],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 4,
+    "title": "Next.js 14 Frontend Core & Layouts",
+    "description": "Implement App Router shell, global styles with Tailwind, authentication state management, and protected dashboard layouts.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 4,
+    "dependencies": [3],
+    "estimatedComplexity": 5
+  },
+  {
+    "id": 5,
+    "title": "Feature Integration & Validation",
+    "description": "Develop UI modules for member management, billing checkout, attendance check-in, and Recharts analytics dashboards.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 5,
+    "dependencies": [4],
+    "estimatedComplexity": 5
+  }
+]
+===================================
+[TaskPlanner] DAG dependency validation check successful.
+[TaskNormalizer] Ô£é´©Å Deduplicated duplicate task #4 "Next.js 14 (App Router) 14 (App Router) Frontend Core & Layouts" (semantic role: API_LAYER)
+[TASK-CONTRACT] Task "Initialize Project & Prisma Schema" (#1): PASS
+[TASK-CONTRACT] Task "Express Backend & JWT Auth Infrastructure" (#2): PASS
+[TASK-CONTRACT] Task "Business Logic API Implementation" (#3): PASS
+[TASK-CONTRACT] Task "Feature Integration & Validation" (#4): PASS
+[TASK-CONTRACT] Gate complete ÔÇö Accepted: 4, Rejected: 0 / 4 total
+[TASK-CONTRACT] All tasks accepted after regeneration. Proceeding with 4 tasks.
+
+=== Architecture ===
+
+=== Planning ===
+[DEBUG] resolvedContract prior to framework access: {"version":1,"status":"locked","prompt":"Build a complete production-ready gym management website. It should include: public landing page, user registration, login/logout, role-based authentication, admin dashboard, member management, trainer management, membership plans, attendance management, payment management, reports, search and filtering, notifications, profile management, responsive desktop/tablet/mobile UI, proper loading, error and empty states, database persistence, REST APIs, secure authentication and authorization, production-ready configuration, complete business workflows. The final result should be a complete working website, not a prototype, mockup, scaffold, or collection of placeholder pages.","applicationType":"FULLSTACK_WEB_APPLICATION","architectureProfile":"NEXTJS_FULLSTACK","source":"canonical_spec","confidence":0.85,"reason":"Contract locked by ArchitectureResolver. Frontend(inferred), Backend(default), DB(default), ORM(default)","userSpecified":false,"inferred":true,"overridden":false,"frontend":{"framework":"Next.js 14 (App Router)","provenance":"inferred"},"backend":{"framework":"Express","provenance":"default"},"database":{"provider":"PostgreSQL","orm":"Prisma","provenance":"default","ormProvenance":"default"},"language":"TypeScript","styling":"Tailwind CSS","packageManager":"pnpm","authentication":"JWT","runtime":"Node.js","apiStyle":"REST","buildTool":"Next.js","testFramework":"Vitest","browserTestFramework":"Puppeteer","deploymentTarget":"Docker","storage":"Local","cache":"In-Memory","queue":"None","realtime":"None","aiProvider":"Gemini","securityRequirements":["Server/Client Boundary Enforcement","Secret Token Masking","Input Sanitization"],"requiredLibraries":["next-auth","prisma","stripe","recharts","zod","react-hook-form","tailwindcss","date-fns","axios","jsonwebtoken","bcryptjs","@tanstack/react-query","sonner"],"requiredFeatures":["auth","members","trainers","billing","attendance","analytics"],"requiredRoutes":["member-sign-up-and-subscription","trainer-manage-member-profiles","admin-revenue-reporting","member-attendance-check-in","automated-payment-reconciliation"],"requiredModels":["User","Membership","Attendance","Payment","WorkoutPlan"],"projectStructure":{"src":"Frontend presentation layer","server":"Backend API and database services","prisma":"Database schemas and migrations"},"architectureHash":"e997d21e8642","technologyHash":"435825afb3fc","dependencyHash":"65c882be5af0"}
+[DEBUG] architecture prior to framework fallback access: {"name":"GymPro-Management-System","type":"fullstack","frontend":"Next.js 14 (App Router)","backend":"Express","database":"PostgreSQL","language":"TypeScript","styling":"Tailwind CSS","packageManager":"pnpm","features":["auth","members","trainers","billing","attendance","analytics"],"inferredLibraries":["next-auth","prisma","stripe","recharts","zod","react-hook-form","tailwindcss","date-fns","axios","jsonwebtoken","bcryptjs","@tanstack/react-query","sonner"],"userFlows":["member-sign-up-and-subscription","trainer-manage-member-profiles","admin-revenue-reporting","member-attendance-check-in","automated-payment-reconciliation"],"dataModels":["User","Membership","Attendance","Payment","WorkoutPlan"],"featureDescriptions":{"auth":"Handles multi-role session management, JWT token issuance, and protected route access control for Admins, Trainers, and Members.","members":"Provides CRUD functionality for member profiles, membership status tracking, and history management using Zod-validated forms.","trainers":"Enables staff management, profile assignment, and operational dashboard access for internal team administration.","billing":"Integrates Stripe API for automated subscription cycles, payment intent webhooks, and real-time subscription lifecycle synchronization.","attendance":"Logs entry timestamps, performs validation against membership status, and provides real-time check-in logging for facility usage.","analytics":"Aggregates transactional and attendance data to generate visual charts on revenue trends, member growth, and peak hour utilization."},"auth":"JWT","deployment":"vercel","domainVocabulary":{"entityName":"Workout","entityPlural":"Workouts","primaryMetrics":["Total Workouts","This Week"],"actionVerbs":["Log Workout","Edit","Delete","View Progress"],"domainPrefix":"workout"},"domainCategory":"workout-fitness","lockedStack":{"frontend":"Next.js 14 (App Router)","backend":"Next.js API Routes","database":"PostgreSQL","orm":"Prisma","auth":"JWT","language":"TypeScript","styling":"Tailwind CSS","packageManager":"pnpm"},"forbiddenPatterns":[],"plan":{"directoryTree":["src","src/components","src/hooks","src/styles","public","server","server/routes","server/controllers","server/services","server/middleware","server/lib","prisma"],"databaseSchema":[{"name":"users","columns":[{"name":"id","type":"SERIAL","constraints":"PRIMARY KEY"},{"name":"email","type":"VARCHAR(255)","constraints":"UNIQUE NOT NULL"},{"name":"password_hash","type":"VARCHAR(255)","constraints":"NOT NULL"},{"name":"created_at","type":"TIMESTAMP","constraints":"DEFAULT CURRENT_TIMESTAMP"}]},{"name":"tasks","columns":[{"name":"id","type":"SERIAL","constraints":"PRIMARY KEY"},{"name":"user_id","type":"INTEGER","constraints":"REFERENCES users(id)"},{"name":"title","type":"VARCHAR(255)","constraints":"NOT NULL"},{"name":"completed","type":"BOOLEAN","constraints":"DEFAULT FALSE"}],"relations":[{"from":"user_id","to":"users.id","type":"many-to-one"}]}],"apiContracts":[{"path":"/api/auth/register","method":"POST","requestBody":"{ email, password }","responseBody":"{ success, user: { id, email } }","description":"Register a new user"},{"path":"/api/auth/login","method":"POST","requestBody":"{ email, password }","responseBody":"{ success, token }","description":"Login user and return token"}],"routing":["/","/about"]}}
+Framework: Next.js 14 (App Router)
+
+=== Implementation ===
+[Orchestrator] DAG parallel scheduling successful. Grouped 4 tasks into 3 execution tiers.
+
+=== FINAL RESOLVED ARCHITECTURE ===
+Frontend: Next.js 14 (App Router)
+Backend:  Express
+Database: PostgreSQL
+ORM:      Prisma
+Auth:     JWT
+Language: TypeScript
+Models:   User, Membership, Attendance, Payment, WorkoutPlan
+===================================
+
+Starting implementation loop...
+
+Running execution tier 1/3 with 2 parallel tasks...
+[Task: Initialize Project & Prisma Schema] Calling CoderAgent... Status: PENDING
+[Task: Feature Integration & Validation] Calling CoderAgent... Status: PENDING
+[FailoverProvider] Proactively routed agent "coder" (complexity: 3) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[FailoverProvider] Proactively routed agent "coder" (complexity: 5) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[Task: Initialize Project & Prisma Schema] Status: GENERATED
+[Task: Initialize Project & Prisma Schema] Status: VALIDATED
+[Task: Feature Integration & Validation] Status: GENERATED
+[Orchestrator] CoderAgent validation failed for task "Feature Integration & Validation": INCOMPLETE_GENERATED_FILE: 
+Candidate files failed completeness validation: server/controllers/auth.controller.ts (File 
+"server/controllers/auth.controller.ts" appears to be truncated or incomplete.), 
+src/components/layout/DashboardLayout.tsx (File "src/components/layout/DashboardLayout.tsx" appears to be truncated or 
+incomplete.)
+[Orchestrator] Launching inline Coder self-healing loop...
+[Self-Healing] Inline Coder repair attempt 1/3...
+
+Analyzing build failure...
+[FailoverProvider] Proactively routed agent "healer" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[Self-Healing] Ô£ô Coder repair succeeded! Validated completeness for 1 file(s).
+[Task: Feature Integration & Validation] Status: VALIDATED
+[Task: Initialize Project & Prisma Schema] Status: SUCCESS
+[SemanticDuplicate] Ôøö REJECTED: "src/services/api-client.ts" is a duplicate alias for "src/services/api.ts". 
+Rejecting write to force CoderAgent to generate canonical path directly.
+[PatchEngine] Ôøö Rejecting invalid file path "src/services/api-client.ts": File "src/services/api-client.ts" is 
+flagged as an unauthorized duplicate/orphan
+[SemanticDuplicate] ÔÜá´©Å UNAUTHORIZED FILE: "src/components/layout/DashboardLayout.tsx" is not in the canonical 
+graph. Skipping write.
+[PatchEngine] Ôøö Rejecting invalid file path "src/components/layout/DashboardLayout.tsx": File 
+"src/components/layout/DashboardLayout.tsx" is flagged as an unauthorized duplicate/orphan
+[PRISMA-SCHEMA-WRITE] ­ƒöÆ Blocked unauthorized LLM overwrite of canonical prisma/schema.prisma.
+[Task: Feature Integration & Validation] Status: SUCCESS
+
+Running execution tier 2/3 with 1 parallel tasks...
+[Task: Express Backend & JWT Auth Infrastructure] Calling CoderAgent... Status: PENDING
+[FailoverProvider] Proactively routed agent "coder" (complexity: 4) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[Task: Express Backend & JWT Auth Infrastructure] Status: GENERATED
+[Task: Express Backend & JWT Auth Infrastructure] Status: VALIDATED
+[Task: Express Backend & JWT Auth Infrastructure] Status: SUCCESS
+[PRISMA-SCHEMA-WRITE] ­ƒöÆ Blocked unauthorized LLM overwrite of canonical prisma/schema.prisma.
+
+Running execution tier 3/3 with 1 parallel tasks...
+[Task: Business Logic API Implementation] Calling CoderAgent... Status: PENDING
+[FailoverProvider] Proactively routed agent "coder" (complexity: 5) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[Task: Business Logic API Implementation] Status: GENERATED
+[Task: Business Logic API Implementation] Status: VALIDATED
+[Task: Business Logic API Implementation] Status: SUCCESS
+[SemanticDuplicate] ÔÜá´©Å UNAUTHORIZED FILE: "src/shared/components/Layout/DashboardLayout.tsx" is not in the 
+canonical graph. Skipping write.
+[PatchEngine] Ôøö Rejecting invalid file path "src/shared/components/Layout/DashboardLayout.tsx": File 
+"src/shared/components/Layout/DashboardLayout.tsx" is flagged as an unauthorized duplicate/orphan
+[PRISMA-SCHEMA-WRITE] ­ƒöÆ Blocked unauthorized LLM overwrite of canonical prisma/schema.prisma.
+[SyntaxPreflight] ­ƒöº Added flexible prop index signature to design-system\components\EmptyState.tsx
+[SyntaxPreflight] ­ƒöº Added flexible prop index signature to design-system\components\Skeleton.tsx
+[FastSanitizer] ­ƒÄ¿ Synthesized canonical DashboardPage at C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project\src\features\dashboard\DashboardPage.tsx
+[FeatureSanitizer] ­ƒöº Created canonical src/shared/components/PdfExportButton.tsx with window.print() PDF Export support
+[FastSanitizer] ­ƒîÉ Synthesized canonical multi-page routes in src/routes.tsx
+[FastSanitizer] ­ƒô£ Generated canonical README.md documentation for DoD compliance.
+
+=== Review ===
+
+=== Validation ===
+Framework: Next.js 14 (App Router)
+Files from AI:
+- server/controllers/auth.controller.ts
+[SyntaxPreflight] ­ƒöº Regenerated routes.tsx ÔÇö 1 import(s) referenced non-existent page files: ./features/auth/LoginPage
+[SyntaxPreflight] ­ƒöº Added flexible prop index signature to shared\components\PdfExportButton.tsx
+[FastSanitizer] ­ƒöº Defaulted demo session state in features\analyzer\AnalyzePage.tsx
+[FeatureSanitizer] ­ƒº╣ Neutralized eval/new Function code injection in features\analyzer\AnalyzePage.tsx
+[FeatureSanitizer] ­ƒº╣ Neutralized eval/new Function code injection in features\rules\RulesPage.tsx
+[SemanticDuplicate] ­ƒùæ´©Å Deleted orphan: src/shared/components/PdfExportButton.tsx
+[SemanticDuplicate] Cleaned up 1 orphan/duplicate file(s) before build.
+[ProjectGraphEngine] ­ƒº╣ Removed unknown Prisma field "password" from server/controllers/auth.controller.ts (not present in model user)
+[ProjectGraphEngine] ­ƒº╣ Removed unknown Prisma field "role" from server/controllers/auth.controller.ts (not present in model user)
+[ProjectGraphEngine] ­ƒº╣ Removed unknown Prisma field "password" from server/controllers/auth.controller.ts (not present in model user)
+[ProjectGraphEngine] ­ƒº╣ Removed unknown Prisma field "role" from server/controllers/auth.controller.ts (not present in model user)
+[ProjectGraphEngine] ­ƒº╣ Removed unknown Prisma field "password" from server/controllers/auth.controller.ts (not present in model user)
+[ProjectGraphEngine] ­ƒº╣ Removed unknown Prisma field "role" from server/controllers/auth.controller.ts (not present in model user)
+[ProjectGraphEngine] Ô£ô Created canonical module on disk: server/lib/prisma.ts
+[ImportReconciler] Ô£ô Auto-fixed import in server/controllers/auth.controller.ts: "../lib/prisma" -> "../lib/prisma" (resolved to canonical server\lib\prisma.ts)
+[ProjectGraphEngine] Ô£ô Created canonical module on disk: server/routes/auth.routes.ts
+[ImportReconciler] Ô£ô Auto-fixed import in server/index.ts: "./routes/auth.routes" -> "./routes/auth.routes" (resolved to canonical server\routes\auth.routes.ts)
+[ImportReconciler] Ô£ô Auto-fixed import in src/design-system/index.ts: "./tokens.js" -> "./tokens" (resolved to canonical src\design-system\tokens.ts)
+[ImportReconciler] Ô£ô Auto-fixed import in src/design-system/index.ts: "./components/Button.js" -> "./components/Button" (resolved to canonical src\design-system\components\Button.tsx)
+[ImportReconciler] Ô£ô Auto-fixed import in src/design-system/index.ts: "./components/Skeleton.js" -> "./components/Skeleton" (resolved to canonical src\design-system\components\Skeleton.tsx)
+[ImportReconciler] Ô£ô Auto-fixed import in src/design-system/index.ts: "./components/EmptyState.js" -> "./components/EmptyState" (resolved to canonical src\design-system\components\EmptyState.tsx)
+[ImportReconciler] Ô£ô Auto-fixed import in src/design-system/index.ts: "./components/GlassCard.js" -> "./components/GlassCard" (resolved to canonical src\design-system\components\GlassCard.tsx)
+[ProjectGraphValidator] Ô£ô Project graph is clean ÔÇö 0 issues.
+[ProjectGraphEngine] Ô£ô PASS ÔÇö Project graph is clean and valid.
+[Orchestrator] Warning: package.json missing before install ÔÇö constructing base package.json
+[Orchestrator] Output directory: C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project
+[Orchestrator] package.json exists: true
+[Orchestrator] Current working directory: C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai
+[Startup] Running Project Startup Agent to prepare database and environment...
+[Startup] Verifying project is runnable...
+[Startup] Detected framework: react-vite
+[Startup] Installing newly added dependencies via pnpm...
+[Startup] Ô£ô Newly added dependencies installed successfully.
+[Startup] Ô£ô Generated Prisma client from prisma\schema.prisma
+[Startup] ÔÜá´©Å DATABASE_CONNECTION_REQUIRED: Could not connect to postgresql server (Command failed: npx --yes 
+prisma@6 db push --schema="prisma\schema.prisma" --accept-data-loss
+npm warn Unknown project config "confirm-modules-purge". This will stop working in the next major version of npm.
+npm warn Unknown project config "verify-deps-before-run". This will stop working in the next major version of npm.
+npm warn Unknown project config "only-built-dependencies". This will stop working in the next major version of npm.
+Environment variables loaded from .env
+Error: P1000: Authentication failed against database server, the provided database credentials for `postgres` are not 
+valid.
+
+Please make sure to provide valid database credentials for the database server at the configured address.
+). Skipping live migration. Prisma Client has been generated.
+[Startup] Ô£ô node_modules already present ÔÇö skipping install.
+[DependencyClosure] ­ƒôª Automatically added missing production imports: helmet, multer, pdf-parse, path
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: server\controllers\scan.controller.ts
+[SyntaxPreflight] ­ƒöº Added resumeApi/scanApi/authApi exports to src/services/api.ts
+[SyntaxPreflight] ­ƒöº Added 'export const Spinner = LoadingSpinner' to LoadingSpinner.tsx
+[FastSanitizer] ­ƒôª Guaranteed core production dependencies in package.json
+[SyntaxPreflight] ­ƒöº Added flexible prop index signature to design-system\components\Progress.tsx
+[SyntaxPreflight] ­ƒöº Added flexible prop index signature to shared\components\Layout.tsx
+[Startup] Auto-created utility function stub: server/services/keyword.service.ts
+[Startup] Auto-created missing component stub: src/App.tsx
+[Startup] Applied 33 fix(es):
+  Ô£ô Created canonical src/services/api.ts
+  Ô£ô Created canonical src/lib/auth.ts
+  Ô£ô Created canonical src/types/index.ts
+  Ô£ô Created canonical server/controllers/scan.controller.ts
+  Ô£ô Created canonical server/middleware/upload.middleware.ts
+  Ô£ô Created canonical src/shared/components/Layout.tsx
+  Ô£ô Created canonical src/features/auth/LoginPage.tsx
+  Ô£ô Created canonical src/shared/components/Card.tsx
+  Ô£ô Created canonical server/routes/scan.routes.ts
+  Ô£ô Created canonical server/services/pdf.service.ts
+  Ô£ô Created canonical server/middleware/errorHandler.ts
+  Ô£ô Created canonical src/design-system/components/Progress.tsx
+  Ô£ô Created canonical src/services/scan.service.ts
+  Ô£ô Created canonical src/features/history/services/historyService.ts
+  Ô£ô Created canonical src/design-system/components/CircularProgress.tsx
+  Ô£ô Created canonical src/design-system/components/LoadingSpinner.tsx
+  Ô£ô Configured fullstack server script (server/index.ts) & native dev.js runner
+  Ô£ô Added missing core React/Vite dependencies
+  Ô£ô Generated Prisma client from prisma\schema.prisma
+  Ô£ô DATABASE_CONNECTION_REQUIRED: Live postgresql migration skipped
+  Ô£ô Created vite.config.ts with @ path alias
+  Ô£ô Created pnpm-workspace.yaml (workspace isolation & build dependencies)
+  Ô£ô Created .npmrc (allow build scripts & bypass release age policies)
+  Ô£ô Created tsconfig.json
+  Ô£ô Created tsconfig.node.json
+  Ô£ô Created tailwind.config.js
+  Ô£ô Created postcss.config.js
+  Ô£ô Created index.html
+  Ô£ô Created canonical src/main.tsx entrypoint
+  Ô£ô Created src/index.css
+  Ô£ô Updated src/vite-env.d.ts with ImportMeta type declaration
+  Ô£ô Created src/utils/cn.ts helper
+  Ô£ô Auto-fixed TypeScript patterns in: server/controllers/auth.controller.ts, server/index.ts, server/lib/prisma.ts, server/routes/auth.routes.ts, server/services/pdf.service.ts, src/design-system/components/Button.tsx, src/design-system/components/CircularProgress.tsx, src/design-system/components/EmptyState.tsx, src/design-system/components/GlassCard.tsx, src/design-system/components/LoadingSpinner.tsx, src/design-system/components/Skeleton.tsx, src/features/analyzer/AnalyzePage.tsx, src/features/auth/LoginPage.tsx, src/features/dashboard/DashboardPage.tsx, src/features/history/HistoryPage.tsx, src/features/history/services/historyService.ts, src/features/rules/RulesPage.tsx, src/routes.tsx, src/services/api.ts, src/services/scan.service.ts, src/shared/components/Layout.tsx, src/shared/components/Navbar.tsx, src/types/index.ts, src/vite-env.d.ts
+[Orchestrator] Installing all project dependencies...
+[Orchestrator] Running 'pnpm install' in generated project at C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project...
+(node:22240) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security 
+vulnerabilities, as the arguments are not escaped, only concatenated.
+[Orchestrator] Initial install completed. Exit code: 1
+[Orchestrator] Warning: pnpm install exit code non-zero. Stderr: . Attempting npm install fallback...
+[Orchestrator] Fallback npm install failed: Command failed: npm install --legacy-peer-deps --silent
+[PRISMA] Prisma schema detected at C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project\prisma\schema.prisma. Running prisma validate...
+[PRISMA] Ô£ô PASS ÔÇö prisma validate succeeded.
+npm warn Unknown project config "confirm-modules-purge". This will stop working in the next major version of npm.
+npm warn Unknown project config "verify-deps-before-run". This will stop working in the next major version of npm.
+npm warn Unknown project config "only-built-dependencies". This will stop working in the next major version of npm.
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö
+ÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
+Ôöé  Update available 6.19.3 -> 7.9.1                       Ôöé
+Ôöé                                                         Ôöé
+Ôöé  This is a major update - please follow the guide at    Ôöé
+Ôöé  https://pris.ly/d/major-version-upgrade                Ôöé
+Ôöé                                                         Ôöé
+Ôöé  Run the following to update                            Ôöé
+Ôöé    npm i --save-dev prisma@latest                       Ôöé
+Ôöé    npm i @prisma/client@latest                          Ôöé
+ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö
+ÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
+
+Ô£ö Generated Prisma Client (v6.19.3) to .\node_modules\.pnpm\@prisma+client@6.19.3_prism_1d040ab5215f59f0e27ddee7f0cf082e\node_modules\@prisma\client in 109ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+
+[PRISMA] Ô£ô PASS ÔÇö prisma generate succeeded.
+[DATABASE] ÔÜá´©Å BLOCKED ÔÇö PostgreSQL connection unavailable (environment issue, NOT a code error).
+  DATABASE_STATUS: BLOCKED
+  CODE_STATUS: PASS
+  Detail: npm warn Unknown project config "confirm-modules-purge". This will stop working in the next major version of 
+npm.
+npm warn Unknown project config "verify-deps-before-run". This will stop working in th
+[DeterministicFixer] Ô£ô Created 2 missing module(s), repaired 0 file(s).
+[ProjectGraphEngine] ­ƒº╣ Removed unknown Prisma field "password" from server/routes/auth.routes.ts (not present in model user)
+[ProjectGraphEngine] ­ƒº╣ Removed unknown Prisma field "password" from server/routes/auth.routes.ts (not present in model user)
+[ProjectGraph] ÔÜá´©Å ORPHAN_FILE: scripts/dev.js
+[ProjectGraph] ÔÜá´©Å ORPHAN_FILE: src/utils/cn.ts
+[ProjectGraphValidator] ­ƒöì Project graph check: 0 ERROR(s), 7 WARNING(s).
+[ProjectGraph] Ô£ô Project dependency graph validated cleanly.
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: server\controllers\scan.controller.ts
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: src\design-system\components\CircularProgress.tsx
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: src\design-system\components\GlassCard.tsx
+[SyntaxPreflight] ­ƒöº Enforced canonical CircularProgress.tsx with correct props destructuring
+[SyntaxPreflight] ­ƒöº Added flexible prop index signature to design-system\components\CircularProgress.tsx
+[SyntaxPreflight] ­ƒöº Removed duplicate <BrowserRouter> from App.tsx (routes.tsx already contains <Router>)
+[FastSanitizer] Ô£ô Pre-build sanitation complete (Collisions resolved: 0, Imports added: 0, Exports fixed: 0, DB URL valid: true)
+[Startup] Verifying project is runnable...
+[Startup] Detected framework: react-vite
+[Startup] Ô£ô Generated Prisma client from prisma\schema.prisma
+[Startup] ÔÜá´©Å DATABASE_CONNECTION_REQUIRED: Could not connect to postgresql server (Command failed: 
+"C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project\node_modules\.bin\prisma" db push 
+--schema="prisma\schema.prisma" --accept-data-loss
+Environment variables loaded from .env
+Error: P1000: Authentication failed against database server, the provided database credentials for `postgres` are not 
+valid.
+
+Please make sure to provide valid database credentials for the database server at the configured address.
+). Skipping live migration. Prisma Client has been generated.
+[Startup] Ô£ô node_modules already present ÔÇö skipping install.
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: server\controllers\scan.controller.ts
+[Startup] Applied 6 fix(es):
+  Ô£ô Configured fullstack server script (server/index.ts) & native dev.js runner
+  Ô£ô Generated Prisma client from prisma\schema.prisma
+  Ô£ô DATABASE_CONNECTION_REQUIRED: Live postgresql migration skipped
+  Ô£ô Created pnpm-workspace.yaml (workspace isolation & build dependencies)
+  Ô£ô Created .npmrc (allow build scripts & bypass release age policies)
+  Ô£ô Auto-fixed TypeScript patterns in: server/services/keyword.service.ts, src/App.tsx, src/design-system/components/Button.tsx, src/design-system/components/EmptyState.tsx, src/design-system/components/GlassCard.tsx, src/design-system/components/Skeleton.tsx, src/services/api.ts, src/shared/components/Navbar.tsx
+Ô£ù Build failed.
+===== BUILD STDOUT =====
+? Verifying lockfile against supply-chain policies (454 entries)...
+Progress: resolved 1, reused 0, downloaded 0, added 0
+[WARN] deprecated @types/dompurify@3.2.0: This is a stub types definition. dompurify provides its own type definitions, so you do not need this installed.
+Progress: resolved 44, reused 44, downloaded 0, added 0
+Progress: resolved 45, reused 44, downloaded 0, added 0
+Progress: resolved 45, reused 45, downloaded 0, added 0
+Progress: resolved 46, reused 45, downloaded 0, added 0
+Progress: resolved 46, reused 46, downloaded 0, added 0
+[WARN] Request took 10186ms: https://registry.npmjs.org/@prisma%2Fengines
+[WARN] Request took 14532ms: https://registry.npmjs.org/@prisma%2Fclient
+[WARN] Request took 14470ms: https://registry.npmjs.org/typescript
+Progress: resolved 47, reused 46, downloaded 0, added 0
+Progress: resolved 47, reused 47, downloaded 0, added 0
+[WARN] Request took 17720ms: https://registry.npmjs.org/prisma
+Progress: resolved 48, reused 47, downloaded 0, added 0
+Progress: resolved 48, reused 48, downloaded 0, added 0
+Progress: resolved 49, reused 48, downloaded 0, added 0
+Progress: resolved 176, reused 174, downloaded 0, added 0
+Progress: resolved 176, reused 175, downloaded 0, added 0
+[WARN] Request took 23997ms: https://registry.npmjs.org/@prisma%2Fget-platform
+Progress: resolved 177, reused 175, downloaded 0, added 0
+[WARN] Request took 26825ms: https://registry.npmjs.org/@prisma%2Fdebug
+[WARN] Request took 27285ms: https://registry.npmjs.org/@prisma%2Ffetch-engine
+Progress: resolved 369, reused 288, downloaded 0, added 0
+[WARN] Request took 28188ms: https://registry.npmjs.org/@prisma%2Fclient
+Progress: resolved 371, reused 289, downloaded 0, added 0
+Ô£ù Lockfile failed supply-chain policy check (454 entries in 29.3s)
+[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION] 2 lockfile entries failed verification:
+  baseline-browser-mapping@2.11.15 was published at 2026-08-17T14:30:35.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:42:58.593Z)
+  electron-to-chromium@1.5.408 was published at 2026-08-17T02:02:48.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:42:58.593Z)
+
+The lockfile contains entries that the active policies reject. This can mean the lockfile is stale, or that someone committed a lockfile that bypassed the policy locally ÔÇö inspect recent changes to pnpm-lock.yaml before trusting it. If the changes look expected, run "pnpm clean --lockfile" and then "pnpm install" to rebuild from a fresh resolution. Alternatively, relax the policy that flagged them.
+[WARN] GET https://registry.npmjs.org/@prisma%2Fget-platform error (unknown). Will retry in 10 seconds. 2 retries left.
+[ERROR] Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+
+pnpm: Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+    at getFinalError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:88127:14)
+    at makeError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:90434:21)
+    at getSyncResult (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92278:10)
+    at spawnSubprocessSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92238:14)
+    at execaCoreSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92168:23)
+    at callBoundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94696:23)
+    at boundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94673:49)
+    at sync2 (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94832:10)
+    at runPnpmCli (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:248744:5)
+    at runDepsStatusCheck (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:250510:7)
+
+===== BUILD STDOUT =====
+? Verifying lockfile against supply-chain policies (454 entries)...
+Progress: resolved 1, reused 0, downloaded 0, added 0
+[WARN] deprecated @types/dompurify@3.2.0: This is a stub types definition. dompurify provides its own type definitions, so you do not need this installed.
+Progress: resolved 44, reused 44, downloaded 0, added 0
+Progress: resolved 45, reused 44, downloaded 0, added 0
+Progress: resolved 45, reused 45, downloaded 0, added 0
+Progress: resolved 46, reused 45, downloaded 0, added 0
+Progress: resolved 46, reused 46, downloaded 0, added 0
+[WARN] Request took 10186ms: https://registry.npmjs.org/@prisma%2Fengines
+[WARN] Request took 14532ms: https://registry.npmjs.org/@prisma%2Fclient
+[WARN] Request took 14470ms: https://registry.npmjs.org/typescript
+Progress: resolved 47, reused 46, downloaded 0, added 0
+Progress: resolved 47, reused 47, downloaded 0, added 0
+[WARN] Request took 17720ms: https://registry.npmjs.org/prisma
+Progress: resolved 48, reused 47, downloaded 0, added 0
+Progress: resolved 48, reused 48, downloaded 0, added 0
+Progress: resolved 49, reused 48, downloaded 0, added 0
+Progress: resolved 176, reused 174, downloaded 0, added 0
+Progress: resolved 176, reused 175, downloaded 0, added 0
+[WARN] Request took 23997ms: https://registry.npmjs.org/@prisma%2Fget-platform
+Progress: resolved 177, reused 175, downloaded 0, added 0
+[WARN] Request took 26825ms: https://registry.npmjs.org/@prisma%2Fdebug
+[WARN] Request took 27285ms: https://registry.npmjs.org/@prisma%2Ffetch-engine
+Progress: resolved 369, reused 288, downloaded 0, added 0
+[WARN] Request took 28188ms: https://registry.npmjs.org/@prisma%2Fclient
+Progress: resolved 371, reused 289, downloaded 0, added 0
+Ô£ù Lockfile failed supply-chain policy check (454 entries in 29.3s)
+[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION] 2 lockfile entries failed verification:
+  baseline-browser-mapping@2.11.15 was published at 2026-08-17T14:30:35.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:42:58.593Z)
+  electron-to-chromium@1.5.408 was published at 2026-08-17T02:02:48.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:42:58.593Z)
+
+The lockfile contains entries that the active policies reject. This can mean the lockfile is stale, or that someone committed a lockfile that bypassed the policy locally ÔÇö inspect recent changes to pnpm-lock.yaml before trusting it. If the changes look expected, run "pnpm clean --lockfile" and then "pnpm install" to rebuild from a fresh resolution. Alternatively, relax the policy that flagged them.
+[WARN] GET https://registry.npmjs.org/@prisma%2Fget-platform error (unknown). Will retry in 10 seconds. 2 retries left.
+[ERROR] Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+
+pnpm: Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+    at getFinalError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:88127:14)
+    at makeError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:90434:21)
+    at getSyncResult (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92278:10)
+    at spawnSubprocessSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92238:14)
+    at execaCoreSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92168:23)
+    at callBoundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94696:23)
+    at boundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94673:49)
+    at sync2 (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94832:10)
+    at runPnpmCli (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:248744:5)
+    at runDepsStatusCheck (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:250510:7)
+
+
+[Self-Healing] Attempting automatic repair 1/3...
+
+===== BUILD FAILURE DIAGNOSTICS =====
+===== BUILD STDERR =====
+Build failed
+======================================
+
+
+Analyzing build failure...
+[FailoverProvider] Proactively routed agent "healer" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[FailoverProvider] Provider gemini failed: {"error":{"code":503,"message":"This model is currently experiencing high 
+demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}
+[FailoverProvider] Proactively routed agent "healer" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 2/3)
+[TransactionalRepair] ­ƒÆ¥ Created Checkpoint [chk_1786988687247_o1exu] for Repair [rep_1786988687247_m8aa] (Attempt: 1, Files: 1)
+Framework: Next.js 14 (App Router)
+Files from AI:
+- server/controllers/auth.controller.ts
+[Self-Healing] Ô£ô Updated: C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project\server\controllers\auth.controller.ts (1788 bytes written, disk size: 1788 bytes)
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: server\controllers\scan.controller.ts
+[Startup] Verifying project is runnable...
+[Startup] Detected framework: react-vite
+[Startup] Ô£ô Generated Prisma client from prisma\schema.prisma
+[Startup] ÔÜá´©Å DATABASE_CONNECTION_REQUIRED: Could not connect to postgresql server (Command failed: 
+"C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project\node_modules\.bin\prisma" db push 
+--schema="prisma\schema.prisma" --accept-data-loss
+Environment variables loaded from .env
+Error: P1000: Authentication failed against database server, the provided database credentials for `postgres` are not 
+valid.
+
+Please make sure to provide valid database credentials for the database server at the configured address.
+). Skipping live migration. Prisma Client has been generated.
+[Startup] Ô£ô node_modules already present ÔÇö skipping install.
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: server\controllers\scan.controller.ts
+[Startup] Applied 6 fix(es):
+  Ô£ô Configured fullstack server script (server/index.ts) & native dev.js runner
+  Ô£ô Generated Prisma client from prisma\schema.prisma
+  Ô£ô DATABASE_CONNECTION_REQUIRED: Live postgresql migration skipped
+  Ô£ô Created pnpm-workspace.yaml (workspace isolation & build dependencies)
+  Ô£ô Created .npmrc (allow build scripts & bypass release age policies)
+  Ô£ô Auto-fixed TypeScript patterns in: server/controllers/auth.controller.ts, src/design-system/components/Button.tsx, src/design-system/components/EmptyState.tsx, src/design-system/components/GlassCard.tsx, src/design-system/components/Skeleton.tsx, src/services/api.ts, src/shared/components/Navbar.tsx
+Ô£ù Build failed.
+===== BUILD STDOUT =====
+? Verifying lockfile against supply-chain policies (454 entries)...
+[WARN] deprecated @types/dompurify@3.2.0: This is a stub types definition. dompurify provides its own type definitions, so you do not need this installed.
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 48, reused 47, downloaded 0, added 0
+Progress: resolved 48, reused 48, downloaded 0, added 0
+[WARN] Request took 10922ms: https://registry.npmjs.org/@prisma%2Fclient
+Progress: resolved 49, reused 48, downloaded 0, added 0
+[WARN] Request took 11131ms: https://registry.npmjs.org/prisma
+Progress: resolved 175, reused 174, downloaded 0, added 0
+Ô£ù Lockfile failed supply-chain policy check (454 entries in 14s)
+[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION] 2 lockfile entries failed verification:
+  baseline-browser-mapping@2.11.15 was published at 2026-08-17T14:30:35.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:45:00.198Z)
+  electron-to-chromium@1.5.408 was published at 2026-08-17T02:02:48.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:45:00.198Z)
+
+The lockfile contains entries that the active policies reject. This can mean the lockfile is stale, or that someone committed a lockfile that bypassed the policy locally ÔÇö inspect recent changes to pnpm-lock.yaml before trusting it. If the changes look expected, run "pnpm clean --lockfile" and then "pnpm install" to rebuild from a fresh resolution. Alternatively, relax the policy that flagged them.
+[WARN] GET https://registry.npmjs.org/@prisma%2Fengines error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[ERROR] Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+
+pnpm: Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+    at getFinalError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:88127:14)
+    at makeError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:90434:21)
+    at getSyncResult (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92278:10)
+    at spawnSubprocessSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92238:14)
+    at execaCoreSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92168:23)
+    at callBoundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94696:23)
+    at boundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94673:49)
+    at sync2 (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94832:10)
+    at runPnpmCli (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:248744:5)
+    at runDepsStatusCheck (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:250510:7)
+
+[Self-Healing] ÔÜá´©Å Repair attempt introduced a build regression. Rolling back checkpoint...
+[TransactionalRepair] ƒöä Rolling back checkpoint chk_1786988687247_o1exu due to: Repair attempt caused build 
+regression
+[TransactionalRepair] Ôå║ Rollback complete for chk_1786988687247_o1exu: Restored 1 file(s), Removed 0 new file(s).
+[Startup] Verifying project is runnable...
+[Startup] Detected framework: react-vite
+[Startup] Ô£ô Generated Prisma client from prisma\schema.prisma
+[Startup] ÔÜá´©Å DATABASE_CONNECTION_REQUIRED: Could not connect to postgresql server (Command failed: 
+"C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project\node_modules\.bin\prisma" db push 
+--schema="prisma\schema.prisma" --accept-data-loss
+Environment variables loaded from .env
+Error: P1000: Authentication failed against database server, the provided database credentials for `postgres` are not 
+valid.
+
+Please make sure to provide valid database credentials for the database server at the configured address.
+). Skipping live migration. Prisma Client has been generated.
+[Startup] Ô£ô node_modules already present ÔÇö skipping install.
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: server\controllers\scan.controller.ts
+[Startup] Applied 6 fix(es):
+  Ô£ô Configured fullstack server script (server/index.ts) & native dev.js runner
+  Ô£ô Generated Prisma client from prisma\schema.prisma
+  Ô£ô DATABASE_CONNECTION_REQUIRED: Live postgresql migration skipped
+  Ô£ô Created pnpm-workspace.yaml (workspace isolation & build dependencies)
+  Ô£ô Created .npmrc (allow build scripts & bypass release age policies)
+  Ô£ô Auto-fixed TypeScript patterns in: src/design-system/components/Button.tsx, src/design-system/components/EmptyState.tsx, src/design-system/components/GlassCard.tsx, src/design-system/components/Skeleton.tsx, src/services/api.ts, src/shared/components/Navbar.tsx
+Ô£ù Build failed.
+===== BUILD STDOUT =====
+? Verifying lockfile against supply-chain policies (454 entries)...
+Progress: resolved 1, reused 0, downloaded 0, added 0
+[WARN] deprecated @types/dompurify@3.2.0: This is a stub types definition. dompurify provides its own type definitions, so you do not need this installed.
+Progress: resolved 44, reused 44, downloaded 0, added 0
+Progress: resolved 45, reused 45, downloaded 0, added 0
+Progress: resolved 46, reused 46, downloaded 0, added 0
+Progress: resolved 47, reused 47, downloaded 0, added 0
+Progress: resolved 48, reused 47, downloaded 0, added 0
+Progress: resolved 48, reused 48, downloaded 0, added 0
+Progress: resolved 49, reused 48, downloaded 0, added 0
+Progress: resolved 176, reused 175, downloaded 0, added 0
+Progress: resolved 177, reused 175, downloaded 0, added 0
+Progress: resolved 366, reused 285, downloaded 0, added 0
+[WARN] Request took 14466ms: https://registry.npmjs.org/@prisma%2Fclient
+Progress: resolved 368, reused 286, downloaded 0, added 0
+Ô£ù Lockfile failed supply-chain policy check (454 entries in 15.7s)
+[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION] 2 lockfile entries failed verification:
+  baseline-browser-mapping@2.11.15 was published at 2026-08-17T14:30:35.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:45:27.120Z)
+  electron-to-chromium@1.5.408 was published at 2026-08-17T02:02:48.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:45:27.120Z)
+
+The lockfile contains entries that the active policies reject. This can mean the lockfile is stale, or that someone committed a lockfile that bypassed the policy locally ÔÇö inspect recent changes to pnpm-lock.yaml before trusting it. If the changes look expected, run "pnpm clean --lockfile" and then "pnpm install" to rebuild from a fresh resolution. Alternatively, relax the policy that flagged them.
+[WARN] GET https://registry.npmjs.org/@prisma%2Fget-platform error (unknown). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@prisma%2Fdebug error (unknown). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@prisma%2Ffetch-engine error (unknown). Will retry in 10 seconds. 2 retries left.
+[ERROR] Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+
+pnpm: Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+    at getFinalError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:88127:14)
+    at makeError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:90434:21)
+    at getSyncResult (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92278:10)
+    at spawnSubprocessSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92238:14)
+    at execaCoreSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92168:23)
+    at callBoundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94696:23)
+    at boundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94673:49)
+    at sync2 (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94832:10)
+    at runPnpmCli (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:248744:5)
+    at runDepsStatusCheck (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:250510:7)
+
+
+[Self-Healing] Attempting automatic repair 2/3...
+
+Analyzing build failure...
+[FailoverProvider] Proactively routed agent "healer" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[TransactionalRepair] ­ƒÆ¥ Created Checkpoint [chk_1786988768983_nf6l0] for Repair [rep_1786988768983_nxip] (Attempt: 1, Files: 1)
+Framework: Next.js 14 (App Router)
+Files from AI:
+- server/controllers/auth.controller.ts
+[Self-Healing] Ô£ô Updated: C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project\server\controllers\auth.controller.ts (1322 bytes written, disk size: 1322 bytes)
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: server\controllers\scan.controller.ts
+[Startup] Verifying project is runnable...
+[Startup] Detected framework: react-vite
+[Startup] Ô£ô Generated Prisma client from prisma\schema.prisma
+[Startup] ÔÜá´©Å DATABASE_CONNECTION_REQUIRED: Could not connect to postgresql server (Command failed: 
+"C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project\node_modules\.bin\prisma" db push 
+--schema="prisma\schema.prisma" --accept-data-loss
+Environment variables loaded from .env
+Error: P1000: Authentication failed against database server, the provided database credentials for `postgres` are not 
+valid.
+
+Please make sure to provide valid database credentials for the database server at the configured address.
+). Skipping live migration. Prisma Client has been generated.
+[Startup] Ô£ô node_modules already present ÔÇö skipping install.
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: server\controllers\scan.controller.ts
+[Startup] Applied 6 fix(es):
+  Ô£ô Configured fullstack server script (server/index.ts) & native dev.js runner
+  Ô£ô Generated Prisma client from prisma\schema.prisma
+  Ô£ô DATABASE_CONNECTION_REQUIRED: Live postgresql migration skipped
+  Ô£ô Created pnpm-workspace.yaml (workspace isolation & build dependencies)
+  Ô£ô Created .npmrc (allow build scripts & bypass release age policies)
+  Ô£ô Auto-fixed TypeScript patterns in: server/controllers/auth.controller.ts, src/design-system/components/Button.tsx, src/design-system/components/EmptyState.tsx, src/design-system/components/GlassCard.tsx, src/design-system/components/Skeleton.tsx, src/services/api.ts, src/shared/components/Navbar.tsx
+Ô£ù Build failed.
+===== BUILD STDOUT =====
+? Verifying lockfile against supply-chain policies (454 entries)...
+Progress: resolved 1, reused 0, downloaded 0, added 0
+[WARN] deprecated @types/dompurify@3.2.0: This is a stub types definition. dompurify provides its own type definitions, so you do not need this installed.
+Progress: resolved 47, reused 47, downloaded 0, added 0
+Progress: resolved 48, reused 48, downloaded 0, added 0
+Ô£ù Lockfile failed supply-chain policy check (454 entries in 9.7s)
+[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION] 2 lockfile entries failed verification:
+  baseline-browser-mapping@2.11.15 was published at 2026-08-17T14:30:35.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:46:25.006Z)
+  electron-to-chromium@1.5.408 was published at 2026-08-17T02:02:48.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:46:25.006Z)
+
+The lockfile contains entries that the active policies reject. This can mean the lockfile is stale, or that someone committed a lockfile that bypassed the policy locally ÔÇö inspect recent changes to pnpm-lock.yaml before trusting it. If the changes look expected, run "pnpm clean --lockfile" and then "pnpm install" to rebuild from a fresh resolution. Alternatively, relax the policy that flagged them.
+[WARN] GET https://registry.npmjs.org/@prisma%2Fclient error (unknown). Will retry in 10 seconds. 2 retries left.
+[ERROR] Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+
+pnpm: Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+    at getFinalError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:88127:14)
+    at makeError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:90434:21)
+    at getSyncResult (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92278:10)
+    at spawnSubprocessSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92238:14)
+    at execaCoreSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92168:23)
+    at callBoundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94696:23)
+    at boundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94673:49)
+    at sync2 (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94832:10)
+    at runPnpmCli (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:248744:5)
+    at runDepsStatusCheck (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:250510:7)
+
+[Self-Healing] ÔÜá´©Å Repair attempt introduced a build regression. Rolling back checkpoint...
+[TransactionalRepair] ƒöä Rolling back checkpoint chk_1786988768983_nf6l0 due to: Repair attempt caused build 
+regression
+[TransactionalRepair] Ôå║ Rollback complete for chk_1786988768983_nf6l0: Restored 1 file(s), Removed 0 new file(s).
+[Startup] Verifying project is runnable...
+[Startup] Detected framework: react-vite
+[Startup] Ô£ô Generated Prisma client from prisma\schema.prisma
+[Startup] ÔÜá´©Å DATABASE_CONNECTION_REQUIRED: Could not connect to postgresql server (Command failed: 
+"C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project\node_modules\.bin\prisma" db push 
+--schema="prisma\schema.prisma" --accept-data-loss
+Environment variables loaded from .env
+Error: P1000: Authentication failed against database server, the provided database credentials for `postgres` are not 
+valid.
+
+Please make sure to provide valid database credentials for the database server at the configured address.
+). Skipping live migration. Prisma Client has been generated.
+[Startup] Ô£ô node_modules already present ÔÇö skipping install.
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: server\controllers\scan.controller.ts
+[Startup] Applied 6 fix(es):
+  Ô£ô Configured fullstack server script (server/index.ts) & native dev.js runner
+  Ô£ô Generated Prisma client from prisma\schema.prisma
+  Ô£ô DATABASE_CONNECTION_REQUIRED: Live postgresql migration skipped
+  Ô£ô Created pnpm-workspace.yaml (workspace isolation & build dependencies)
+  Ô£ô Created .npmrc (allow build scripts & bypass release age policies)
+  Ô£ô Auto-fixed TypeScript patterns in: src/design-system/components/Button.tsx, src/design-system/components/EmptyState.tsx, src/design-system/components/GlassCard.tsx, src/design-system/components/Skeleton.tsx, src/services/api.ts, src/shared/components/Navbar.tsx
+Ô£ù Build failed.
+===== BUILD STDOUT =====
+? Verifying lockfile against supply-chain policies (454 entries)...
+Progress: resolved 1, reused 0, downloaded 0, added 0
+[WARN] deprecated @types/dompurify@3.2.0: This is a stub types definition. dompurify provides its own type definitions, so you do not need this installed.
+Progress: resolved 44, reused 43, downloaded 0, added 0
+Progress: resolved 44, reused 44, downloaded 0, added 0
+Progress: resolved 45, reused 44, downloaded 0, added 0
+Progress: resolved 46, reused 46, downloaded 0, added 0
+Ô£ù Lockfile failed supply-chain policy check (454 entries in 4.9s)
+[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION] 2 lockfile entries failed verification:
+  baseline-browser-mapping@2.11.15 was published at 2026-08-17T14:30:35.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:46:52.889Z)
+  electron-to-chromium@1.5.408 was published at 2026-08-17T02:02:48.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:46:52.889Z)
+
+The lockfile contains entries that the active policies reject. This can mean the lockfile is stale, or that someone committed a lockfile that bypassed the policy locally ÔÇö inspect recent changes to pnpm-lock.yaml before trusting it. If the changes look expected, run "pnpm clean --lockfile" and then "pnpm install" to rebuild from a fresh resolution. Alternatively, relax the policy that flagged them.
+[WARN] GET https://registry.npmjs.org/typescript error (unknown). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@prisma%2Fclient error (unknown). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/prisma error (unknown). Will retry in 10 seconds. 2 retries left.
+[ERROR] Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+
+pnpm: Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+    at getFinalError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:88127:14)
+    at makeError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:90434:21)
+    at getSyncResult (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92278:10)
+    at spawnSubprocessSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92238:14)
+    at execaCoreSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92168:23)
+    at callBoundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94696:23)
+    at boundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94673:49)
+    at sync2 (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94832:10)
+    at runPnpmCli (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:248744:5)
+    at runDepsStatusCheck (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:250510:7)
+
+
+[Self-Healing] Attempting automatic repair 3/3...
+
+Analyzing build failure...
+[FailoverProvider] Proactively routed agent "healer" (complexity: N/A) to model "gemini-3.1-flash-lite" on provider "gemini"
+[FailoverProvider] Attempting chat with provider: gemini (attempt 1/3)
+[TransactionalRepair] ­ƒÆ¥ Created Checkpoint [chk_1786988845982_esk6x] for Repair [rep_1786988845982_pc60] (Attempt: 1, Files: 1)
+Framework: Next.js 14 (App Router)
+Files from AI:
+- server/controllers/auth.controller.ts
+[Self-Healing] Ô£ô Updated: C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project\server\controllers\auth.controller.ts (1654 bytes written, disk size: 1654 bytes)
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: server\controllers\scan.controller.ts
+[Startup] Verifying project is runnable...
+[Startup] Detected framework: react-vite
+[Startup] Ô£ô Generated Prisma client from prisma\schema.prisma
+[Startup] ÔÜá´©Å DATABASE_CONNECTION_REQUIRED: Could not connect to postgresql server (Command failed: 
+"C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project\node_modules\.bin\prisma" db push 
+--schema="prisma\schema.prisma" --accept-data-loss
+Environment variables loaded from .env
+Error: P1000: Authentication failed against database server, the provided database credentials for `postgres` are not 
+valid.
+
+Please make sure to provide valid database credentials for the database server at the configured address.
+). Skipping live migration. Prisma Client has been generated.
+[Startup] Ô£ô node_modules already present ÔÇö skipping install.
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: server\controllers\scan.controller.ts
+[Startup] Applied 6 fix(es):
+  Ô£ô Configured fullstack server script (server/index.ts) & native dev.js runner
+  Ô£ô Generated Prisma client from prisma\schema.prisma
+  Ô£ô DATABASE_CONNECTION_REQUIRED: Live postgresql migration skipped
+  Ô£ô Created pnpm-workspace.yaml (workspace isolation & build dependencies)
+  Ô£ô Created .npmrc (allow build scripts & bypass release age policies)
+  Ô£ô Auto-fixed TypeScript patterns in: server/controllers/auth.controller.ts, src/design-system/components/Button.tsx, src/design-system/components/EmptyState.tsx, src/design-system/components/GlassCard.tsx, src/design-system/components/Skeleton.tsx, src/services/api.ts, src/shared/components/Navbar.tsx
+Ô£ù Build failed.
+===== BUILD STDOUT =====
+? Verifying lockfile against supply-chain policies (454 entries)...
+Progress: resolved 1, reused 0, downloaded 0, added 0
+[WARN] deprecated @types/dompurify@3.2.0: This is a stub types definition. dompurify provides its own type definitions, so you do not need this installed.
+Progress: resolved 46, reused 46, downloaded 0, added 0
+Progress: resolved 47, reused 46, downloaded 0, added 0
+Ô£ù Lockfile failed supply-chain policy check (454 entries in 4.8s)
+[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION] 2 lockfile entries failed verification:
+  baseline-browser-mapping@2.11.15 was published at 2026-08-17T14:30:35.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:47:41.129Z)
+  electron-to-chromium@1.5.408 was published at 2026-08-17T02:02:48.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:47:41.129Z)
+
+The lockfile contains entries that the active policies reject. This can mean the lockfile is stale, or that someone committed a lockfile that bypassed the policy locally ÔÇö inspect recent changes to pnpm-lock.yaml before trusting it. If the changes look expected, run "pnpm clean --lockfile" and then "pnpm install" to rebuild from a fresh resolution. Alternatively, relax the policy that flagged them.
+[WARN] GET https://registry.npmjs.org/prisma error (unknown). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@prisma%2Fclient error (unknown). Will retry in 10 seconds. 2 retries left.
+[ERROR] Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+
+pnpm: Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+    at getFinalError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:88127:14)
+    at makeError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:90434:21)
+    at getSyncResult (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92278:10)
+    at spawnSubprocessSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92238:14)
+    at execaCoreSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92168:23)
+    at callBoundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94696:23)
+    at boundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94673:49)
+    at sync2 (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94832:10)
+    at runPnpmCli (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:248744:5)
+    at runDepsStatusCheck (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:250510:7)
+
+[Self-Healing] ÔÜá´©Å Repair attempt introduced a build regression. Rolling back checkpoint...
+[TransactionalRepair] ƒöä Rolling back checkpoint chk_1786988845982_esk6x due to: Repair attempt caused build 
+regression
+[TransactionalRepair] Ôå║ Rollback complete for chk_1786988845982_esk6x: Restored 1 file(s), Removed 0 new file(s).
+[Startup] Verifying project is runnable...
+[Startup] Detected framework: react-vite
+[Startup] Ô£ô Generated Prisma client from prisma\schema.prisma
+[Startup] ÔÜá´©Å DATABASE_CONNECTION_REQUIRED: Could not connect to postgresql server (Command failed: 
+"C:\Users\vishn\OneDrive\Desktop\Projects\aegis-ai\generated\project\node_modules\.bin\prisma" db push 
+--schema="prisma\schema.prisma" --accept-data-loss
+Environment variables loaded from .env
+Error: P1000: Authentication failed against database server, the provided database credentials for `postgres` are not 
+valid.
+
+Please make sure to provide valid database credentials for the database server at the configured address.
+). Skipping live migration. Prisma Client has been generated.
+[Startup] Ô£ô node_modules already present ÔÇö skipping install.
+[SyntaxPreflight] ­ƒøá´©Å Deterministically repaired syntax error in: server\controllers\scan.controller.ts
+[Startup] Applied 6 fix(es):
+  Ô£ô Configured fullstack server script (server/index.ts) & native dev.js runner
+  Ô£ô Generated Prisma client from prisma\schema.prisma
+  Ô£ô DATABASE_CONNECTION_REQUIRED: Live postgresql migration skipped
+  Ô£ô Created pnpm-workspace.yaml (workspace isolation & build dependencies)
+  Ô£ô Created .npmrc (allow build scripts & bypass release age policies)
+  Ô£ô Auto-fixed TypeScript patterns in: src/design-system/components/Button.tsx, src/design-system/components/EmptyState.tsx, src/design-system/components/GlassCard.tsx, src/design-system/components/Skeleton.tsx, src/services/api.ts, src/shared/components/Navbar.tsx
+Ô£ù Build failed.
+===== BUILD STDOUT =====
+? Verifying lockfile against supply-chain policies (454 entries)...
+Progress: resolved 1, reused 0, downloaded 0, added 0
+[WARN] deprecated @types/dompurify@3.2.0: This is a stub types definition. dompurify provides its own type definitions, so you do not need this installed.
+Progress: resolved 45, reused 45, downloaded 0, added 0
+Progress: resolved 46, reused 46, downloaded 0, added 0
+Progress: resolved 47, reused 47, downloaded 0, added 0
+Ô£ù Lockfile failed supply-chain policy check (454 entries in 6.4s)
+[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION] 2 lockfile entries failed verification:
+  baseline-browser-mapping@2.11.15 was published at 2026-08-17T14:30:35.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:48:01.568Z)
+  electron-to-chromium@1.5.408 was published at 2026-08-17T02:02:48.000Z, within the minimumReleaseAge cutoff (2026-08-16T17:48:01.568Z)
+
+The lockfile contains entries that the active policies reject. This can mean the lockfile is stale, or that someone committed a lockfile that bypassed the policy locally ÔÇö inspect recent changes to pnpm-lock.yaml before trusting it. If the changes look expected, run "pnpm clean --lockfile" and then "pnpm install" to rebuild from a fresh resolution. Alternatively, relax the policy that flagged them.
+[WARN] GET https://registry.npmjs.org/@prisma%2Fclient error (unknown). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/prisma error (unknown). Will retry in 10 seconds. 2 retries left.
+[ERROR] Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+
+pnpm: Command failed with exit code 1: "C:\Program Files\nodejs\node.exe" "C:\Users\vishn\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.mjs" install
+    at getFinalError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:88127:14)
+    at makeError (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:90434:21)
+    at getSyncResult (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92278:10)
+    at spawnSubprocessSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92238:14)
+    at execaCoreSync (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:92168:23)
+    at callBoundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94696:23)
+    at boundExeca (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94673:49)
+    at sync2 (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:94832:10)
+    at runPnpmCli (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:248744:5)
+    at runDepsStatusCheck (file:///C:/Users/vishn/AppData/Roaming/npm/node_modules/pnpm/dist/pnpm.mjs:250510:7)
+
+
+ÔØî Self-Healing: Build is still failing after maximum repair attempts. Halting pipeline execution.
+
+=== FULL EXECUTION ERROR ===
+
+=== Complete ===
+Error: Project generation failed: Maximum self-healing attempts reached. Build error: Build failed
+    at Orchestrator.generateApplication 
+(file:///C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/packages/ai-core/dist/agent/orchestrator.js:1387:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async ExecutionEngine.execute 
+(file:///C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/packages/agent-runtime/dist/execution-engine.js:74:27)
+    at async createCommand 
+(file:///C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/apps/cli/dist/commands/create.js:19:25)
+    at async main (file:///C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/apps/cli/dist/index.js:7:9)
+Error: Project generation failed: Maximum self-healing attempts reached. Build error: Build failed
+    at Orchestrator.generateApplication 
+(file:///C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/packages/ai-core/dist/agent/orchestrator.js:1387:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async ExecutionEngine.execute 
+(file:///C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/packages/agent-runtime/dist/execution-engine.js:74:27)
+    at async createCommand 
+(file:///C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/apps/cli/dist/commands/create.js:19:25)
+    at async main (file:///C:/Users/vishn/OneDrive/Desktop/Projects/aegis-ai/apps/cli/dist/index.js:7:9)
+============================
+
+
+EXIT_CODE:1

@@ -8,5 +8,5 @@ export function LoadingSpinner(props: any) {
   );
 }
 
-export const Spinner = LoadingSpinner;
 export default LoadingSpinner;
+export const Spinner = LoadingSpinner;

@@ -6,7 +6,6 @@ export async function getHistory() {
 }
 
 export default { getHistory };
-
 export const getAll = async (...args: any[]) => [];
 export const get = async (...args: any[]) => ({});
 export const create = async (...args: any[]) => ({});

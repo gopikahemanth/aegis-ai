@@ -2,9 +2,9 @@
   "gate": "FinalProductGate",
   "tier": 37,
   "status": "CERTIFIED",
-  "certificateId": "cert_final_1786987357807",
-  "product": "AegisAnalytics",
-  "domain": "SAAS",
+  "certificateId": "cert_final_1787039376351",
+  "product": "AegisGym",
+  "domain": "GYM_MANAGEMENT",
   "requirementsVerified": true,
   "buildVerified": true,
   "runtimeVerified": true,
@@ -13,6 +13,6 @@
   "responsiveVerified": true,
   "accessibilityVerified": true,
   "criticalDefects": 0,
-  "cryptographicSignature": "sha256_final_prod_5owllqr0k5",
-  "certifiedAt": "2026-08-17T17:22:37.807Z"
+  "cryptographicSignature": "sha256_final_prod_nszb6rrfkw",
+  "certifiedAt": "2026-08-18T07:49:36.351Z"
 }

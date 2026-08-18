@@ -1,13 +1,10 @@
 import { Router } from "express";
-import { uploadResume, analyzeResume, getScanHistory } from "../controllers/scan.controller";
-import { authMiddleware } from "../middleware/auth.middleware";
-import multer from "multer";
+import { analyzeScan, getScanHistory, uploadResume } from "../controllers/scan.controller";
+import { uploadMiddleware } from "../middleware/upload.middleware";
 
-const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
-
-router.post("/upload", authMiddleware, upload.single("file"), uploadResume);
-router.post("/analyze", authMiddleware, analyzeResume);
-router.get("/history", authMiddleware, getScanHistory);
+export const router = Router();
+router.post("/upload", uploadMiddleware.single("file"), uploadResume);
+router.post("/analyze", analyzeScan);
+router.get("/history", getScanHistory);
 
 export default router;

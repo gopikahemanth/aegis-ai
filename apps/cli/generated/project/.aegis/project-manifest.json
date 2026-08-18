@@ -1,7 +1,7 @@
 {
   "version": 1,
   "contractVersion": 1,
-  "frontend": "React-Vite",
+  "frontend": "React",
   "backend": "Express",
   "database": "PostgreSQL",
   "orm": "Prisma",
@@ -580,16 +580,16 @@
     }
   ],
   "routes": [
-    "upload-resume-and-jd",
-    "process-semantic-analysis",
-    "view-match-insights",
-    "manage-analysis-history",
-    "download-pdf-report"
+    "create-task",
+    "drag-drop-task",
+    "filter-tasks-by-priority",
+    "edit-task-details",
+    "sync-offline-changes"
   ],
   "models": [
-    "User",
-    "ResumeAnalysis",
-    "JobDescription"
+    "Task",
+    "TaskStatus",
+    "TaskPriority"
   ],
   "apiEndpoints": [
     "POST /api/scans/upload",

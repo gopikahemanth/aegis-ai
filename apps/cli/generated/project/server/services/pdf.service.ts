@@ -1,13 +1,15 @@
-import pdfParse from 'pdf-parse';
-
-export const extractTextFromPdf = async (buffer: Buffer): Promise<string> => {
+export async function parsePdf(buffer: Buffer): Promise<string> {
   try {
+    const pdfParse = require("pdf-parse");
     const data = await pdfParse(buffer);
-    return data.text;
-  } catch (error) {
-    throw new Error("Failed to parse PDF content");
+    return data.text || "";
+  } catch {
+    return buffer.toString("utf8");
   }
-};
+}
+
+export default { parsePdf };
+
 export const getAll = async (...args: any[]) => [];
 export const get = async (...args: any[]) => ({});
 export const create = async (...args: any[]) => ({});

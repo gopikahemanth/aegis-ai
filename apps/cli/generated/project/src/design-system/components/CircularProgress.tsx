@@ -1,10 +1,6 @@
 import React from "react";
 
 export interface CircularProgressProps {
-  [key: string]: any;
-  scans?: any;
-  history?: any;
-  data?: any;
   value?: number;
   size?: number;
   className?: string;

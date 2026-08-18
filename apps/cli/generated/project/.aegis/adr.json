@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "projectId": "project",
+  "decisions": [
+    {
+      "decisionId": "adr_app_type",
+      "category": "Application Type",
+      "selectedValue": "FULLSTACK_WEB_APPLICATION",
+      "reason": "Contract locked by ArchitectureResolver. Frontend(inferred), Backend(default), DB(default), ORM(default)",
+      "source": "AEGIS_DEFAULT",
+      "alternatives": [
+        "STATIC_SITE",
+        "CLI_APPLICATION",
+        "API_SERVICE",
+        "DESKTOP_APPLICATION"
+      ],
+      "tradeoffs": "Provides complete decoupled client and server layers with independent scaling.",
+      "confidence": 0.85,
+      "locked": true
+    },
+    {
+      "decisionId": "adr_frontend",
+      "category": "Frontend Framework",
+      "selectedValue": "React",
+      "reason": "Standard modern fast-refresh SPA architecture.",
+      "source": "AEGIS_DEFAULT",
+      "alternatives": [
+        "React-Vite",
+        "Next.js",
+        "Vue-Vite",
+        "HTML/Vanilla"
+      ],
+      "tradeoffs": "Vite provides sub-second HMR with minimal build overhead compared to heavy fullstack SSR bundles.",
+      "confidence": 0.9,
+      "locked": true
+    },
+    {
+      "decisionId": "adr_backend",
+      "category": "Backend Framework",
+      "selectedValue": "Express",
+      "reason": "Express provides lightweight, robust REST API routing with standard middleware support.",
+      "source": "AEGIS_DEFAULT",
+      "alternatives": [
+        "Express",
+        "Fastify",
+        "Next.js API Routes",
+        "NestJS"
+      ],
+      "tradeoffs": "Minimal boilerplate with huge ecosystem of mature middleware.",
+      "confidence": 0.9,
+      "locked": true
+    },
+    {
+      "decisionId": "adr_database",
+      "category": "Database & ORM",
+      "selectedValue": "PostgreSQL with Prisma",
+      "reason": "PostgreSQL with Prisma guarantees ACID transactions and type-safe relational queries.",
+      "source": "AEGIS_DEFAULT",
+      "alternatives": [
+        "PostgreSQL",
+        "SQLite",
+        "MySQL",
+        "MongoDB"
+      ],
+      "tradeoffs": "Requires database service or container in production; provides strong relational integrity.",
+      "confidence": 0.9,
+      "locked": true
+    },
+    {
+      "decisionId": "adr_package_manager",
+      "category": "Package Manager",
+      "selectedValue": "pnpm",
+      "reason": "Locked package manager for fast deterministic node_modules installation and symlink caching.",
+      "source": "AEGIS_DEFAULT",
+      "alternatives": [
+        "pnpm",
+        "npm",
+        "yarn"
+      ],
+      "tradeoffs": "Requires pnpm installed on host environment; saves disk space and installation time.",
+      "confidence": 1,
+      "locked": true
+    }
+  ],
+  "lockedAt": "2026-08-18T09:23:32.388Z"
+}

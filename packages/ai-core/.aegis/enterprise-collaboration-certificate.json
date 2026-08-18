@@ -1,22 +1,22 @@
 {
-  "certificateId": "cert_collab_1786968794456",
-  "issuedAt": "2026-08-17T12:13:14.456Z",
+  "certificateId": "cert_collab_1787039314983",
+  "issuedAt": "2026-08-18T07:48:34.983Z",
   "status": "COLLABORATION_CERTIFIED",
   "enterpriseGovernanceCertificate": {
-    "certificateId": "cert_ent_gov_1786968794452",
-    "issuedAt": "2026-08-17T12:13:14.452Z",
+    "certificateId": "cert_ent_gov_1787039314982",
+    "issuedAt": "2026-08-18T07:48:34.982Z",
     "status": "ENTERPRISE_GOVERNANCE_CERTIFIED",
     "selfManagementCertificate": {
-      "certificateId": "cert_self_mgmt_1786968794449",
-      "issuedAt": "2026-08-17T12:13:14.449Z",
+      "certificateId": "cert_self_mgmt_1787039314981",
+      "issuedAt": "2026-08-18T07:48:34.981Z",
       "status": "SELF_MANAGEMENT_CERTIFIED",
       "productionValidationCertificate": {
-        "certificateId": "cert_prod_val_1786968794448",
-        "issuedAt": "2026-08-17T12:13:14.448Z",
+        "certificateId": "cert_prod_val_1787039314981",
+        "issuedAt": "2026-08-18T07:48:34.981Z",
         "status": "PRODUCTION_VALIDATED",
         "platformCertificate": {
-          "certificateId": "cert_supreme_platform_1786968794447",
-          "issuedAt": "2026-08-17T12:13:14.447Z",
+          "certificateId": "cert_supreme_platform_1787039314980",
+          "issuedAt": "2026-08-18T07:48:34.980Z",
           "status": "PLATFORM_CERTIFIED",
           "governanceGatesPassed": 7,
           "totalFleetProjects": 0,
@@ -27,8 +27,8 @@
           "summary": "AEGIS SUPREME PLATFORM CERTIFICATE: ISSUED. 7/7 governance layers passed across 0 fleet projects."
         },
         "securityCertificate": {
-          "certificateId": "cert_sec_1786968794448",
-          "issuedAt": "2026-08-17T12:13:14.448Z",
+          "certificateId": "cert_sec_1787039314980",
+          "issuedAt": "2026-08-18T07:48:34.980Z",
           "status": "SECURITY_CERTIFIED",
           "dimensionsAudited": 14,
           "secretIsolationPassed": true,
@@ -43,7 +43,7 @@
       },
       "platformSelfHealth": {
         "overallStatus": "HEALTHY",
-        "timestamp": "2026-08-17T12:13:14.449Z",
+        "timestamp": "2026-08-18T07:48:34.981Z",
         "subsystems": [
           {
             "subsystem": "AI Core & Pipeline",
@@ -84,8 +84,8 @@
       "summary": "AEGIS SELF-MANAGEMENT GATE: CERTIFIED. Platform is autonomously governed, verified, and self-managing across all 9 governance tiers."
     },
     "complianceCertificate": {
-      "certificateId": "cert_compliance_1786968794451",
-      "issuedAt": "2026-08-17T12:13:14.451Z",
+      "certificateId": "cert_compliance_1787039314982",
+      "issuedAt": "2026-08-18T07:48:34.982Z",
       "status": "COMPLIANT",
       "frameworksValidated": [
         "SOC2_TYPE_II",

@@ -24,5 +24,4 @@ export interface ScanHistoryItem {
 }
 
 export default {};
-
 export type Index = any;

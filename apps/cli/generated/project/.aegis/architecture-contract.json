@@ -1,20 +1,22 @@
 {
   "version": 1,
   "status": "locked",
-  "prompt": "Build an AI Resume Match Analyzer & Job Keyword Scoring web application with React, Express, drag-and-drop resume PDF upload, ATS match score breakdown, and candidate reporting.",
-  "source": "user_prompt",
-  "confidence": 1,
-  "reason": "Contract locked by ArchitectureResolver. Frontend(user), Backend(user), DB(default), ORM(default)",
-  "userSpecified": true,
-  "inferred": false,
+  "prompt": "Build a modern Task Management Application with a Kanban board, Todo/In Progress/Done columns, task creation with priority and due date, task filtering by priority and status, responsive design, persistent data, and a clean production-ready UI.",
+  "applicationType": "FULLSTACK_WEB_APPLICATION",
+  "architectureProfile": "FULLSTACK_WEB_REACT_EXPRESS",
+  "source": "canonical_spec",
+  "confidence": 0.85,
+  "reason": "Contract locked by ArchitectureResolver. Frontend(inferred), Backend(default), DB(default), ORM(default)",
+  "userSpecified": false,
+  "inferred": true,
   "overridden": false,
   "frontend": {
-    "framework": "React-Vite",
-    "provenance": "user"
+    "framework": "React",
+    "provenance": "inferred"
   },
   "backend": {
     "framework": "Express",
-    "provenance": "user"
+    "provenance": "default"
   },
   "database": {
     "provider": "PostgreSQL",
@@ -23,47 +25,70 @@
     "ormProvenance": "default"
   },
   "language": "TypeScript",
-  "styling": "vanilla-css",
-  "packageManager": "npm",
+  "styling": "Tailwind CSS",
+  "packageManager": "pnpm",
   "authentication": "JWT",
+  "runtime": "Node.js",
+  "apiStyle": "REST",
+  "buildTool": "Vite",
+  "testFramework": "Vitest",
+  "browserTestFramework": "Puppeteer",
+  "deploymentTarget": "Docker",
+  "storage": "Local",
+  "cache": "In-Memory",
+  "queue": "None",
+  "realtime": "None",
+  "aiProvider": "Gemini",
+  "securityRequirements": [
+    "Server/Client Boundary Enforcement",
+    "Secret Token Masking",
+    "Input Sanitization"
+  ],
   "requiredLibraries": [
-    "react-dropzone",
-    "pdf-parse",
-    "openai",
-    "natural",
-    "recharts",
-    "framer-motion",
-    "mongoose",
+    "@dnd-kit/core",
+    "@dnd-kit/sortable",
+    "@dnd-kit/utilities",
+    "zustand",
+    "immer",
+    "react-hook-form",
+    "zod",
+    "date-fns",
+    "@tanstack/react-query",
     "axios",
-    "jspdf",
-    "jspdf-autotable",
-    "dotenv",
-    "cors",
-    "express-validator"
+    "framer-motion",
+    "tailwind-merge",
+    "clsx",
+    "@radix-ui/react-dialog",
+    "@radix-ui/react-select",
+    "@prisma/client"
   ],
   "requiredFeatures": [
-    "pdf-processing",
-    "analysis-engine",
-    "dashboard",
-    "history-management",
-    "report-export",
-    "auth"
+    "kanban",
+    "forms",
+    "store",
+    "hooks",
+    "services",
+    "types",
+    "utils"
   ],
   "requiredRoutes": [
-    "upload-resume-and-jd",
-    "process-semantic-analysis",
-    "view-match-insights",
-    "manage-analysis-history",
-    "download-pdf-report"
+    "create-task",
+    "drag-drop-task",
+    "filter-tasks-by-priority",
+    "edit-task-details",
+    "sync-offline-changes"
   ],
   "requiredModels": [
-    "User",
-    "ResumeAnalysis",
-    "JobDescription"
+    "Task",
+    "TaskStatus",
+    "TaskPriority"
   ],
   "projectStructure": {
-    "src": "Frontend source directory",
-    "server": "Backend server directory",
-    "prisma": "Database schema directory"
-  }
+    "src": "Frontend presentation layer",
+    "server": "Backend API and database services",
+    "prisma": "Database schemas and migrations"
+  },
+  "architectureHash": "477444994952",
+  "technologyHash": "01062692095b",
+  "dependencyHash": "8dc09c4ae8fd"
 }

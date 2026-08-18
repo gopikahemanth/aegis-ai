@@ -1,8 +1,8 @@
 {
   "models": [
     {
-      "name": "User",
-      "description": "Authenticated system user",
+      "name": "Task",
+      "description": "Represents a core unit of work in the Kanban board",
       "persistence": "database",
       "fields": [
         {
@@ -11,42 +11,7 @@
           "isId": true,
           "isNullable": false,
           "isUnique": true,
-          "relationTo": null,
-          "description": "Primary identifier"
-        },
-        {
-          "name": "email",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": true,
-          "relationTo": null,
-          "description": "User login email"
-        },
-        {
-          "name": "password",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Hashed credentials"
-        }
-      ]
-    },
-    {
-      "name": "JobDescription",
-      "description": "Target job description metadata",
-      "persistence": "database",
-      "fields": [
-        {
-          "name": "id",
-          "type": "string",
-          "isId": true,
-          "isNullable": false,
-          "isUnique": true,
-          "relationTo": null,
-          "description": "Primary identifier"
+          "description": "Unique identifier"
         },
         {
           "name": "title",
@@ -54,87 +19,47 @@
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "relationTo": null,
-          "description": "Job title"
+          "description": "Short summary of the task"
         },
         {
-          "name": "content",
+          "name": "description",
           "type": "string",
+          "isId": false,
+          "isNullable": true,
+          "isUnique": false,
+          "description": "Detailed task information"
+        },
+        {
+          "name": "status",
+          "type": "customType",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "relationTo": null,
-          "description": "Full job description text"
+          "description": "TaskStatus enum: TODO, IN_PROGRESS, DONE"
         },
         {
-          "name": "userId",
-          "type": "string",
+          "name": "priority",
+          "type": "customType",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "relationTo": "User",
-          "description": "Owner"
-        }
-      ]
-    },
-    {
-      "name": "ResumeScan",
-      "description": "Core analysis entity linking resume and JD",
-      "persistence": "database",
-      "fields": [
-        {
-          "name": "id",
-          "type": "string",
-          "isId": true,
-          "isNullable": false,
-          "isUnique": true,
-          "relationTo": null,
-          "description": "Primary identifier"
+          "description": "TaskPriority enum: LOW, MEDIUM, HIGH"
         },
         {
-          "name": "userId",
-          "type": "string",
+          "name": "dueDate",
+          "type": "DateTime",
           "isId": false,
-          "isNullable": false,
+          "isNullable": true,
           "isUnique": false,
-          "relationTo": "User",
-          "description": "Owner"
+          "description": "Deadline for the task"
         },
         {
-          "name": "jobDescriptionId",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": "JobDescription",
-          "description": "Linked JD"
-        },
-        {
-          "name": "resumeText",
-          "type": "string",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Extracted text content"
-        },
-        {
-          "name": "matchScore",
+          "name": "order",
           "type": "number",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "relationTo": null,
-          "description": "Calculated score"
-        },
-        {
-          "name": "analysisData",
-          "type": "Json",
-          "isId": false,
-          "isNullable": false,
-          "isUnique": false,
-          "relationTo": null,
-          "description": "Detailed AI insight report"
+          "description": "Position index in Kanban column"
         },
         {
           "name": "createdAt",
@@ -142,48 +67,69 @@
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "relationTo": null,
-          "description": "Timestamp"
+          "description": "Timestamp of creation"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "isId": false,
+          "isNullable": false,
+          "isUnique": false,
+          "description": "Last update timestamp"
         }
       ]
     }
   ],
-  "databaseSchema": "model User { id String @id @default(uuid()) email String @unique password String resumes ResumeScan[] jds JobDescription[] } model JobDescription { id String @id @default(uuid()) title String content String userId String user User @relation(fields: [userId], references: [id]) scans ResumeScan[] } model ResumeScan { id String @id @default(uuid()) userId String user User @relation(fields: [userId], references: [id]) jobDescriptionId String jd JobDescription @relation(fields: [jobDescriptionId], references: [id]) resumeText String matchScore Float analysisData Json createdAt DateTime @default(now()) }",
+  "databaseSchema": "enum TaskStatus { TODO\nIN_PROGRESS\nDONE }\nenum TaskPriority { LOW\nMEDIUM\nHIGH }\n\nmodel Task {\n  id          String   @id @default(uuid())\n  title       String\n  description String?\n  status      TaskStatus @default(TODO)\n  priority    TaskPriority @default(MEDIUM)\n  dueDate     DateTime?\n  order       Int\n  createdAt   DateTime @default(now())\n  updatedAt   DateTime @updatedAt\n}",
   "apis": [
     {
-      "path": "/api/v1/scans",
+      "path": "/api/v1/tasks",
+      "method": "GET",
+      "description": "Fetch all tasks",
+      "responseBodySchema": "{ tasks: Task[] }"
+    },
+    {
+      "path": "/api/v1/tasks",
       "method": "POST",
-      "description": "Upload and perform analysis",
-      "requestBodySchema": "{ resumeFile: File, jobDescription: string }",
-      "responseBodySchema": "{ id: string, matchScore: number, analysisData: object }"
+      "description": "Create a new task",
+      "requestBodySchema": "{ title: string, description?: string, priority: string, dueDate?: string }",
+      "responseBodySchema": "{ task: Task }"
     },
     {
-      "path": "/api/v1/scans",
-      "method": "GET",
-      "description": "List history",
-      "responseBodySchema": "ResumeScan[]"
+      "path": "/api/v1/tasks/:id",
+      "method": "PATCH",
+      "description": "Update task status, order, or details",
+      "requestBodySchema": "{ status?: string, order?: number, title?: string, priority?: string, dueDate?: string }",
+      "responseBodySchema": "{ task: Task }"
     },
     {
-      "path": "/api/v1/scans/:id",
-      "method": "GET",
-      "description": "Fetch specific report",
-      "responseBodySchema": "ResumeScan"
+      "path": "/api/v1/tasks/:id",
+      "method": "DELETE",
+      "description": "Remove a task",
+      "responseBodySchema": "{ success: boolean }"
     }
   ],
   "hooks": [
     {
-      "name": "useCreateScan",
-      "type": "mutation",
-      "endpoint": "/api/v1/scans",
-      "params": "formData",
-      "returns": "ScanResult"
+      "name": "useTasks",
+      "type": "query",
+      "endpoint": "/api/v1/tasks",
+      "params": "none",
+      "returns": "Task[]"
     },
     {
-      "name": "useScanHistory",
-      "type": "query",
-      "endpoint": "/api/v1/scans",
-      "params": "void",
-      "returns": "ResumeScan[]"
+      "name": "useUpdateTask",
+      "type": "mutation",
+      "endpoint": "/api/v1/tasks/:id",
+      "params": "taskId: string",
+      "returns": "Task"
+    },
+    {
+      "name": "useCreateTask",
+      "type": "mutation",
+      "endpoint": "/api/v1/tasks",
+      "params": "none",
+      "returns": "Task"
     }
   ]
 }

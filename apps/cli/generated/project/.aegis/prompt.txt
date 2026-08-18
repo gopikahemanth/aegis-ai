@@ -1,0 +1,1 @@
+Build a modern Task Management Application with a Kanban board, Todo/In Progress/Done columns, task creation with priority and due date, task filtering by priority and status, responsive design, persistent data, and a clean production-ready UI.

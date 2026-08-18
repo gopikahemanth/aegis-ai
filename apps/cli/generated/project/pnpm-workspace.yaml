@@ -1,11 +1,4 @@
 packages: []
-allowBuilds:
-  '@prisma/client': true
-  '@prisma/engines': true
-  core-js: true
-  esbuild: true
-  prisma: true
-confirmModulesPurge: false
 onlyBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'

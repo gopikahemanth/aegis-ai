@@ -1,0 +1,7 @@
+OS: Windows 11 / Windows NT
+Node: v24.13.1
+NPM: 11.8.0
+PNPM: 10.9.0
+Git: git version 2.51.0.windows.1
+TypeScript: Version 5.9.3
+Timestamp: 2026-08-17 23:19:09 +05:30

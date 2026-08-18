@@ -49,11 +49,6 @@ export const resumeApi = api;
 export const scanApi = api;
 
 export default api;
-export const authApi = api;
-
-export const loginUser = (...args: any[]) => 0;
-export type loginUser = any;
-
 export const getAll = async (...args: any[]) => [];
 export const get = async (...args: any[]) => ({});
 export const create = async (...args: any[]) => ({});

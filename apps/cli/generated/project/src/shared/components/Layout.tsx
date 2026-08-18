@@ -1,10 +1,6 @@
 import React from "react";
 
 export interface LayoutProps {
-  [key: string]: any;
-  scans?: any;
-  history?: any;
-  data?: any;
   children?: React.ReactNode;
 }
 
@@ -20,5 +16,4 @@ export default function Layout({ children }: LayoutProps) {
     </div>
   );
 }
-
 export { Layout };

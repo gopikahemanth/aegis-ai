@@ -1,0 +1,19 @@
+# AEGIS Real-World Generation Audit: Feature Matrix
+
+| Prompt Requirement | Target Specification | Generated In Architecture Contract | Actual Generated Code Artifacts | Match Status | Notes / Discrepancies |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Domain & Purpose** | Complete Gym Management System | Inferred correctly as Gym Management System | Overridden to "Code & Resume AST Analyzer" & "Code Security Vulnerability Scanner" | ❌ FAILED | `CanonicalDataModelContract` and `FastDeterministicSanitizer` forced security/code review domain onto the codebase. |
+| **Public Landing Page** | Hero, plans showcase, gym info | Inferred | Generic dark navbar & dashboard route (`/`) | ❌ FAILED | Default route opens Code Security Scanner instead of gym landing page. |
+| **User Registration & Auth** | Registration, Login/Logout, Role-based (Admin, Member, Trainer) | `auth`, `User` model, JWT | `LoginPage.tsx`, `auth.controller.ts`, User model (Email, PasswordHash) | ⚠️ PARTIAL | Auth UI & controller exist, but role-based authorization (Member/Trainer/Admin) is replaced by single demo user state. |
+| **Member Management** | Member profiles, subscriptions, workout history | `members`, `Membership` model | None (replaced by Repository & Scan entities) | ❌ FAILED | No member management UI or endpoints generated; database schema has no Member/Membership model. |
+| **Trainer Management** | Trainer schedules, assigned members | `trainers` | None | ❌ FAILED | Trainer domain entirely absent from schema, controllers, and frontend. |
+| **Membership Plans** | Tiered plans, pricing, durations | `billing`, `Payment` model | None | ❌ FAILED | No membership plan creation, selection, or pricing components. |
+| **Attendance Management** | Check-in/out, logs, QR code scan | `attendance`, `Attendance` model | None | ❌ FAILED | Replaced by Code Scan history and AST node evaluations. |
+| **Payment Management** | Stripe / Billing reconciliation | `billing`, `stripe` library in contract | `jspdf` in package.json, but no payment controllers or Stripe routes | ❌ FAILED | Stripe and payment routes absent from implementation. |
+| **Reports & Analytics** | Revenue, attendance trends, member growth | `analytics` | AST Vulnerability Health Score & CWE metrics | ❌ FAILED | Dashboard renders OWASP vulnerability count and risk score instead of gym analytics. |
+| **Search & Filtering** | Member search, filter by status/plan | Required feature | Search payload editor for code strings | ❌ FAILED | No member search; code snippet editor present instead. |
+| **Notifications** | Alerts for renewals, payments, announcements | Inferred in prompt | None | ❌ FAILED | No notification service or UI toaster integration. |
+| **Responsive UI** | Mobile / Tablet / Desktop layouts | Responsive Tailwind UI | Responsive Tailwind CSS present in generated components | ⚠️ PARTIAL | Tailwind CSS setup is responsive, but views present AST code scanner rather than gym pages. |
+| **Database Persistence** | PostgreSQL + Prisma ORM (Users, Members, Plans, Attendance) | Required models: User, Membership, Attendance, Payment, WorkoutPlan | Prisma schema generated with User, Repository, Scan, Vulnerability, Remediation, AnalysisResult | ❌ FAILED | Hardcoded `CanonicalDataModelContract` overrode domain models; `prisma db push` failed due to invalid credentials. |
+| **REST APIs** | Express endpoints for all gym domains | Express REST endpoints | Generated `server/controllers/scan.controller.ts`, `server/controllers/auth.controller.ts` | ❌ FAILED | Endpoints serve AST scan execution rather than gym resources. |
+| **Build & Runnability** | Executable production build | `npm run build` / `pnpm dev` | Build fails with TS errors (TS2345, TS2339) in `AnalyzePage.tsx` caused by regex sanitizer | ❌ FAILED | Project cannot build or start cleanly out of the box. |

@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "status": "locked",
+  "prompt": "Build a complete production-ready gym management website. It should include: public landing page, user registration, login/logout, role-based authentication, admin dashboard, member management, trainer management, membership plans, attendance management, payment management, reports, search and filtering, notifications, profile management, responsive desktop/tablet/mobile UI, proper loading, error and empty states, database persistence, REST APIs, secure authentication and authorization, production-ready configuration, complete business workflows. The final result should be a complete working website, not a prototype, mockup, scaffold, or collection of placeholder pages.",
+  "applicationType": "FULLSTACK_WEB_APPLICATION",
+  "architectureProfile": "NEXTJS_FULLSTACK",
+  "source": "canonical_spec",
+  "confidence": 0.85,
+  "reason": "Contract locked by ArchitectureResolver. Frontend(inferred), Backend(default), DB(default), ORM(default)",
+  "userSpecified": false,
+  "inferred": true,
+  "overridden": false,
+  "frontend": {
+    "framework": "Next.js 14 (App Router)",
+    "provenance": "inferred"
+  },
+  "backend": {
+    "framework": "Express",
+    "provenance": "default"
+  },
+  "database": {
+    "provider": "PostgreSQL",
+    "orm": "Prisma",
+    "provenance": "default",
+    "ormProvenance": "default"
+  },
+  "language": "TypeScript",
+  "styling": "Tailwind CSS",
+  "packageManager": "pnpm",
+  "authentication": "JWT",
+  "runtime": "Node.js",
+  "apiStyle": "REST",
+  "buildTool": "Next.js",
+  "testFramework": "Vitest",
+  "browserTestFramework": "Puppeteer",
+  "deploymentTarget": "Docker",
+  "storage": "Local",
+  "cache": "In-Memory",
+  "queue": "None",
+  "realtime": "None",
+  "aiProvider": "Gemini",
+  "securityRequirements": [
+    "Server/Client Boundary Enforcement",
+    "Secret Token Masking",
+    "Input Sanitization"
+  ],
+  "requiredLibraries": [
+    "next-auth",
+    "prisma",
+    "stripe",
+    "recharts",
+    "zod",
+    "react-hook-form",
+    "tailwindcss",
+    "date-fns",
+    "axios",
+    "jsonwebtoken",
+    "bcryptjs",
+    "@tanstack/react-query",
+    "sonner"
+  ],
+  "requiredFeatures": [
+    "auth",
+    "members",
+    "trainers",
+    "billing",
+    "attendance",
+    "analytics"
+  ],
+  "requiredRoutes": [
+    "member-sign-up-and-subscription",
+    "trainer-manage-member-profiles",
+    "admin-revenue-reporting",
+    "member-attendance-check-in",
+    "automated-payment-reconciliation"
+  ],
+  "requiredModels": [
+    "User",
+    "Membership",
+    "Attendance",
+    "Payment",
+    "WorkoutPlan"
+  ],
+  "projectStructure": {
+    "src": "Frontend presentation layer",
+    "server": "Backend API and database services",
+    "prisma": "Database schemas and migrations"
+  },
+  "architectureHash": "e997d21e8642",
+  "technologyHash": "435825afb3fc",
+  "dependencyHash": "65c882be5af0"
+}

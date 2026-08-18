@@ -59,6 +59,7 @@ import { SecurityIntelligenceView } from "./components/SecurityIntelligenceView.
 import { PerformanceOptimizationView } from "./components/PerformanceOptimizationView.js";
 import { ProductIntelligenceView } from "./components/ProductIntelligenceView.js";
 import { RequirementIntelligenceView } from "./components/RequirementIntelligenceView.js";
+import { GenerationIntegrityView } from "./components/GenerationIntegrityView.js";
 
 
 
@@ -410,6 +411,7 @@ export function App() {
       {currentView === "performance-optimization" && <PerformanceOptimizationView />}
       {currentView === "product-intelligence" && <ProductIntelligenceView />}
       {currentView === "requirement-intelligence" && <RequirementIntelligenceView />}
+      {currentView === "generation-integrity" && <GenerationIntegrityView />}
 
       {/* Authorization Modal */}
 

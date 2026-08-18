@@ -27,21 +27,6 @@
     }
   ],
   [
-    "server/controllers/task.controller.ts",
-    {
-      "path": "server/controllers/task.controller.ts",
-      "language": "ts",
-      "imports": [
-        "../lib/prisma"
-      ],
-      "exports": [
-        "getTasks",
-        "createTask"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
     "server/lib/prisma.ts",
     {
       "path": "server/lib/prisma.ts",
@@ -49,7 +34,6 @@
       "imports": [],
       "exports": [
         "prisma",
-        "db",
         "default"
       ],
       "referencedFiles": []
@@ -136,7 +120,6 @@
         "./routes"
       ],
       "exports": [
-        "App",
         "default"
       ],
       "referencedFiles": []
@@ -313,14 +296,11 @@
     }
   ],
   [
-    "src/features/kanban/components/Board.tsx",
+    "src/features/kanban-board/components/Board.tsx",
     {
-      "path": "src/features/kanban/components/Board.tsx",
+      "path": "src/features/kanban-board/components/Board.tsx",
       "language": "tsx",
-      "imports": [
-        "@/services/store",
-        "./Column"
-      ],
+      "imports": [],
       "exports": [
         "Board",
         "default"
@@ -329,14 +309,28 @@
     }
   ],
   [
-    "src/features/kanban/components/Column.tsx",
+    "src/features/kanban-board/components/KanbanBoard.tsx",
     {
-      "path": "src/features/kanban/components/Column.tsx",
+      "path": "src/features/kanban-board/components/KanbanBoard.tsx",
+      "language": "tsx",
+      "imports": [
+        "../../state-sync/store"
+      ],
+      "exports": [
+        "KanbanBoard",
+        "default"
+      ],
+      "referencedFiles": []
+    }
+  ],
+  [
+    "src/features/state-sync/store.tsx",
+    {
+      "path": "src/features/state-sync/store.tsx",
       "language": "tsx",
       "imports": [],
       "exports": [
-        "Column",
-        "default"
+        "useTaskStore"
       ],
       "referencedFiles": []
     }
@@ -417,24 +411,6 @@
         "./api"
       ],
       "exports": [
-        "getAll",
-        "get",
-        "create",
-        "update",
-        "remove",
-        "default"
-      ],
-      "referencedFiles": []
-    }
-  ],
-  [
-    "src/services/store.tsx",
-    {
-      "path": "src/services/store.tsx",
-      "language": "tsx",
-      "imports": [],
-      "exports": [
-        "store",
         "getAll",
         "get",
         "create",

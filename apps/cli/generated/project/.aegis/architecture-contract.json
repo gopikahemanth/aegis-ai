@@ -6,7 +6,7 @@
   "architectureProfile": "FULLSTACK_WEB_REACT_EXPRESS",
   "source": "canonical_spec",
   "confidence": 0.85,
-  "reason": "Contract locked by ArchitectureResolver. Frontend(inferred), Backend(default), DB(default), ORM(default)",
+  "reason": "Contract locked by ArchitectureResolver. Frontend(inferred), Backend(inferred), DB(default), ORM(default)",
   "userSpecified": false,
   "inferred": true,
   "overridden": false,
@@ -15,8 +15,8 @@
     "provenance": "inferred"
   },
   "backend": {
-    "framework": "Express",
-    "provenance": "default"
+    "framework": "none",
+    "provenance": "inferred"
   },
   "database": {
     "provider": "PostgreSQL",
@@ -25,7 +25,7 @@
     "ormProvenance": "default"
   },
   "language": "TypeScript",
-  "styling": "Tailwind CSS",
+  "styling": "tailwindcss",
   "packageManager": "pnpm",
   "authentication": "JWT",
   "runtime": "Node.js",
@@ -45,50 +45,40 @@
     "Input Sanitization"
   ],
   "requiredLibraries": [
-    "@dnd-kit/core",
-    "@dnd-kit/sortable",
-    "@dnd-kit/utilities",
+    "@hello-pangea/dnd",
     "zustand",
-    "immer",
     "react-hook-form",
     "zod",
     "date-fns",
-    "@tanstack/react-query",
-    "axios",
-    "framer-motion",
-    "tailwind-merge",
+    "lucide-react",
     "clsx",
-    "@radix-ui/react-dialog",
-    "@radix-ui/react-select",
-    "@prisma/client"
+    "lodash",
+    "tailwind-merge"
   ],
   "requiredFeatures": [
-    "kanban",
-    "forms",
-    "store",
-    "hooks",
-    "services",
-    "types",
-    "utils"
+    "kanban-board",
+    "task-management",
+    "state-sync",
+    "filter-search",
+    "ui-theming"
   ],
   "requiredRoutes": [
     "create-task",
-    "drag-drop-task",
-    "filter-tasks-by-priority",
-    "edit-task-details",
-    "sync-offline-changes"
+    "drag-drop-transition",
+    "filter-tasks",
+    "toggle-theme"
   ],
   "requiredModels": [
     "Task",
-    "TaskStatus",
-    "TaskPriority"
+    "BoardColumn",
+    "PriorityLevel"
   ],
   "projectStructure": {
     "src": "Frontend presentation layer",
     "server": "Backend API and database services",
     "prisma": "Database schemas and migrations"
   },
-  "architectureHash": "477444994952",
-  "technologyHash": "01062692095b",
-  "dependencyHash": "8dc09c4ae8fd"
+  "architectureHash": "622f8a06c903",
+  "technologyHash": "8a422e05c0ce",
+  "dependencyHash": "52df9941d95c"
 }

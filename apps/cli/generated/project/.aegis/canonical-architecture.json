@@ -1,52 +1,42 @@
 {
   "contractVersion": 1,
-  "architectureHash": "aca5492a7238",
+  "architectureHash": "5c0cf42753bc",
   "frontend": "React",
-  "backend": "Express",
+  "backend": "none",
   "database": "PostgreSQL",
   "orm": "Prisma",
   "authentication": "JWT",
   "language": "TypeScript",
-  "styling": "Tailwind CSS",
+  "styling": "tailwindcss",
   "packageManager": "pnpm",
   "requiredLibraries": [
-    "@dnd-kit/core",
-    "@dnd-kit/sortable",
-    "@dnd-kit/utilities",
+    "@hello-pangea/dnd",
     "zustand",
-    "immer",
     "react-hook-form",
     "zod",
     "date-fns",
-    "@tanstack/react-query",
-    "axios",
-    "framer-motion",
-    "tailwind-merge",
+    "lucide-react",
     "clsx",
-    "@radix-ui/react-dialog",
-    "@radix-ui/react-select",
-    "@prisma/client"
+    "lodash",
+    "tailwind-merge"
   ],
   "requiredFeatures": [
-    "kanban",
-    "forms",
-    "store",
-    "hooks",
-    "services",
-    "types",
-    "utils"
+    "kanban-board",
+    "task-management",
+    "state-sync",
+    "filter-search",
+    "ui-theming"
   ],
   "requiredRoutes": [
     "create-task",
-    "drag-drop-task",
-    "filter-tasks-by-priority",
-    "edit-task-details",
-    "sync-offline-changes"
+    "drag-drop-transition",
+    "filter-tasks",
+    "toggle-theme"
   ],
   "requiredModels": [
     "Task",
-    "TaskStatus",
-    "TaskPriority"
+    "BoardColumn",
+    "PriorityLevel"
   ],
   "forbiddenTechnologies": [
     "Next.js",

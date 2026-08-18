@@ -2,7 +2,7 @@
   "version": 1,
   "contractVersion": 1,
   "frontend": "React",
-  "backend": "Express",
+  "backend": "none",
   "database": "PostgreSQL",
   "orm": "Prisma",
   "files": [
@@ -581,15 +581,14 @@
   ],
   "routes": [
     "create-task",
-    "drag-drop-task",
-    "filter-tasks-by-priority",
-    "edit-task-details",
-    "sync-offline-changes"
+    "drag-drop-transition",
+    "filter-tasks",
+    "toggle-theme"
   ],
   "models": [
     "Task",
-    "TaskStatus",
-    "TaskPriority"
+    "BoardColumn",
+    "PriorityLevel"
   ],
   "apiEndpoints": [
     "POST /api/scans/upload",

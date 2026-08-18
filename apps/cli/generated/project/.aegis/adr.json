@@ -6,7 +6,7 @@
       "decisionId": "adr_app_type",
       "category": "Application Type",
       "selectedValue": "FULLSTACK_WEB_APPLICATION",
-      "reason": "Contract locked by ArchitectureResolver. Frontend(inferred), Backend(default), DB(default), ORM(default)",
+      "reason": "Contract locked by ArchitectureResolver. Frontend(inferred), Backend(inferred), DB(default), ORM(default)",
       "source": "AEGIS_DEFAULT",
       "alternatives": [
         "STATIC_SITE",
@@ -37,7 +37,7 @@
     {
       "decisionId": "adr_backend",
       "category": "Backend Framework",
-      "selectedValue": "Express",
+      "selectedValue": "none",
       "reason": "Express provides lightweight, robust REST API routing with standard middleware support.",
       "source": "AEGIS_DEFAULT",
       "alternatives": [
@@ -82,5 +82,5 @@
       "locked": true
     }
   ],
-  "lockedAt": "2026-08-18T09:23:32.388Z"
+  "lockedAt": "2026-08-18T18:11:04.122Z"
 }

@@ -1,0 +1,110 @@
+{
+  "audit": "Aegis V2.1 Real-World Generation Diagnostic",
+  "timestamp": "2026-08-18T18:22:00Z",
+  "prompt": "Build a modern Task Management Application with a Kanban board, Todo/In Progress/Done columns, task creation with priority and due date, task filtering by priority and status, responsive design, persistent data, and a clean production-ready UI.",
+  "environment": {
+    "nodeVersion": "v24.13.1",
+    "pnpmVersion": "10.9.0",
+    "os": "Windows 11 Pro (win32)",
+    "primaryProvider": "gemini",
+    "model": "gemini-3.1-flash-lite"
+  },
+  "stages": [
+    {
+      "step": 1,
+      "name": "CLI Invocation & Parameter Parsing",
+      "timestamp": "2026-08-18T18:07:12Z",
+      "status": "PASS",
+      "durationSec": 1
+    },
+    {
+      "step": 2,
+      "name": "Phase 1: Architecture Planning & Specification Normalization",
+      "timestamp": "2026-08-18T18:07:13Z",
+      "status": "PASS",
+      "durationSec": 35
+    },
+    {
+      "step": 3,
+      "name": "Phase 2: Template Scaffolding",
+      "timestamp": "2026-08-18T18:07:48Z",
+      "status": "PASS",
+      "durationSec": 2
+    },
+    {
+      "step": 4,
+      "name": "Phase 3: Duplicate Planning & Contract Resolution",
+      "timestamp": "2026-08-18T18:07:50Z",
+      "status": "PASS (REDUNDANT)",
+      "durationSec": 32
+    },
+    {
+      "step": 5,
+      "name": "Planner DAG Task Generation & Gate Validation",
+      "timestamp": "2026-08-18T18:08:22Z",
+      "status": "PASS (RETRY 1 ACCEPTED)",
+      "durationSec": 18
+    },
+    {
+      "step": 6,
+      "name": "Coder Implementation Tiers 1-4 & Inline Self-Healing",
+      "timestamp": "2026-08-18T18:08:40Z",
+      "status": "PASS",
+      "durationSec": 77
+    },
+    {
+      "step": 7,
+      "name": "Project Graph Validation & Import Reconciliation",
+      "timestamp": "2026-08-18T18:09:57Z",
+      "status": "PASS",
+      "durationSec": 8
+    },
+    {
+      "step": 8,
+      "name": "Project Startup Agent & Dependency Installation",
+      "timestamp": "2026-08-18T18:10:05Z",
+      "status": "PASS",
+      "durationSec": 38
+    },
+    {
+      "step": 9,
+      "name": "Prisma Schema Validation & Overwrite",
+      "timestamp": "2026-08-18T18:10:43Z",
+      "status": "ANOMALY (SCHEMA OVERWRITTEN)",
+      "durationSec": 5
+    },
+    {
+      "step": 10,
+      "name": "Static Build (tsc && vite build)",
+      "timestamp": "2026-08-18T18:10:48Z",
+      "status": "PASS",
+      "durationSec": 12
+    },
+    {
+      "step": 11,
+      "name": "Live Dev Server & Headless Browser Review",
+      "timestamp": "2026-08-18T18:11:00Z",
+      "status": "FAIL (useRoutes without Router context)",
+      "durationSec": 6
+    },
+    {
+      "step": 12,
+      "name": "Transactional Self-Healing Loop (Attempts 1-3)",
+      "timestamp": "2026-08-18T18:11:06Z",
+      "status": "FAIL (MAX ATTEMPTS REACHED)",
+      "durationSec": 33
+    },
+    {
+      "step": 13,
+      "name": "Pipeline Halting & DoD Enforcement",
+      "timestamp": "2026-08-18T18:11:39Z",
+      "status": "PASS (CLEAN HALT, NO FALSE SUCCESS)",
+      "durationSec": 1
+    }
+  ],
+  "outcome": {
+    "success": false,
+    "failureReason": "Maximum self-healing attempts reached due to browser runtime Router exception and import regression",
+    "totalDurationSec": 241
+  }
+}

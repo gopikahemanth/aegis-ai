@@ -2,7 +2,7 @@
   "models": [
     {
       "name": "Task",
-      "description": "Represents a core unit of work in the Kanban board",
+      "description": "Represents an individual work unit within the Kanban board.",
       "persistence": "database",
       "fields": [
         {
@@ -11,6 +11,7 @@
           "isId": true,
           "isNullable": false,
           "isUnique": true,
+          "relationTo": null,
           "description": "Unique identifier"
         },
         {
@@ -19,7 +20,8 @@
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "description": "Short summary of the task"
+          "relationTo": null,
+          "description": "Task summary"
         },
         {
           "name": "description",
@@ -27,23 +29,26 @@
           "isId": false,
           "isNullable": true,
           "isUnique": false,
-          "description": "Detailed task information"
+          "relationTo": null,
+          "description": "Detailed task notes"
         },
         {
           "name": "status",
-          "type": "customType",
+          "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "description": "TaskStatus enum: TODO, IN_PROGRESS, DONE"
+          "relationTo": null,
+          "description": "Current board column mapping"
         },
         {
           "name": "priority",
-          "type": "customType",
+          "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "description": "TaskPriority enum: LOW, MEDIUM, HIGH"
+          "relationTo": null,
+          "description": "Urgency level: LOW, MEDIUM, HIGH"
         },
         {
           "name": "dueDate",
@@ -51,7 +56,8 @@
           "isId": false,
           "isNullable": true,
           "isUnique": false,
-          "description": "Deadline for the task"
+          "relationTo": null,
+          "description": "Task deadline"
         },
         {
           "name": "order",
@@ -59,77 +65,83 @@
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "description": "Position index in Kanban column"
+          "relationTo": null,
+          "description": "Sorting index in column"
+        }
+      ]
+    },
+    {
+      "name": "BoardColumn",
+      "description": "Defines the Kanban column configuration.",
+      "persistence": "database",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "isId": true,
+          "isNullable": false,
+          "isUnique": true,
+          "relationTo": null,
+          "description": "Column identifier"
         },
         {
-          "name": "createdAt",
-          "type": "DateTime",
+          "name": "title",
+          "type": "string",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "description": "Timestamp of creation"
+          "relationTo": null,
+          "description": "Display name"
         },
         {
-          "name": "updatedAt",
-          "type": "DateTime",
+          "name": "order",
+          "type": "number",
           "isId": false,
           "isNullable": false,
           "isUnique": false,
-          "description": "Last update timestamp"
+          "relationTo": null,
+          "description": "Visual position"
         }
       ]
     }
   ],
-  "databaseSchema": "enum TaskStatus { TODO\nIN_PROGRESS\nDONE }\nenum TaskPriority { LOW\nMEDIUM\nHIGH }\n\nmodel Task {\n  id          String   @id @default(uuid())\n  title       String\n  description String?\n  status      TaskStatus @default(TODO)\n  priority    TaskPriority @default(MEDIUM)\n  dueDate     DateTime?\n  order       Int\n  createdAt   DateTime @default(now())\n  updatedAt   DateTime @updatedAt\n}",
+  "databaseSchema": "model Task {\n  id          String   @id @default(uuid())\n  title       String\n  description String?\n  status      String\n  priority    String\n  dueDate     DateTime?\n  order       Int\n  createdAt   DateTime @default(now())\n  updatedAt   DateTime @updatedAt\n}\n\nmodel BoardColumn {\n  id    String @id @default(uuid())\n  title String\n  order Int\n}",
   "apis": [
     {
       "path": "/api/v1/tasks",
       "method": "GET",
-      "description": "Fetch all tasks",
-      "responseBodySchema": "{ tasks: Task[] }"
+      "description": "Fetch all tasks for the board",
+      "responseBodySchema": "Task[]"
     },
     {
       "path": "/api/v1/tasks",
       "method": "POST",
       "description": "Create a new task",
-      "requestBodySchema": "{ title: string, description?: string, priority: string, dueDate?: string }",
-      "responseBodySchema": "{ task: Task }"
+      "requestBodySchema": "{ title: string, priority: string, status: string, dueDate?: string }",
+      "responseBodySchema": "Task"
     },
     {
       "path": "/api/v1/tasks/:id",
       "method": "PATCH",
-      "description": "Update task status, order, or details",
-      "requestBodySchema": "{ status?: string, order?: number, title?: string, priority?: string, dueDate?: string }",
-      "responseBodySchema": "{ task: Task }"
-    },
-    {
-      "path": "/api/v1/tasks/:id",
-      "method": "DELETE",
-      "description": "Remove a task",
-      "responseBodySchema": "{ success: boolean }"
+      "description": "Update task properties (status, order, completion)",
+      "requestBodySchema": "{ status?: string, order?: number, title?: string }",
+      "responseBodySchema": "Task"
     }
   ],
   "hooks": [
     {
-      "name": "useTasks",
+      "name": "useTaskStore",
       "type": "query",
       "endpoint": "/api/v1/tasks",
       "params": "none",
+      "returns": "{ tasks: Task[], addTask: (t) => void, moveTask: (id, status, order) => void }"
+    },
+    {
+      "name": "useTaskFilter",
+      "type": "query",
+      "endpoint": "client-side",
+      "params": "tasks: Task[], filter: { status?: string, priority?: string }",
       "returns": "Task[]"
-    },
-    {
-      "name": "useUpdateTask",
-      "type": "mutation",
-      "endpoint": "/api/v1/tasks/:id",
-      "params": "taskId: string",
-      "returns": "Task"
-    },
-    {
-      "name": "useCreateTask",
-      "type": "mutation",
-      "endpoint": "/api/v1/tasks",
-      "params": "none",
-      "returns": "Task"
     }
   ]
 }

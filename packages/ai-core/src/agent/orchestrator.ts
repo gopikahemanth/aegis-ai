@@ -14,7 +14,9 @@ import {
   DocsGeneratorAgent,
   RealityCheckerAgent,
   DataArchitectureAgent,
+  TestGeneratorAgent,
 } from "../agents/index.js";
+import { InProjectTestRunner } from "../validation/in-project-test-runner.js";
 
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
@@ -1996,6 +1998,21 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
       console.warn(`[RealityChecker] Warning: Reality check encountered error: ${realityErr.message}`);
     }
 
+    // ─── Automated In-Project Test Suite Generator (V2.2 Project 1) ───────────
+    let inProjectTestReport: any = null;
+    try {
+      const domainContract = DomainContractManager.load(outputDirectory);
+      await TestGeneratorAgent.generate({
+        projectRoot: outputDirectory,
+        lockedPlan: (this as any).activeLockedPlan || undefined,
+        domainContract: domainContract || undefined,
+        planHash: (this as any).activeLockedPlan?.planHash,
+      });
+      inProjectTestReport = InProjectTestRunner.run(outputDirectory);
+    } catch (testErr: any) {
+      console.warn(`[TestGeneratorAgent] Warning: In-project test execution encountered non-fatal error: ${testErr.message}`);
+    }
+
     // ─── FINAL SUCCESS GATE (Strict Zero-False-Positive Check) ─────────────
     // Detect if database is blocked (P1000 / ECONNREFUSED) — pass as separate signal, not build failure
     const dbIsBlocked = !!(
@@ -2013,6 +2030,7 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
       apiReport: apiWorkflowReport,
       realityResult: realityAuditResult,
       databaseBlocked: dbIsBlocked,
+      testReport: inProjectTestReport,
     });
     if (!finalGateResult.success && finalGateResult.status !== "BLOCKED") {
       this.execution.complete();

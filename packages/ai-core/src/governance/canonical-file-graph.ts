@@ -1424,9 +1424,10 @@ export function isFrameworkSupportFile(filePath: string): boolean {
   const norm = filePath.replace(/\\/g, "/").toLowerCase();
 
   if (norm.endsWith(".d.ts")) return true;
-  if (/(vite|tailwind|postcss|tsconfig|eslint|prettier|pnpm-workspace)\.config\./i.test(norm)) return true;
-  if (/(vite|tailwind|postcss|tsconfig|eslint|prettier)\.(json|js|ts|cjs|mjs|yaml|yml)$/i.test(norm)) return true;
-  if (norm === "package.json" || norm === "index.html" || norm.startsWith("public/") || norm.startsWith("src/assets/")) return true;
+  if (/(vite|vitest|tailwind|postcss|tsconfig|eslint|prettier|pnpm-workspace)\.config\./i.test(norm)) return true;
+  if (/(vite|vitest|tailwind|postcss|tsconfig|eslint|prettier)\.(json|js|ts|cjs|mjs|yaml|yml)$/i.test(norm)) return true;
+  if (norm === "package.json" || norm === "index.html" || norm.startsWith("public/") || norm.startsWith("src/assets/") || norm.startsWith("scripts/")) return true;
+  if (norm.startsWith("test/") || norm.includes("/__tests__/") || norm.includes(".test.") || norm.includes(".spec.")) return true;
   if (norm.startsWith(".") || norm.startsWith(".aegis/")) return true;
   return false;
 }

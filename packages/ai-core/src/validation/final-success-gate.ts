@@ -41,6 +41,7 @@ export interface FinalSuccessGateInput {
   apiReport?: ApiWorkflowReport | null;
   realityResult?: RealityCheckResult | null;
   databaseBlocked?: boolean;
+  testReport?: import("./in-project-test-runner.js").TestExecutionReport | null;
 }
 
 export class FinalSuccessGate {
@@ -251,6 +252,36 @@ export class FinalSuccessGate {
       critical: false, // Environment issue does not mean code failure
       category: "ENVIRONMENT",
     });
+
+    // ── 10. In-Project Automated Test Suite Gate (V2.2 Staged Rollout) ────────
+    const testReport = input.testReport;
+    if (testReport) {
+      if (testReport.status === "PASS") {
+        items.push({
+          name: "In-Project Test Suite",
+          passed: true,
+          message: `All ${testReport.totalTests} in-project tests passed (${testReport.passedTests}/${testReport.totalTests}) in ${testReport.durationMs}ms.`,
+          critical: false,
+          category: "BUILD",
+        });
+      } else if (testReport.status === "NOT_APPLICABLE" || testReport.status === "SKIPPED") {
+        items.push({
+          name: "In-Project Test Suite",
+          passed: true,
+          message: `In-project automated testing marked NOT_APPLICABLE for this project stack.`,
+          critical: false,
+          category: "BUILD",
+        });
+      } else {
+        items.push({
+          name: "In-Project Test Suite",
+          passed: false,
+          message: `In-project test failures: ${testReport.failedTests}/${testReport.totalTests} failed.`,
+          critical: false,
+          category: "BUILD",
+        });
+      }
+    }
 
     // ── Evaluate Final Status ────────────────────────────────────────────────
     const criticalItems = items.filter(i => i.critical);

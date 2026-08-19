@@ -56,7 +56,7 @@ import { SpecificationNormalizer } from "../spec/canonical-spec.js";
 import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-generator.js";
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
-import { TransactionalRepairSystem } from "../healing/index.js";
+import { TransactionalRepairSystem, RepairConvergenceTracker, TsSymbolRepairEngine } from "../healing/index.js";
 import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator, CanonicalArchitectureState, CanonicalManifestGenerator, CanonicalDataModelContract, CanonicalFileGraph, SemanticDuplicateDetector, ProjectFileRegistry, TaskNormalizer, PlanContractGate, ManifestCompletenessValidator, CanonicalDependencyClosureValidator, SymbolContractValidator } from "../governance/index.js";
 import { DomainModelGuard } from "../governance/domain-model-guard.js";
 import { StagedValidator } from "../validation/staged-validator.js";
@@ -1514,211 +1514,246 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
       } else {
       const initialHadCleanCompilation = !build.stderr?.includes("error TS") && !build.stderr?.includes("ELIFECYCLE");
 
-      while (attempts < maxRepairAttempts) {
-        attempts++;
-        console.log(`\n[Self-Healing] Attempting automatic repair ${attempts}/${maxRepairAttempts}...`);
-
-        const fullDiagnostics = [
+        const initialDiagnostics = [
           build.stdout || "",
           build.stderr || "",
         ].filter(Boolean).join("\n");
 
-        // Check for missing packages first
-        const packages = this.dependencyResolver.resolve(fullDiagnostics);
-        if (packages.length > 0) {
-          console.log(`[DependencyResolver] Installing missing packages: ${packages.join(", ")}`);
-          try {
-            const pm = "pnpm";
-            await this.installer.installPackages(pm, outputDirectory, packages);
-            this.resolveMissingLocalImports(outputDirectory);
-            build = await this.runVerification(request, framework, outputDirectory);
-            if (build.success) {
-              console.log("[DependencyResolver] ✓ Build succeeded after package installation!");
-              break;
-            }
-          } catch (instErr: any) {
-            console.warn(`[DependencyResolver] Warning: Failed to install packages: ${instErr.message}`);
-          }
-        }
+        const convergenceTracker = new RepairConvergenceTracker(initialDiagnostics);
 
-        try {
-          const mapper = new ErrorRootCauseMapper();
-          const rootCause = mapper.analyze(fullDiagnostics, parsedFiles.map(f => f.path));
+        while (attempts < maxRepairAttempts) {
+          attempts++;
+          console.log(`\n[Self-Healing] Attempting automatic repair ${attempts}/${maxRepairAttempts}...`);
 
-          // Attach actual broken file contents from disk to errorPayload so BuildHealer sees exact code
-          const brokenFileSnippets: string[] = [];
-          for (const targetRelPath of rootCause.filesToFix) {
-            const absTarget = join(outputDirectory, targetRelPath);
-            if (existsSync(absTarget)) {
-              try {
-                const code = readFileSync(absTarget, "utf8");
-                brokenFileSnippets.push(`=== FILE CONTENT TO REPAIR (${targetRelPath}) ===\n${code}`);
-              } catch { /* ignore */ }
-            }
-          }
+          const fullDiagnostics = [
+            build.stdout || "",
+            build.stderr || "",
+          ].filter(Boolean).join("\n");
 
-          const errorPayload = [
-            fullDiagnostics,
-            rootCause.summary ? `=== STRUCTURED ROOT CAUSE DIAGNOSIS ===\n${rootCause.summary}` : "",
-            brokenFileSnippets.join("\n\n")
-          ].filter(Boolean).join("\n\n");
-
-          const repairResponse =
-            await this.repairCoordinator.repair(
-              request,
-              errorPayload,
-              response,
-            );
-
-          const newDepsMatch = repairResponse.match(/NEW_DEPENDENCIES:\s*([^\r\n]+)/i);
-          if (newDepsMatch) {
-            const declaredPkgs = newDepsMatch[1].split(",").map(p => p.trim()).filter(Boolean);
-            if (declaredPkgs.length > 0) {
-              console.log(`[Self-Healing] Detected explicit NEW_DEPENDENCIES declaration: ${declaredPkgs.join(", ")}. Installing...`);
-              try {
-                await this.installer.installPackages("pnpm", outputDirectory, declaredPkgs);
-              } catch (depInstErr: any) {
-                console.warn(`[Self-Healing] Warning: Failed to install declared NEW_DEPENDENCIES: ${depInstErr.message}`);
-              }
-            }
-          }
-
-          let repairedFiles = this.parser.parse(repairResponse);
-          if (repairedFiles.length === 0) {
-            // Fallback 1: JSON repair schema
+          // 1. Check for missing packages first
+          const packages = this.dependencyResolver.resolve(fullDiagnostics);
+          if (packages.length > 0) {
+            console.log(`[DependencyResolver] Installing missing packages: ${packages.join(", ")}`);
             try {
-              const jsonMatch = repairResponse.match(/\{[\s\S]*"repairs"[\s\S]*\}/);
-              if (jsonMatch) {
-                const parsedObj = JSON.parse(jsonMatch[0]);
-                if (Array.isArray(parsedObj.repairs)) {
-                  repairedFiles = parsedObj.repairs.map((r: any) => ({
-                    path: r.path || r.filePath,
-                    content: r.content || r.newContent || r.patch || ""
-                  })).filter((f: any) => f.path && f.content);
-                }
+              const pm = "pnpm";
+              await this.installer.installPackages(pm, outputDirectory, packages);
+              this.resolveMissingLocalImports(outputDirectory);
+              build = await this.runVerification(request, framework, outputDirectory);
+              if (build.success) {
+                console.log("[DependencyResolver] ✓ Build succeeded after package installation!");
+                break;
               }
-            } catch {}
-
-            // Fallback 2: Markdown header formats like **File: `src/path.tsx`** or File: src/path.tsx
-            if (repairedFiles.length === 0) {
-              const fileHeaderRegex = /(?:\*{0,2}File:\s*`?([a-zA-Z0-9_\-\/\\\.]+?)`?\*{0,2})[\s\S]*?```(?:tsx|ts|jsx|js)?[\r\n]+([\s\S]*?)```/gi;
-              let match: RegExpExecArray | null;
-              while ((match = fileHeaderRegex.exec(repairResponse)) !== null) {
-                const filePath = match[1].trim();
-                const fileContent = match[2].trim();
-                if (filePath && fileContent) {
-                  repairedFiles.push({ path: filePath, content: fileContent });
-                }
-              }
-            }
-
-            // Fallback 3: Generic file path detection in preceding text before ```tsx block
-            if (repairedFiles.length === 0) {
-              const genericCodeBlockRegex = /(?:`?([a-zA-Z0-9_\-\/\\\.]+\.(?:tsx|ts|jsx|js|css|json))`?|corrected\s+`?([a-zA-Z0-9_\-\/\\\.]+\.(?:tsx|ts|jsx|js|css|json))`?)[\s\S]*?```(?:tsx|ts|jsx|js|css|json)?[\r\n]+([\s\S]*?)```/gi;
-              let match: RegExpExecArray | null;
-              while ((match = genericCodeBlockRegex.exec(repairResponse)) !== null) {
-                const filePath = (match[1] || match[2] || "").trim();
-                const fileContent = match[3].trim();
-                if (filePath && fileContent) {
-                  repairedFiles.push({ path: filePath, content: fileContent });
-                }
-              }
+            } catch (instErr: any) {
+              console.warn(`[DependencyResolver] Warning: Failed to install packages: ${instErr.message}`);
             }
           }
 
-          repairedFiles = repairedFiles
-            .filter(f => f && typeof f.path === "string" && f.path.trim().length > 2 && f.content)
-            .map(f => ({
-              path: f.path.replace(/^[\\\/]+/, "").trim(),
-              content: f.content
-            }));
-
-          if (repairedFiles.length > 0) {
-            const previousAttemptHashes = (this as any)._previousAttemptHashes || new Map<string, string>();
-            (this as any)._previousAttemptHashes = previousAttemptHashes;
-
-            const trulyChangedFiles = repairedFiles.filter(rFile => {
-              const prevHash = previousAttemptHashes.get(rFile.path);
-              const newHash = rFile.content.length + ":" + rFile.content.slice(0, 50);
-              previousAttemptHashes.set(rFile.path, newHash);
-              return prevHash !== newHash;
-            });
-
-            if (trulyChangedFiles.length === 0) {
-              console.log(`[Self-Healing] AI proposed repair files, but they are identical to previous failed attempt. Retrying prompt with explicit instructions...`);
-              continue;
+          // 2. Focused Deterministic Symbol / Export / Casing Repair Path (TS2724, TS2305, TS2551, TS2614, TS2304)
+          const currentDiagnostics = [build.stdout || "", build.stderr || ""].filter(Boolean).join("\n");
+          const deterministicActions = TsSymbolRepairEngine.repair(outputDirectory, currentDiagnostics);
+          if (deterministicActions.length > 0) {
+            console.log(`[Self-Healing] ⚡ Applied ${deterministicActions.length} deterministic symbol/casing repair(s):`);
+            for (const act of deterministicActions) {
+              console.log(`  → ${act.description}`);
             }
-
-            // Transactional Repair: Create checkpoint before writing repair files
-            const repairFilePaths = repairedFiles.map(rf => rf.path);
-            const repairCheckpoint = TransactionalRepairSystem.createCheckpoint(outputDirectory, repairFilePaths);
-
-            const validatedRepairedFiles = this.validate(framework, repairedFiles);
-            this.write(validatedRepairedFiles, outputDirectory);
-            this.resolveMissingLocalImports(outputDirectory);
-
-            for (const rFile of validatedRepairedFiles) {
-              const fullPath = join(outputDirectory, rFile.path);
-              const diskContent = existsSync(fullPath) ? readFileSync(fullPath, "utf8") : "";
-              console.log(`[Self-Healing] ✓ Updated: ${fullPath} (${rFile.content.length} bytes written, disk size: ${diskContent.length} bytes)`);
-              
-              const existingIdx = parsedFiles.findIndex(f => f.path === rFile.path);
-              if (existingIdx !== -1) {
-                parsedFiles[existingIdx] = rFile;
-              } else {
-                parsedFiles.push(rFile);
-              }
-            }
-
             try {
               FastDeterministicSanitizer.sanitizeProject(outputDirectory);
             } catch { /* ignore */ }
 
-            let nextBuild = await this.runVerification(request, framework, outputDirectory);
-            if (!nextBuild.success) {
-              const newDiagnostics = [nextBuild.stderr, nextBuild.stdout].filter(Boolean).join("\n");
-              const missingPkgs = this.dependencyResolver.resolve(newDiagnostics);
-              if (missingPkgs.length > 0) {
-                console.log(`[DependencyResolver] Post-repair missing packages detected: ${missingPkgs.join(", ")}. Installing...`);
+            const postDeterministicBuild = await this.runVerification(request, framework, outputDirectory);
+            if (postDeterministicBuild.success) {
+              console.log("[Self-Healing] ✓ Build succeeded after deterministic symbol repair!");
+              build = postDeterministicBuild;
+              break;
+            } else {
+              const evalResult = convergenceTracker.evaluateCandidate(
+                attempts,
+                [postDeterministicBuild.stdout, postDeterministicBuild.stderr].filter(Boolean).join("\n")
+              );
+              if (evalResult.accepted) {
+                console.log(`[Self-Healing] ✓ Deterministic repair improved project state (${evalResult.comparison.reason}). Continuing...`);
+                build = postDeterministicBuild;
+              }
+            }
+          }
+
+          // 3. AI Healer / Coordinator
+          try {
+            const activeDiagnostics = [build.stdout || "", build.stderr || ""].filter(Boolean).join("\n");
+            const mapper = new ErrorRootCauseMapper();
+            const rootCause = mapper.analyze(activeDiagnostics, parsedFiles.map(f => f.path));
+
+            // Attach actual broken file contents from disk to errorPayload so BuildHealer sees exact code
+            const brokenFileSnippets: string[] = [];
+            for (const targetRelPath of rootCause.filesToFix) {
+              const absTarget = join(outputDirectory, targetRelPath);
+              if (existsSync(absTarget)) {
                 try {
-                  await this.installer.installPackages("pnpm", outputDirectory, missingPkgs);
-                  nextBuild = await this.runVerification(request, framework, outputDirectory);
-                } catch (instErr: any) {
-                  console.warn(`[DependencyResolver] Post-repair package install failed: ${instErr.message}`);
+                  const code = readFileSync(absTarget, "utf8");
+                  brokenFileSnippets.push(`=== FILE CONTENT TO REPAIR (${targetRelPath}) ===\n${code}`);
+                } catch { /* ignore */ }
+              }
+            }
+
+            const errorPayload = [
+              activeDiagnostics,
+              rootCause.summary ? `=== STRUCTURED ROOT CAUSE DIAGNOSIS ===\n${rootCause.summary}` : "",
+              brokenFileSnippets.join("\n\n")
+            ].filter(Boolean).join("\n\n");
+
+            const repairResponse =
+              await this.repairCoordinator.repair(
+                request,
+                errorPayload,
+                response,
+              );
+
+            // Deduplicate candidate: if identical to a previously tested candidate, stop or skip
+            if (convergenceTracker.isDuplicateCandidate(repairResponse)) {
+              console.warn(`[Self-Healing] 🛑 AI proposed a duplicate repair candidate already tested in this transaction. Skipping...`);
+              continue;
+            }
+
+            const newDepsMatch = repairResponse.match(/NEW_DEPENDENCIES:\s*([^\r\n]+)/i);
+            if (newDepsMatch) {
+              const declaredPkgs = newDepsMatch[1].split(",").map(p => p.trim()).filter(Boolean);
+              if (declaredPkgs.length > 0) {
+                console.log(`[Self-Healing] Detected explicit NEW_DEPENDENCIES declaration: ${declaredPkgs.join(", ")}. Installing...`);
+                try {
+                  await this.installer.installPackages("pnpm", outputDirectory, declaredPkgs);
+                } catch (depInstErr: any) {
+                  console.warn(`[Self-Healing] Warning: Failed to install declared NEW_DEPENDENCIES: ${depInstErr.message}`);
                 }
               }
             }
 
-            if (nextBuild.success) {
-              console.log("[Self-Healing] ✓ Build succeeded after automatic repair!");
-              TransactionalRepairSystem.commit(repairCheckpoint);
-              build = nextBuild;
-              break;
-            } else if (build.success || initialHadCleanCompilation) {
-              console.warn("[Self-Healing] ⚠️ Repair attempt introduced a build regression. Rolling back checkpoint...");
-              TransactionalRepairSystem.rollback(outputDirectory, repairCheckpoint, "Repair attempt caused build regression");
-              // Re-run verification to confirm working state restored
-              build = await this.runVerification(request, framework, outputDirectory);
-            } else {
-              TransactionalRepairSystem.rollback(outputDirectory, repairCheckpoint, "Repair attempt failed to resolve build errors");
-              build = nextBuild;
+            let repairedFiles = this.parser.parse(repairResponse);
+            if (repairedFiles.length === 0) {
+              // Fallback 1: JSON repair schema
+              try {
+                const jsonMatch = repairResponse.match(/\{[\s\S]*"repairs"[\s\S]*\}/);
+                if (jsonMatch) {
+                  const parsedObj = JSON.parse(jsonMatch[0]);
+                  if (Array.isArray(parsedObj.repairs)) {
+                    repairedFiles = parsedObj.repairs.map((r: any) => ({
+                      path: r.path || r.filePath,
+                      content: r.content || r.newContent || r.patch || ""
+                    })).filter((f: any) => f.path && f.content);
+                  }
+                }
+              } catch {}
+
+              // Fallback 2: Markdown header formats like **File: `src/path.tsx`** or File: src/path.tsx
+              if (repairedFiles.length === 0) {
+                const fileHeaderRegex = /(?:\*{0,2}File:\s*`?([a-zA-Z0-9_\-\/\\\.]+?)`?\*{0,2})[\s\S]*?```(?:tsx|ts|jsx|js)?[\r\n]+([\s\S]*?)```/gi;
+                let match: RegExpExecArray | null;
+                while ((match = fileHeaderRegex.exec(repairResponse)) !== null) {
+                  const filePath = match[1].trim();
+                  const fileContent = match[2].trim();
+                  if (filePath && fileContent) {
+                    repairedFiles.push({ path: filePath, content: fileContent });
+                  }
+                }
+              }
+
+              // Fallback 3: Generic file path detection in preceding text before ```tsx block
+              if (repairedFiles.length === 0) {
+                const genericCodeBlockRegex = /(?:`?([a-zA-Z0-9_\-\/\\\.]+\.(?:tsx|ts|jsx|js|css|json))`?|corrected\s+`?([a-zA-Z0-9_\-\/\\\.]+\.(?:tsx|ts|jsx|js|css|json))`?)[\s\S]*?```(?:tsx|ts|jsx|js|css|json)?[\r\n]+([\s\S]*?)```/gi;
+                let match: RegExpExecArray | null;
+                while ((match = genericCodeBlockRegex.exec(repairResponse)) !== null) {
+                  const filePath = (match[1] || match[2] || "").trim();
+                  const fileContent = match[3].trim();
+                  if (filePath && fileContent) {
+                    repairedFiles.push({ path: filePath, content: fileContent });
+                  }
+                }
+              }
             }
 
+            repairedFiles = repairedFiles
+              .filter(f => f && typeof f.path === "string" && f.path.trim().length > 2 && f.content)
+              .map(f => ({
+                path: f.path.replace(/^[\\\/]+/, "").trim(),
+                content: f.content
+              }));
 
-          } else {
-            console.warn("[Self-Healing] No file changes were parsed from the repair response.");
-            console.log("[Self-Healing] === RAW REPAIR RESPONSE ===");
-            console.log(repairResponse);
-            console.log("[Self-Healing] ===========================");
-            // Re-verify actual disk build status to preserve clean disk state
-            build = await this.runVerification(request, framework, outputDirectory);
+            if (repairedFiles.length > 0) {
+              // Transactional Repair: Create checkpoint before writing repair files
+              const repairFilePaths = repairedFiles.map(rf => rf.path);
+              const repairCheckpoint = TransactionalRepairSystem.createCheckpoint(outputDirectory, repairFilePaths);
+
+              const validatedRepairedFiles = this.validate(framework, repairedFiles);
+              this.write(validatedRepairedFiles, outputDirectory);
+              this.resolveMissingLocalImports(outputDirectory);
+
+              for (const rFile of validatedRepairedFiles) {
+                const fullPath = join(outputDirectory, rFile.path);
+                const diskContent = existsSync(fullPath) ? readFileSync(fullPath, "utf8") : "";
+                console.log(`[Self-Healing] ✓ Updated: ${fullPath} (${rFile.content.length} bytes written, disk size: ${diskContent.length} bytes)`);
+                
+                const existingIdx = parsedFiles.findIndex(f => f.path === rFile.path);
+                if (existingIdx !== -1) {
+                  parsedFiles[existingIdx] = rFile;
+                } else {
+                  parsedFiles.push(rFile);
+                }
+              }
+
+              try {
+                FastDeterministicSanitizer.sanitizeProject(outputDirectory);
+              } catch { /* ignore */ }
+
+              let nextBuild = await this.runVerification(request, framework, outputDirectory);
+              if (!nextBuild.success) {
+                const newDiagnostics = [nextBuild.stderr, nextBuild.stdout].filter(Boolean).join("\n");
+                const missingPkgs = this.dependencyResolver.resolve(newDiagnostics);
+                if (missingPkgs.length > 0) {
+                  console.log(`[DependencyResolver] Post-repair missing packages detected: ${missingPkgs.join(", ")}. Installing...`);
+                  try {
+                    await this.installer.installPackages("pnpm", outputDirectory, missingPkgs);
+                    nextBuild = await this.runVerification(request, framework, outputDirectory);
+                  } catch (instErr: any) {
+                    console.warn(`[DependencyResolver] Post-repair package install failed: ${instErr.message}`);
+                  }
+                }
+              }
+
+              if (nextBuild.success) {
+                console.log("[Self-Healing] ✓ Build succeeded after automatic repair!");
+                TransactionalRepairSystem.commit(repairCheckpoint);
+                build = nextBuild;
+                break;
+              }
+
+              // Monotonic evaluation using RepairConvergenceTracker
+              const afterDiagnostics = [nextBuild.stderr, nextBuild.stdout].filter(Boolean).join("\n");
+              const candidateEval = convergenceTracker.evaluateCandidate(attempts, afterDiagnostics);
+
+              if (candidateEval.accepted) {
+                console.log(`[Self-Healing] ✓ Progress accepted (${candidateEval.comparison.reason}). Baseline updated.`);
+                TransactionalRepairSystem.commit(repairCheckpoint);
+                build = nextBuild;
+              } else {
+                console.warn(`[Self-Healing] ⚠️ ${candidateEval.comparison.reason}. Rolling back checkpoint...`);
+                TransactionalRepairSystem.rollback(outputDirectory, repairCheckpoint, candidateEval.comparison.reason);
+                // Re-run verification to confirm working state restored
+                build = await this.runVerification(request, framework, outputDirectory);
+              }
+
+            } else {
+              console.warn("[Self-Healing] No file changes were parsed from the repair response.");
+              console.log("[Self-Healing] === RAW REPAIR RESPONSE ===");
+              console.log(repairResponse);
+              console.log("[Self-Healing] ===========================");
+              // Re-verify actual disk build status to preserve clean disk state
+              build = await this.runVerification(request, framework, outputDirectory);
+              break;
+            }
+          } catch (error: any) {
+            console.error(`[Self-Healing] Error occurred during repair attempt ${attempts}:`, error.message);
             break;
           }
-        } catch (error: any) {
-          console.error(`[Self-Healing] Error occurred during repair attempt ${attempts}:`, error.message);
-          break;
-        }
-      } // end while repair attempts
+        } // end while repair attempts
       } // end else (!isArchitectureFailure)
     }
 

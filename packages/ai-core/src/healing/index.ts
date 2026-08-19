@@ -6,4 +6,5 @@ export * from "./error-root-cause-mapper.js";
 export * from "./transactional-repair.js";
 export * from "./error-classifier.js";
 export * from "./path-validator.js";
-
+export * from "./repair-convergence-monitor.js";
+export * from "./ts-symbol-repair-engine.js";

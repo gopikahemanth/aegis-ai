@@ -127,6 +127,44 @@ export class ErrorRootCauseMapper {
       };
     }
 
+    // ── TS2724 — export member casing / name mismatch with compiler suggestion ───────
+    if (code === "TS2724") {
+      const match = message.match(/has no exported member named '([^']+)'.+Did you mean '([^']+)'/);
+      const requested = match?.[1];
+      const suggested = match?.[2];
+      return {
+        raw, file, line, col, code, message,
+        errorClass: "missing-export",
+        trueSourceFile: file,
+        repairHint: `Symbol '${requested}' is not exported but '${suggested}' is available. Update the import or add an export alias '${requested} = ${suggested}' in the declaring module.`,
+      };
+    }
+
+    // ── TS2614 — named import used for default export ─────────────────────────
+    if (code === "TS2614") {
+      const match = message.match(/has no exported member '([^']+)'.+Did you mean to use 'import ([^']+) from/);
+      const requested = match?.[1] || match?.[2];
+      return {
+        raw, file, line, col, code, message,
+        errorClass: "missing-export",
+        trueSourceFile: file,
+        repairHint: `Module default export was imported as a named import. Change 'import { ${requested} } from ...' to 'import ${requested} from ...' in ${file}.`,
+      };
+    }
+
+    // ── TS2551 — property typo / casing suggestion ───────────────────────────
+    if (code === "TS2551") {
+      const match = message.match(/Property '([^']+)' does not exist.+Did you mean '([^']+)'/);
+      const requested = match?.[1];
+      const suggested = match?.[2];
+      return {
+        raw, file, line, col, code, message,
+        errorClass: "missing-property",
+        trueSourceFile: file,
+        repairHint: `Property '${requested}' does not exist. Update property access to '${suggested}' in ${file}.`,
+      };
+    }
+
     // ── TS2304 / TS2305 — missing export ─────────────────────────────────────
     if (code === "TS2304" || code === "TS2305") {
       const symbolName = message.match(/Cannot find name '(\w+)'|Module .+ has no exported member '(\w+)'/)?.[1];

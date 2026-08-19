@@ -1,4 +1,4 @@
-﻿import { ArchitectureContractV1 } from "./architecture-resolver.js";
+import { ArchitectureContractV1 } from "./architecture-resolver.js";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -69,8 +69,8 @@ export class CanonicalArchitectureState {
       packageManager: contract.packageManager || "pnpm",
       requiredLibraries: contract.requiredLibraries || [],
       requiredFeatures: contract.requiredFeatures || [],
-      requiredRoutes: contract.requiredRoutes || ["/", "/upload", "/login", "/dashboard"],
-      requiredModels: contract.requiredModels || ["User", "Resume", "JobDescription", "AnalysisResult"],
+      requiredRoutes: contract.requiredRoutes || (contract.frontend.framework?.includes("Vanilla") || contract.frontend.framework?.includes("Static") ? ["/"] : ["/", "/dashboard", "/login"]),
+      requiredModels: contract.requiredModels || (contract.database?.provider === "None" ? [] : ["User"]),
       forbiddenTechnologies: forbidden,
     });
 

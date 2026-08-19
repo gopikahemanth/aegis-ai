@@ -940,7 +940,7 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
 ];
 
 /**
- * The canonical API response contract for src/services/api.ts.
+ * The canonical generic API response contract for src/services/api.ts.
  * Functions MUST return unwrapped data (response.data), NOT AxiosResponse.
  */
 export const CANONICAL_API_CONTRACT = `
@@ -953,21 +953,57 @@ export const CANONICAL_API_CONTRACT = `
 
 import axios from "axios";
 import { getToken } from "../lib/auth";
-import type { AnalysisResult, ScanHistoryItem } from "../types/index";
 
-const apiClient = axios.create({ baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001" });
+export const apiClient = axios.create({ baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001" });
 apiClient.interceptors.request.use(config => {
   const token = getToken();
   if (token) config.headers.Authorization = \`Bearer \${token}\`;
   return config;
 });
 
+export const api = apiClient;
+
+export async function login(email: string, password: string): Promise<{ token: string; user?: any }> {
+  const res = await apiClient.post<{ token: string; user?: any }>("/api/auth/login", { email, password });
+  return res.data;
+}
+
+export async function register(email: string, password: string): Promise<{ token: string; user?: any }> {
+  const res = await apiClient.post<{ token: string; user?: any }>("/api/auth/register", { email, password });
+  return res.data;
+}
+`.trim();
+
+/**
+ * The canonical ATS Resume Scanner API contract for src/services/api.ts.
+ */
+export const CANONICAL_ATS_API_CONTRACT = `
+// CANONICAL ATS API CONTRACT (src/services/api.ts)
+// CRITICAL RULES:
+// 1. Functions return Promise<T> — NOT Promise<AxiosResponse<T>>
+// 2. Methods are named exports — NOT methods on AxiosInstance
+// 3. All requests go through axios instance with base URL from env
+// 4. Auth token included via request interceptor
+
+import axios from "axios";
+import { getToken } from "../lib/auth";
+import type { AnalysisResult, ScanHistoryItem } from "../types/index";
+
+export const apiClient = axios.create({ baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001" });
+apiClient.interceptors.request.use(config => {
+  const token = getToken();
+  if (token) config.headers.Authorization = \`Bearer \${token}\`;
+  return config;
+});
+
+export const api = apiClient;
+
 export async function uploadResume(file: File, jobDescription: string): Promise<AnalysisResult> {
   const form = new FormData();
   form.append("resume", file);
   form.append("jobDescription", jobDescription);
   const res = await apiClient.post<AnalysisResult>("/api/scans/upload", form);
-  return res.data; // MUST return res.data, NOT res
+  return res.data;
 }
 
 export async function analyzeScan(resumeId: string, jobDescText: string): Promise<AnalysisResult> {

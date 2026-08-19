@@ -13,7 +13,10 @@ import { FileSelector } from "../context/file-selector.js";
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { CodebaseIndex } from "../context/codebase-index.js";
-import { CanonicalFileGraph, CANONICAL_API_CONTRACT, CANONICAL_MULTER_CONTRACT } from "../governance/canonical-file-graph.js";
+import { CanonicalFileGraph, CANONICAL_API_CONTRACT, CANONICAL_ATS_API_CONTRACT, CANONICAL_MULTER_CONTRACT } from "../governance/canonical-file-graph.js";
+import { ArchitectureResolver } from "../governance/architecture-resolver.js";
+import { DomainContractManager } from "../governance/domain-contract.js";
+import { CanonicalPlanManager } from "../planning/canonical-generation-plan.js";
 
 export class CoderAgent extends BaseAgent {
   readonly name = "Coder Agent";
@@ -114,13 +117,29 @@ export class CoderAgent extends BaseAgent {
       canonicalContractContext += "\n\n" + taskFiles.map(f => CanonicalFileGraph.getFileContract(f.canonicalPath)).join("\n\n");
     }
 
+    const contract = ArchitectureResolver.loadContract(outputDirectory);
+    const domainContract = DomainContractManager.load(outputDirectory);
+    const lockedPlan = CanonicalPlanManager.load(outputDirectory);
+
+    const isATS = (contract?.requiredModels || []).some(m => ["Resume", "JobDescription", "AnalysisResult", "Scan"].includes(m)) ||
+                  (contract?.requiredRoutes || []).some(r => r.includes("scan") || r.includes("resume")) ||
+                  request.toLowerCase().includes("resume") || request.toLowerCase().includes("ats");
+
+    const activeModels = contract?.requiredModels?.length
+      ? contract.requiredModels
+      : (domainContract?.entities?.length ? domainContract.entities : (lockedPlan?.dataArchitecture?.models?.map((m: any) => m.name) || []));
+
+    const canonicalDomainModelsList = activeModels.length > 0
+      ? activeModels.map((m: string) => `- ${m}`).join("\n")
+      : "- User\n- (Derive domain models strictly from task prompt & locked schema)";
+
     // Inject API contract for API-related tasks
     if (taskTitle.includes("api") || taskTitle.includes("service") || taskTitle.includes("frontend")) {
-      canonicalContractContext += `\n\n${CANONICAL_API_CONTRACT}`;
+      canonicalContractContext += `\n\n${isATS ? CANONICAL_ATS_API_CONTRACT : CANONICAL_API_CONTRACT}`;
     }
 
-    // Inject Multer contract for upload/scan controller tasks
-    if (taskTitle.includes("upload") || taskTitle.includes("scan") || taskTitle.includes("multer") || taskTitle.includes("pdf")) {
+    // Inject Multer contract for upload/scan controller tasks only when ATS or explicitly uploading files
+    if ((isATS || taskTitle.includes("upload")) && (taskTitle.includes("upload") || taskTitle.includes("scan") || taskTitle.includes("multer") || taskTitle.includes("pdf"))) {
       canonicalContractContext += `\n\n${CANONICAL_MULTER_CONTRACT}`;
     }
 
@@ -137,18 +156,15 @@ CANONICAL COMPONENTS (USE THESE — DO NOT INVENT ARBITRARY SHARED COMPONENTS):
 - Layout Shell:          src/shared/components/Layout.tsx
 
 CANONICAL FRONTEND API CLIENT SERVICE:
-- Canonical API Service: src/services/api.ts (import { api, analyzeScan, uploadResume, getScanHistory, login, register } from "@/services/api" or "../../services/api")
+- Canonical API Service: src/services/api.ts (import { api, login, register } from "@/services/api" or "../../services/api")
 - FORBIDDEN IMPORT ALIASES: NEVER import "@/services/apiClient" or "src/services/apiClient.ts" or "src/services/api-client". The ONLY canonical API module is "src/services/api.ts".
 
 CANONICAL DATABASE CLIENT (EXPRESS BACKEND ONLY):
 - server/lib/prisma.ts  (import { prisma } from "../lib/prisma")
 - server/db/index.ts    (import { prisma } from "../db/index")
 
-CANONICAL DOMAIN MODELS (NEVER INVENT ScanResult, ResumeScan, or KeywordGap):
-- User
-- Resume
-- JobDescription
-- AnalysisResult (Prisma delegate: prisma.analysisResult)
+CANONICAL DOMAIN MODELS:
+${canonicalDomainModelsList}
 
 CANONICAL DIRECTORY BOUNDARIES:
 - src/       React frontend code ONLY (NEVER import @prisma/client or server/**). Frontend tasks MUST ONLY output files inside src/.

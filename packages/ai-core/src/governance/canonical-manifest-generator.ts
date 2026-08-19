@@ -35,6 +35,20 @@ export class CanonicalManifestGenerator {
       expectedImports: f.allowedImports,
     }));
 
+    const isATS = (contract.requiredModels || []).some(m => ["Resume", "JobDescription", "AnalysisResult", "Scan"].includes(m)) ||
+                  (contract.requiredRoutes || []).some(r => r.includes("scan") || r.includes("resume"));
+
+    const defaultAuthEndpoints = contract.authentication && contract.authentication !== "None"
+      ? ["POST /api/auth/login", "POST /api/auth/register"]
+      : [];
+
+    const domainEndpoints = isATS
+      ? ["POST /api/scans/upload", "POST /api/scans/analyze", "GET /api/scans/history"]
+      : (contract.requiredModels || []).filter(m => m !== "User").flatMap(m => {
+          const plural = m.toLowerCase() + "s";
+          return [`GET /api/v1/${plural}`, `POST /api/v1/${plural}`, `PATCH /api/v1/${plural}/:id`, `DELETE /api/v1/${plural}/:id`];
+        });
+
     const manifest: CanonicalManifest = {
       version: 1,
       contractVersion: contract.version || 1,
@@ -43,9 +57,9 @@ export class CanonicalManifestGenerator {
       database: contract.database.provider,
       orm: contract.database.orm,
       files,
-      routes: contract.requiredRoutes || ["/", "/upload", "/login", "/dashboard"],
-      models: contract.requiredModels || ["User", "Resume", "JobDescription", "AnalysisResult"],
-      apiEndpoints: ["POST /api/scans/upload", "POST /api/scans/analyze", "GET /api/scans/history", "POST /api/auth/login", "POST /api/auth/register"],
+      routes: contract.requiredRoutes || (contract.frontend.framework?.includes("Vanilla") || contract.frontend.framework?.includes("Static") ? ["/"] : ["/", "/dashboard", "/login"]),
+      models: contract.requiredModels || (contract.database?.provider === "None" ? [] : ["User"]),
+      apiEndpoints: (contract as any).apiEndpoints || [...defaultAuthEndpoints, ...domainEndpoints],
     };
 
     const aegisDir = join(outputDirectory, ".aegis");

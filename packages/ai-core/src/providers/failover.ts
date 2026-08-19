@@ -125,6 +125,20 @@ export class FailoverProvider implements AIProvider {
           const isFetchFailed = error.message?.includes("fetch failed") || error.message?.includes("ECONNREFUSED");
           const is429 = error.message?.includes("429") || error.message?.includes("quota") ||
             error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.toLowerCase().includes("rate limit");
+          const isUnsupportedModality = options?.image && (
+            error.message?.toLowerCase().includes("modality") ||
+            error.message?.toLowerCase().includes("image") ||
+            error.message?.toLowerCase().includes("vision") ||
+            error.message?.toLowerCase().includes("multimodal") ||
+            error.message?.toLowerCase().includes("does not support")
+          );
+
+          if (isUnsupportedModality) {
+            console.warn(`[FailoverProvider] ⚡ Provider "${provider.name}" does not support vision modality for this request. Failing over to vision-capable provider immediately...`);
+            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 10000);
+            FailoverProvider.healthStates.set(provider.name, "DEGRADED");
+            break;
+          }
 
           if (is402) {
             console.warn(`[FailoverProvider] 402 Payment Required on provider "${provider.name}". Session disabled.`);

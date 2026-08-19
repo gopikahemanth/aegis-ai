@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
 import { extname } from "node:path";
+import { createHash } from "node:crypto";
 import { BaseAgent } from "./base-agent.js";
 
 export interface VisualIssue {
@@ -10,22 +11,67 @@ export interface VisualIssue {
   suggestedCssFix?: string;
 }
 
+export interface VisualReviewResult {
+  status: "PASS" | "FAIL" | "SKIPPED";
+  issues: VisualIssue[];
+  durationMs: number;
+  cacheHit: boolean;
+  screenshotHash: string;
+  provider?: string;
+  model?: string;
+}
+
 export class VisualReviewerAgent extends BaseAgent {
   readonly name = "Visual Reviewer Agent";
   private static readonly MAX_VISUAL_REPAIRS = 2;
   private repairCount = 0;
 
-  async execute(
+  // In-memory cache for deterministic screenshot reviews
+  private static readonly visualCache = new Map<string, { issues: VisualIssue[]; status: "PASS" | "FAIL"; screenshotHash: string }>();
+
+  public static computeVisualHash(imageBuffer: Buffer, request: string): string {
+    const imgHash = createHash("sha256").update(imageBuffer).digest("hex").slice(0, 16);
+    const reqHash = createHash("sha256").update(request.trim().toLowerCase()).digest("hex").slice(0, 16);
+    return `${imgHash}_${reqHash}`;
+  }
+
+  public static clearCache(): void {
+    VisualReviewerAgent.visualCache.clear();
+  }
+
+  async executeDetailed(
     request: string,
     screenshotPath: string,
-  ): Promise<VisualIssue[]> {
+  ): Promise<VisualReviewResult> {
     if (!existsSync(screenshotPath)) {
       console.log(`[VisualReviewer] No screenshot found at ${screenshotPath}, skipping visual checks.`);
-      return [];
+      return {
+        status: "SKIPPED",
+        issues: [],
+        durationMs: 0,
+        cacheHit: false,
+        screenshotHash: "none",
+      };
     }
 
     try {
       const imageBuffer = readFileSync(screenshotPath);
+      const screenshotHash = VisualReviewerAgent.computeVisualHash(imageBuffer, request);
+
+      // Check cache
+      if (VisualReviewerAgent.visualCache.has(screenshotHash)) {
+        const cached = VisualReviewerAgent.visualCache.get(screenshotHash)!;
+        console.log(`[VisualReviewer] ⚡ Cached visual review result reused (Hash: ${screenshotHash}) — zero extra model calls.`);
+        return {
+          status: cached.status,
+          issues: cached.issues,
+          durationMs: 0,
+          cacheHit: true,
+          screenshotHash,
+        };
+      }
+
+      const startTime = Date.now();
       const base64Image = imageBuffer.toString("base64");
       const ext = extname(screenshotPath).toLowerCase();
       const mimeType = ext === ".png" ? "image/png" : "image/jpeg";
@@ -75,26 +121,60 @@ Respond ONLY with raw JSON:
         }
       );
 
+      const durationMs = Date.now() - startTime;
       const cleanJson = responseText
         .replace(/```json/gi, "")
         .replace(/```/g, "")
         .trim();
 
-      const parsed = JSON.parse(cleanJson);
-      if (parsed && Array.isArray(parsed.issues)) {
-        return parsed.issues.map((i: any) => ({
-          element: i.element || "unknown",
-          bug: i.bug || "Visual issue",
-          severity: i.severity || "medium",
-          isVisualOnly: i.isVisualOnly !== false,
-          suggestedCssFix: i.suggestedCssFix,
-        }));
-      }
+      let issues: VisualIssue[] = [];
+      try {
+        const parsed = JSON.parse(cleanJson);
+        if (parsed && Array.isArray(parsed.issues)) {
+          issues = parsed.issues.map((i: any) => ({
+            element: i.element || "unknown",
+            bug: i.bug || "Visual issue",
+            severity: i.severity || "medium",
+            isVisualOnly: i.isVisualOnly !== false,
+            suggestedCssFix: i.suggestedCssFix,
+          }));
+        }
+      } catch {}
+
+      const status = issues.some(i => !i.isVisualOnly || i.severity === "high") ? "FAIL" : "PASS";
+
+      // Cache successful review
+      VisualReviewerAgent.visualCache.set(screenshotHash, {
+        issues,
+        status,
+        screenshotHash,
+      });
+
+      return {
+        status,
+        issues,
+        durationMs,
+        cacheHit: false,
+        screenshotHash,
+      };
     } catch (err: any) {
       console.warn(`[VisualReviewer] Warning: Failed to execute multimodal visual review: ${err.message}`);
+      return {
+        status: "SKIPPED",
+        issues: [],
+        durationMs: 0,
+        cacheHit: false,
+        screenshotHash: "error",
+      };
     }
+  }
 
-    return [];
+  async execute(
+    request: string,
+    screenshotPath: string,
+  ): Promise<VisualIssue[]> {
+    const result = await this.executeDetailed(request, screenshotPath);
+    return result.issues;
   }
 
   public canAttemptRepair(): boolean {

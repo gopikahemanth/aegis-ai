@@ -51,18 +51,24 @@ export class ExecutionEngine {
 
     console.log(`[ExecutionEngine] generateProject result: framework=${result.framework}, tasks=${result.tasks?.length ?? 0}`);
 
-    // ── Step 2: Back up the .aegis/ contract before template creation ────────
+    // ── Step 2: Back up all .aegis/ contracts before template creation ───────
     // ReactViteTemplate.create() wipes the output directory, so we preserve
-    // the architecture contract JSON and restore it afterward.
+    // the full .aegis contract state and restore it afterward.
     const aegisDir = join(projectPath, ".aegis");
-    const contractPath = join(aegisDir, "architecture-contract.json");
-    let savedContract: string | null = null;
-    try {
-      if (existsSync(contractPath)) {
-        savedContract = readFileSync(contractPath, "utf8");
-        console.log("[ExecutionEngine] ✓ Backed up architecture-contract.json before template creation.");
-      }
-    } catch { /* ignore */ }
+    const savedAegisFiles: Record<string, string> = {};
+    if (existsSync(aegisDir)) {
+      try {
+        const { readdirSync, statSync } = await import("node:fs");
+        const files = readdirSync(aegisDir);
+        for (const file of files) {
+          const filePath = join(aegisDir, file);
+          if (statSync(filePath).isFile()) {
+            savedAegisFiles[file] = readFileSync(filePath, "utf8");
+          }
+        }
+        console.log(`[ExecutionEngine] ✓ Backed up ${Object.keys(savedAegisFiles).length} .aegis contract file(s) before template creation.`);
+      } catch { /* ignore */ }
+    }
 
     // ── Step 3: Create project scaffold from framework template ──────────────
     console.log("Creating project template...");
@@ -74,20 +80,22 @@ export class ExecutionEngine {
       console.warn(`[ExecutionEngine] Warning: Template creation issue (${creatorError.message}). Continuing — directory may already be scaffolded.`);
     }
 
-    // ── Step 4: Restore backed-up architecture contract ──────────────────────
-    if (savedContract) {
+    // ── Step 4: Restore backed-up architecture contracts ─────────────────────
+    if (Object.keys(savedAegisFiles).length > 0) {
       try {
         if (!existsSync(aegisDir)) mkdirSync(aegisDir, { recursive: true });
-        writeFileSync(contractPath, savedContract, "utf8");
-        console.log("[ExecutionEngine] ✓ Restored architecture-contract.json after template creation.");
+        for (const [file, content] of Object.entries(savedAegisFiles)) {
+          writeFileSync(join(aegisDir, file), content, "utf8");
+        }
+        console.log(`[ExecutionEngine] ✓ Restored ${Object.keys(savedAegisFiles).length} .aegis contract file(s) after template creation.`);
       } catch (restoreErr: any) {
-        console.warn(`[ExecutionEngine] Warning: Could not restore architecture-contract.json: ${restoreErr.message}`);
+        console.warn(`[ExecutionEngine] Warning: Could not restore .aegis contracts: ${restoreErr.message}`);
       }
     }
 
     // ── Step 5: generateApplication — full code generation pipeline ──────────
     console.log("Generating application...");
-    const generated = await this.orchestrator.generateApplication(request, projectPath, imagePath);
+    const generated = await this.orchestrator.generateApplication(request, projectPath, imagePath, result.lockedPlan);
     console.log(`[ExecutionEngine] generateApplication complete. Files: ${(generated as any)?.files?.length ?? "unknown"}`);
 
     // ── Step 6: Install, build, and self-heal ────────────────────────────────

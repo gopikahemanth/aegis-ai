@@ -129,6 +129,20 @@ export class TsSymbolRepairEngine {
         });
         continue;
       }
+
+      // TS2749: 'Status' refers to a value, but is being used as a type here. Did you mean 'typeof Status'?
+      const ts2749Match = line.match(/^([^(]+)\((\d+),(\d+)\):\s+error\s+(TS2749):\s+['"]?([a-zA-Z0-9_]+)['"]?\s+refers to a value, but is being used as a type here/);
+      if (ts2749Match) {
+        results.push({
+          importerFile: ts2749Match[1].trim().replace(/\\/g, "/"),
+          line: parseInt(ts2749Match[2], 10),
+          col: parseInt(ts2749Match[3], 10),
+          code: "TS2749",
+          requestedSymbol: cleanQuotes(ts2749Match[5]),
+          message: line,
+        });
+        continue;
+      }
     }
 
     return results;
@@ -156,6 +170,11 @@ export class TsSymbolRepairEngine {
     // 4. Handle TS2551 (Property name mismatch in caller)
     if (err.code === "TS2551" && err.requestedSymbol && err.suggestedSymbol) {
       return this.fixPropertyMismatch(projectRoot, err);
+    }
+
+    // 5. Handle TS2749 (Value identifier used as type annotation)
+    if (err.code === "TS2749" && err.requestedSymbol) {
+      return this.fixValueUsedAsType(projectRoot, err);
     }
 
     return null;
@@ -319,6 +338,38 @@ export class TsSymbolRepairEngine {
         originalContent: content,
         modifiedContent: newContent,
         description: `Corrected property '${requested}' to '${suggested}' in ${err.importerFile}`,
+        applied: true,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Fix TS2749: value used in type position.
+   */
+  private static fixValueUsedAsType(
+    projectRoot: string,
+    err: TsErrorParsed
+  ): SymbolRepairAction | null {
+    const absImporter = join(projectRoot, err.importerFile);
+    if (!existsSync(absImporter)) return null;
+
+    const content = readFileSync(absImporter, "utf8");
+    const symbol = err.requestedSymbol!;
+
+    // Replace : Symbol or : Symbol[] or <Symbol> with : string / <string> / : any
+    const typeRegex = new RegExp(`(:\\s*)${this.escapeRegex(symbol)}(\\b|\\[\\])`, "g");
+    if (typeRegex.test(content)) {
+      const replacementType = symbol.toLowerCase().includes("status") || symbol.toLowerCase().includes("id") || symbol.toLowerCase().includes("priority") || symbol.toLowerCase().includes("title") ? "string" : "any";
+      const newContent = content.replace(typeRegex, `$1${replacementType}$2`);
+      writeFileSync(absImporter, newContent, "utf8");
+      console.log(`[TsSymbolRepairEngine] ✓ Replaced value type annotation ':${symbol}' with ':${replacementType}' in ${absImporter}`);
+      return {
+        fileToModify: absImporter,
+        originalContent: content,
+        modifiedContent: newContent,
+        description: `Replaced value '${symbol}' used as type annotation with '${replacementType}' in ${err.importerFile}`,
         applied: true,
       };
     }

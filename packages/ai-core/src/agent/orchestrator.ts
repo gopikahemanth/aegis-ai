@@ -68,6 +68,8 @@ import { AppServerRunner } from "../startup/app-server-runner.js";
 import { ReadOnlyBrowserValidator } from "../validation/read-only-browser-validator.js";
 import { ApiWorkflowVerifier } from "../validation/api-workflow-verifier.js";
 import { ProjectPathResolver, ProjectRootSingleton } from "../utils/path-resolver.js";
+import { CanonicalPlanManager, type LockedGenerationPlan } from "../planning/canonical-generation-plan.js";
+import { DomainContractManager } from "../governance/domain-contract.js";
 
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
@@ -267,6 +269,7 @@ export class Orchestrator {
     let enrichedRequest = request;
     let inferredLibraries: string[] = [];
     let inferredFeatureNames: string[] = [];
+    let dataArch: any = null;
     try {
       const expanded = await this.promptInferenceEngine.expand(request);
       enrichedRequest = expanded.enrichedPrompt;
@@ -300,7 +303,7 @@ export class Orchestrator {
     }
     writeFileSync(join(aegisDir, "prompt.txt"), request, "utf8");
 
-    const resolvedContract = ArchitectureResolver.resolve(request, specification, canonicalSpec, outputDirectory);
+    let resolvedContract = ArchitectureResolver.resolve(request, specification, canonicalSpec, outputDirectory);
     ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
     const archContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
 
@@ -444,20 +447,52 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
     // Enforce single source of truth for framework selection
     let framework = this.selector.select(architecture);
-    if (request.toLowerCase().includes("react") || request.toLowerCase().includes("express") || request.toLowerCase().includes("vite")) {
+    if (request.toLowerCase().includes("react") || request.toLowerCase().includes("express") || request.toLowerCase().includes("vite") || (resolvedContract.frontend.framework || "").toLowerCase().includes("react") || (resolvedContract.frontend.framework || "").toLowerCase().includes("vite")) {
       framework = "react-vite";
     }
+
+    if ((framework === "react-vite" || framework === "react") && resolvedContract.frontend.framework !== "React-Vite") {
+      resolvedContract = {
+        ...resolvedContract,
+        frontend: {
+          ...resolvedContract.frontend,
+          framework: "React-Vite",
+        },
+      };
+    }
+
+    ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
 
     console.log(
       "Framework:",
       framework,
     );
 
+    const lockedPlan = CanonicalPlanManager.create({
+      request,
+      enrichedRequest,
+      framework,
+      architectureContract: resolvedContract,
+      specification,
+      canonicalSpec,
+      dataArchitecture: dataArch,
+      tasks,
+      inferredLibraries,
+      inferredFeatureNames,
+      activeTeam,
+    });
+    CanonicalPlanManager.save(outputDirectory, lockedPlan);
+    DomainContractManager.lock(resolvedContract, resolvedContract.architectureHash || "arch_hash", outputDirectory);
+    console.log(`[CanonicalPlan] 🔒 Locked canonical generation plan [planId: ${lockedPlan.planId}, planHash: ${lockedPlan.planHash}]`);
+
     return {
       framework,
       tasks,
       specification,
       outputDirectory,
+      lockedPlan,
+      resolvedContract,
+      dataArchitecture: dataArch,
     };
   }
 
@@ -465,26 +500,26 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     request: string,
     outputDirectory: string,
     imagePath?: string,
+    providedPlan?: LockedGenerationPlan,
   ) {
+    const loadedPlan = providedPlan || CanonicalPlanManager.load(outputDirectory);
+    const hasLockedPlan = !!(loadedPlan && (loadedPlan.request?.trim() === request?.trim() || !loadedPlan.request));
+
     const memoryEngine = new ProjectMemoryEngine(outputDirectory);
     const existingMem = memoryEngine.loadMemory();
-    if (!existingMem || (existingMem.lastRequest && existingMem.lastRequest.trim() !== request.trim())) {
+    if (!hasLockedPlan && (!existingMem || (existingMem.lastRequest && existingMem.lastRequest.trim() !== request.trim()))) {
       console.log("[Memory] 🧹 New prompt detected — wiping ALL project-scoped .aegis state...");
       memoryEngine.resetMemory("project", request);
       const aegisDir = join(outputDirectory, ".aegis");
-      // BUG-007 FIX: Delete ALL project-scoped files, including architecture.json and patterns.json
-      // which were previously omitted, causing domain contamination across projects.
       const ALL_PROJECT_SCOPED_FILES = [
         "architecture-contract.json",
         "canonical-architecture.json",
         "data-architecture.json",
         "project-manifest.json",
         "project-graph.json",
-        // Phase 2: also clear domain + file graph artifacts
         "domain-contract.json",
         "file-graph.json",
         "domain-contamination.json",
-        // Legacy memory files that carry project-specific patterns (Bug 007)
         "architecture.json",
         "patterns.json",
         "conventions.json",
@@ -503,77 +538,12 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     }
     MetricsTracker.getInstance().reset();
 
-
     const auditTrail = new AuditTrailEngine(outputDirectory);
     auditTrail.logEvent({
       agentRole: "CEO Agent",
       action: `Initiated application implementation for request: "${request}"`,
       status: "SUCCESS"
     });
-
-    // ─── Step 0: Prompt Inference ────────────────────────────────────────────
-    // Expand the brief user prompt into a full feature specification before
-    // any agent sees it. Eliminates features the user forgot to ask for.
-    console.log("[Inference] Expanding prompt into full feature specification...");
-    let enrichedRequest = request;
-    let inferredFeatureNames: string[] = [];
-    try {
-      const expanded = await this.promptInferenceEngine.expand(request);
-      enrichedRequest = this.promptInferenceEngine.buildEnrichedRequest(expanded);
-      inferredFeatureNames = expanded.inferredFeatures.map(f => f.name);
-      if (expanded.inferredFeatures.length > 0) {
-        console.log(`[Inference] ✓ Inferred ${expanded.inferredFeatures.length} features: ${inferredFeatureNames.join(", ")}`);
-      } else {
-        console.log("[Inference] Using original prompt (inference returned no features).");
-      }
-      auditTrail.logEvent({
-        agentRole: "Inference Engine",
-        action: `Expanded prompt. Inferred features: ${inferredFeatureNames.join(", ") || "none"}`,
-        status: "SUCCESS"
-      });
-    } catch (infErr: any) {
-      console.warn(`[Inference] Warning: Prompt expansion failed: ${infErr.message}`);
-    }
-
-    // Run AI Research Assistant (Phase 14)
-    console.log("[Research] Running AI Research Assistant to retrieve optimal coding patterns...");
-    try {
-      const researched = await this.researchAssistantAgent.execute(request);
-      if (researched && researched.length > 0) {
-        const existingPatterns = memoryEngine.loadPatterns();
-        if (existingPatterns) {
-          for (const pattern of researched) {
-            if (!existingPatterns.reusablePatterns.some(p => p.name === pattern.name)) {
-              existingPatterns.reusablePatterns.push(pattern);
-              console.log(`[Research] ✓ Retrieved and indexed custom pattern: "${pattern.name}"`);
-            }
-          }
-          memoryEngine.savePatterns(existingPatterns);
-        }
-      }
-    } catch (resErr: any) {
-      console.warn(`[Research] Warning: Research Assistant failed: ${resErr.message}`);
-    }
-
-    const existingArch = memoryEngine.loadArchitecture();
-    const loadedMem = memoryEngine.loadMemory();
-
-    if (loadedMem && loadedMem.projectName) {
-      console.log(`[Memory] Loaded existing project memory checkpoints for "${loadedMem.projectName}".`);
-    }
-
-    // Initialize Git and checkout feature branch
-    const gitEngine = new GitIntegrationEngine();
-    try {
-      gitEngine.initRepository(outputDirectory);
-      gitEngine.createFeatureBranch(outputDirectory, request);
-    } catch (gitErr: any) {
-      console.warn(`[GitEngine] Warning: Git branch initialization failed: ${gitErr.message}`);
-    }
-
-    this.execution.enter(
-      ExecutionPhase.Requirements,
-    );
 
     let imagePayload: { mimeType: string; data: string } | undefined;
     if (imagePath && existsSync(imagePath)) {
@@ -588,21 +558,164 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
     }
 
-    const guidancePrompt = enrichedRequest + (existingArch ? `\n(Guideline: Follow the existing framework "${existingArch.framework}", styled with "${existingArch.styling}", using naming rules: ${existingArch.namingConventions.join(", ")})` : "");
+    const gitEngine = new GitIntegrationEngine();
+    try {
+      gitEngine.initRepository(outputDirectory);
+      gitEngine.createFeatureBranch(outputDirectory, request);
+    } catch (gitErr: any) {
+      console.warn(`[GitEngine] Warning: Git branch initialization failed: ${gitErr.message}`);
+    }
 
-    const {
-      specification: rawSpecification,
-      architecturePlan,
-    } =
-      await this.architectAgent.execute(
-        guidancePrompt,
-        imagePayload,
-      );
+    let enrichedRequest = request;
+    let inferredFeatureNames: string[] = [];
+    let inferredLibraries: string[] = [];
+    let rawSpecification: any = null;
+    let canonicalSpec: any = null;
+    let specification: any = null;
+    let architecturePlan: any = null;
+    let resolvedContract: any = null;
+    let dataArch: any = null;
+    let tasks: Task[] = [];
 
-    const canonicalSpec = SpecificationNormalizer.normalize(request, rawSpecification);
-    (this as any)._currentCanonicalSpec = canonicalSpec;
-    let specification = canonicalSpec;
-    ValidationStateManager.getInstance().reset();
+    if (hasLockedPlan && loadedPlan) {
+      console.log(`[CanonicalPlan] ⚡ Reusing authoritative locked generation plan [planId: ${loadedPlan.planId}, planHash: ${loadedPlan.planHash}] — skipping duplicate planning phase.`);
+      enrichedRequest = loadedPlan.enrichedRequest || request;
+      inferredFeatureNames = loadedPlan.inferredFeatureNames || [];
+      inferredLibraries = loadedPlan.inferredLibraries || [];
+      specification = loadedPlan.canonicalSpec || loadedPlan.specification;
+      canonicalSpec = specification;
+      rawSpecification = specification;
+      resolvedContract = loadedPlan.architectureContract;
+      dataArch = loadedPlan.dataArchitecture;
+      tasks = loadedPlan.tasks;
+      (this as any)._currentCanonicalSpec = canonicalSpec;
+      ValidationStateManager.getInstance().reset();
+
+      const architecture = this.architect.plan(specification);
+      architecturePlan = { architecture, specification };
+      ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
+      DomainContractManager.lock(resolvedContract, resolvedContract.architectureHash || "arch_hash", outputDirectory);
+
+      if (dataArch && Array.isArray(dataArch.apis)) {
+        ApiContractRegistry.registerContract(dataArch.apis.map((a: any, idx: number) => ({
+          operationId: a.operationId || `op_${idx}_${(a.method || "get").toLowerCase()}_${(a.path || "").replace(/\//g, "_").replace(/^_/, "")}`,
+          path: a.path,
+          method: a.method,
+          description: a.description,
+          authentication: a.authentication !== false,
+          requestFields: a.requestBodySchema ? { schema: a.requestBodySchema } : undefined,
+          responseFields: a.responseBodySchema ? { schema: a.responseBodySchema } : undefined,
+        })));
+      }
+    } else {
+      // Step 0: Prompt Inference
+      console.log("[Inference] Expanding prompt into full feature specification...");
+      try {
+        const expanded = await this.promptInferenceEngine.expand(request);
+        enrichedRequest = this.promptInferenceEngine.buildEnrichedRequest(expanded);
+        inferredLibraries = expanded.inferredLibraries;
+        inferredFeatureNames = expanded.inferredFeatures.map(f => f.name);
+        if (expanded.inferredFeatures.length > 0) {
+          console.log(`[Inference] ✓ Inferred ${expanded.inferredFeatures.length} features: ${inferredFeatureNames.join(", ")}`);
+        }
+      } catch (infErr: any) {
+        console.warn(`[Inference] Warning: Prompt expansion failed: ${infErr.message}`);
+      }
+
+      // Step 1: Research Assistant
+      console.log("[Research] Running AI Research Assistant to retrieve optimal coding patterns...");
+      try {
+        const researched = await this.researchAssistantAgent.execute(request);
+        if (researched && researched.length > 0) {
+          const existingPatterns = memoryEngine.loadPatterns();
+          if (existingPatterns) {
+            for (const pattern of researched) {
+              if (!existingPatterns.reusablePatterns.some(p => p.name === pattern.name)) {
+                existingPatterns.reusablePatterns.push(pattern);
+              }
+            }
+            memoryEngine.savePatterns(existingPatterns);
+          }
+        }
+      } catch (resErr: any) {
+        console.warn(`[Research] Warning: Research Assistant failed: ${resErr.message}`);
+      }
+
+      const existingArch = memoryEngine.loadArchitecture();
+      const guidancePrompt = enrichedRequest + (existingArch ? `\n(Guideline: Follow the existing framework "${existingArch.framework}", styled with "${existingArch.styling}", using naming rules: ${existingArch.namingConventions.join(", ")})` : "");
+
+      let imagePayload: { mimeType: string; data: string } | undefined;
+      if (imagePath && existsSync(imagePath)) {
+        try {
+          const buffer = readFileSync(imagePath);
+          const base64 = buffer.toString("base64");
+          const ext = imagePath.split(".").pop()?.toLowerCase();
+          const mimeType = ext === "png" ? "image/png" : "image/jpeg";
+          imagePayload = { mimeType, data: base64 };
+        } catch (err: any) {
+          console.warn(`[Orchestrator] Warning: Could not read image path "${imagePath}": ${err.message}`);
+        }
+      }
+
+      const architectRes = await this.architectAgent.execute(guidancePrompt, imagePayload);
+      rawSpecification = architectRes.specification;
+      architecturePlan = architectRes.architecturePlan;
+
+      canonicalSpec = SpecificationNormalizer.normalize(request, rawSpecification);
+      (this as any)._currentCanonicalSpec = canonicalSpec;
+      specification = canonicalSpec;
+      ValidationStateManager.getInstance().reset();
+
+      resolvedContract = ArchitectureResolver.resolve(request, rawSpecification, canonicalSpec, outputDirectory);
+      ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
+      ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
+      DomainContractManager.lock(resolvedContract, resolvedContract.architectureHash || "arch_hash", outputDirectory);
+
+      // Data Architecture Modeling
+      this.execution.enter(ExecutionPhase.DataModeling);
+      console.log("[DataArchitecture] Running Data Architecture Agent...");
+      try {
+        const activeProjectContract = resolvedContract ?? request;
+        const canonicalModelNames = CanonicalDataModelContract.getModelNames(activeProjectContract);
+        const canonicalSchemaHint = `\nCANONICAL DATA MODELS (IMMUTABLE — DO NOT INVENT NEW MODELS):\n${canonicalModelNames.join(", ")}\n`;
+        dataArch = await this.dataArchitectureAgent.execute(
+          enrichedRequest + "\n\n" + canonicalSchemaHint,
+          specification
+        );
+        if (dataArch && Array.isArray(dataArch.apis)) {
+          ApiContractRegistry.registerContract(dataArch.apis.map((a: any, idx: number) => ({
+            operationId: a.operationId || `op_${idx}_${(a.method || "get").toLowerCase()}_${(a.path || "").replace(/\//g, "_").replace(/^_/, "")}`,
+            path: a.path,
+            method: a.method,
+            description: a.description,
+            authentication: a.authentication !== false,
+            requestFields: a.requestBodySchema ? { schema: a.requestBodySchema } : undefined,
+            responseFields: a.responseBodySchema ? { schema: a.responseBodySchema } : undefined,
+          })));
+        }
+      } catch (daErr: any) {
+        console.warn(`[DataArchitecture] Warning: Data architecture agent failed: ${daErr.message}`);
+      }
+
+      const coordinator = new TeamCoordinator();
+      const activeTeam = await coordinator.coordinate(specification);
+      tasks = await this.plannerAgent.execute(specification);
+
+      const standalonePlan = CanonicalPlanManager.create({
+        request,
+        enrichedRequest,
+        framework: resolvedContract.frontend.framework,
+        architectureContract: resolvedContract,
+        specification,
+        canonicalSpec,
+        dataArchitecture: dataArch,
+        tasks,
+        inferredLibraries,
+        inferredFeatureNames,
+        activeTeam,
+      });
+      CanonicalPlanManager.save(outputDirectory, standalonePlan);
+    }
 
     // Merge specification inferred libraries into package.json (filtered by whitelist)
     const pkgPath = join(outputDirectory, "package.json");
@@ -610,8 +723,8 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       try {
         const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
         pkg.dependencies = pkg.dependencies || {};
-        const rawLibs = specification.inferredLibraries || [];
-        const libs = rawLibs.filter(lib => VALID_DEPENDENCIES_WHITELIST.has(lib));
+        const rawLibs = specification.inferredLibraries || inferredLibraries || [];
+        const libs = rawLibs.filter((lib: string) => VALID_DEPENDENCIES_WHITELIST.has(lib));
         const commonTypesNeeded = ["express", "cors", "canvas-confetti", "bcryptjs", "jsonwebtoken", "react", "react-dom"];
         
         for (const lib of libs) {
@@ -641,16 +754,16 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       }
     }
 
-    const resolvedContract = ArchitectureResolver.resolve(request, rawSpecification, canonicalSpec, outputDirectory);
-    ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
-    const appArchContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
+    // Force specification normalization against locked contract
+    const normalizedAppSpec = ArchitectureContractNormalizer.normalizeSpecification(specification, resolvedContract);
+    specification = normalizedAppSpec;
 
     // ── ContractIntegrityValidator — Assert contract immutability ─────────────
     ContractIntegrityValidator.assertValid(specification, resolvedContract);
 
     // ── TechnologyConstraintValidator — Filter forbidden libraries ───────────
-    const { allowed: allowedAppLibs, forbidden: forbiddenAppLibs } = TechnologyConstraintValidator.filterLibraries(rawSpecification.inferredLibraries || [], resolvedContract);
-    rawSpecification.inferredLibraries = allowedAppLibs;
+    const { allowed: allowedAppLibs, forbidden: forbiddenAppLibs } = TechnologyConstraintValidator.filterLibraries(specification.inferredLibraries || [], resolvedContract);
+    specification.inferredLibraries = allowedAppLibs;
 
     // ── MANDATORY CONTRACT GATE — Stop pipeline if contract is invalid ─────
     const appContractGateResult = ContractGate.verify(resolvedContract);
@@ -660,10 +773,6 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         `Errors: ${appContractGateResult.errors.join("; ")}. Pipeline stopped.`
       );
     }
-
-    // Force specification normalization against locked contract
-    const normalizedAppSpec = ArchitectureContractNormalizer.normalizeSpecification(specification, resolvedContract);
-    specification = normalizedAppSpec;
 
     // ── CANONICAL ARCHITECTURE STATE (Single Source of Truth) ─────────────
     const canonicalState = CanonicalArchitectureState.getInstance().initialize(resolvedContract, outputDirectory);
@@ -676,54 +785,26 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       status: "SUCCESS"
     });
 
-
     // ─── Design System ───────────────────────────────────────────────────────
     console.log("[DesignSystem] Generating design tokens and base components...");
     try {
       const dsFiles = this.designSystemGenerator.generate(specification);
       const dsContext = this.designSystemGenerator.buildCoderContext(specification);
-      // Derive framework from specification — framework variable is declared later
       const dsFramework = specification.frontend?.toLowerCase().includes("react") ? "react-vite" : "html";
-      // Write design system files before any coder task runs
       this.write(
         this.validator.validate(dsFramework, dsFiles),
         outputDirectory,
       );
-      // Append design system context to the enriched request so CoderAgent uses it
       enrichedRequest = enrichedRequest + "\n\n" + dsContext;
       console.log(`[DesignSystem] ✓ Wrote ${dsFiles.length} design system files.`);
     } catch (dsErr: any) {
       console.warn(`[DesignSystem] Warning: Design system generation failed: ${dsErr.message}`);
     }
 
-    // ─── Data Architecture Modeling ──────────────────────────────────────────
-    this.execution.enter(ExecutionPhase.DataModeling);
-    console.log("[DataArchitecture] Running Data Architecture Agent...");
+    // ─── Prisma Schema Persistence ───────────────────────────────────────────
     try {
-      // Pass canonical contract to DataArchitectureAgent so it cannot invent incompatible models
       const activeProjectContract = resolvedContract ?? request;
       const canonicalModelNames = CanonicalDataModelContract.getModelNames(activeProjectContract);
-      const canonicalSchemaHint = `
-CANONICAL DATA MODELS (IMMUTABLE — DO NOT INVENT NEW MODELS):
-${canonicalModelNames.join(", ")}
-`;
-      const dataArch = await this.dataArchitectureAgent.execute(
-        enrichedRequest + "\n\n" + canonicalSchemaHint,
-        specification
-      );
-      
-      // Save data architecture design
-      const aegisDir = join(outputDirectory, ".aegis");
-      if (!existsSync(aegisDir)) {
-        mkdirSync(aegisDir, { recursive: true });
-      }
-      writeFileSync(
-        join(aegisDir, "data-architecture.json"),
-        JSON.stringify(dataArch, null, 2),
-        "utf8"
-      );
-
-      // Rule 1, 2, 5: Always write canonical Prisma schema to prisma/schema.prisma
       const prismaDir = join(outputDirectory, "prisma");
       if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
       const schemaPath = join(prismaDir, "schema.prisma");
@@ -734,7 +815,6 @@ ${canonicalModelNames.join(", ")}
         `[PRISMA-SCHEMA-WRITE] caller=orchestrator.ts models=${canonicalModelNames.join(",")} hash=canonical_v1`
       );
 
-      // Rule 5: Immediate Disk Persistence Verification
       const persistedSchema = readFileSync(schemaPath, "utf8");
       const verification = CanonicalDataModelContract.validateSchema(persistedSchema, activeProjectContract);
       if (!verification.valid) {
@@ -743,60 +823,13 @@ ${canonicalModelNames.join(", ")}
         );
       }
       console.log(`[DATA-CONTRACT] ✓ Schema persistence verified on disk. Models present: ${canonicalModelNames.join(", ")}.`);
-
-      console.log("[DataArchitecture] ✓ Saved data architecture definition.");
-
-      // Build data flow context — use CANONICAL model names, not LLM-invented ones
-      const dataContext = `
-═══════════════════════════════════════════════════════
-DATA ARCHITECTURE CONTRACTS (STRICTLY CONFORM TO THIS SCHEMA)
-═══════════════════════════════════════════════════════
-Canonical Database Models: ${canonicalModelNames.join(", ")}
-
-Database models & schemas:
-${dataArch.databaseSchema}
-
-Defined APIs:
-${dataArch.apis.map(api => `- ${api.method} ${api.path} (${api.description})`).join("\n")}
-
-Frontend React Hooks & Queries:
-${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.returns})`).join("\n")}
-═══════════════════════════════════════════════════════
-`;
-      enrichedRequest = enrichedRequest + "\n\n" + dataContext;
-      auditTrail.logEvent({
-        agentRole: "Data Architecture Agent",
-        action: `Designed data flow models. Persisted models count: ${dataArch.models.length}, APIs: ${dataArch.apis.length}`,
-        status: "SUCCESS"
-      });
-    } catch (daErr: any) {
-      console.warn(`[DataArchitecture] Warning: Data architecture agent failed: ${daErr.message}. Writing canonical schema as fallback.`);
-      // Fallback: always write canonical schema so prisma/schema.prisma is valid
-      try {
-        const activeProjectContract = resolvedContract ?? request;
-        const dbProvider = (typeof activeProjectContract === "object" ? activeProjectContract.database?.provider : undefined) ?? "postgresql";
-        const prismaDir = join(outputDirectory, "prisma");
-        if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
-        const schemaPath = join(prismaDir, "schema.prisma");
-        if (!existsSync(schemaPath)) {
-          writeFileSync(schemaPath, CanonicalDataModelContract.getPrismaSchema(activeProjectContract, dbProvider), "utf8");
-          console.log(`[DATA-CONTRACT] ✓ Wrote canonical fallback Prisma schema to prisma/schema.prisma.`);
-        }
-      } catch { /* best-effort */ }
+    } catch (prismaErr: any) {
+      console.warn(`[PRISMA-SCHEMA] Warning writing schema: ${prismaErr.message}`);
     }
-
-    const coordinator = new TeamCoordinator();
-    const activeTeam = await coordinator.coordinate(specification);
-    console.log("\n[Coordinator] Coordinating Dynamic AI Specialist Team for this project:");
-    console.table(activeTeam.map(member => ({ Role: member.role, Description: member.description })));
-
-    let tasks =
-      await this.plannerAgent.execute(
-        specification,
-      );
 
     // Set canonical project root singleton to prevent duplicate path bugs
     ProjectRootSingleton.setRoot(outputDirectory);
+    ProjectPathResolver.assertNoDuplicateRoot(outputDirectory);
     ProjectPathResolver.assertNoDuplicateRoot(outputDirectory);
 
     // Rule 4: Run ManifestCompletenessValidator and CanonicalDependencyClosureValidator before implementation
@@ -1209,7 +1242,7 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
         const pkg = JSON.parse(readFileSync(finalPkgPath, "utf8"));
         pkg.dependencies = pkg.dependencies || {};
         const rawLibs = specification.inferredLibraries || [];
-        const libs = rawLibs.filter(lib => VALID_DEPENDENCIES_WHITELIST.has(lib));
+        const libs = rawLibs.filter((lib: string) => VALID_DEPENDENCIES_WHITELIST.has(lib));
         const commonTypesNeeded = ["express", "cors", "canvas-confetti", "bcryptjs", "jsonwebtoken", "react", "react-dom"];
         
         for (const lib of libs) {

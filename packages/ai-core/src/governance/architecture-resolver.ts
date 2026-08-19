@@ -142,12 +142,15 @@ export class ArchitectureResolver {
     } else if (promptLower.includes("vue")) {
       frontendFramework = "Vue-Vite";
       frontendProvenance = "user";
-    } else if (canonical.lockedStack?.frontend) {
+    } else if (canonical.lockedStack?.frontend && !canonical.lockedStack.frontend.toLowerCase().includes("next")) {
       frontendFramework = canonical.lockedStack.frontend;
       frontendProvenance = "inferred";
-    } else if (raw.frontend) {
+    } else if (raw.frontend && !raw.frontend.toLowerCase().includes("next")) {
       frontendFramework = raw.frontend;
       frontendProvenance = "inferred";
+    } else {
+      frontendFramework = "React-Vite";
+      frontendProvenance = "default";
     }
 
     // ── Priority 1: BACKEND resolution ───────────────────────────────────────

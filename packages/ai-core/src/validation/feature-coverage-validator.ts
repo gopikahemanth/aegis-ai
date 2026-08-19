@@ -47,15 +47,18 @@ export class FeatureCoverageValidator {
     }
 
     // 1. Validate Required Routes
-    for (const route of contract.requiredRoutes) {
+    for (const route of (contract.requiredRoutes || [])) {
       let found = false;
       let implementedIn: string | undefined;
 
-      const slug = route.path === "/" ? "dashboard" : route.path.replace(/^\//, "").toLowerCase();
+      const routePath = typeof route === "string" ? route : (route as any).path || "/";
+      const routeName = typeof route === "string" ? route : (route as any).name || routePath;
+      const routeDesc = typeof route === "string" ? route : (route as any).description || "";
+      const slug = routePath === "/" ? "dashboard" : routePath.replace(/^\//, "").toLowerCase();
 
       for (const [file, content] of fileContents.entries()) {
         if (file.endsWith("routes.tsx") || file.endsWith("App.tsx") || file.endsWith("routes.ts")) {
-          if (content.includes(`path="${route.path}"`) || content.includes(`path='${route.path}'`)) {
+          if (content.includes(`path="${routePath}"`) || content.includes(`path='${routePath}'`)) {
             found = true;
             implementedIn = file;
             break;
@@ -70,24 +73,24 @@ export class FeatureCoverageValidator {
 
       items.push({
         type: "ROUTE",
-        name: `${route.path} (${route.name})`,
+        name: `${routePath} (${routeName})`,
         found,
         implementedIn,
-        details: route.description,
+        details: routeDesc,
       });
     }
 
     // 2. Validate Required Endpoints
-    for (const ep of contract.requiredEndpoints) {
+    const endpoints: any[] = (contract as any).requiredEndpoints || [];
+    for (const ep of endpoints) {
       let found = false;
       let implementedIn: string | undefined;
 
-      const cleanPath = ep.path.replace(/:[a-zA-Z0-9_]+/g, "");
+      const cleanPath = (ep.path || "").replace(/:[a-zA-Z0-9_]+/g, "");
 
       for (const [file, content] of fileContents.entries()) {
         if (file.startsWith("server") || file.includes("api") || file.includes("routes")) {
-          const methodLower = ep.method.toLowerCase();
-          if (content.includes(cleanPath) || content.includes(ep.path)) {
+          if (cleanPath && (content.includes(cleanPath) || content.includes(ep.path))) {
             found = true;
             implementedIn = file;
             break;
@@ -97,26 +100,28 @@ export class FeatureCoverageValidator {
 
       items.push({
         type: "ENDPOINT",
-        name: `${ep.method} ${ep.path}`,
+        name: `${ep.method || "GET"} ${ep.path || ""}`,
         found,
         implementedIn,
-        details: ep.description,
+        details: ep.description || "",
       });
     }
 
     // 3. Validate Domain Models in Prisma schema or TypeScript types
     const prismaSchema = fileContents.get("prisma/schema.prisma") || "";
-    for (const model of contract.domainModels) {
+    const domainModels: any[] = (contract as any).domainModels || contract.requiredModels || [];
+    for (const model of domainModels) {
       let found = false;
       let implementedIn: string | undefined;
+      const modelName = typeof model === "string" ? model : (model.name || "");
 
-      if (prismaSchema.includes(`model ${model.name}`)) {
+      if (prismaSchema.includes(`model ${modelName}`)) {
         found = true;
         implementedIn = "prisma/schema.prisma";
       } else {
         // Look for TypeScript interface/type in types or models
         for (const [file, content] of fileContents.entries()) {
-          if (content.includes(`interface ${model.name}`) || content.includes(`type ${model.name}`)) {
+          if (content.includes(`interface ${modelName}`) || content.includes(`type ${modelName}`)) {
             found = true;
             implementedIn = file;
             break;
@@ -126,10 +131,10 @@ export class FeatureCoverageValidator {
 
       items.push({
         type: "MODEL",
-        name: model.name,
+        name: modelName,
         found,
         implementedIn,
-        details: `Fields: ${model.fields.map(f => f.name).join(", ")}`,
+        details: typeof model === "string" ? model : model.description || "",
       });
     }
 

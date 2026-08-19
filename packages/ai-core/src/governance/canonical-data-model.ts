@@ -58,19 +58,53 @@ export class CanonicalDataModelContract {
       };
     }
 
-    const required = CanonicalDataModelContract.getModelNames(promptOrContract);
-    const missingModels: string[] = [];
-    for (const model of required) {
-      const pattern = new RegExp(`model\\s+${model}\\s*\\{`, "m");
-      if (!pattern.test(schemaContent)) {
-        missingModels.push(model);
-      }
+    if (typeof promptOrContract === "string" && promptOrContract.trim().length > 0) {
+      const required = CanonicalDataModelContract.getModelNames(promptOrContract);
+      const presentModels = new Set([...schemaContent.matchAll(/^model\s+(\w+)\s*\{/gm)].map(m => m[1]));
+      const aliases: Record<string, string[]> = {
+        BoardColumn: ["Column", "KanbanColumn", "BoardColumn"],
+        Column: ["BoardColumn", "KanbanColumn", "Column"],
+        Task: ["TaskItem", "Task", "TodoItem", "KanbanTask"],
+        TaskItem: ["Task", "TaskItem", "TodoItem"],
+        Board: ["KanbanBoard", "Board"],
+        AnalysisResult: ["AnalysisResult", "ScanResult", "MatchAnalysis"],
+      };
+      const missingModels = required.filter(m => {
+        if (presentModels.has(m)) return false;
+        const mAliases = aliases[m] || [];
+        return !mAliases.some(alias => presentModels.has(alias));
+      });
+      return { valid: missingModels.length === 0, missingModels };
     }
-    return { valid: missingModels.length === 0, missingModels };
+
+    // If no context is provided, ensure the schema is not empty and defines at least User model
+    const hasUser = /model\s+User\s*\{/m.test(schemaContent);
+    const presentModels = [...schemaContent.matchAll(/^model\s+(\w+)\s*\{/gm)].map(m => m[1]);
+    
+    if (presentModels.length > 0 && hasUser) {
+      return { valid: true, missingModels: [] };
+    }
+
+    if (presentModels.length > 0 && !hasUser) {
+      return { valid: false, missingModels: ["User"] };
+    }
+
+    return { valid: false, missingModels: ["User", "Item", "Activity"] };
   }
 }
 
 export class CanonicalPrismaModelRegistry {
+  public static readonly MODEL_DELEGATES = [
+    "user",
+    "task",
+    "boardColumn",
+    "project",
+    "resume",
+    "jobDescription",
+    "analysisResult",
+    "item",
+    "activity"
+  ];
   public static isValidDelegate(delegateName: string): boolean {
     // In contract-driven mode, any alphanumeric identifier can be a valid model delegate
     return /^[a-zA-Z][a-zA-Z0-9_]*$/.test(delegateName);

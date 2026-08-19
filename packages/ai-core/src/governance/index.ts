@@ -47,5 +47,5 @@ export * from "./feature-completeness-tracker.js";
 
 // ── AST & Integrity Engines ──────────────────────────────────────────────────
 export * from "./ast-safe-transformer.js";
-export * from "./domain-contamination-detector.js";
+export { DomainContaminationDetector, type DomainContaminationReport } from "./domain-contamination-detector.js";
 export * from "./hardcoded-value-detector.js";

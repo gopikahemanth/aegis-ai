@@ -211,7 +211,6 @@ export default CircularProgress;
       const standardDeps: Record<string, string> = {
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
-        "react-router-dom": "^6.26.0",
         "@tanstack/react-query": "^5.56.2",
         "@tanstack/react-table": "^8.20.5",
         "lucide-react": "^0.441.0",
@@ -220,6 +219,10 @@ export default CircularProgress;
         "axios": "^1.7.7",
         "zod": "^3.23.8",
       };
+
+      if (this.projectUsesReactRouter(root)) {
+        standardDeps["react-router-dom"] = "^6.26.0";
+      }
 
       for (const [dep, ver] of Object.entries(standardDeps)) {
         if (!pkg.dependencies[dep]) {
@@ -289,31 +292,96 @@ export default CircularProgress;
   }
 
   /**
-   * Ensures React Router is not nested with duplicate <BrowserRouter>.
+   * Ensures React Router is not nested with duplicate <BrowserRouter> and enforces
+   * exactly one canonical router boundary when React Router is used.
    */
   private static sanitizeRouterNesting(root: string): void {
+    // 1. Strip any nested <BrowserRouter> or <Router> from routes.tsx using AST-safe transformer
+    const routesPaths = [join(root, "src", "routes.tsx"), join(root, "src", "routes.ts")];
+    for (const routesPath of routesPaths) {
+      if (existsSync(routesPath)) {
+        try {
+          const original = readFileSync(routesPath, "utf8");
+          const cleaned = ASTSafeTransformer.stripRouterWrappersFromJsx(original, "routes.tsx");
+          if (cleaned !== original) {
+            writeFileSync(routesPath, cleaned, "utf8");
+            console.log("[FastSanitizer] 🔧 AST-safe stripped nested <BrowserRouter> from routes file");
+          }
+        } catch {}
+      }
+    }
+
+    // 2. Check if project uses React Router
+    const usesRouter = existsSync(join(root, "src", "routes.tsx")) || existsSync(join(root, "src", "routes.ts")) || this.projectUsesReactRouter(root);
+    if (!usesRouter) {
+      return; // Do nothing for non-router applications
+    }
+
+    // 3. Normalize single router boundary at the root level (App.tsx or main.tsx)
+    const mainPath = join(root, "src", "main.tsx");
     const appPath = join(root, "src", "App.tsx");
-    const routesPath = join(root, "src", "routes.tsx");
-    if (existsSync(appPath) && existsSync(routesPath)) {
+
+    const mainHasRouter = existsSync(mainPath) && (readFileSync(mainPath, "utf8").includes("<BrowserRouter") || readFileSync(mainPath, "utf8").includes("<Router"));
+
+    if (mainHasRouter && existsSync(appPath)) {
+      // If main.tsx already owns BrowserRouter, strip any duplicate in App.tsx
+      try {
+        const appContent = readFileSync(appPath, "utf8");
+        const cleanedApp = ASTSafeTransformer.stripRouterWrappersFromJsx(appContent, "App.tsx");
+        if (cleanedApp !== appContent) {
+          writeFileSync(appPath, cleanedApp, "utf8");
+          console.log("[FastSanitizer] 🔧 AST-safe stripped duplicate <BrowserRouter> from App.tsx (main.tsx owns router)");
+        }
+      } catch {}
+    } else if (existsSync(appPath)) {
+      // App.tsx is the canonical owner of BrowserRouter
       try {
         let appContent = readFileSync(appPath, "utf8");
-        let routesContent = readFileSync(routesPath, "utf8");
-
         const appHasRouter = appContent.includes("<BrowserRouter") || appContent.includes("<Router");
-        const routesHasRouter = routesContent.includes("<BrowserRouter") || routesContent.includes("<Router");
 
-        if (appHasRouter && routesHasRouter) {
-          // Remove duplicate Router wrapping in routes.tsx, keep pure <Routes>
-          routesContent = routesContent
-            .replace(/<BrowserRouter[^>]*>/g, "<>")
-            .replace(/<\/BrowserRouter>/g, "</>")
-            .replace(/<Router[^>]*>/g, "<>")
-            .replace(/<\/Router>/g, "</>");
-          writeFileSync(routesPath, routesContent, "utf8");
-          console.log("[FastSanitizer] 🔧 Removed nested <BrowserRouter> from routes.tsx to avoid runtime React Router crash");
+        if (!appHasRouter && (appContent.includes("AppRoutes") || appContent.includes("<Routes") || appContent.includes("useRoutes"))) {
+          // Add BrowserRouter import if missing
+          if (!appContent.includes("BrowserRouter")) {
+            appContent = `import { BrowserRouter } from "react-router-dom";\n${appContent}`;
+          }
+
+          // Wrap around inner content or AppRoutes inside QueryClientProvider
+          if (appContent.includes("<QueryClientProvider") && appContent.includes("</QueryClientProvider>")) {
+            appContent = appContent.replace(
+              /(<QueryClientProvider[^>]*>)([\s\S]*?)(<\/QueryClientProvider>)/,
+              (match, open, inner, close) => {
+                if (inner.includes("<BrowserRouter")) return match;
+                return `${open}\n      <BrowserRouter>${inner}      </BrowserRouter>\n    ${close}`;
+              }
+            );
+          } else if (appContent.includes("<AppRoutes")) {
+            appContent = appContent.replace(/<AppRoutes\s*(\/)?>/, "<BrowserRouter>\n        <AppRoutes />\n      </BrowserRouter>");
+          }
+
+          writeFileSync(appPath, appContent, "utf8");
+          console.log("[FastSanitizer] 🔧 Established canonical <BrowserRouter> in App.tsx");
         }
       } catch {}
     }
+  }
+
+  private static projectUsesReactRouter(root: string): boolean {
+    const pkgPath = join(root, "package.json");
+    if (existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+        const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+        if (deps["react-router-dom"] || deps["react-router"]) return true;
+      } catch {}
+    }
+    const appPath = join(root, "src", "App.tsx");
+    if (existsSync(appPath)) {
+      const appContent = readFileSync(appPath, "utf8");
+      if (appContent.includes("react-router-dom") || appContent.includes("AppRoutes") || appContent.includes("<Routes") || appContent.includes("useRoutes")) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -324,12 +392,14 @@ export default CircularProgress;
     if (!existsSync(routesTsxPath)) {
       // Generate clean standard router file from existing pages
       const routesCode = this.generateRoutesFromExistingPages(root, contract);
-      try {
-        const srcDir = join(root, "src");
-        if (!existsSync(srcDir)) mkdirSync(srcDir, { recursive: true });
-        writeFileSync(routesTsxPath, routesCode, "utf8");
-        console.log("[FastSanitizer] 🔧 Generated canonical routes.tsx from project pages");
-      } catch {}
+      if (routesCode && routesCode.trim().length > 0) {
+        try {
+          const srcDir = join(root, "src");
+          if (!existsSync(srcDir)) mkdirSync(srcDir, { recursive: true });
+          writeFileSync(routesTsxPath, routesCode, "utf8");
+          console.log("[FastSanitizer] 🔧 Generated canonical routes.tsx from project pages");
+        } catch {}
+      }
     }
   }
 
@@ -354,6 +424,12 @@ export default CircularProgress;
     }
 
     if (pages.length === 0) {
+      const pkgPath = join(root, "package.json");
+      const hasRouterDep = existsSync(pkgPath) && readFileSync(pkgPath, "utf8").includes("react-router");
+      const isReactVite = contract?.frontend?.framework === "React-Vite" || (contract as any)?.framework === "react-vite";
+      if (!hasRouterDep && !isReactVite) {
+        return "";
+      }
       return `import React from "react";
 import { Routes, Route } from "react-router-dom";
 

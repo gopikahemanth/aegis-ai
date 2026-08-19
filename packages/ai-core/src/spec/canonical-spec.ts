@@ -86,11 +86,45 @@ export class SpecificationNormalizer {
       forbiddenPatterns.push("Kanban", "Budget Limit", "Transaction Table");
     }
 
-    // 4. Deterministically extract Domain Vocabulary from user prompt
+    // 4. Deterministically extract Domain Vocabulary and Data Models from user prompt
     const domainVocabulary = SpecificationNormalizer.extractDomainVocabulary(promptLower, domainCategory);
+
+    let dataModels = rawSpec.dataModels && rawSpec.dataModels.length > 0 ? rawSpec.dataModels : [];
+    if (dataModels.length === 0) {
+      switch (domainCategory) {
+        case "task-manager":
+          dataModels = ["User", "Task", "BoardColumn", "Project"];
+          break;
+        case "expense-tracker":
+          dataModels = ["User", "Expense", "Category", "Budget"];
+          break;
+        case "workout-fitness":
+          dataModels = ["User", "Workout", "Exercise", "WorkoutPlan"];
+          break;
+        case "ecommerce":
+          dataModels = ["User", "Product", "Order", "Category"];
+          break;
+        case "blog":
+          dataModels = ["User", "Post", "Category", "Comment"];
+          break;
+        case "art-gallery":
+          dataModels = ["User", "Artwork", "Collection", "Artist"];
+          break;
+        case "code-reviewer":
+          dataModels = ["User", "Repository", "Scan", "Vulnerability"];
+          break;
+        case "resume-scanner" as any:
+          dataModels = ["User", "Resume", "JobDescription", "AnalysisResult"];
+          break;
+        default:
+          dataModels = ["User", domainVocabulary.entityName || "Item", "Activity"];
+          break;
+      }
+    }
 
     return {
       ...rawSpec,
+      dataModels,
       domainCategory,
       frontend,
       backend,

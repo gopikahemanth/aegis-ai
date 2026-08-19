@@ -101,14 +101,115 @@ export class ASTSafeTransformer {
   }
 
   /**
+   * AST-safe transformation to strip <BrowserRouter> or <Router> wrappers from JSX trees
+   * (e.g. in routes.tsx or child pages) and clean unused router imports.
+   */
+  public static stripRouterWrappersFromJsx(sourceCode: string, fileName = "routes.tsx"): string {
+    if (!sourceCode.includes("BrowserRouter") && !sourceCode.includes("Router")) {
+      return sourceCode;
+    }
+
+    try {
+      const isTsx = fileName.endsWith(".tsx") || fileName.endsWith(".jsx") || !fileName.includes(".");
+      const scriptKind = isTsx ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+      const sourceFile = ts.createSourceFile(
+        fileName.endsWith(".tsx") ? fileName : `${fileName}.tsx`,
+        sourceCode,
+        ts.ScriptTarget.Latest,
+        true,
+        scriptKind
+      );
+
+      let transformed = false;
+
+      const transformer = <T extends ts.Node>(context: ts.TransformationContext) => {
+        const visit: ts.Visitor = (node: ts.Node): ts.Node | ts.Node[] | undefined => {
+          // 1. Unnest <BrowserRouter>...</BrowserRouter> or <Router>...</Router>
+          if (ts.isJsxElement(node)) {
+            const tagName = node.openingElement.tagName.getText(sourceFile);
+            if (tagName === "BrowserRouter" || tagName === "Router") {
+              transformed = true;
+              const children = node.children
+                .map(child => ts.visitNode(child, visit))
+                .filter((c): c is ts.JsxChild => c !== undefined && (!ts.isJsxText(c) || c.text.trim().length > 0));
+
+              if (children.length === 1) {
+                return children[0];
+              } else if (children.length > 1) {
+                return ts.factory.createJsxFragment(
+                  ts.factory.createJsxOpeningFragment(),
+                  children,
+                  ts.factory.createJsxJsxClosingFragment()
+                );
+              }
+            }
+          }
+
+          // 2. Clean react-router-dom import declarations removing BrowserRouter / Router if stripped
+          if (ts.isImportDeclaration(node)) {
+            const moduleSpecifier = node.moduleSpecifier;
+            if (ts.isStringLiteral(moduleSpecifier) && (moduleSpecifier.text === "react-router-dom" || moduleSpecifier.text === "react-router")) {
+              const importClause = node.importClause;
+              if (importClause && importClause.namedBindings && ts.isNamedImports(importClause.namedBindings)) {
+                const remainingElements = importClause.namedBindings.elements.filter(el => {
+                  const name = el.name.text;
+                  const propName = el.propertyName?.text;
+                  return name !== "BrowserRouter" && name !== "Router" && propName !== "BrowserRouter" && propName !== "Router";
+                });
+
+                if (remainingElements.length === 0) {
+                  return undefined;
+                } else if (remainingElements.length !== importClause.namedBindings.elements.length) {
+                  transformed = true;
+                  return ts.factory.updateImportDeclaration(
+                    node,
+                    node.modifiers,
+                    ts.factory.updateImportClause(
+                      importClause,
+                      importClause.isTypeOnly,
+                      importClause.name,
+                      ts.factory.updateNamedImports(importClause.namedBindings, remainingElements)
+                    ),
+                    node.moduleSpecifier,
+                    node.assertClause
+                  );
+                }
+              }
+            }
+          }
+
+          return ts.visitEachChild(node, visit, context);
+        };
+
+        return (rootNode: T) => ts.visitNode(rootNode, visit) as T;
+      };
+
+      const result = ts.transform(sourceFile, [transformer]);
+      if (!transformed) {
+        result.dispose();
+        return sourceCode;
+      }
+
+      const transformedSourceFile = result.transformed[0] as ts.SourceFile;
+      const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+      let output = printer.printFile(transformedSourceFile);
+      result.dispose();
+
+      if (!output.endsWith("\n")) output += "\n";
+      return output;
+    } catch {
+      return sourceCode;
+    }
+  }
+  /**
    * Strips trailing file paths, markdown comments, or prompt artifacts appended by LLMs.
    */
   public static stripPromptContamination(content: string, fileName: string): string {
-    let cleaned = content.trimEnd();
+    let cleaned = content;
 
     // Remove markdown code blocks if the entire content was wrapped in ```
-    if (cleaned.startsWith("```") && cleaned.endsWith("```")) {
-      cleaned = cleaned.replace(/^```[a-zA-Z0-9_-]*\n?/, "").replace(/\n?```$/, "").trimEnd();
+    if (cleaned.trimStart().startsWith("```") && cleaned.trimEnd().endsWith("```")) {
+      cleaned = cleaned.trim().replace(/^```[a-zA-Z0-9_-]*\n?/, "").replace(/\n?```$/, "").trimEnd();
     }
 
     // Remove trailing file path annotations like "server/index.ts" or "===FILE: ...==="
@@ -116,6 +217,10 @@ export class ASTSafeTransformer {
       .replace(/\n+(?:FILE|file|path|filename|filepath):\s*[\w\/\\.]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "")
       .replace(/\n+===END===\s*$/gm, "")
       .replace(/\n+```\s*$/gm, "");
+
+    if (content.endsWith("\n") && !cleaned.endsWith("\n")) {
+      cleaned += "\n";
+    }
 
     return cleaned;
   }

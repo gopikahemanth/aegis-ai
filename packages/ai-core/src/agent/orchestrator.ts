@@ -701,12 +701,11 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     console.log("[DataArchitecture] Running Data Architecture Agent...");
     try {
       // Pass canonical contract to DataArchitectureAgent so it cannot invent incompatible models
-      const canonicalModelNames = CanonicalDataModelContract.getModelNames();
+      const activeProjectContract = resolvedContract ?? request;
+      const canonicalModelNames = CanonicalDataModelContract.getModelNames(activeProjectContract);
       const canonicalSchemaHint = `
 CANONICAL DATA MODELS (IMMUTABLE — DO NOT INVENT NEW MODELS):
 ${canonicalModelNames.join(", ")}
-Required relations: User 1:N Resume, User 1:N JobDescription, User 1:N MatchAnalysis,
-Resume 1:N MatchAnalysis, JobDescription 1:N MatchAnalysis
 `;
       const dataArch = await this.dataArchitectureAgent.execute(
         enrichedRequest + "\n\n" + canonicalSchemaHint,
@@ -728,21 +727,22 @@ Resume 1:N MatchAnalysis, JobDescription 1:N MatchAnalysis
       const prismaDir = join(outputDirectory, "prisma");
       if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
       const schemaPath = join(prismaDir, "schema.prisma");
-      const canonicalSchemaContent = CanonicalDataModelContract.getPrismaSchema(request);
+      const dbProvider = (typeof activeProjectContract === "object" ? activeProjectContract.database?.provider : undefined) ?? "postgresql";
+      const canonicalSchemaContent = CanonicalDataModelContract.getPrismaSchema(activeProjectContract, dbProvider);
       writeFileSync(schemaPath, canonicalSchemaContent, "utf8");
       console.log(
-        `[PRISMA-SCHEMA-WRITE] caller=orchestrator.ts models=${CanonicalDataModelContract.getModelNames(request).join(",")} hash=canonical_v1`
+        `[PRISMA-SCHEMA-WRITE] caller=orchestrator.ts models=${canonicalModelNames.join(",")} hash=canonical_v1`
       );
 
       // Rule 5: Immediate Disk Persistence Verification
       const persistedSchema = readFileSync(schemaPath, "utf8");
-      const verification = CanonicalDataModelContract.validateSchema(persistedSchema, request);
+      const verification = CanonicalDataModelContract.validateSchema(persistedSchema, activeProjectContract);
       if (!verification.valid) {
         throw new Error(
           `SCHEMA_PERSISTENCE_FAILURE: prisma/schema.prisma verification failed immediately after write. Missing models: ${verification.missingModels.join(", ")}`
         );
       }
-      console.log(`[DATA-CONTRACT] ✓ Schema persistence verified on disk. Models present: ${CanonicalDataModelContract.getModelNames(request).join(", ")}.`);
+      console.log(`[DATA-CONTRACT] ✓ Schema persistence verified on disk. Models present: ${canonicalModelNames.join(", ")}.`);
 
       console.log("[DataArchitecture] ✓ Saved data architecture definition.");
 
@@ -761,13 +761,6 @@ ${dataArch.apis.map(api => `- ${api.method} ${api.path} (${api.description})`).j
 
 Frontend React Hooks & Queries:
 ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.returns})`).join("\n")}
-
-Analysis API Contract (IMMUTABLE):
-POST /api/analysis/analyze
-Request: { resumeText: string, jobDescriptionText: string }
-Response: { matchScore: number, matchedKeywords: string[], missingKeywords: string[], suggestions: string[] }
-
-NOTE: matchScore MUST be calculated from actual resume/job input — NEVER hardcode a value.
 ═══════════════════════════════════════════════════════
 `;
       enrichedRequest = enrichedRequest + "\n\n" + dataContext;
@@ -780,11 +773,13 @@ NOTE: matchScore MUST be calculated from actual resume/job input — NEVER hardc
       console.warn(`[DataArchitecture] Warning: Data architecture agent failed: ${daErr.message}. Writing canonical schema as fallback.`);
       // Fallback: always write canonical schema so prisma/schema.prisma is valid
       try {
+        const activeProjectContract = resolvedContract ?? request;
+        const dbProvider = (typeof activeProjectContract === "object" ? activeProjectContract.database?.provider : undefined) ?? "postgresql";
         const prismaDir = join(outputDirectory, "prisma");
         if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
         const schemaPath = join(prismaDir, "schema.prisma");
         if (!existsSync(schemaPath)) {
-          writeFileSync(schemaPath, CanonicalDataModelContract.getPrismaSchema(), "utf8");
+          writeFileSync(schemaPath, CanonicalDataModelContract.getPrismaSchema(activeProjectContract, dbProvider), "utf8");
           console.log(`[DATA-CONTRACT] ✓ Wrote canonical fallback Prisma schema to prisma/schema.prisma.`);
         }
       } catch { /* best-effort */ }
@@ -1334,13 +1329,15 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
 
           // Validate canonical model completeness BEFORE calling prisma CLI
           const schemaContent = readFileSync(prismaSchema, "utf8");
-          const schemaValidation = CanonicalDataModelContract.validateSchema(schemaContent);
+          const activeProjectContract = resolvedContract ?? (ArchitectureResolver.loadContract(outputDirectory) || request);
+          const dbProvider = (typeof activeProjectContract === "object" ? activeProjectContract.database?.provider : undefined) ?? "postgresql";
+          const schemaValidation = CanonicalDataModelContract.validateSchema(schemaContent, activeProjectContract);
           if (!schemaValidation.valid) {
             console.warn(
               `[PRISMA] ⚠️ Schema missing canonical models: ${schemaValidation.missingModels.join(", ")}. ` +
               `Replacing with canonical schema.`
             );
-            writeFileSync(prismaSchema, CanonicalDataModelContract.getPrismaSchema(), "utf8");
+            writeFileSync(prismaSchema, CanonicalDataModelContract.getPrismaSchema(activeProjectContract, dbProvider), "utf8");
             console.log(`[PRISMA] ✓ Replaced schema with canonical contract.`);
           }
 
@@ -1398,7 +1395,9 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
         console.log(`[PRISMA] No schema.prisma found. Writing canonical schema...`);
         const prismaDir = join(outputDirectory, "prisma");
         if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
-        writeFileSync(join(prismaDir, "schema.prisma"), CanonicalDataModelContract.getPrismaSchema(), "utf8");
+        const activeProjectContract = resolvedContract ?? (ArchitectureResolver.loadContract(outputDirectory) || request);
+        const dbProvider = (typeof activeProjectContract === "object" ? activeProjectContract.database?.provider : undefined) ?? "postgresql";
+        writeFileSync(join(prismaDir, "schema.prisma"), CanonicalDataModelContract.getPrismaSchema(activeProjectContract, dbProvider), "utf8");
         console.log(`[PRISMA] ✓ Canonical schema written to prisma/schema.prisma.`);
       }
     } catch (instErr: any) {

@@ -62,7 +62,8 @@ export class ContractDrivenDataModelGenerator {
       saas: ["Organization", "Project", "Subscription", "ActivityLog"],
       portfolio: ["Project", "Skill", "ContactMessage", "BlogPost"],
       chat: ["ChatSession", "Message", "PromptTemplate", "ApiUsage"],
-      task: ["Board", "Column", "TaskItem", "Comment"],
+      task: ["Task", "BoardColumn", "Project"],
+      kanban: ["Task", "BoardColumn", "Project"],
       restaurant: ["MenuItem", "TableOrder", "Reservation", "Ingredient"],
       resume: ["Resume", "JobDescription", "AnalysisResult", "KeywordMatch"],
       security: ["Repository", "Scan", "Vulnerability", "Remediation", "AnalysisResult"],
@@ -129,16 +130,37 @@ export class ContractDrivenDataModelGenerator {
     contract: ArchitectureContractV1,
     options: { strict?: boolean } = { strict: true }
   ): { valid: boolean; violation?: DataContractViolation } {
-    const expectedModels = contract.requiredModels && contract.requiredModels.length > 0
+    let expectedModels = contract.requiredModels && contract.requiredModels.length > 0 && !(contract.requiredModels.length === 1 && contract.requiredModels[0] === "User")
       ? [...new Set(["User", ...contract.requiredModels])]
-      : ["User"];
+      : (contract.prompt ? ContractDrivenDataModelGenerator.deriveFromPrompt(contract.prompt).modelNames : ["User"]);
 
     const presentModels = [...schemaContent.matchAll(/^model\s+(\w+)\s*\{/gm)].map(m => m[1]);
     const presentSet = new Set(presentModels);
     const expectedSet = new Set(expectedModels);
 
-    const missingModels = expectedModels.filter(m => !presentSet.has(m));
-    const unexpectedModels = presentModels.filter(m => !expectedSet.has(m));
+    const aliases: Record<string, string[]> = {
+      BoardColumn: ["Column", "KanbanColumn", "BoardColumn"],
+      Column: ["BoardColumn", "KanbanColumn", "Column"],
+      Task: ["TaskItem", "Task", "TodoItem", "KanbanTask"],
+      TaskItem: ["Task", "TaskItem", "TodoItem"],
+      Board: ["KanbanBoard", "Board"],
+      AnalysisResult: ["AnalysisResult", "ScanResult", "MatchAnalysis"],
+    };
+
+    const missingModels = expectedModels.filter(m => {
+      if (presentSet.has(m)) return false;
+      const mAliases = aliases[m] || [];
+      return !mAliases.some(alias => presentSet.has(alias));
+    });
+
+    const unexpectedModels = presentModels.filter(m => {
+      if (expectedSet.has(m)) return false;
+      for (const exp of expectedModels) {
+        const mAliases = aliases[exp] || [];
+        if (mAliases.includes(m)) return false;
+      }
+      return true;
+    });
 
     if (missingModels.length > 0 || (options.strict && unexpectedModels.length > 0)) {
       const violation: DataContractViolation = {
@@ -160,8 +182,12 @@ export class ContractDrivenDataModelGenerator {
    * Returns model names for a given contract.
    */
   public static getModelNames(contract?: ArchitectureContractV1): string[] {
-    if (contract?.requiredModels && contract.requiredModels.length > 0) {
+    if (contract?.requiredModels && contract.requiredModels.length > 0 && !(contract.requiredModels.length === 1 && contract.requiredModels[0] === "User")) {
       return [...new Set(["User", ...contract.requiredModels])];
+    }
+    if (contract?.prompt) {
+      const derived = ContractDrivenDataModelGenerator.deriveFromPrompt(contract.prompt);
+      return derived.modelNames;
     }
     return ["User", "Item", "Activity"];
   }

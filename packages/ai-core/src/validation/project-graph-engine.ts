@@ -644,18 +644,16 @@ export default { analyzeKeywords, analyzeResume, extractKeywords };
 
     if (relPath === "src/routes.tsx" || relPath === "src/routes.ts") {
       writeFileSync(absPath, `import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import DashboardPage from "./features/dashboard/DashboardPage";
 import AnalyzePage from "./features/analyzer/AnalyzePage";
 
 export function AppRoutes() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/analyze" element={<AnalyzePage />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/" element={<DashboardPage />} />
+      <Route path="/analyze" element={<AnalyzePage />} />
+    </Routes>
   );
 }
 

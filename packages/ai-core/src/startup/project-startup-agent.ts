@@ -1435,9 +1435,34 @@ interface ImportMeta {
             || !content.includes("AppRoutes");
           
           if (needsFix) {
-            content = `import React from "react";\nimport { QueryClient, QueryClientProvider } from "@tanstack/react-query";\nimport AppRoutes from "./routes";\n\nconst queryClient = new QueryClient({\n  defaultOptions: {\n    queries: {\n      retry: false,\n      refetchOnWindowFocus: false,\n    },\n  },\n});\n\nexport default function App() {\n  return (\n    <QueryClientProvider client={queryClient}>\n      <div className="min-h-screen bg-slate-950 text-slate-100">\n        <AppRoutes />\n      </div>\n    </QueryClientProvider>\n  );\n}\n`;
+            content = `import React from "react";
+import { BrowserRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import AppRoutes from "./routes";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+          <AppRoutes />
+        </div>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
+`;
             changed = true;
-            fixed.push("Updated src/App.tsx with canonical QueryClientProvider & AppRoutes integration");
+            fixed.push("Updated src/App.tsx with canonical QueryClientProvider & BrowserRouter integration");
           } else if (content.includes("{ AppRoutes }") && content.includes("./routes")) {
             content = content.replace(/import\s+\{\s*AppRoutes\s*\}\s+from\s+["']\.\/routes["']/g, 'import AppRoutes from "./routes"');
             changed = true;
@@ -1457,24 +1482,22 @@ interface ImportMeta {
           // This is a mis-generated backend route barrel in the frontend src/ directory
           // Replace with canonical React Router routes component
           content = `import React, { lazy, Suspense } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 const UploadPage = lazy(() => import("./features/upload/UploadPage"));
 const DashboardPage = lazy(() => import("./features/dashboard/DashboardPage"));
 const AuthPage = lazy(() => import("./features/auth/AuthPage"));
 
 export function AppRoutes() {
   return (
-    <Router>
-      <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">Loading...</div>}>
-        <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/upload" element={<DashboardPage />} />
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="/login" element={<AuthPage />} />
-        </Routes>
-      </Suspense>
-    </Router>
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">Loading...</div>}>
+      <Routes>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/upload" element={<DashboardPage />} />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/login" element={<AuthPage />} />
+      </Routes>
+    </Suspense>
   );
 }
 

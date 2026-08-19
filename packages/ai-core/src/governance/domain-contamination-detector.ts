@@ -54,21 +54,49 @@ export class DomainContaminationDetector {
   };
 
   /**
+   * Identifies the primary domain key for an active contract.
+   */
+  public static getActiveDomainKey(contract?: ArchitectureContractV1 | string): string {
+    if (!contract) return "generic";
+    if (typeof contract === "string") {
+      const p = contract.toLowerCase();
+      if (p.includes("resume") || p.includes("ats") || p.includes("cv") || p.includes("job description")) return "resume";
+      if (p.includes("security") || p.includes("vulnerability") || p.includes("cve")) return "security";
+      if (p.includes("telemedicine") || p.includes("patient") || p.includes("doctor") || p.includes("health")) return "telemedicine";
+      if (p.includes("gym") || p.includes("fitness") || p.includes("workout")) return "gym";
+      if (p.includes("task") || p.includes("kanban") || p.includes("todo")) return "task-manager";
+      if (p.includes("ecommerce") || p.includes("shop") || p.includes("store") || p.includes("product")) return "ecommerce";
+      return "generic";
+    }
+
+    const domainCat = (contract as any).domainCategory?.toLowerCase?.() || "";
+    if (domainCat === "resume-scanner" || domainCat.includes("resume")) return "resume";
+    if (domainCat === "code-reviewer" || domainCat.includes("security")) return "security";
+    if (domainCat === "workout-fitness" || domainCat.includes("gym")) return "gym";
+    if (domainCat === "task-manager" || domainCat.includes("task")) return "task-manager";
+    if (domainCat === "ecommerce") return "ecommerce";
+
+    const reqModels = (contract.requiredModels || []).map(m => m.toLowerCase());
+    if (reqModels.includes("resume") || reqModels.includes("jobdescription") || reqModels.includes("matchanalysis")) return "resume";
+    if (reqModels.includes("vulnerability") || reqModels.includes("cve")) return "security";
+
+    const prompt = (contract.prompt || "").toLowerCase();
+    const appType = (contract.applicationType || "").toLowerCase();
+    for (const [key, sig] of Object.entries(this.DOMAIN_SIGNATURES)) {
+      if (prompt.includes(key) || appType.includes(key)) {
+        return key;
+      }
+    }
+
+    return "generic";
+  }
+
+  /**
    * Scans a project directory for domain contamination.
    */
   public static scanProject(projectRoot: string, contract?: ArchitectureContractV1): DomainContaminationReport {
     const violations: ContaminationViolation[] = [];
-    const prompt = (contract?.prompt || "").toLowerCase();
-    const appType = (contract?.applicationType || "").toLowerCase();
-
-    // Determine current project's primary domain
-    let activeDomainKey = "generic";
-    for (const [key, sig] of Object.entries(this.DOMAIN_SIGNATURES)) {
-      if (prompt.includes(key) || appType.includes(key)) {
-        activeDomainKey = key;
-        break;
-      }
-    }
+    const activeDomainKey = this.getActiveDomainKey(contract);
 
     const allFiles = this.getAllSourceFiles(projectRoot);
 
@@ -82,12 +110,25 @@ export class DomainContaminationDetector {
       }
 
       const contentLower = content.toLowerCase();
+      const relFileLower = relFile.toLowerCase();
 
       // Check against forbidden signatures of OTHER domains
       for (const [domainKey, sig] of Object.entries(this.DOMAIN_SIGNATURES)) {
         if (domainKey === activeDomainKey) continue;
 
         const matchedTerms: string[] = [];
+
+        // Check file path contamination
+        if (domainKey === "resume" && (
+          relFileLower.includes("scan.controller") ||
+          relFileLower.includes("scan.routes") ||
+          relFileLower.includes("scan.service") ||
+          relFileLower.includes("keyword.service") ||
+          relFileLower.includes("matchdashboard")
+        )) {
+          matchedTerms.push(relFile);
+        }
+
         for (const term of sig.forbiddenInOtherDomains) {
           if (contentLower.includes(term)) {
             matchedTerms.push(term);
@@ -120,6 +161,44 @@ export class DomainContaminationDetector {
       projectDomain: activeDomainKey,
       violations,
     };
+  }
+
+  /**
+   * Cleans foreign-domain contamination files from a project directory.
+   */
+  public static cleanContamination(projectRoot: string, contract?: ArchitectureContractV1): string[] {
+    const activeDomainKey = this.getActiveDomainKey(contract);
+    const cleaned: string[] = [];
+
+    // If active domain is NOT ATS/resume, remove known foreign ATS files
+    if (activeDomainKey !== "resume") {
+      const foreignAtsFiles = [
+        "server/controllers/scan.controller.ts",
+        "server/routes/scan.routes.ts",
+        "server/middleware/upload.middleware.ts",
+        "server/services/pdf.service.ts",
+        "server/services/keyword.service.ts",
+        "src/services/scan.service.ts",
+        "src/features/history/services/historyService.ts",
+        "src/features/dashboard/components/MatchDashboard.tsx",
+      ];
+
+      for (const rel of foreignAtsFiles) {
+        const full = join(projectRoot, rel);
+        if (existsSync(full)) {
+          try {
+            const { unlinkSync } = require("node:fs");
+            unlinkSync(full);
+            cleaned.push(`Removed foreign ATS file: ${rel}`);
+            console.log(`[DomainContamination] 🧹 Removed foreign ATS artifact: ${rel}`);
+          } catch (e: any) {
+            console.warn(`[DomainContamination] Failed to remove ${rel}: ${e.message}`);
+          }
+        }
+      }
+    }
+
+    return cleaned;
   }
 
   private static getAllSourceFiles(dir: string, prefix = ""): string[] {

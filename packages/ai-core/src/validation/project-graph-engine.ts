@@ -3,6 +3,8 @@ import { join, extname, dirname, resolve, relative, basename } from "node:path";
 import { createHash } from "node:crypto";
 import { CanonicalFileGraph, CanonicalModuleRegistry, isFrameworkSupportFile } from "../governance/canonical-file-graph.js";
 import { CanonicalPrismaModelRegistry, PrismaDelegateOperationRegistry, CanonicalPrismaFieldRegistry } from "../governance/canonical-data-model.js";
+import { DomainContaminationDetector } from "../governance/domain-contamination-detector.js";
+import { ArchitectureResolver } from "../governance/architecture-resolver.js";
 
 export interface ProjectGraphNode {
   path: string;
@@ -40,6 +42,12 @@ export interface ProjectGraphValidationResult {
 export class ProjectGraphEngine {
   private nodes: Map<string, ProjectGraphNode> = new Map();
   private static readonly SCAN_EXTS = new Set([".ts", ".tsx", ".js", ".jsx"]);
+
+  public static isAtsProject(projectRoot: string): boolean {
+    const contract = ArchitectureResolver.loadContract(projectRoot);
+    const domainKey = DomainContaminationDetector.getActiveDomainKey(contract || undefined);
+    return domainKey === "resume";
+  }
 
   public buildGraph(projectRoot: string): Map<string, ProjectGraphNode> {
     this.nodes.clear();
@@ -117,47 +125,25 @@ export class ProjectGraphEngine {
           const delegate = pMatch[1];
           const operation = pMatch[2];
 
-          // 1. Validate Delegate
-          if (!CanonicalPrismaModelRegistry.isValidDelegate(delegate)) {
-            const DELEGATE_ALIASES: Record<string, string> = {
-              matchresult: "analysisResult",
-              scanresult: "analysisResult",
-              evaluation: "analysisResult",
-              analysis: "analysisResult",
-              scanhistory: "analysisResult",
-              resumeanalysis: "analysisResult",
-              resumescan: "analysisResult",
-              task: "scan",
-              tasks: "scan",
-              project: "repository",
-              projects: "repository",
-              finding: "vulnerability",
-              findings: "vulnerability",
-              audit: "scan",
-              audits: "scan",
-              securityscan: "scan",
-              code: "repository",
-              report: "remediation",
-              reports: "remediation",
-            };
-            let canonicalDelegate = DELEGATE_ALIASES[delegate.toLowerCase()];
-            if (!canonicalDelegate) {
-              const lower = delegate.toLowerCase();
-              if (lower.includes("report")) canonicalDelegate = "remediation";
-              else if (lower.includes("scan") || lower.includes("audit") || lower.includes("task")) canonicalDelegate = "scan";
-              else if (lower.includes("vulnerab") || lower.includes("finding") || lower.includes("issue")) canonicalDelegate = "vulnerability";
-              else if (lower.includes("repo") || lower.includes("project") || lower.includes("snippet") || lower.includes("code")) canonicalDelegate = "repository";
-              else canonicalDelegate = "scan";
+          // 1. Validate Delegate against schema models first
+          const isSchemaModel = prismaModels.has(delegate.toLowerCase());
+          if (!isSchemaModel && !CanonicalPrismaModelRegistry.isValidDelegate(delegate)) {
+            let matchedSchemaDelegate: string | undefined;
+            for (const [modelName] of prismaModels.entries()) {
+              if (modelName.includes(delegate.toLowerCase()) || delegate.toLowerCase().includes(modelName)) {
+                matchedSchemaDelegate = modelName;
+                break;
+              }
             }
-            if (canonicalDelegate && CanonicalPrismaModelRegistry.isValidDelegate(canonicalDelegate)) {
+            if (matchedSchemaDelegate) {
               try {
                 let fileContent = readFileSync(sourceAbs, "utf8");
                 const delRegex = new RegExp(`\\bprisma\\.${delegate}\\b`, "g");
-                fileContent = fileContent.replace(delRegex, `prisma.${canonicalDelegate}`);
+                fileContent = fileContent.replace(delRegex, `prisma.${matchedSchemaDelegate}`);
                 writeFileSync(sourceAbs, fileContent, "utf8");
-                console.log(`[ProjectGraphEngine] ✓ Auto-fixed Prisma delegate alias in ${relPath}: "prisma.${delegate}" -> "prisma.${canonicalDelegate}"`);
+                console.log(`[ProjectGraphEngine] ✓ Auto-fixed Prisma delegate to match schema model in ${relPath}: "prisma.${delegate}" -> "prisma.${matchedSchemaDelegate}"`);
                 content = fileContent;
-                continue; // Delegate is now auto-fixed!
+                continue;
               } catch (err: any) {
                 console.warn(`[ProjectGraphEngine] Failed to auto-fix delegate ${delegate} in ${relPath}: ${err.message}`);
               }
@@ -166,7 +152,7 @@ export class ProjectGraphEngine {
             issues.push({
               type: "PRISMA_SCHEMA_MISMATCH",
               sourceFile: relPath,
-              message: `PRISMA_SCHEMA_MISMATCH: Unknown Prisma model delegate "prisma.${delegate}". Valid delegates: ${CanonicalPrismaModelRegistry.MODEL_DELEGATES.join(", ")}.`,
+              message: `PRISMA_SCHEMA_MISMATCH: Unknown Prisma model delegate "prisma.${delegate}". Valid delegates: ${Array.from(prismaModels.keys()).join(", ") || CanonicalPrismaModelRegistry.MODEL_DELEGATES.join(", ")}.`,
               severity: "ERROR",
             });
             continue;
@@ -351,20 +337,23 @@ export class ProjectGraphEngine {
           if (!autoFixedPath) {
             const isBackendSource = relPath.startsWith("server/");
             const isFrontendSource2 = relPath.startsWith("src/");
+            const isAts = ProjectGraphEngine.isAtsProject(projectRoot);
 
             const possibleCanonicals = [
               "server/db/index.ts",
               "server/lib/prisma.ts",
-              "server/services/keyword.service.ts",
-              "server/routes/scan.routes.ts",
+              ...(isAts ? [
+                "server/services/keyword.service.ts",
+                "server/routes/scan.routes.ts",
+                "src/features/upload/components/UploadForm.tsx",
+                "src/services/scan.service.ts",
+                "server/controllers/scan.controller.ts",
+              ] : []),
               "src/routes.tsx",
               "src/shared/components/Card.tsx",
               "src/shared/components/Layout.tsx",
               "src/design-system/components/GlassCard.tsx",
-              "src/features/upload/components/UploadForm.tsx",
               "src/services/api.ts",
-              "src/services/scan.service.ts",
-              "server/controllers/scan.controller.ts",
             ].filter(relP => {
               // Domain enforcement: backend source must ONLY resolve to backend targets
               if (isBackendSource && relP.startsWith("src/")) return false;
@@ -589,6 +578,23 @@ export class ProjectGraphEngine {
     const absPath = join(projectRoot, relPath);
     if (existsSync(absPath)) return absPath;
 
+    const isAts = ProjectGraphEngine.isAtsProject(projectRoot);
+
+    // In a non-ATS project, do NOT synthesize ATS files
+    if (!isAts) {
+      const isAtsFile = relPath.includes("scan.controller") ||
+        relPath.includes("scan.routes") ||
+        relPath.includes("upload.middleware") ||
+        relPath.includes("scan.service") ||
+        relPath.includes("keyword.service") ||
+        relPath.includes("pdf.service") ||
+        relPath.includes("MatchDashboard") ||
+        relPath.includes("historyService");
+      if (isAtsFile) {
+        return null;
+      }
+    }
+
     mkdirSync(dirname(absPath), { recursive: true });
 
     if (relPath === "server/lib/prisma.ts" || relPath.endsWith("server/lib/prisma.ts")) {
@@ -600,7 +606,7 @@ export default prisma;
       return absPath;
     }
 
-    if (relPath === "server/services/keyword.service.ts" || relPath.endsWith("keyword.service.ts")) {
+    if (isAts && (relPath === "server/services/keyword.service.ts" || relPath.endsWith("keyword.service.ts"))) {
       writeFileSync(absPath, `export interface KeywordAnalysisResult {
   matchScore: number;
   matchedKeywords: string[];
@@ -645,14 +651,11 @@ export default { analyzeKeywords, analyzeResume, extractKeywords };
     if (relPath === "src/routes.tsx" || relPath === "src/routes.ts") {
       writeFileSync(absPath, `import React from "react";
 import { Routes, Route } from "react-router-dom";
-import DashboardPage from "./features/dashboard/DashboardPage";
-import AnalyzePage from "./features/analyzer/AnalyzePage";
 
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<DashboardPage />} />
-      <Route path="/analyze" element={<AnalyzePage />} />
+      <Route path="/" element={<div className="p-8 text-center text-slate-100 font-sans"><h1>AEGIS Application</h1></div>} />
     </Routes>
   );
 }
@@ -665,7 +668,8 @@ export default AppRoutes;
     }
 
     if (relPath === "src/services/api.ts") {
-      writeFileSync(absPath, `import axios from "axios";
+      if (isAts) {
+        writeFileSync(absPath, `import axios from "axios";
 import { getToken } from "../lib/auth";
 import type { AnalysisResult, ScanHistoryItem } from "../types/index";
 
@@ -717,6 +721,26 @@ export const scanApi = api;
 
 export default api;
 `, "utf8");
+      } else {
+        writeFileSync(absPath, `import axios from "axios";
+import { getToken } from "../lib/auth";
+
+export const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001",
+});
+
+apiClient.interceptors.request.use(config => {
+  const token = getToken();
+  if (token && config.headers) {
+    config.headers.Authorization = \`Bearer \${token}\`;
+  }
+  return config;
+});
+
+export const api = apiClient;
+export default apiClient;
+`, "utf8");
+      }
       console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
       return absPath;
     }
@@ -768,7 +792,8 @@ export default API_URL;
     }
 
     if (relPath === "src/types/index.ts" || relPath.endsWith("src/types/index.ts")) {
-      writeFileSync(absPath, `export interface User {
+      if (isAts) {
+        writeFileSync(absPath, `export interface User {
   id: string;
   email: string;
   createdAt?: string;
@@ -795,11 +820,21 @@ export interface ScanHistoryItem {
 
 export default {};
 `, "utf8");
+      } else {
+        writeFileSync(absPath, `export interface User {
+  id: string;
+  email: string;
+  createdAt?: string;
+}
+
+export default {};
+`, "utf8");
+      }
       console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
       return absPath;
     }
 
-    if (relPath === "server/controllers/scan.controller.ts" || relPath.endsWith("scan.controller.ts")) {
+    if (isAts && (relPath === "server/controllers/scan.controller.ts" || relPath.endsWith("scan.controller.ts"))) {
       writeFileSync(absPath, `import { Request, Response } from "express";
 import prisma from "../lib/prisma";
 import { analyzeKeywords, analyzeResume as keywordAnalyzeResume } from "../services/keyword.service";
@@ -855,7 +890,7 @@ export default { analyzeScan, uploadResume, analyzeResume, getScanHistory };
       return absPath;
     }
 
-    if (relPath === "server/middleware/upload.middleware.ts" || relPath.endsWith("upload.middleware.ts")) {
+    if (isAts && (relPath === "server/middleware/upload.middleware.ts" || relPath.endsWith("upload.middleware.ts"))) {
       writeFileSync(absPath, `import multer from "multer";
 import { Request } from "express";
 
@@ -937,7 +972,7 @@ export default Progress;
       return absPath;
     }
 
-    if (relPath === "src/services/scan.service.ts" || relPath.endsWith("scan.service.ts")) {
+    if (isAts && (relPath === "src/services/scan.service.ts" || relPath.endsWith("scan.service.ts"))) {
       writeFileSync(absPath, `import apiClient from "./api";
 
 export async function uploadResume(file: File) {
@@ -958,7 +993,7 @@ export default { uploadResume, analyzeResume };
       return absPath;
     }
 
-    if (relPath === "src/features/history/services/historyService.ts" || relPath.endsWith("historyService.ts")) {
+    if (isAts && (relPath === "src/features/history/services/historyService.ts" || relPath.endsWith("historyService.ts"))) {
       writeFileSync(absPath, `import apiClient from "../../../services/api";
 
 export async function getHistory() {
@@ -1028,7 +1063,7 @@ export default Navbar;
       return absPath;
     }
 
-    if (relPath === "server/services/pdf.service.ts" || relPath.endsWith("pdf.service.ts")) {
+    if (isAts && (relPath === "server/services/pdf.service.ts" || relPath.endsWith("pdf.service.ts"))) {
       writeFileSync(absPath, `export async function parsePdf(buffer: Buffer): Promise<string> {
   try {
     const pdfParse = require("pdf-parse");
@@ -1074,7 +1109,7 @@ export default Card;
       return absPath;
     }
 
-    if (relPath === "src/features/dashboard/components/MatchDashboard.tsx" || relPath.endsWith("MatchDashboard.tsx")) {
+    if (isAts && (relPath === "src/features/dashboard/components/MatchDashboard.tsx" || relPath.endsWith("MatchDashboard.tsx"))) {
       writeFileSync(absPath, `import React from "react";
 
 export interface MatchDashboardProps {
@@ -1146,7 +1181,7 @@ export default MatchDashboard;
       return absPath;
     }
 
-    if (relPath === "server/routes/scan.routes.ts" || relPath.endsWith("scan.routes.ts")) {
+    if (isAts && (relPath === "server/routes/scan.routes.ts" || relPath.endsWith("scan.routes.ts"))) {
       writeFileSync(absPath, `import { Router } from "express";
 import { uploadResume, analyzeResume, getScanHistory } from "../controllers/scan.controller";
 import { authMiddleware } from "../middleware/auth.middleware";

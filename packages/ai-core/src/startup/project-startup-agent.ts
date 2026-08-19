@@ -5,6 +5,8 @@ import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
 import { SpecificationNormalizer } from "../spec/canonical-spec.js";
 import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-generator.js";
 import { FastDeterministicSanitizer } from "../governance/fast-sanitizer.js";
+import { DomainContaminationDetector } from "../governance/domain-contamination-detector.js";
+import { ArchitectureResolver } from "../governance/architecture-resolver.js";
 
 export interface StartupResult {
   success: boolean;
@@ -42,7 +44,14 @@ export class ProjectStartupAgent {
     const framework = this.detectFramework(outputDirectory);
     console.log(`[Startup] Detected framework: ${framework}`);
 
-    // Ensure required canonical files (api.ts, Layout.tsx, Card.tsx, scan.routes.ts) exist on disk
+    // Ensure foreign domain contamination is cleaned
+    const contract = ArchitectureResolver.loadContract(outputDirectory);
+    const cleaned = DomainContaminationDetector.cleanContamination(outputDirectory, contract || undefined);
+    if (cleaned.length > 0) {
+      patches.push(...cleaned);
+    }
+
+    // Ensure required canonical files exist on disk
     const canonicalFilePatches = this.ensureRequiredCanonicalFiles(outputDirectory);
     patches.push(...canonicalFilePatches);
 
@@ -109,25 +118,29 @@ export class ProjectStartupAgent {
     const hasNodeModules = existsSync(nodeModulesPath);
     const hasNewDeps = patched.some(p => p.toLowerCase().includes("added dependency") || p.toLowerCase().includes("added devdependency") || p.toLowerCase().includes("installed missing"));
     if (!hasNodeModules || hasNewDeps) {
-      console.log("[Startup] Installing dependencies for generated project...");
-      try {
-        execSync("npm install --legacy-peer-deps --silent", {
-          cwd: outputDirectory,
-          stdio: "pipe",
-          timeout: 300_000,
-        });
-        patches.push("✓ Dependencies installed successfully.");
-        console.log("[Startup] ✓ Dependencies installed successfully.");
-      } catch (installErr: unknown) {
-        const msg = installErr instanceof Error ? installErr.message : String(installErr);
-        console.warn(`[Startup] Warning: npm install failed: ${msg}`);
+      if (process.env.NODE_ENV === "test" || process.env.VITEST) {
+        console.log("[Startup] Test environment detected — skipping npm install.");
+      } else {
+        console.log("[Startup] Installing dependencies for generated project...");
+        try {
+          execSync("npm install --legacy-peer-deps --silent", {
+            cwd: outputDirectory,
+            stdio: "pipe",
+            timeout: 300_000,
+          });
+          patches.push("✓ Dependencies installed successfully.");
+          console.log("[Startup] ✓ Dependencies installed successfully.");
+        } catch (installErr: unknown) {
+          const msg = installErr instanceof Error ? installErr.message : String(installErr);
+          console.warn(`[Startup] Warning: npm install failed: ${msg}`);
+        }
       }
     } else {
       console.log("[Startup] ✓ node_modules already present — skipping install.");
     }
 
     // ── 6. Verify required packages are present ──────────────────────────────
-    if (resolvedFramework === "react-vite") {
+    if (resolvedFramework === "react-vite" && !process.env.VITEST && process.env.NODE_ENV !== "test") {
       const missingPkg = this.checkMissingPackages(outputDirectory, ["react", "react-dom", "vite"]);
       if (missingPkg.length > 0) {
         console.log(`[Startup] Installing missing core packages: ${missingPkg.join(", ")}`);
@@ -214,12 +227,16 @@ export class ProjectStartupAgent {
 
   private ensureRequiredCanonicalFiles(dir: string): string[] {
     const patches: string[] = [];
+    const contract = ArchitectureResolver.loadContract(dir);
+    const domainKey = DomainContaminationDetector.getActiveDomainKey(contract || undefined);
+    const isAts = domainKey === "resume";
 
     // 1. src/services/api.ts
     const apiPath = join(dir, "src/services/api.ts");
     if (!existsSync(apiPath)) {
       mkdirSync(join(dir, "src/services"), { recursive: true });
-      writeFileSync(apiPath, `import axios from "axios";
+      if (isAts) {
+        writeFileSync(apiPath, `import axios from "axios";
 import { getToken } from "../lib/auth";
 import type { AnalysisResult, ScanHistoryItem } from "../types/index";
 
@@ -271,6 +288,27 @@ export const scanApi = api;
 
 export default api;
 `, "utf8");
+      } else {
+        // Generic domain-neutral API client
+        writeFileSync(apiPath, `import axios from "axios";
+import { getToken } from "../lib/auth";
+
+export const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001",
+});
+
+apiClient.interceptors.request.use(config => {
+  const token = getToken();
+  if (token && config.headers) {
+    config.headers.Authorization = \`Bearer \${token}\`;
+  }
+  return config;
+});
+
+export const api = apiClient;
+export default apiClient;
+`, "utf8");
+      }
       patches.push("Created canonical src/services/api.ts");
     }
 
@@ -306,7 +344,8 @@ export default { getToken, setToken, removeToken, isAuthenticated };
     const typesPath = join(dir, "src/types/index.ts");
     if (!existsSync(typesPath)) {
       mkdirSync(join(dir, "src/types"), { recursive: true });
-      writeFileSync(typesPath, `export interface User {
+      if (isAts) {
+        writeFileSync(typesPath, `export interface User {
   id: string;
   email: string;
   createdAt?: string;
@@ -333,14 +372,25 @@ export interface ScanHistoryItem {
 
 export default {};
 `, "utf8");
+      } else {
+        writeFileSync(typesPath, `export interface User {
+  id: string;
+  email: string;
+  createdAt?: string;
+}
+
+export default {};
+`, "utf8");
+      }
       patches.push("Created canonical src/types/index.ts");
     }
 
-    // 1d. server/controllers/scan.controller.ts
-    const scanControllerPath = join(dir, "server/controllers/scan.controller.ts");
-    if (!existsSync(scanControllerPath)) {
-      mkdirSync(join(dir, "server/controllers"), { recursive: true });
-      writeFileSync(scanControllerPath, `import { Request, Response } from "express";
+    // 1d. server/controllers/scan.controller.ts (ATS ONLY)
+    if (isAts) {
+      const scanControllerPath = join(dir, "server/controllers/scan.controller.ts");
+      if (!existsSync(scanControllerPath)) {
+        mkdirSync(join(dir, "server/controllers"), { recursive: true });
+        writeFileSync(scanControllerPath, `import { Request, Response } from "express";
 import prisma from "../lib/prisma";
 import { analyzeKeywords, analyzeResume as keywordAnalyzeResume } from "../services/keyword.service";
 
@@ -391,14 +441,14 @@ export async function getScanHistory(req: Request, res: Response) {
 
 export default { analyzeScan, uploadResume, analyzeResume, getScanHistory };
 `, "utf8");
-      patches.push("Created canonical server/controllers/scan.controller.ts");
-    }
+        patches.push("Created canonical server/controllers/scan.controller.ts");
+      }
 
-    // 1e. server/middleware/upload.middleware.ts
-    const uploadMiddlewarePath = join(dir, "server/middleware/upload.middleware.ts");
-    if (!existsSync(uploadMiddlewarePath)) {
-      mkdirSync(join(dir, "server/middleware"), { recursive: true });
-      writeFileSync(uploadMiddlewarePath, `import multer from "multer";
+      // 1e. server/middleware/upload.middleware.ts
+      const uploadMiddlewarePath = join(dir, "server/middleware/upload.middleware.ts");
+      if (!existsSync(uploadMiddlewarePath)) {
+        mkdirSync(join(dir, "server/middleware"), { recursive: true });
+        writeFileSync(uploadMiddlewarePath, `import multer from "multer";
 import { Request } from "express";
 
 export interface MulterRequest extends Request {
@@ -409,7 +459,8 @@ const storage = multer.memoryStorage();
 export const uploadMiddleware = multer({ storage });
 export default uploadMiddleware;
 `, "utf8");
-      patches.push("Created canonical server/middleware/upload.middleware.ts");
+        patches.push("Created canonical server/middleware/upload.middleware.ts");
+      }
     }
 
     // 2. src/shared/components/Layout.tsx
@@ -443,29 +494,58 @@ export default function Layout({ children }: LayoutProps) {
     if (!existsSync(loginPagePath)) {
       mkdirSync(join(dir, "src/features/auth"), { recursive: true });
       writeFileSync(loginPagePath, `import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { setToken } from "../../lib/auth";
 
-export function LoginPage() {
+export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    window.location.href = "/dashboard";
+    setToken("demo_token_" + Date.now());
+    navigate("/");
   };
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-8 rounded-xl max-w-md w-full shadow-2xl">
-        <h2 className="text-2xl font-bold text-slate-100 mb-6">Sign In</h2>
-        <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="w-full mb-4 px-4 py-2 bg-slate-800 border border-slate-700 text-slate-100 rounded" />
-        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full mb-6 px-4 py-2 bg-slate-800 border border-slate-700 text-slate-100 rounded" />
-        <button type="submit" className="w-full py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-medium rounded">Sign In</button>
-      </form>
+      <div className="max-w-md w-full bg-slate-900/80 border border-slate-800 rounded-2xl p-8 shadow-2xl backdrop-blur">
+        <h2 className="text-2xl font-bold text-center text-slate-100 mb-6">Sign In</h2>
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              placeholder="user@example.com"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold py-2.5 rounded-lg shadow-lg transition duration-200 mt-2"
+          >
+            Sign In
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
-
-export default LoginPage;
 `, "utf8");
       patches.push("Created canonical src/features/auth/LoginPage.tsx");
     }
@@ -501,11 +581,12 @@ export default Card;
       patches.push("Created canonical src/shared/components/Card.tsx");
     }
 
-    // 4. server/routes/scan.routes.ts
-    const scanRoutesPath = join(dir, "server/routes/scan.routes.ts");
-    if (!existsSync(scanRoutesPath)) {
-      mkdirSync(join(dir, "server/routes"), { recursive: true });
-      writeFileSync(scanRoutesPath, `import { Router } from "express";
+    // 4. ATS-specific routes and services (ATS ONLY)
+    if (isAts) {
+      const scanRoutesPath = join(dir, "server/routes/scan.routes.ts");
+      if (!existsSync(scanRoutesPath)) {
+        mkdirSync(join(dir, "server/routes"), { recursive: true });
+        writeFileSync(scanRoutesPath, `import { Router } from "express";
 import { analyzeScan, getScanHistory, uploadResume } from "../controllers/scan.controller";
 import { uploadMiddleware } from "../middleware/upload.middleware";
 
@@ -516,14 +597,14 @@ router.get("/history", getScanHistory);
 
 export default router;
 `, "utf8");
-      patches.push("Created canonical server/routes/scan.routes.ts");
-    }
+        patches.push("Created canonical server/routes/scan.routes.ts");
+      }
 
-    // 4b. server/services/pdf.service.ts
-    const pdfServicePath = join(dir, "server/services/pdf.service.ts");
-    if (!existsSync(pdfServicePath)) {
-      mkdirSync(join(dir, "server/services"), { recursive: true });
-      writeFileSync(pdfServicePath, `export async function parsePdf(buffer: Buffer): Promise<string> {
+      // 4b. server/services/pdf.service.ts
+      const pdfServicePath = join(dir, "server/services/pdf.service.ts");
+      if (!existsSync(pdfServicePath)) {
+        mkdirSync(join(dir, "server/services"), { recursive: true });
+        writeFileSync(pdfServicePath, `export async function parsePdf(buffer: Buffer): Promise<string> {
   try {
     const pdfParse = require("pdf-parse");
     const data = await pdfParse(buffer);
@@ -535,7 +616,8 @@ export default router;
 
 export default { parsePdf };
 `, "utf8");
-      patches.push("Created canonical server/services/pdf.service.ts");
+        patches.push("Created canonical server/services/pdf.service.ts");
+      }
     }
 
     // 5. server/middleware/errorHandler.ts
@@ -607,11 +689,12 @@ export default Navbar;
       patches.push("Created canonical src/shared/components/Navbar.tsx");
     }
 
-    // 7. src/services/scan.service.ts
-    const scanServicePath = join(dir, "src/services/scan.service.ts");
-    if (!existsSync(scanServicePath)) {
-      mkdirSync(join(dir, "src/services"), { recursive: true });
-      writeFileSync(scanServicePath, `import apiClient from "./api";
+    // 7. ATS services (ATS ONLY)
+    if (isAts) {
+      const scanServicePath = join(dir, "src/services/scan.service.ts");
+      if (!existsSync(scanServicePath)) {
+        mkdirSync(join(dir, "src/services"), { recursive: true });
+        writeFileSync(scanServicePath, `import apiClient from "./api";
 
 export async function uploadResume(file: File) {
   const formData = new FormData();
@@ -627,14 +710,13 @@ export async function analyzeResume(resumeText: string, jobDescriptionText: stri
 
 export default { uploadResume, analyzeResume };
 `, "utf8");
-      patches.push("Created canonical src/services/scan.service.ts");
-    }
+        patches.push("Created canonical src/services/scan.service.ts");
+      }
 
-    // 8. src/features/history/services/historyService.ts
-    const historyServicePath = join(dir, "src/features/history/services/historyService.ts");
-    if (!existsSync(historyServicePath)) {
-      mkdirSync(join(dir, "src/features/history/services"), { recursive: true });
-      writeFileSync(historyServicePath, `import apiClient from "../../../services/api";
+      const historyServicePath = join(dir, "src/features/history/services/historyService.ts");
+      if (!existsSync(historyServicePath)) {
+        mkdirSync(join(dir, "src/features/history/services"), { recursive: true });
+        writeFileSync(historyServicePath, `import apiClient from "../../../services/api";
 
 export async function getHistory() {
   const res = await apiClient.get("/api/scans/history");
@@ -643,7 +725,8 @@ export async function getHistory() {
 
 export default { getHistory };
 `, "utf8");
-      patches.push("Created canonical src/features/history/services/historyService.ts");
+        patches.push("Created canonical src/features/history/services/historyService.ts");
+      }
     }
 
     // 9. src/design-system/components/CircularProgress.tsx

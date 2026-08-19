@@ -1,4 +1,6 @@
 import { FeatureContractValidator } from "../validation/feature-contract-validator.js";
+import { FeatureRealityValidator, type RealityViolation, type FeatureRealityReport } from "../validation/feature-reality-validator.js";
+import { DomainContractManager } from "../governance/domain-contract.js";
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
@@ -6,7 +8,7 @@ export interface RealityCheckResult {
   passed: boolean;
   violationCount: number;
   report: string;
-  violations: Array<{ feature: string; file: string; line: number; violation: string; severity: "error" | "warning" }>;
+  violations: RealityViolation[];
 }
 
 export class RealityCheckerAgent {
@@ -18,14 +20,15 @@ export class RealityCheckerAgent {
    * (e.g. empty event handlers, mock constants, fake setTimeout loading).
    */
   public audit(outputDirectory: string): RealityCheckResult {
-    const contractViolations = this.validator.validate(outputDirectory);
-    const contextualViolations = this.auditSourceFiles(outputDirectory);
+    const domainContract = DomainContractManager.load(outputDirectory);
+    const realityReport = FeatureRealityValidator.validate(outputDirectory, domainContract);
+    const contractViolations = this.validator.validate(outputDirectory, domainContract);
 
-    const allViolations = [...contractViolations, ...contextualViolations];
+    const allViolations: RealityViolation[] = [...realityReport.violations, ...contractViolations];
     const errors = allViolations.filter(v => v.severity === "error");
     const report = this.formatReport(allViolations);
 
-    if (errors.length === 0) {
+    if (errors.length === 0 && realityReport.passed) {
       console.log("[RealityChecker] ✓ All feature reality checks passed.");
       return { passed: true, violationCount: 0, report, violations: allViolations };
     }

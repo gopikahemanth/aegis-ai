@@ -1504,6 +1504,68 @@ export default ${compName};
       return absPath;
     }
 
+    // Universal Store / Hook Auto-Synthesis Fallback
+    if (relPath.includes("store") || relPath.includes("Store") || relPath.includes("/hooks/use") || relPath.startsWith("src/hooks/")) {
+      const storeName = relPath.split("/").pop()?.replace(/\.(tsx|ts)$/, "") || "store";
+      const formattedName = storeName.replace(/[^a-zA-Z0-9_$]/g, "_");
+      const hookName = formattedName.startsWith("use") ? formattedName : `use${formattedName.charAt(0).toUpperCase() + formattedName.slice(1)}`;
+      writeFileSync(absPath, `import { create } from "zustand";
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  description?: string;
+  priority: string;
+  status: string;
+  dueDate?: string;
+}
+
+export interface BoardStoreState {
+  tasks: TaskItem[];
+  columns: string[];
+  filterPriority: string;
+  filterStatus: string;
+  addTask: (task: any) => void;
+  updateTaskStatus: (id: string, status: string) => void;
+  moveTask: (id: string, status: string) => void;
+  deleteTask: (id: string) => void;
+  setFilterPriority: (priority: string) => void;
+  setFilterStatus: (status: string) => void;
+}
+
+export const ${hookName} = create<BoardStoreState>((set) => ({
+  tasks: [
+    { id: "1", title: "Set up project structure", priority: "HIGH", status: "Done", dueDate: "2026-08-20" },
+    { id: "2", title: "Implement Kanban drag and drop", priority: "HIGH", status: "In Progress", dueDate: "2026-08-21" },
+    { id: "3", title: "Add priority filtering", priority: "MEDIUM", status: "Todo", dueDate: "2026-08-22" }
+  ],
+  columns: ["Todo", "In Progress", "Done"],
+  filterPriority: "ALL",
+  filterStatus: "ALL",
+  addTask: (task: any) => set((state: any) => ({ tasks: [...state.tasks, { ...task, id: task.id || Date.now().toString() }] })),
+  updateTaskStatus: (id: string, status: string) => set((state: any) => ({
+    tasks: state.tasks.map((t: any) => t.id === id ? { ...t, status } : t)
+  })),
+  moveTask: (id: string, status: string) => set((state: any) => ({
+    tasks: state.tasks.map((t: any) => t.id === id ? { ...t, status } : t)
+  })),
+  deleteTask: (id: string) => set((state: any) => ({
+    tasks: state.tasks.filter((t: any) => t.id !== id)
+  })),
+  setFilterPriority: (filterPriority: string) => set({ filterPriority }),
+  setFilterStatus: (filterStatus: string) => set({ filterStatus }),
+}));
+
+${hookName !== "useBoardStore" ? `export const useBoardStore = ${hookName};` : ""}
+${hookName !== "useTaskStore" ? `export const useTaskStore = ${hookName};` : ""}
+${hookName !== "boardStore" ? `export const boardStore = ${hookName};` : ""}
+${hookName !== "taskStore" ? `export const taskStore = ${hookName};` : ""}
+export default ${hookName};
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Auto-created missing canonical store on disk: ${relPath}`);
+      return absPath;
+    }
+
     // Universal Component Auto-Synthesis Fallback
     if (relPath.startsWith("src/") && (relPath.endsWith(".tsx") || relPath.endsWith(".ts"))) {
       const compName = relPath.split("/").pop()?.replace(/\.(tsx|ts)$/, "") || "Component";

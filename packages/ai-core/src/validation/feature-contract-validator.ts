@@ -96,14 +96,21 @@ export class FeatureContractValidator {
   /**
    * Validate a generated project directory against all feature contracts.
    */
-  public validate(projectDirectory: string): ContractViolation[] {
+  public validate(projectDirectory: string, domainContract?: { domainName: string; features?: any[] } | null): ContractViolation[] {
     const allFiles = this.collectSourceFiles(projectDirectory);
     const fileContents = this.readFiles(allFiles);
     const allSource = fileContents.map(f => f.content).join("\n");
 
     const violations: ContractViolation[] = [];
+    const domainName = (domainContract?.domainName || "").toLowerCase();
+    const isAtsDomain = domainName.includes("resume") || domainName.includes("ats") || domainName.includes("applicant");
 
     for (const contract of this.contracts) {
+      // Domain-specific contracts should only apply to their domain
+      if (contract.name.includes("ATS") || contract.name.includes("PDF / Document")) {
+        if (!isAtsDomain) continue;
+      }
+
       const triggered = contract.triggerKeywords.some(kw => kw.test(allSource));
       if (!triggered) continue;
 

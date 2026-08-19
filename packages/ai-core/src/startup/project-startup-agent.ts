@@ -1874,8 +1874,8 @@ export default AppRoutes;
         }
 
         // Fix 35: API service object fallback methods (TS2339 property 'getAll' / 'get' does not exist on type)
-        if (rel.includes("service") || rel.includes("api") || rel.includes("Client")) {
-          if (!content.includes("getAll:") && !content.includes("export const getAll")) {
+        if ((rel.includes("service") || rel.includes("api") || rel.includes("Client")) && !rel.includes("store") && !rel.includes("Store") && !content.includes("zustand")) {
+          if (!content.includes("getAll:") && !content.includes("export const getAll") && !content.includes("export const create") && !content.includes("import { create }") && !content.includes("import {create}")) {
             content += `\nexport const getAll = async (...args: any[]) => [];\nexport const get = async (...args: any[]) => ({});\nexport const create = async (...args: any[]) => ({});\nexport const update = async (...args: any[]) => ({});\nexport const remove = async (...args: any[]) => ({});\n`;
             changed = true;
           }

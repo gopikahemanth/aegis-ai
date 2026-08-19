@@ -29,6 +29,7 @@ export * from "./validation/read-only-browser-validator.js";
 export * from "./validation/browser-workflow-runner.js";
 export * from "./execution/runtime-process-manager.js";
 export * from "./startup/project-startup-agent.js";
+export * from "./startup/dependency-installation-optimizer.js";
 export * from "./planning/canonical-generation-plan.js";
 
 export * from "./spec/canonical-spec.js";

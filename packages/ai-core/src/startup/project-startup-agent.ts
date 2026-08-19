@@ -7,6 +7,7 @@ import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-gener
 import { FastDeterministicSanitizer } from "../governance/fast-sanitizer.js";
 import { DomainContaminationDetector } from "../governance/domain-contamination-detector.js";
 import { ArchitectureResolver } from "../governance/architecture-resolver.js";
+import { DependencyInstallationOptimizer } from "./dependency-installation-optimizer.js";
 
 export interface StartupResult {
   success: boolean;
@@ -114,29 +115,45 @@ export class ProjectStartupAgent {
     patches.push(...mainPatches);
 
     // ── 5. Install dependencies ──────────────────────────────────────────────
-    const nodeModulesPath = join(outputDirectory, "node_modules");
-    const hasNodeModules = existsSync(nodeModulesPath);
-    const hasNewDeps = patched.some(p => p.toLowerCase().includes("added dependency") || p.toLowerCase().includes("added devdependency") || p.toLowerCase().includes("installed missing"));
-    if (!hasNodeModules || hasNewDeps) {
+    const syncResult = DependencyInstallationOptimizer.checkSynchronization(outputDirectory, "pnpm");
+    if (!syncResult.synchronized) {
       if (process.env.NODE_ENV === "test" || process.env.VITEST) {
-        console.log("[Startup] Test environment detected — skipping npm install.");
+        console.log("[Startup] Test environment detected — skipping install.");
       } else {
-        console.log("[Startup] Installing dependencies for generated project...");
+        console.log(`[Startup] Synchronizing dependencies (${syncResult.reason})...`);
+        let installed = false;
         try {
-          execSync("npm install --legacy-peer-deps --silent", {
+          execSync("pnpm install --ignore-workspace --config.minimum-release-age=0 --prefer-offline --no-frozen-lockfile", {
             cwd: outputDirectory,
             stdio: "pipe",
-            timeout: 300_000,
+            timeout: 120_000,
           });
-          patches.push("✓ Dependencies installed successfully.");
-          console.log("[Startup] ✓ Dependencies installed successfully.");
-        } catch (installErr: unknown) {
-          const msg = installErr instanceof Error ? installErr.message : String(installErr);
-          console.warn(`[Startup] Warning: npm install failed: ${msg}`);
+          DependencyInstallationOptimizer.saveCache(outputDirectory, syncResult.dependencyHash, syncResult.lockfileHash, "pnpm", "prefer-offline");
+          patches.push("✓ Dependencies synchronized via pnpm (--prefer-offline).");
+          console.log("[Startup] ✓ Dependencies synchronized successfully.");
+          installed = true;
+        } catch (pnpmErr: unknown) {
+          console.warn(`[Startup] pnpm prefer-offline failed, falling back to npm install...`);
+        }
+
+        if (!installed) {
+          try {
+            execSync("npm install --legacy-peer-deps --silent", {
+              cwd: outputDirectory,
+              stdio: "pipe",
+              timeout: 180_000,
+            });
+            DependencyInstallationOptimizer.saveCache(outputDirectory, syncResult.dependencyHash, syncResult.lockfileHash, "npm", "full");
+            patches.push("✓ Dependencies installed via fallback npm install.");
+            console.log("[Startup] ✓ Fallback npm install succeeded.");
+          } catch (npmErr: unknown) {
+            const msg = npmErr instanceof Error ? npmErr.message : String(npmErr);
+            console.warn(`[Startup] Warning: npm install failed: ${msg}`);
+          }
         }
       }
     } else {
-      console.log("[Startup] ✓ node_modules already present — skipping install.");
+      console.log(`[Startup] ⚡ Dependencies already synchronized (${syncResult.reason}) — skipping install.`);
     }
 
     // ── 6. Verify required packages are present ──────────────────────────────
@@ -145,13 +162,22 @@ export class ProjectStartupAgent {
       if (missingPkg.length > 0) {
         console.log(`[Startup] Installing missing core packages: ${missingPkg.join(", ")}`);
         try {
-          execSync(`npm install --legacy-peer-deps --silent ${missingPkg.join(" ")}`, {
+          execSync(`pnpm add --prefer-offline ${missingPkg.join(" ")}`, {
             cwd: outputDirectory,
             stdio: "pipe",
-            timeout: 120_000,
+            timeout: 60_000,
           });
           patches.push(`Installed missing packages: ${missingPkg.join(", ")}`);
-        } catch { /* non-fatal */ }
+        } catch {
+          try {
+            execSync(`npm install --legacy-peer-deps --silent ${missingPkg.join(" ")}`, {
+              cwd: outputDirectory,
+              stdio: "pipe",
+              timeout: 60_000,
+            });
+            patches.push(`Installed missing packages: ${missingPkg.join(", ")}`);
+          } catch { /* non-fatal */ }
+        }
       }
     }
 

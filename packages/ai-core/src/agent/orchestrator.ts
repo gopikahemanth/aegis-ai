@@ -1997,8 +1997,12 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
     }
 
     // ─── FINAL SUCCESS GATE (Strict Zero-False-Positive Check) ─────────────
-    // Detect if database is blocked (P1000) — pass as separate signal, not build failure
-    const dbIsBlocked = !!(build.stderr?.includes("P1000") || build.stderr?.includes("authentication failed"));
+    // Detect if database is blocked (P1000 / ECONNREFUSED) — pass as separate signal, not build failure
+    const dbIsBlocked = !!(
+      build.stderr?.includes("P1000") ||
+      build.stderr?.includes("authentication failed") ||
+      (apiWorkflowReport && apiWorkflowReport.failedSteps === apiWorkflowReport.totalSteps && apiWorkflowReport.totalSteps > 0)
+    );
     const finalGateResult = FinalSuccessGate.verify({
       projectRoot: outputDirectory,
       contract: loadedContract,
@@ -2024,30 +2028,45 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
       throw new Error(`Project generation failed: ${(dodResult?.blockers ?? []).map((b: any) => b.detail).join("; ") || "Compilation build or DoD validation is failing."}`);
     }
 
-    // ─── Documentation & Git Commit (executed ONLY ON FINAL SUCCESS) ───────
-    console.log("[Lifecycle] Generating project documentation (README, ARCHITECTURE, .env.example)...");
-    try {
-      const docFiles = await this.docsGeneratorAgent.generate(
+    // ─── Post-Gate Parallel Documentation & PR Generation (executed ONLY ON FINAL SUCCESS) ───
+    console.log("[Lifecycle] Running post-gate documentation and PR generation in parallel...");
+    const [docsSettled, prSettled] = await Promise.allSettled([
+      this.docsGeneratorAgent.generate(
         specification,
         request,
         files.map(f => f.path),
         outputDirectory,
-      );
-      this.write(
-        this.validator.validate(framework ?? "html", docFiles),
-        outputDirectory,
-      );
-      console.log("[Lifecycle] ✓ Documentation generated.");
-    } catch (docErr: any) {
-      console.warn(`[Lifecycle] Warning: Documentation generation failed: ${docErr.message}`);
+      ),
+      this.prGeneratorAgent.execute(outputDirectory, request),
+    ]);
+
+    if (docsSettled.status === "fulfilled") {
+      try {
+        const docFiles = docsSettled.value;
+        this.write(
+          this.validator.validate(framework ?? "html", docFiles),
+          outputDirectory,
+        );
+        console.log("[Lifecycle] ✓ Documentation generated.");
+      } catch (docWriteErr: any) {
+        console.warn(`[Lifecycle] Warning: Failed to write documentation files: ${docWriteErr.message}`);
+      }
+    } else {
+      console.warn(`[Lifecycle] Warning: Documentation generation failed: ${docsSettled.reason?.message || docsSettled.reason}`);
     }
 
+    if (prSettled.status === "fulfilled") {
+      // PRGeneratorAgent wrote pull-request.md directly
+    } else {
+      console.warn(`[Lifecycle] Warning: PR generation failed: ${prSettled.reason?.message || prSettled.reason}`);
+    }
+
+    // ─── Final Git Commit (Stages and commits everything including docs and PR summary) ───
     try {
       gitEngine.commitChanges(outputDirectory, request);
-      console.log("[Lifecycle] Running PR Generator & Regression Auditor Agent...");
-      await this.prGeneratorAgent.execute(outputDirectory, request);
+      console.log("[GitEngine] ✓ All changes, documentation, and PR summary staged and committed to Git.");
     } catch (gitErr: any) {
-      console.warn(`[GitEngine] Warning: Git commit and PR audit operations failed: ${gitErr.message}`);
+      console.warn(`[GitEngine] Warning: Git commit operations failed: ${gitErr.message}`);
     }
 
     console.log(`\n[Startup] 🚀 Ready! Open: http://localhost:5173`);

@@ -75,6 +75,30 @@ export class GitIntegrationEngine {
     this.runCommand(`git commit -m "${commitMsg}"`, projectPath);
   }
 
+  commitTouchedFiles(projectPath: string, touchedFiles: string[], request: string): boolean {
+    console.log(`[GitEngine] Staging ${touchedFiles.length} explicitly touched file(s)...`);
+
+    const lockFile = join(projectPath, ".git", "index.lock");
+    if (existsSync(lockFile)) {
+      try { unlinkSync(lockFile); } catch {}
+    }
+
+    const cleanFiles = touchedFiles
+      .map(f => f.replace(/\\/g, "/").replace(/^(\.\/|\/)+/, ""))
+      .filter(f => f && existsSync(join(projectPath, f)));
+
+    if (cleanFiles.length === 0) return false;
+
+    for (const f of cleanFiles) {
+      this.runCommand(`git add "${f}"`, projectPath);
+    }
+
+    const cleanMsg = request.replace(/"/g, "'");
+    const commitMsg = `feat: implement changes for '${cleanMsg}' via Aegis AI`;
+    const res = this.runCommand(`git commit -m "${commitMsg}"`, projectPath);
+    return !res.includes("nothing to commit");
+  }
+
   generatePullRequestTemplate(projectPath: string, request: string, filesCreated: number) {
     const prPath = join(projectPath, "pull-request.md");
     const content = `# Pull Request: Aegis AI Changes

@@ -54,6 +54,7 @@ export class Parser {
       let content = match[2].trim();
 
       if (!rawPath || rawPath.length > 250 || rawPath.includes("\n")) continue;
+      if (rawPath.toUpperCase().startsWith("PATCH:")) continue;
 
       // Reject JS ternary or equality operators mistaken for headers
       if (invalidPathChars.test(rawPath) && !rawPath.includes("/")) continue;

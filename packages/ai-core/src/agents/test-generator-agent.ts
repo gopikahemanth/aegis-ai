@@ -344,7 +344,7 @@ describe("${domainName} Backend API Verification", () => {
     // 7. Update package.json scripts and devDependencies
     let packageModified = false;
     if (!pkg.scripts) pkg.scripts = {};
-    if (pkg.scripts.test !== "vitest run") {
+    if (!pkg.scripts.test) {
       pkg.scripts.test = "vitest run";
       packageModified = true;
     }

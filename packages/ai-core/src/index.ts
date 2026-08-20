@@ -31,6 +31,7 @@ export * from "./execution/runtime-process-manager.js";
 export * from "./startup/project-startup-agent.js";
 export * from "./startup/dependency-installation-optimizer.js";
 export * from "./planning/canonical-generation-plan.js";
+export * from "./brownfield/index.js";
 
 export * from "./spec/canonical-spec.js";
 export * from "./semantics/domain-fallback-generator.js";

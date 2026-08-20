@@ -17,6 +17,7 @@ import {
   TestGeneratorAgent,
 } from "../agents/index.js";
 import { InProjectTestRunner } from "../validation/in-project-test-runner.js";
+import { DependencyInstallationOptimizer } from "../startup/dependency-installation-optimizer.js";
 
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
@@ -1678,9 +1679,9 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
                 }
               } catch {}
 
-              // Fallback 2: Markdown header formats like **File: `src/path.tsx`** or File: src/path.tsx
+              // Fallback 2: Markdown header formats like **File: `src/path.tsx`** or FIXED FILE: `src/path.tsx`
               if (repairedFiles.length === 0) {
-                const fileHeaderRegex = /(?:\*{0,2}File:\s*`?([a-zA-Z0-9_\-\/\\\.]+?)`?\*{0,2})[\s\S]*?```(?:tsx|ts|jsx|js)?[\r\n]+([\s\S]*?)```/gi;
+                const fileHeaderRegex = /(?:(?:\*{0,2}(?:FIXED\s+|UPDATED\s+|MODIFIED\s+)?(?:File|Path|Target\s+File):\s*`?([a-zA-Z0-9_\-\/\\\.]+?)`?\*{0,2}))[\s\S]*?```(?:tsx|ts|jsx|js)?[\r\n]+([\s\S]*?)```/gi;
                 let match: RegExpExecArray | null;
                 while ((match = fileHeaderRegex.exec(repairResponse)) !== null) {
                   const filePath = match[1].trim();
@@ -1707,10 +1708,19 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
 
             repairedFiles = repairedFiles
               .filter(f => f && typeof f.path === "string" && f.path.trim().length > 2 && f.content)
-              .map(f => ({
-                path: f.path.replace(/^[\\\/]+/, "").trim(),
-                content: f.content
-              }));
+              .map(f => {
+                let p = f.path.replace(/^[\\\/]+/, "").replace(/\\/g, "/").trim();
+                if (!p.includes("/") && !p.startsWith(".")) {
+                  const matched = parsedFiles.find(pf => pf.path.endsWith("/" + p) || pf.path === p);
+                  if (matched) {
+                    p = matched.path;
+                  }
+                }
+                return {
+                  path: p,
+                  content: f.content
+                };
+              });
 
             if (repairedFiles.length > 0) {
               // Transactional Repair: Create checkpoint before writing repair files
@@ -2008,6 +2018,8 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
         domainContract: domainContract || undefined,
         planHash: (this as any).activeLockedPlan?.planHash,
       });
+      // Synchronize testing dependencies into project node_modules
+      await this.installer.install("pnpm", outputDirectory);
       inProjectTestReport = InProjectTestRunner.run(outputDirectory);
     } catch (testErr: any) {
       console.warn(`[TestGeneratorAgent] Warning: In-project test execution encountered non-fatal error: ${testErr.message}`);

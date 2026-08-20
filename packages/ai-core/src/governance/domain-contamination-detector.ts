@@ -10,7 +10,7 @@
  * - Generates a structured contamination report with severity and offending file paths.
  */
 
-import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import type { ArchitectureContractV1 } from "./architecture-resolver.js";
 
@@ -187,7 +187,6 @@ export class DomainContaminationDetector {
         const full = join(projectRoot, rel);
         if (existsSync(full)) {
           try {
-            const { unlinkSync } = require("node:fs");
             unlinkSync(full);
             cleaned.push(`Removed foreign ATS file: ${rel}`);
             console.log(`[DomainContamination] 🧹 Removed foreign ATS artifact: ${rel}`);

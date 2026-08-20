@@ -123,9 +123,15 @@ export class TestGeneratorAgent {
     const vitestConfigPath = join(projectRoot, "vitest.config.ts");
     const vitestConfigContent = `import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import path from "node:path";
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
   test: {
     globals: true,
     environment: "jsdom",
@@ -145,6 +151,20 @@ export default defineConfig({
 `;
     writeFileSync(testSetupPath, testSetupContent, "utf8");
     generatedFiles.push("test/setup.ts");
+
+    // 4.5. Ensure tsconfig.json includes vitest/jest-dom types
+    const tsconfigPath = join(projectRoot, "tsconfig.json");
+    if (existsSync(tsconfigPath)) {
+      try {
+        const tsconfig = JSON.parse(readFileSync(tsconfigPath, "utf8"));
+        tsconfig.compilerOptions = tsconfig.compilerOptions || {};
+        const types = tsconfig.compilerOptions.types || [];
+        if (!types.includes("vitest/globals")) types.push("vitest/globals");
+        if (!types.includes("@testing-library/jest-dom")) types.push("@testing-library/jest-dom");
+        tsconfig.compilerOptions.types = types;
+        writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2), "utf8");
+      } catch {}
+    }
 
     // 5. Discover source components and generate UI tests
     const srcDir = join(projectRoot, "src");

@@ -1568,6 +1568,20 @@ export default ${hookName};
 
     // Universal Component Auto-Synthesis Fallback
     if (relPath.startsWith("src/") && (relPath.endsWith(".tsx") || relPath.endsWith(".ts"))) {
+      if (relPath.includes("util") || relPath.includes("cn")) {
+        writeFileSync(absPath, `import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: any[]) {
+  return twMerge(clsx(inputs));
+}
+export const utils = { cn };
+export default cn;
+`, "utf8");
+        console.log(`[ProjectGraphEngine] ✓ Auto-created missing canonical utility on disk: ${relPath}`);
+        return absPath;
+      }
+
       const compName = relPath.split("/").pop()?.replace(/\.(tsx|ts)$/, "") || "Component";
       const formattedName = compName.replace(/[^a-zA-Z0-9_$]/g, "_");
       writeFileSync(absPath, `import React from "react";

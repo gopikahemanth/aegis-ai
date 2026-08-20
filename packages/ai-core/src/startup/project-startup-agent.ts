@@ -1627,12 +1627,43 @@ export default AppRoutes;
           fixed.push("Replaced broken src/routes.ts with canonical React Router component");
         }
 
-        // Fix 1.85: Ensure src/routes.tsx or src/routes.ts always has default export for App.tsx
+        // Fix 1.85: Ensure src/routes.tsx or src/routes.ts always has a valid AppRoutes component
         if (rel === "src/routes.tsx" || rel === "src/routes.ts") {
+          if (content.includes("RouteObject[]") || content.includes(": RouteObject[]") || (content.includes("const routes") && !content.includes("function AppRoutes"))) {
+            if (!content.includes("function AppRoutes") && !content.includes("const AppRoutes =")) {
+              content += `\nimport { useRoutes } from "react-router-dom";\nexport function AppRoutes() {\n  const element = useRoutes(routes);\n  return <Suspense fallback={<div className="p-4">Loading...</div>}>{element}</Suspense>;\n}\n`;
+              if (!content.includes("Suspense")) {
+                content = `import React, { Suspense } from "react";\n` + content;
+              }
+              changed = true;
+              fixed.push("Added AppRoutes component adapter for RouteObject array in src/routes.tsx");
+            }
+          }
           if (!content.includes("export default")) {
             content += "\n\nexport const routes = AppRoutes;\nexport default AppRoutes;\n";
             changed = true;
             fixed.push("Added missing default export to src/routes.tsx");
+          } else if (content.includes("export default routes;") && (content.includes("RouteObject[]") || !content.includes("function routes"))) {
+            content = content.replace("export default routes;", "export { routes };\nexport default AppRoutes;");
+            changed = true;
+            fixed.push("Updated default export to AppRoutes component in src/routes.tsx");
+          }
+        }
+
+        // Fix 1.86: Ensure src/lib/utils or src/utils/cn has valid cn export
+        if (rel === "src/lib/utils.ts" || rel === "src/lib/utils.tsx" || rel === "src/utils/cn.ts") {
+          if (!content.includes("export function cn") && !content.includes("export const cn")) {
+            content = `import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: any[]) {
+  return twMerge(clsx(inputs));
+}
+export const utils = { cn };
+export default cn;
+`;
+            changed = true;
+            fixed.push(`Synthesized valid cn utility export in ${rel}`);
           }
         }
 

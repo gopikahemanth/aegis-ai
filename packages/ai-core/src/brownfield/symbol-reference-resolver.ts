@@ -417,6 +417,42 @@ export class SymbolReferenceResolver {
     return this.summaryCache;
   }
 
+  /**
+   * Evicts a file from the in-memory summary and source file caches.
+   * Used by the incremental graph engine to force re-parsing of modified files.
+   */
+  public evictFromCache(filePath: string): void {
+    const relPath = this.toRelative(filePath);
+    this.summaryCache.delete(relPath);
+    this.sourceFileCache.delete(relPath);
+  }
+
+  /**
+   * Parses a single file fresh from disk, bypassing the in-memory summary cache.
+   * Also resolves its imports against the current project's summaries.
+   * Used by the incremental engine to re-analyse modified/created files.
+   */
+  public parseFileFresh(filePath: string): FileAstSummary {
+    const relPath = this.toRelative(filePath);
+    // Evict stale data
+    this.summaryCache.delete(relPath);
+    this.sourceFileCache.delete(relPath);
+    // Re-parse from disk
+    const summary = this.parseFile(relPath);
+    // Re-resolve this file's imports
+    for (const imp of summary.imports) {
+      if (!imp.isDynamic) {
+        imp.resolvedSourceFile = this.resolveModulePath(summary.filePath, imp.sourceModuleSpecifier);
+      }
+    }
+    for (const exp of summary.exports) {
+      if (exp.isReExport && exp.reExportModuleSpecifier) {
+        exp.resolvedSourceFile = this.resolveModulePath(summary.filePath, exp.reExportModuleSpecifier);
+      }
+    }
+    return summary;
+  }
+
   private extractImportDeclaration(
     node: ts.ImportDeclaration,
     sourceFile: ts.SourceFile,
@@ -640,7 +676,7 @@ export class SymbolReferenceResolver {
     }
   }
 
-  private resolveModulePath(fromFilePath: string, specifier: string): string | undefined {
+  public resolveModulePath(fromFilePath: string, specifier: string): string | undefined {
     if (!specifier.startsWith(".") && !specifier.startsWith("@/")) {
       return undefined; // External dependency like "react", "express"
     }

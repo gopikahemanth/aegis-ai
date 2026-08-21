@@ -288,6 +288,145 @@ export class ASTSymbolPatchPlanner {
   }
 
   /**
+   * Plans an AST-safe additive field or model patch to a Prisma schema file (e.g. prisma/schema.prisma).
+   */
+  public planPrismaModelFieldAddition(
+    schemaFilePath: string,
+    modelName: string,
+    fieldDefinition: string,
+    description: string = `Add field to Prisma model ${modelName}`
+  ): AstPatchOperation | null {
+    const relPath = this.toRelative(schemaFilePath);
+    const fullPath = resolve(this.projectRoot, relPath);
+    if (!existsSync(fullPath)) return null;
+
+    const content = readFileSync(fullPath, "utf8");
+    const modelRegex = new RegExp(`model\\s+${modelName}\\s*\\{([\\s\\S]*?)\\}`, "m");
+    const match = content.match(modelRegex);
+    if (!match || match.index === undefined) return null;
+
+    const matchIndex = match.index;
+    const closingBraceOffset = matchIndex + match[0].lastIndexOf("}");
+    const insertionText = `  ${fieldDefinition.trim()}\n`;
+
+    return {
+      filePath: relPath,
+      targetSymbolName: modelName,
+      originalSnippet: "",
+      replacementSnippet: insertionText,
+      startPos: closingBraceOffset,
+      endPos: closingBraceOffset,
+      description,
+    };
+  }
+
+  /**
+   * Automatically generates a convergent, multi-layer AST patch plan for an additive field across
+   * all files in the required ImpactClosureResult.
+   */
+  public planFieldPropagation(options: {
+    closure: ImpactClosureResult;
+    modelName: string;
+    fieldName: string;
+    prismaFieldDef: string;
+    tsType: string;
+    defaultValue?: string;
+  }): { filePath: string; operations: AstPatchOperation[] }[] {
+    const requiredFiles = new Set<string>([
+      ...options.closure.mustChange,
+      ...options.closure.mayChange,
+    ]);
+
+    const patches: { filePath: string; operations: AstPatchOperation[] }[] = [];
+
+    for (const file of requiredFiles) {
+      const relPath = this.toRelative(file);
+      const fullPath = resolve(this.projectRoot, relPath);
+      if (!existsSync(fullPath)) continue;
+
+      const fileContent = readFileSync(fullPath, "utf8");
+      const fileOps: AstPatchOperation[] = [];
+
+      // 1. Prisma Schema File
+      if (relPath.endsWith(".prisma")) {
+        const schemaOp = this.planPrismaModelFieldAddition(
+          relPath,
+          options.modelName,
+          options.prismaFieldDef,
+          `Add ${options.fieldName} to Prisma model ${options.modelName}`
+        );
+        if (schemaOp) fileOps.push(schemaOp);
+      }
+      // 2. TypeScript Types / DTOs
+      else if (relPath.includes("types") || relPath.endsWith(".d.ts")) {
+        const typeRegex = new RegExp(`(interface|type)\\s+(${options.modelName}|Create${options.modelName}Dto|Update${options.modelName}Dto)[^\\{=]*(\\{|=|&)`, "g");
+        let m: RegExpExecArray | null;
+        while ((m = typeRegex.exec(fileContent)) !== null) {
+          const typeName = m[2];
+          const op = this.planFunctionUpdate(
+            relPath,
+            typeName,
+            (orig) => {
+              if (orig.includes(`${options.fieldName}:`) || orig.includes(`${options.fieldName}?:`)) return orig;
+              const closingBrace = orig.lastIndexOf("}");
+              if (closingBrace === -1) return orig;
+              return orig.slice(0, closingBrace) + `  ${options.fieldName}?: ${options.tsType};\n` + orig.slice(closingBrace);
+            },
+            `Add ${options.fieldName} to ${typeName}`
+          );
+          if (op) fileOps.push(op);
+        }
+      }
+      // 3. Service Layer
+      else if (relPath.includes("service") || relPath.includes("Service")) {
+        const serviceOp = this.planFunctionUpdate(
+          relPath,
+          `create${options.modelName}`,
+          (orig) => {
+            if (orig.includes(`${options.fieldName}:`)) return orig;
+            if (orig.includes("data:")) {
+              return orig.replace(/(data:\s*\{[\s\S]*?)(\})/, `$1  ${options.fieldName}: dto.${options.fieldName} !== undefined ? dto.${options.fieldName} : ${options.defaultValue || 'null'},\n  $2`);
+            }
+            if (orig.includes("const item: " + options.modelName)) {
+              return orig.replace(/(const item:\s*[a-zA-Z0-9_]+\s*=\s*\{[\s\S]*?)(\};)/, `$1  ${options.fieldName}: dto.${options.fieldName} !== undefined ? dto.${options.fieldName} : ${options.defaultValue || 'null'},\n  $2`);
+            }
+            return orig;
+          },
+          `Update create${options.modelName} to handle ${options.fieldName}`
+        );
+        if (serviceOp) fileOps.push(serviceOp);
+      }
+      // 4. Controller Layer
+      else if (relPath.includes("controller") || relPath.includes("Controller")) {
+        // Controller delegates req.body DTO directly; keep convergent
+      }
+      // 5. Frontend / UI Form Component
+      else if (relPath.includes("components") || relPath.includes("Form") || relPath.includes("View")) {
+        if (fileContent.includes("handleSubmit") || fileContent.includes("onSubmit")) {
+          const compOp = this.planFunctionUpdate(
+            relPath,
+            `${options.modelName}Form`,
+            (orig) => {
+              if (orig.includes(`${options.fieldName}Value`)) return orig;
+              return orig
+                .replace(/(let\s+[a-zA-Z0-9_]+\s*=\s*[^;]+;\n)/, `$1  let ${options.fieldName}Value = ${options.defaultValue || '""'};\n`)
+                .replace(/(props\.onSubmit\(\{[\s\S]*?)(\}\);)/, `$1  ${options.fieldName}: ${options.fieldName}Value,\n    $2`)
+                .replace(/(return\s*\{[\s\S]*?render:\s*\(\)\s*=>\s*\(\{[\s\S]*?)(\}\),)/, `$1, ${options.fieldName}: ${options.fieldName}Value $2`)
+                .replace(/(return\s*\{[\s\S]*?submit:\s*handleSubmit,)/, `$1\n    set${options.fieldName.charAt(0).toUpperCase() + options.fieldName.slice(1)}: (val: any) => { ${options.fieldName}Value = val; },`);
+            },
+            `Update ${options.modelName}Form to bind ${options.fieldName}`
+          );
+          if (compOp) fileOps.push(compOp);
+        }
+      }
+
+      patches.push({ filePath: relPath, operations: fileOps });
+    }
+
+    return patches;
+  }
+
+  /**
    * Applies AST patch operations to a file's content in reverse offset order
    * to guarantee zero line/character drift.
    */

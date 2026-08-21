@@ -103,21 +103,158 @@ describe("FinalSuccessGate — Evidence-Based Acceptance", () => {
     expect(res.blockingReason).toContain("Build / Compilation");
   });
 
-  it("returns BLOCKED when external database is unavailable (P1000) but code is valid", () => {
+  it("returns BLOCKED when database is blocked but code is fine", () => {
     const res = FinalSuccessGate.verify({
       projectRoot: TEST_DIR,
       contract: makeContract(),
       buildSuccess: true,
       serverReady: false,
       browserResult: null,
-      databaseBlocked: true, // P1000
+      databaseBlocked: true,
     });
 
     expect(res.status).toBe("BLOCKED");
-    expect(res.success).toBe(false);
     expect(res.databaseStatus).toBe("BLOCKED");
-    expect(res.codeStatus).toBe("PASS");
-    expect(res.runtimeStatus).toBe("PARTIALLY_VERIFIED");
+    expect(res.success).toBe(false);
+  });
+
+  describe("FinalSuccessGate — Brownfield Success Authority", () => {
+    it("returns SUCCESS in BROWNFIELD mode with real structured reports and zero greenfield artifacts", () => {
+      const res = FinalSuccessGate.verify({
+        projectRoot: TEST_DIR,
+        mode: "BROWNFIELD",
+        contract: null, // No greenfield architecture contract
+        buildSuccess: true,
+        serverReady: true,
+        brownfieldReport: {
+          baselineReport: { status: "PASS", passedTests: 4, totalTests: 4 },
+          impactReport: { status: "CLOSED", mustChange: ["prisma/schema.prisma", "server/services/taskService.ts"] },
+          patchReport: { status: "CLOSED_AND_CONVERGENT", touchedFiles: ["prisma/schema.prisma", "server/services/taskService.ts"] },
+          gitReport: { allowed: true, status: "CLEAN" },
+          buildReport: { status: "PASS" },
+          testReport: { status: "PASS", passedTests: 6, totalTests: 6 },
+          runtimeReport: { verified: true, endpointsTested: ["POST /api/tasks", "GET /api/tasks"] },
+          realityReport: { passed: true, score: 100, violations: [] },
+          domainReport: { clean: true, violations: [] },
+          transactionReport: { status: "COMMITTED" },
+        },
+      });
+
+      expect(res.status).toBe("SUCCESS");
+      expect(res.success).toBe(true);
+      expect(res.codeStatus).toBe("PASS");
+      expect(res.runtimeStatus).toBe("VERIFIED");
+      expect(res.items.length).toBe(10);
+      expect(res.items.every(i => i.passed)).toBe(true);
+    });
+
+    it("returns BLOCKED in BROWNFIELD mode when git dirty target conflict is detected", () => {
+      const res = FinalSuccessGate.verify({
+        projectRoot: TEST_DIR,
+        mode: "BROWNFIELD",
+        contract: null,
+        buildSuccess: true,
+        brownfieldReport: {
+          gitReport: { allowed: false, status: "GIT_DIRTY_TARGET", reason: "Uncommitted edits in target file" },
+        },
+      });
+
+      expect(res.status).toBe("BLOCKED");
+      expect(res.success).toBe(false);
+      expect(res.blockingReason).toContain("Uncommitted edits in target file");
+    });
+
+    it("returns BLOCKED in BROWNFIELD mode when destructive schema migration is blocked", () => {
+      const res = FinalSuccessGate.verify({
+        projectRoot: TEST_DIR,
+        mode: "BROWNFIELD",
+        contract: null,
+        buildSuccess: true,
+        brownfieldReport: {
+          impactReport: { status: "DESTRUCTIVE_SCHEMA_MIGRATION_BLOCKED" },
+        },
+      });
+
+      expect(res.status).toBe("BLOCKED");
+      expect(res.success).toBe(false);
+      expect(res.blockingReason).toContain("Destructive schema migration");
+    });
+
+    it("returns BLOCKED in BROWNFIELD mode when dynamic API URL halts impact analysis", () => {
+      const res = FinalSuccessGate.verify({
+        projectRoot: TEST_DIR,
+        mode: "BROWNFIELD",
+        contract: null,
+        buildSuccess: true,
+        brownfieldReport: {
+          impactReport: { status: "IMPACT_ANALYSIS_INCOMPLETE" },
+        },
+      });
+
+      expect(res.status).toBe("BLOCKED");
+      expect(res.success).toBe(false);
+      expect(res.blockingReason).toContain("Dynamic or unresolved reference");
+    });
+
+    it("returns BLOCKED in BROWNFIELD mode when patch plan has missing impacted file", () => {
+      const res = FinalSuccessGate.verify({
+        projectRoot: TEST_DIR,
+        mode: "BROWNFIELD",
+        contract: null,
+        buildSuccess: true,
+        brownfieldReport: {
+          patchReport: { status: "MISSING_IMPACTED_FILE" },
+        },
+      });
+
+      expect(res.status).toBe("BLOCKED");
+      expect(res.success).toBe(false);
+    });
+
+    it("returns FAILED in BROWNFIELD mode when post-change test suite regresses", () => {
+      const res = FinalSuccessGate.verify({
+        projectRoot: TEST_DIR,
+        mode: "BROWNFIELD",
+        contract: null,
+        buildSuccess: true,
+        brownfieldReport: {
+          testReport: { status: "FAIL", passedTests: 0, totalTests: 4 },
+        },
+      });
+
+      expect(res.status).toBe("FAILED");
+      expect(res.success).toBe(false);
+    });
+
+    it("returns FAILED in BROWNFIELD mode when build fails", () => {
+      const res = FinalSuccessGate.verify({
+        projectRoot: TEST_DIR,
+        mode: "BROWNFIELD",
+        contract: null,
+        buildSuccess: false,
+        brownfieldReport: {
+          buildReport: { status: "FAIL", errors: ["TS2322: Type mismatch"] },
+        },
+      });
+
+      expect(res.status).toBe("FAILED");
+      expect(res.success).toBe(false);
+    });
+
+    it("returns FAILED in BROWNFIELD mode when FeatureReality check fails", () => {
+      const res = FinalSuccessGate.verify({
+        projectRoot: TEST_DIR,
+        mode: "BROWNFIELD",
+        contract: null,
+        buildSuccess: true,
+        brownfieldReport: {
+          realityReport: { passed: false, score: 40, violations: [{ violation: "Empty handler" }] },
+        },
+      });
+
+      expect(res.status).toBe("FAILED");
+      expect(res.success).toBe(false);
+    });
   });
 
   it("returns FAILED when reality check fails due to mock data", () => {

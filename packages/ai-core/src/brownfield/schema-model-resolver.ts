@@ -261,7 +261,7 @@ export class SchemaModelResolver {
           const defMatch = trimmed.match(/@default\(([^)]+)\)/);
           if (defMatch) {
             hasDefault = true;
-            defaultValue = defMatch[1];
+            defaultValue = defMatch[1].replace(/^["']|["']$/g, "");
           }
 
           // Relation detection: e.g. @relation(fields: [userId], references: [id])

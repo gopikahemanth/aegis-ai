@@ -46,6 +46,8 @@ export * from "./validation/product-success-gate.js";
 export * from "./validation/feature-coverage-validator.js";
 export * from "./validation/generation-integrity-validator.js";
 export * from "./validation/production-readiness-gate.js";
+export * from "./validation/final-success-gate.js";
+export * from "./validation/feature-reality-validator.js";
 export * from "./research/research-agent.js";
 export * from "./integration/index.js";
 export * from "./control-plane/index.js";

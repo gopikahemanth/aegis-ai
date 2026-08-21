@@ -23,3 +23,4 @@ export * from "./ast-cache/index.js";
 export * from "./incremental/index.js";
 export * from "./refactoring/index.js";
 export * from "./file-refactoring/index.js";
+export * from "./contract-refactoring/index.js";

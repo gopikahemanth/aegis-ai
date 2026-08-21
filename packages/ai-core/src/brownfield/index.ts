@@ -13,6 +13,8 @@ export * from "./prop-flow-resolver.js";
 export * from "./context-usage-resolver.js";
 export * from "./hook-state-resolver.js";
 export * from "./reducer-action-resolver.js";
+export * from "./schema-model-resolver.js";
+export * from "./api-endpoint-resolver.js";
 export * from "./impact-closure-engine.js";
 export * from "./ast-symbol-patch-planner.js";
 export * from "./existing-symbol-modifier.js";

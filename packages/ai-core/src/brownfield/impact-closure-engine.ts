@@ -1,10 +1,16 @@
 /**
  * ImpactClosureEngine
  *
- * Computes a closed, non-leaking impact set for existing symbols, functions,
- * React components, prop flows, callback hierarchies, Context value shapes,
- * custom hook return shapes, and useReducer action/dispatch hierarchies.
- * Halts safely with IMPACT_ANALYSIS_INCOMPLETE if static resolution fails.
+ * Single authoritative impact analysis engine for brownfield repositories.
+ * Computes closed, non-leaking impact sets across:
+ * - TypeScript AST symbol references and call graphs
+ * - React JSX hierarchies and prop drilling flows
+ * - React Context value shapes and custom hook return shapes
+ * - useReducer action unions, action creators, dispatches, and reducer branches
+ * - Prisma schemas, backend Express routes, DTOs, and frontend API services
+ *
+ * Halts safely with IMPACT_ANALYSIS_INCOMPLETE or DESTRUCTIVE_SCHEMA_MIGRATION_BLOCKED
+ * if static resolution fails.
  */
 
 import { SymbolReferenceResolver, type FileAstSummary } from "./symbol-reference-resolver.js";
@@ -13,6 +19,9 @@ import { PropFlowResolver, type PropFlowEdge, type UnsafeReactPattern } from "./
 import { ContextUsageResolver, type ContextUsageEdge } from "./context-usage-resolver.js";
 import { HookStateResolver, type HookUsageEdge } from "./hook-state-resolver.js";
 import { ReducerActionResolver, type ActionUsageEdge } from "./reducer-action-resolver.js";
+import { SchemaModelResolver, type SchemaUsageEdge } from "./schema-model-resolver.js";
+import { ApiEndpointResolver, type ApiUsageEdge } from "./api-endpoint-resolver.js";
+import type { HttpMethod } from "../governance/api-contract-registry.js";
 
 export interface TargetSymbolRequest {
   filePath: string;
@@ -21,10 +30,14 @@ export interface TargetSymbolRequest {
   contextName?: string;
   hookName?: string;
   actionTypeLiteral?: string;
+  modelName?: string;
+  endpointPath?: string;
+  httpMethod?: HttpMethod;
+  isDestructive?: boolean;
 }
 
 export interface ImpactClosureResult {
-  status: "CLOSED" | "IMPACT_ANALYSIS_INCOMPLETE";
+  status: "CLOSED" | "IMPACT_ANALYSIS_INCOMPLETE" | "DESTRUCTIVE_SCHEMA_MIGRATION_BLOCKED";
   targetSymbols: TargetSymbolRequest[];
   mustChange: string[];
   mayChange: string[];
@@ -36,6 +49,8 @@ export interface ImpactClosureResult {
   contextEdges?: ContextUsageEdge[];
   hookEdges?: HookUsageEdge[];
   actionEdges?: ActionUsageEdge[];
+  schemaEdges?: SchemaUsageEdge[];
+  apiEdges?: ApiUsageEdge[];
   unresolvedReasons?: {
     file: string;
     symbol?: string;
@@ -51,6 +66,8 @@ export class ImpactClosureEngine {
   private readonly contextResolver: ContextUsageResolver;
   private readonly hookResolver: HookStateResolver;
   private readonly reducerResolver: ReducerActionResolver;
+  private readonly schemaResolver: SchemaModelResolver;
+  private readonly apiResolver: ApiEndpointResolver;
 
   constructor(projectRoot: string) {
     this.projectRoot = projectRoot.replace(/\\/g, "/");
@@ -60,19 +77,23 @@ export class ImpactClosureEngine {
     this.contextResolver = new ContextUsageResolver(this.symbolResolver);
     this.hookResolver = new HookStateResolver(this.symbolResolver);
     this.reducerResolver = new ReducerActionResolver(this.symbolResolver);
+    this.schemaResolver = new SchemaModelResolver(this.projectRoot);
+    this.apiResolver = new ApiEndpointResolver(this.symbolResolver);
   }
 
   /**
-   * Computes the closed impact set for the given target symbols, components, Contexts, hooks, or actions.
+   * Computes the closed impact set for the given targets across all architectural layers.
    */
   public computeClosure(targets: TargetSymbolRequest[]): ImpactClosureResult {
-    // 1. Parse all files and construct reference, call, prop, context, hook, and action graphs
+    // 1. Parse all files and construct complete multi-layer graphs
     this.symbolResolver.parseProject();
     this.callGraphResolver.buildGraph();
     const propFlowData = this.propFlowResolver.analyzeProject();
     const contextData = this.contextResolver.analyzeProject();
     const hookData = this.hookResolver.analyzeProject();
     const actionData = this.reducerResolver.analyzeProject();
+    const schemaData = this.schemaResolver.analyzeProject();
+    const apiData = this.apiResolver.analyzeProject();
 
     const summaries = this.symbolResolver.getAllSummaries();
     const protectedFiles = new Set<string>([
@@ -97,26 +118,42 @@ export class ImpactClosureEngine {
       }
     }
 
-    // 3. Verify target symbols and check for React / Context / Hook / Reducer unsafe patterns
+    // 3. Verify target symbols and check for unsafe patterns
     for (const target of targets) {
       const relTarget = this.toRelative(target.filePath);
-      const summary = summaries.get(relTarget);
-      if (!summary) {
-        unresolvedReasons.push({
-          file: relTarget,
-          symbol: target.symbolName,
-          reason: `TARGET_FILE_NOT_FOUND: Target file "${relTarget}" not found in project.`,
-        });
-        continue;
+
+      // Check destructive schema migration targets
+      if (target.isDestructive) {
+        return {
+          status: "DESTRUCTIVE_SCHEMA_MIGRATION_BLOCKED",
+          targetSymbols: targets,
+          mustChange: [],
+          mayChange: [],
+          requiredTests: [],
+          readOnly: Array.from(summaries.keys()),
+          protected: Array.from(protectedFiles),
+          callGraphEdges: [],
+          unresolvedReasons: [
+            {
+              file: relTarget,
+              symbol: target.symbolName,
+              reason: `DESTRUCTIVE_SCHEMA_MIGRATION_BLOCKED: Destructive schema modification on "${target.symbolName}" is strictly blocked.`,
+            },
+          ],
+        };
       }
 
-      const sym = summary.symbols.find(s => s.name === target.symbolName || s.localName === target.symbolName);
-      if (!sym && !target.contextName && !target.hookName && !target.actionTypeLiteral) {
-        unresolvedReasons.push({
-          file: relTarget,
-          symbol: target.symbolName,
-          reason: `TARGET_SYMBOL_NOT_FOUND: Symbol "${target.symbolName}" not declared in "${relTarget}".`,
-        });
+      // Check if target symbol exists in file
+      const targetSummary = summaries.get(relTarget);
+      if (targetSummary && !target.endpointPath && !target.modelName && !relTarget.endsWith(".prisma")) {
+        const symbolFound = targetSummary.symbols.some(s => s.name === target.symbolName || s.localName === target.symbolName);
+        if (!symbolFound) {
+          unresolvedReasons.push({
+            file: relTarget,
+            symbol: target.symbolName,
+            reason: `TARGET_SYMBOL_NOT_FOUND: Symbol "${target.symbolName}" not found in "${relTarget}"`,
+          });
+        }
       }
 
       // Check prop spread unsafe patterns
@@ -166,6 +203,16 @@ export class ImpactClosureEngine {
           reason: `DYNAMIC_ACTION_DISPATCH: ${unsafeActionMatch.reason}`,
         });
       }
+
+      // Check API unsafe patterns
+      const unsafeApiMatch = apiData.unsafePatterns.find(u => u.filePath === relTarget || u.reason.includes(target.symbolName));
+      if (unsafeApiMatch) {
+        unresolvedReasons.push({
+          file: unsafeApiMatch.filePath,
+          symbol: target.symbolName,
+          reason: `${unsafeApiMatch.reason}`,
+        });
+      }
     }
 
     if (unresolvedReasons.length > 0) {
@@ -182,11 +229,13 @@ export class ImpactClosureEngine {
         contextEdges: [],
         hookEdges: [],
         actionEdges: [],
+        schemaEdges: [],
+        apiEdges: [],
         unresolvedReasons,
       };
     }
 
-    // 4. Traverse dependency, caller, prop, context, hook, and action graph to compute closed impact set
+    // 4. Traverse multi-layer dependency graph to compute closed impact set
     const mustChange = new Set<string>();
     const mayChange = new Set<string>();
     const requiredTests = new Set<string>();
@@ -195,14 +244,16 @@ export class ImpactClosureEngine {
     const collectedContextEdges: ContextUsageEdge[] = [];
     const collectedHookEdges: HookUsageEdge[] = [];
     const collectedActionEdges: ActionUsageEdge[] = [];
+    const collectedSchemaEdges: SchemaUsageEdge[] = [];
+    const collectedApiEdges: ApiUsageEdge[] = [];
 
-    const queue: { filePath: string; symbolName: string; propName?: string; contextName?: string; hookName?: string; actionTypeLiteral?: string }[] = [...targets];
+    const queue: TargetSymbolRequest[] = [...targets];
     const visited = new Set<string>();
 
     while (queue.length > 0) {
       const current = queue.shift()!;
       const currentRel = this.toRelative(current.filePath);
-      const key = `${currentRel}::${current.symbolName}${current.propName ? "::" + current.propName : ""}${current.contextName ? "::" + current.contextName : ""}${current.hookName ? "::" + current.hookName : ""}${current.actionTypeLiteral ? "::" + current.actionTypeLiteral : ""}`;
+      const key = `${currentRel}::${current.symbolName}${current.propName ? "::" + current.propName : ""}${current.contextName ? "::" + current.contextName : ""}${current.hookName ? "::" + current.hookName : ""}${current.actionTypeLiteral ? "::" + current.actionTypeLiteral : ""}${current.modelName ? "::" + current.modelName : ""}${current.endpointPath ? "::" + current.endpointPath : ""}`;
 
       if (visited.has(key)) continue;
       visited.add(key);
@@ -210,10 +261,10 @@ export class ImpactClosureEngine {
       mustChange.add(currentRel);
 
       // A. Direct Importers (when full symbol is modified)
-      if (!current.propName && !current.actionTypeLiteral) {
+      if (!current.propName && !current.actionTypeLiteral && !current.endpointPath) {
         const directImporters = this.symbolResolver.findDirectImporters(currentRel, current.symbolName);
         for (const imp of directImporters) {
-          if (imp.importerFile.includes("__tests__") || imp.importerFile.endsWith(".test.ts") || imp.importerFile.endsWith(".test.tsx") || imp.importerFile.endsWith(".spec.ts") || imp.importerFile.endsWith(".spec.tsx")) {
+          if (this.isTestFile(imp.importerFile)) {
             requiredTests.add(imp.importerFile);
           } else {
             mayChange.add(imp.importerFile);
@@ -225,7 +276,7 @@ export class ImpactClosureEngine {
       const callers = this.callGraphResolver.findDirectCallers(currentRel, current.symbolName);
       for (const caller of callers) {
         collectedCallEdges.push(caller);
-        if (caller.fromFile.includes("__tests__") || caller.fromFile.endsWith(".test.ts") || caller.fromFile.endsWith(".test.tsx")) {
+        if (this.isTestFile(caller.fromFile)) {
           requiredTests.add(caller.fromFile);
         } else {
           mayChange.add(caller.fromFile);
@@ -239,7 +290,7 @@ export class ImpactClosureEngine {
       const jsxUsages = this.callGraphResolver.findJsxUsages(currentRel, current.symbolName);
       for (const usage of jsxUsages) {
         collectedCallEdges.push(usage);
-        if (usage.fromFile.includes("__tests__") || usage.fromFile.endsWith(".test.ts") || usage.fromFile.endsWith(".test.tsx")) {
+        if (this.isTestFile(usage.fromFile)) {
           requiredTests.add(usage.fromFile);
         } else {
           mayChange.add(usage.fromFile);
@@ -262,10 +313,6 @@ export class ImpactClosureEngine {
             readOnly: Array.from(summaries.keys()),
             protected: Array.from(protectedFiles),
             callGraphEdges: [],
-            propFlowEdges: [],
-            contextEdges: [],
-            hookEdges: [],
-            actionEdges: [],
             unresolvedReasons: propTrace.unsafeReasons.map(r => ({ file: currentRel, symbol: current.symbolName, reason: r })),
           };
         }
@@ -293,10 +340,6 @@ export class ImpactClosureEngine {
             readOnly: Array.from(summaries.keys()),
             protected: Array.from(protectedFiles),
             callGraphEdges: [],
-            propFlowEdges: [],
-            contextEdges: [],
-            hookEdges: [],
-            actionEdges: [],
             unresolvedReasons: ctxTrace.unsafeReasons.map(r => ({ file: currentRel, symbol: current.symbolName, reason: r })),
           };
         }
@@ -330,10 +373,6 @@ export class ImpactClosureEngine {
             readOnly: Array.from(summaries.keys()),
             protected: Array.from(protectedFiles),
             callGraphEdges: [],
-            propFlowEdges: [],
-            contextEdges: [],
-            hookEdges: [],
-            actionEdges: [],
             unresolvedReasons: hookTrace.unsafeReasons.map(r => ({ file: currentRel, symbol: current.symbolName, reason: r })),
           };
         }
@@ -360,10 +399,6 @@ export class ImpactClosureEngine {
             readOnly: Array.from(summaries.keys()),
             protected: Array.from(protectedFiles),
             callGraphEdges: [],
-            propFlowEdges: [],
-            contextEdges: [],
-            hookEdges: [],
-            actionEdges: [],
             unresolvedReasons: actionTrace.unsafeReasons.map(r => ({ file: currentRel, symbol: current.symbolName, reason: r })),
           };
         }
@@ -397,7 +432,85 @@ export class ImpactClosureEngine {
         }
       }
 
-      // H. Discover Tests
+      // H. Prisma Schema & Model Flow
+      const modelName = current.modelName || (currentRel.endsWith(".prisma") ? current.symbolName : undefined);
+      if (modelName) {
+        const modelTrace = this.schemaResolver.findModelTrace(modelName, current.propName);
+        if (modelTrace.isDestructive) {
+          return {
+            status: "DESTRUCTIVE_SCHEMA_MIGRATION_BLOCKED",
+            targetSymbols: targets,
+            mustChange: [],
+            mayChange: [],
+            requiredTests: [],
+            readOnly: Array.from(summaries.keys()),
+            protected: Array.from(protectedFiles),
+            callGraphEdges: [],
+            unresolvedReasons: modelTrace.unsafeReasons.map(r => ({ file: currentRel, symbol: current.symbolName, reason: r })),
+          };
+        }
+
+        // Correlate with Prisma Client calls: prisma.task.create()
+        for (const acc of apiData.prismaAccesses) {
+          if (acc.modelName.toLowerCase() === modelName.toLowerCase()) {
+            if (acc.filePath !== currentRel) {
+              mayChange.add(acc.filePath);
+              queue.push({ filePath: acc.filePath, symbolName: acc.callerSymbol });
+              const svcSummary = summaries.get(acc.filePath);
+              if (svcSummary) {
+                for (const sym of svcSummary.symbols) {
+                  queue.push({ filePath: acc.filePath, symbolName: sym.name });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // I. Express Routes & Frontend API Invocations
+      const endpointPath = current.endpointPath || (current.symbolName.startsWith("/api/") ? current.symbolName : undefined);
+      if (endpointPath) {
+        const method = current.httpMethod || "GET";
+        const routeTrace = this.apiResolver.findRouteTrace(method, endpointPath);
+        if (routeTrace.hasDynamicUrl) {
+          return {
+            status: "IMPACT_ANALYSIS_INCOMPLETE",
+            targetSymbols: targets,
+            mustChange: [],
+            mayChange: [],
+            requiredTests: [],
+            readOnly: Array.from(summaries.keys()),
+            protected: Array.from(protectedFiles),
+            callGraphEdges: [],
+            unresolvedReasons: routeTrace.unsafeReasons.map(r => ({ file: currentRel, symbol: current.symbolName, reason: r })),
+          };
+        }
+
+        for (const ep of routeTrace.endpoints) {
+          if (ep.filePath !== currentRel) {
+            mayChange.add(ep.filePath);
+          }
+          const baseHandler = ep.handlerSymbol.split(".")[0];
+          const routeSummary = summaries.get(ep.filePath);
+          if (routeSummary) {
+            for (const imp of routeSummary.imports) {
+              if ((imp.importedName === baseHandler || imp.localAlias === baseHandler) && imp.resolvedSourceFile) {
+                mayChange.add(imp.resolvedSourceFile);
+                queue.push({ filePath: imp.resolvedSourceFile, symbolName: baseHandler });
+              }
+            }
+          }
+        }
+
+        for (const call of routeTrace.frontendCalls) {
+          if (call.filePath !== currentRel) {
+            mayChange.add(call.filePath);
+            queue.push({ filePath: call.filePath, symbolName: call.callerSymbol });
+          }
+        }
+      }
+
+      // J. Discover In-Project Tests
       const tests = this.callGraphResolver.findTestCallers(currentRel, current.symbolName);
       for (const t of tests) {
         collectedCallEdges.push(t);
@@ -426,7 +539,17 @@ export class ImpactClosureEngine {
       contextEdges: contextData.edges,
       hookEdges: hookData.edges,
       actionEdges: actionData.edges,
+      schemaEdges: schemaData.edges,
+      apiEdges: apiData.edges,
     };
+  }
+
+  public getSchemaResolver(): SchemaModelResolver {
+    return this.schemaResolver;
+  }
+
+  public getApiResolver(): ApiEndpointResolver {
+    return this.apiResolver;
   }
 
   public getReducerResolver(): ReducerActionResolver {
@@ -443,6 +566,16 @@ export class ImpactClosureEngine {
 
   public getPropFlowResolver(): PropFlowResolver {
     return this.propFlowResolver;
+  }
+
+  private isTestFile(filePath: string): boolean {
+    return (
+      filePath.includes("__tests__") ||
+      filePath.endsWith(".test.ts") ||
+      filePath.endsWith(".test.tsx") ||
+      filePath.endsWith(".spec.ts") ||
+      filePath.endsWith(".spec.tsx")
+    );
   }
 
   private toRelative(p: string): string {

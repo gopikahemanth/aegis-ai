@@ -19,3 +19,4 @@ export * from "./impact-closure-engine.js";
 export * from "./ast-symbol-patch-planner.js";
 export * from "./existing-symbol-modifier.js";
 export * from "./patch-preview-engine.js";
+export * from "./ast-cache/index.js";

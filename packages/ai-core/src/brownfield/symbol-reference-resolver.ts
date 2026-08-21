@@ -8,6 +8,10 @@
 import ts from "typescript";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname, resolve, extname } from "node:path";
+import { PersistentAstCache } from "./ast-cache/persistent-ast-cache.js";
+import { AstCacheValidator } from "./ast-cache/ast-cache-validator.js";
+import { AstCacheHash } from "./ast-cache/ast-cache-hash.js";
+import type { CachedSymbolEntry } from "./ast-cache/ast-cache-contract.js";
 
 export type SymbolKind =
   | "function"
@@ -71,18 +75,51 @@ export class SymbolReferenceResolver {
   private readonly projectRoot: string;
   private readonly sourceFileCache: Map<string, ts.SourceFile> = new Map();
   private readonly summaryCache: Map<string, FileAstSummary> = new Map();
+  private readonly astCache: PersistentAstCache;
 
   constructor(projectRoot: string) {
     this.projectRoot = projectRoot.replace(/\\/g, "/");
+    this.astCache = new PersistentAstCache(this.projectRoot);
+  }
+
+  public getAstCache(): PersistentAstCache {
+    return this.astCache;
   }
 
   /**
    * Scans and parses all TypeScript / JavaScript files in the project root.
    */
-  public parseProject(): Map<string, FileAstSummary> {
+  public parseProject(options?: { bypassCache?: boolean }): Map<string, FileAstSummary> {
     const allFiles = this.discoverSourceFiles(this.projectRoot);
+    const useCache = !options?.bypassCache;
+
+    if (useCache) {
+      this.astCache.init();
+    }
 
     for (const filePath of allFiles) {
+      const relPath = this.toRelative(filePath);
+      const fullPath = resolve(this.projectRoot, relPath);
+
+      if (useCache) {
+        const cached = this.astCache.getFileRecord(relPath);
+        const val = AstCacheValidator.validateFileRecord(fullPath, cached);
+
+        if (val.status === "CACHE_HIT" || val.status === "CACHE_HIT_REVALIDATED") {
+          if (cached) {
+            const summary: FileAstSummary = {
+              filePath: cached.filePath,
+              symbols: cached.symbols,
+              imports: cached.imports,
+              exports: cached.exports,
+              unresolvedDynamicImports: cached.unresolvedDynamicImports || [],
+            };
+            this.summaryCache.set(relPath, summary);
+            continue;
+          }
+        }
+      }
+
       this.parseFile(filePath);
     }
 
@@ -98,6 +135,11 @@ export class SymbolReferenceResolver {
           exp.resolvedSourceFile = this.resolveModulePath(summary.filePath, exp.reExportModuleSpecifier);
         }
       }
+    }
+
+    // Persist global symbol table and reverse dependencies index
+    if (useCache) {
+      this.persistGlobalIndexes();
     }
 
     return this.summaryCache;
@@ -207,7 +249,62 @@ export class SymbolReferenceResolver {
     };
 
     this.summaryCache.set(relPath, summary);
+
+    // Save to persistent cache if not content override and file exists
+    if (!contentOverride && existsSync(fullPath)) {
+      try {
+        const stat = statSync(fullPath);
+        const contentHash = AstCacheHash.computeFileHash(fullPath);
+        this.astCache.setFileRecord({
+          filePath: relPath,
+          contentHash,
+          mtimeMs: stat.mtimeMs,
+          sizeBytes: stat.size,
+          symbols,
+          imports,
+          exports,
+          unresolvedDynamicImports,
+          callGraphEdges: [],
+        });
+      } catch {}
+    }
+
     return summary;
+  }
+
+  private persistGlobalIndexes(): void {
+    const symbolEntries: CachedSymbolEntry[] = [];
+    const fileDependents: Record<string, string[]> = {};
+    const symbolDependents: Record<string, string[]> = {};
+
+    for (const [, summary] of this.summaryCache) {
+      for (const sym of summary.symbols) {
+        symbolEntries.push({
+          symbolId: sym.id,
+          filePath: sym.filePath,
+          symbolName: sym.name,
+          kind: sym.kind,
+          isExported: sym.isExported,
+          isDefaultExport: sym.isDefaultExport,
+          line: sym.line,
+          col: sym.col,
+        });
+      }
+
+      for (const imp of summary.imports) {
+        if (imp.resolvedSourceFile) {
+          if (!fileDependents[imp.resolvedSourceFile]) {
+            fileDependents[imp.resolvedSourceFile] = [];
+          }
+          if (!fileDependents[imp.resolvedSourceFile].includes(summary.filePath)) {
+            fileDependents[imp.resolvedSourceFile].push(summary.filePath);
+          }
+        }
+      }
+    }
+
+    this.astCache.saveSymbolTable(symbolEntries);
+    this.astCache.saveReverseDependencies({ fileDependents, symbolDependents });
   }
 
   /**
@@ -288,7 +385,28 @@ export class SymbolReferenceResolver {
   }
 
   public getSourceFile(filePath: string): ts.SourceFile | undefined {
-    return this.sourceFileCache.get(this.toRelative(filePath));
+    const relPath = this.toRelative(filePath);
+    if (this.sourceFileCache.has(relPath)) {
+      return this.sourceFileCache.get(relPath);
+    }
+
+    const fullPath = resolve(this.projectRoot, relPath);
+    if (!existsSync(fullPath)) return undefined;
+
+    try {
+      const content = readFileSync(fullPath, "utf8");
+      const sourceFile = ts.createSourceFile(
+        relPath,
+        content,
+        ts.ScriptTarget.Latest,
+        true,
+        relPath.endsWith(".tsx") || relPath.endsWith(".jsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+      );
+      this.sourceFileCache.set(relPath, sourceFile);
+      return sourceFile;
+    } catch {
+      return undefined;
+    }
   }
 
   public getSummary(filePath: string): FileAstSummary | undefined {
@@ -535,17 +653,23 @@ export class SymbolReferenceResolver {
       basePath = resolve(fromDir, specifier);
     }
 
+    const strippedBase = basePath.replace(/\.(js|jsx|mjs|cjs)$/, "");
+
     // Direct extension match or candidate resolution
     const candidates = [
       basePath,
+      `${strippedBase}.ts`,
+      `${strippedBase}.tsx`,
+      `${strippedBase}.js`,
+      `${strippedBase}.jsx`,
       `${basePath}.ts`,
       `${basePath}.tsx`,
-      `${basePath}.js`,
-      `${basePath}.jsx`,
       join(basePath, "index.ts"),
       join(basePath, "index.tsx"),
       join(basePath, "index.js"),
       join(basePath, "index.jsx"),
+      join(strippedBase, "index.ts"),
+      join(strippedBase, "index.tsx"),
     ];
 
     for (const cand of candidates) {

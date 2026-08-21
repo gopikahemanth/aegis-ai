@@ -7,3 +7,8 @@ export * from "./impact-analyzer.js";
 export * from "./surgical-patch-planner.js";
 export * from "./baseline-regression-validator.js";
 export * from "./brownfield-workflow-engine.js";
+export * from "./symbol-reference-resolver.js";
+export * from "./call-graph-resolver.js";
+export * from "./impact-closure-engine.js";
+export * from "./ast-symbol-patch-planner.js";
+export * from "./existing-symbol-modifier.js";

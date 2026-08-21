@@ -17,6 +17,8 @@ import { BaselineRegressionValidator, type BaselineRegressionReport } from "./ba
 import { TestGeneratorAgent } from "../agents/test-generator-agent.js";
 import { InProjectTestRunner } from "../validation/in-project-test-runner.js";
 
+import { PatchPreviewEngine, type PatchPreview } from "./patch-preview-engine.js";
+
 export interface SymbolModificationRequest {
   targetSymbols: TargetSymbolRequest[];
   userRequest: string;
@@ -24,15 +26,17 @@ export interface SymbolModificationRequest {
     filePath: string;
     operations: AstPatchOperation[];
   }[];
+  preview?: PatchPreview;
 }
 
 export interface SymbolModificationResult {
   success: boolean;
-  status: PatchPlanValidationStatus | "SUCCESS" | "TEST_REGRESSION" | "BUILD_FAILED" | "GIT_DIRTY_TARGET" | "IMPACT_ANALYSIS_INCOMPLETE";
+  status: PatchPlanValidationStatus | "SUCCESS" | "TEST_REGRESSION" | "BUILD_FAILED" | "GIT_DIRTY_TARGET" | "IMPACT_ANALYSIS_INCOMPLETE" | "PLAN_STALE" | "FEATURE_BRANCH_EXISTS";
   impactClosure: ImpactClosureResult;
   touchedFiles: string[];
   regressionReport?: BaselineRegressionReport;
   checkpointRolledBack?: boolean;
+  branchName?: string;
   error?: string;
 }
 
@@ -49,6 +53,30 @@ export class ExistingSymbolModifier {
    */
   public async modify(request: SymbolModificationRequest): Promise<SymbolModificationResult> {
     console.log(`[ExistingSymbolModifier] 🛡️ Starting existing-symbol modification: "${request.userRequest}"`);
+
+    // 0. If PatchPreview is supplied, enforce strict immutability (PLAN_STALE / PATCH_DRIFT check)
+    if (request.preview) {
+      const immutabilityCheck = PatchPreviewEngine.verifyImmutability(request.preview, this.projectRoot);
+      if (!immutabilityCheck.valid) {
+        console.warn(`[ExistingSymbolModifier] 🛑 Plan immutability check failed: ${immutabilityCheck.error}`);
+        return {
+          success: false,
+          status: "PLAN_STALE",
+          impactClosure: {
+            status: "CLOSED",
+            targetSymbols: request.preview.requiredFiles.map(f => ({ filePath: f, symbolName: "all" })),
+            mustChange: request.preview.requiredFiles,
+            mayChange: request.preview.mayChangeFiles,
+            readOnly: request.preview.readOnlyFiles,
+            requiredTests: [],
+            protected: [],
+            callGraphEdges: [],
+          },
+          touchedFiles: [],
+          error: immutabilityCheck.error,
+        };
+      }
+    }
 
     // 1. Compute closed impact set
     const impactEngine = new ImpactClosureEngine(this.projectRoot);
@@ -94,6 +122,23 @@ export class ExistingSymbolModifier {
         touchedFiles: [],
         error: gitPreflight.reason,
       };
+    }
+
+    // 3b. If preview requested a dedicated feature branch, isolate changes on that branch
+    let activeBranch: string | undefined;
+    if (request.preview?.branchName && gitPreflight.gitState.isGitRepo) {
+      const branchRes = BrownfieldGitGuard.createFeatureBranch(request.preview.branchName, this.projectRoot);
+      if (!branchRes.success) {
+        console.warn(`[ExistingSymbolModifier] 🛑 Feature branch creation blocked: ${branchRes.error}`);
+        return {
+          success: false,
+          status: "FEATURE_BRANCH_EXISTS",
+          impactClosure: closure,
+          touchedFiles: [],
+          error: branchRes.error,
+        };
+      }
+      activeBranch = request.preview.branchName;
     }
 
     // 4. Capture pre-change test baseline
@@ -203,6 +248,7 @@ export class ExistingSymbolModifier {
         impactClosure: closure,
         touchedFiles,
         regressionReport,
+        branchName: activeBranch,
       };
     } catch (err: any) {
       console.error(`[ExistingSymbolModifier] Exception during modification: ${err.message}. Rolling back...`);

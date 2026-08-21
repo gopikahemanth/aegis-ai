@@ -349,10 +349,13 @@ export class ASTSymbolPatchPlanner {
 
       // 1. Prisma Schema File
       if (relPath.endsWith(".prisma")) {
+        const fullFieldDef = options.prismaFieldDef.startsWith(options.fieldName)
+          ? options.prismaFieldDef
+          : `${options.fieldName} ${options.prismaFieldDef}`;
         const schemaOp = this.planPrismaModelFieldAddition(
           relPath,
           options.modelName,
-          options.prismaFieldDef,
+          fullFieldDef,
           `Add ${options.fieldName} to Prisma model ${options.modelName}`
         );
         if (schemaOp) fileOps.push(schemaOp);

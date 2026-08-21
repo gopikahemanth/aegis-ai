@@ -11,7 +11,7 @@ export async function helpCommand() {
                                     \_______|
 \x1b[0m
   \x1b[1mAegis AI\x1b[0m — Autonomous Software Engineering System
-  Version: 2.0.0
+  Version: 2.2.0
 
 \x1b[1m\x1b[33mUSAGE\x1b[0m
   aegis <command> [arguments]

@@ -1,3 +1,3 @@
 export async function versionCommand() {
-  console.log("Aegis AI v0.1.0");
+  console.log("Aegis AI v2.2.0");
 }

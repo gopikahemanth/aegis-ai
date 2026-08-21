@@ -1,6 +1,6 @@
 {
   "name": "aegis-ai",
-  "version": "0.0.1",
+  "version": "2.2.0",
   "private": true,
   "description": "Aegis AI - Autonomous Software Engineering Platform",
   "packageManager": "pnpm@10.9.0",

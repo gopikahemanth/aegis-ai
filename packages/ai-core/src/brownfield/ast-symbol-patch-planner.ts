@@ -170,6 +170,42 @@ export class ASTSymbolPatchPlanner {
         return;
       }
 
+      if (ts.isTypeAliasDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === functionName) {
+        const start = node.getStart(sourceFile);
+        const end = node.getEnd();
+        const originalSnippet = content.slice(start, end);
+        const replacementSnippet = newBodyOrSignature(originalSnippet, node as any);
+
+        targetOp = {
+          filePath: relPath,
+          targetSymbolName: functionName,
+          originalSnippet,
+          replacementSnippet,
+          startPos: start,
+          endPos: end,
+          description,
+        };
+        return;
+      }
+
+      if (ts.isInterfaceDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === functionName) {
+        const start = node.getStart(sourceFile);
+        const end = node.getEnd();
+        const originalSnippet = content.slice(start, end);
+        const replacementSnippet = newBodyOrSignature(originalSnippet, node as any);
+
+        targetOp = {
+          filePath: relPath,
+          targetSymbolName: functionName,
+          originalSnippet,
+          replacementSnippet,
+          startPos: start,
+          endPos: end,
+          description,
+        };
+        return;
+      }
+
       ts.forEachChild(node, visit);
     };
 

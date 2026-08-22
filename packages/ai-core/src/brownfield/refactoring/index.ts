@@ -9,6 +9,7 @@ export * from "./rename-conflict-detector.js";
 export * from "./rename-impact-analyzer.js";
 export * from "./ast-symbol-rename-planner.js";
 export * from "./rename-preview-engine.js";
+export * from "./rename-preview.js";
 export * from "./symbol-rename-executor.js";
 
 // Phase 4: Advanced AST Refactoring

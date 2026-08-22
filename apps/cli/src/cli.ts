@@ -2,6 +2,7 @@ import { helpCommand } from "./commands/help.js";
 import { versionCommand } from "./commands/version.js";
 import { createCommand } from "./commands/create.js";
 import { editCommand } from "./commands/edit.js";
+import { renameCommand } from "./commands/rename.js";
 import { analyticsCommand } from "./commands/analytics.js";
 import { auditCommand } from "./commands/audit.js";
 import { benchmarkCommand } from "./commands/benchmark.js";
@@ -11,7 +12,7 @@ import { chatCommand } from "./commands/chat.js";
 import { doctorCommand } from "./commands/doctor.js";
 
 const KNOWN_COMMANDS = new Set([
-  "create", "edit", "chat", "doctor",
+  "create", "edit", "rename", "chat", "doctor",
   "analytics", "audit", "audit-trail",
   "benchmark", "query", "version", "help",
   "--help", "-h", "--version", "-v",
@@ -28,6 +29,7 @@ export async function runCLI() {
     switch (arg) {
       case "create":      return createCommand();
       case "edit":        return editCommand();
+      case "rename":      return renameCommand();
       case "chat":        return chatCommand();
       case "doctor":      return doctorCommand();
       case "analytics":   return analyticsCommand();

@@ -11,7 +11,7 @@ export async function helpCommand() {
                                     \_______|
 \x1b[0m
   \x1b[1mAegis AI\x1b[0m — Autonomous Software Engineering System
-  Version: 2.2.0
+  Version: 2.3.0
 
 \x1b[1m\x1b[33mUSAGE\x1b[0m
   aegis <command> [arguments]
@@ -32,6 +32,17 @@ export async function helpCommand() {
     Examples:
       aegis edit "Add dark mode toggle to the navbar"
       aegis edit "Replace the chart library with Recharts"
+
+  \x1b[1m\x1b[36mrename\x1b[0m \x1b[2m<OldName> <NewName> --file <path>\x1b[0m
+    Safely refactor and rename symbols across the AST dependency graph.
+    Flags:
+      --dry-run        Test refactoring without applying
+      --preview        Show full unified diff preview
+      --yes            Auto-approve refactoring
+      --json           Output plan and diff in JSON
+    Examples:
+      aegis rename getUserById findUserById --file src/services/userService.ts
+      aegis rename Button PrimaryButton --file src/components/Button.tsx
 
   \x1b[1m\x1b[36mchat\x1b[0m
     Start an interactive AI chat session.

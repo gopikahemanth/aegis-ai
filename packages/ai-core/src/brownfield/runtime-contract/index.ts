@@ -1,5 +1,5 @@
 /**
- * Runtime Contract Subsystem — Aegis V2.3 Project 2 Phase 7.1 & 7.2
+ * Runtime Contract Subsystem — Aegis V2.3 Project 2 Phase 7.1, 7.2 & 7.3
  */
 
 export * from "./runtime-contract-model.js";
@@ -10,3 +10,4 @@ export * from "./runtime-schema-patch-planner.js";
 export * from "./runtime-contract-preview.js";
 export * from "./runtime-contract-executor.js";
 export * from "./http/index.js";
+export * from "./events/index.js";

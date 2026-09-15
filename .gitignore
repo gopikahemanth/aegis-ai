@@ -3,12 +3,19 @@ node_modules
 
 # Build output
 dist
+*.tsbuildinfo
 
 # Generated output
-# generated/
-# generated-project/
-# **/generated/
-# **/generated-project/
+generated/
+generated-project/
+**/generated/
+**/generated-*/
+**/generated/**
+
+# Scratch and temporary scripts
+scratch/
+**/scratch/
+**/scratch/**
 
 # Environment
 .env

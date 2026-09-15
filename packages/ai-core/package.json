@@ -17,7 +17,6 @@
     "clean": "rimraf dist",
     "test": "vitest run",
     "test:watch": "vitest"
-
   },
   "dependencies": {
     "@aegis/project-builder": "workspace:*",
@@ -31,6 +30,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "playwright-core": "^1.63.0",
     "rimraf": "^6.0.1",
     "tsx": "^4.22.4",
     "typescript": "^5.8.3",

@@ -12,6 +12,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { ResponsiveLayoutEngine, type ViewportDevice } from "./responsive-layout-engine.js";
 import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "../design/domain-visual-contract.js";
+import { RealBrowserAdapter, type RealBrowserExecutionResult } from "./real-browser-adapter.js";
+import type { CompositionGraph } from "../design/composition-graph.js";
 
 export interface PageVisualInspection {
   pagePath: string;
@@ -598,6 +600,48 @@ export class VisualVerificationEngine {
         ? `🏆 AEGIS CERTIFIED [${certificationLevel}] (${overallScore}/100): Full delivery, boot, mount, computed styles, and domain composition verified.`
         : `🛑 AEGIS CERTIFICATION FAILED (${overallScore}/100): One or more verification gates failed.`,
     };
+  }
+
+  /**
+   * Real Chromium/Edge Browser Execution & Certification:
+   * Launches local browser, executes the running application, and verifies
+   * React state progression, bounding DOM dimensions, computed styles, and interaction smoke tests.
+   */
+  public static async executeRealBrowserCertification(
+    projectRoot: string,
+    options?: {
+      url?: string;
+      compositionGraph?: CompositionGraph;
+      executablePath?: string;
+      timeoutMs?: number;
+    }
+  ): Promise<MasterCertificationReport> {
+    const url = options?.url || "http://localhost:5173";
+    const browserResult = await RealBrowserAdapter.executeAndCertify(url, {
+      compositionGraph: options?.compositionGraph,
+      timeoutMs: options?.timeoutMs,
+      executablePath: options?.executablePath,
+    });
+
+    const isRealBrowserExecuted = browserResult.executed && browserResult.passed;
+    const baseReport = VisualVerificationEngine.validateBrowserRenderCertification(projectRoot, {
+      isRealBrowserExecuted,
+    });
+
+    if (browserResult.executed) {
+      baseReport.browserRuntime = {
+        status: "EXECUTED",
+        engine: browserResult.browserEngine,
+        reason: browserResult.passed
+          ? `Real browser execution verified in ${browserResult.durationMs}ms`
+          : `Real browser execution failed: ${browserResult.failureReason || 'One or more browser checks failed'}`,
+      };
+      if (browserResult.passed) {
+        baseReport.certificationLevel = "BROWSER_CERTIFIED";
+      }
+    }
+
+    return baseReport;
   }
 
   /**

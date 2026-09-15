@@ -1,9 +1,13 @@
 import type { ProjectSpecification } from "../architect/specification.js";
 import type { ArchitectureContractV1 } from "../governance/architecture-resolver.js";
+import { CompositionGraph, CompositionGraphSynthesizer } from "./composition-graph.js";
+
+export { CompositionGraph, CompositionGraphSynthesizer };
 
 export interface DomainVisualDesignContract {
   productType: string;
   domain: string;
+  compositionGraph?: CompositionGraph;
 
   visualPersonality: {
     mood: string;
@@ -881,6 +885,7 @@ export class DomainVisualContractGenerator {
         ],
         interactionModel: "telemetry_command",
       },
+      compositionGraph: CompositionGraphSynthesizer.synthesize(prompt, domain, layoutFamily),
     };
   }
 }

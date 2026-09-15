@@ -212,6 +212,11 @@ import { App } from "./App";
 import "./index.css";
 
 try {
+  (window as any).__AEGIS_RENDER_STATE__ = {
+    status: "booting",
+    mounted: false,
+    timestamp: Date.now(),
+  };
   const rootEl = document.getElementById("root");
   if (!rootEl) throw new Error("DOM element '#root' was not found in document.");
   const root = ReactDOM.createRoot(rootEl);
@@ -222,6 +227,15 @@ try {
   );
 } catch (err: any) {
   console.error("AEGIS_BOOT_ERROR", err);
+  try {
+    (window as any).__AEGIS_RENDER_STATE__ = {
+      status: "error",
+      mounted: false,
+      error: true,
+      message: err?.message || String(err),
+      timestamp: Date.now(),
+    };
+  } catch {}
   const rootEl = document.getElementById("root");
   if (rootEl) {
     rootEl.innerHTML = \`
@@ -370,6 +384,7 @@ declare global {
   interface Window {
     __AEGIS_BOOTED__?: boolean;
     __AEGIS_RENDER_STATE__?: {
+      status: "booting" | "mounted" | "ready" | "error";
       mounted: boolean;
       error?: boolean;
       message?: string;
@@ -377,6 +392,7 @@ declare global {
       layout?: string;
       brand?: string;
       primaryWorkspace?: string;
+      timestamp?: number;
     };
   }
 }
@@ -385,12 +401,14 @@ function AegisRenderTelemetry() {
   useEffect(() => {
     window.__AEGIS_BOOTED__ = true;
     window.__AEGIS_RENDER_STATE__ = {
+      status: "ready",
       mounted: true,
       error: false,
       domain: "${domainSpec.visualContract.domain}",
       layout: "${domainSpec.visualContract.layoutFamily}",
       brand: "${domainSpec.brandName}",
-      primaryWorkspace: "${domainSpec.visualContract.composition?.primaryWorkspace?.type || 'standard'}"
+      primaryWorkspace: "${domainSpec.visualContract.composition?.primaryWorkspace?.type || 'standard'}",
+      timestamp: Date.now(),
     };
   }, []);
   return null;
@@ -419,11 +437,13 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     console.error("Uncaught application error:", error, errorInfo);
     try {
       window.__AEGIS_RENDER_STATE__ = {
+        status: "error",
         mounted: false,
         error: true,
         message: error?.message || "Render exception",
         domain: "${domainSpec.visualContract.domain}",
-        brand: "${domainSpec.brandName}"
+        brand: "${domainSpec.brandName}",
+        timestamp: Date.now(),
       };
     } catch {}
   }

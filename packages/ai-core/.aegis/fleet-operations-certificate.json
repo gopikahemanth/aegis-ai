@@ -1,6 +1,6 @@
 {
-  "certificateId": "cert_fleet_1787039314979",
-  "issuedAt": "2026-08-18T07:48:34.979Z",
+  "certificateId": "cert_fleet_1789411815134",
+  "issuedAt": "2026-09-14T18:50:15.134Z",
   "status": "FLEET_OPERATIONAL",
   "fleetHealth": {
     "totalProjects": 0,
@@ -8,7 +8,7 @@
     "atRiskProjects": 0,
     "totalActiveIncidents": 0,
     "fleetAvailabilityPercent": 0,
-    "timestamp": "2026-08-18T07:48:34.978Z",
+    "timestamp": "2026-09-14T18:50:15.134Z",
     "projects": []
   },
   "totalProjects": 0,

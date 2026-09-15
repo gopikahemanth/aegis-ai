@@ -10,6 +10,8 @@ import { existsSync } from "node:fs";
 import { chromium, type Browser, type Page } from "playwright-core";
 import type { CompositionGraph } from "../design/composition-graph.js";
 
+import type { BrowserDOMSnapshot } from "./visual-quality-gate.js";
+
 export interface BrowserComputedStyles {
   bodyBackground: string;
   bodyColor: string;
@@ -36,7 +38,9 @@ export interface RealBrowserExecutionResult {
     primaryWorkspace?: string;
   };
   computedStyles?: BrowserComputedStyles;
+  domSnapshot?: BrowserDOMSnapshot;
   interactionTestPassed?: boolean;
+  pageText?: string;
   checks: Array<{ name: string; passed: boolean; details: string }>;
   failureReason?: string;
 }
@@ -216,12 +220,57 @@ export class RealBrowserAdapter {
 
       const allPassed = checks.every(c => c.passed);
 
+      const domSnapshot: BrowserDOMSnapshot = await page.evaluate(() => {
+        const bodyStyle = window.getComputedStyle(document.body);
+        const elements = Array.from(
+          document.querySelectorAll("h1, h2, h3, h4, p, span, button, a, div, section, main, header, nav, input, select, table, tr, td")
+        ).slice(0, 150).map(el => {
+          const style = window.getComputedStyle(el);
+          const rect = el.getBoundingClientRect();
+          return {
+            tagName: el.tagName,
+            className: el.className || "",
+            boundingRect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+            computedStyles: {
+              fontSize: style.fontSize,
+              lineHeight: style.lineHeight,
+              color: style.color,
+              backgroundColor: style.backgroundColor,
+              fontFamily: style.fontFamily,
+              paddingTop: style.paddingTop,
+              paddingRight: style.paddingRight,
+              paddingBottom: style.paddingBottom,
+              paddingLeft: style.paddingLeft,
+              marginTop: style.marginTop,
+              marginRight: style.marginRight,
+              marginBottom: style.marginBottom,
+              marginLeft: style.marginLeft,
+              cursor: style.cursor,
+            },
+          };
+        });
+
+        return {
+          viewport: { width: window.innerWidth, height: window.innerHeight },
+          scrollWidth: document.documentElement.scrollWidth || document.body.scrollWidth,
+          clientWidth: document.documentElement.clientWidth || document.body.clientWidth,
+          bodyBackground: bodyStyle.backgroundColor,
+          bodyColor: bodyStyle.color,
+          elements,
+          rawText: document.body ? document.body.innerText : "",
+        };
+      });
+
+      const fullPageText = domSnapshot.rawText;
+
       return {
         executed: true,
         passed: allPassed,
         browserEngine: executable.includes("msedge") ? "Microsoft Edge (Chromium)" : "Google Chrome (Chromium)",
         executablePath: executable,
         durationMs: Date.now() - startTime,
+        pageText: fullPageText,
+        domSnapshot,
         renderState: {
           status: renderState?.status || "unknown",
           mounted: Boolean(renderState?.mounted),

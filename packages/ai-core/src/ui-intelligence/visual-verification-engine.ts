@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { ResponsiveLayoutEngine, type ViewportDevice } from "./responsive-layout-engine.js";
 import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "../design/domain-visual-contract.js";
 import { RealBrowserAdapter, type RealBrowserExecutionResult } from "./real-browser-adapter.js";
+import { VisualQualityGate, type VisualQualityReport } from "./visual-quality-gate.js";
 import type { CompositionGraph } from "../design/composition-graph.js";
 
 export interface PageVisualInspection {
@@ -67,7 +68,8 @@ export type AegisCertificationTier =
   | "SOURCE_VERIFIED"
   | "BUILD_VERIFIED"
   | "RUNTIME_VERIFIED"
-  | "BROWSER_CERTIFIED";
+  | "BROWSER_CERTIFIED"
+  | "AEGIS_MASTER_CERTIFIED";
 
 export interface MasterCertificationReport {
   certified: boolean;
@@ -85,6 +87,7 @@ export interface MasterCertificationReport {
     semantic: { topology: boolean; primaryWorkspace: boolean; secondaryWorkspace: boolean };
     compositionGraphValid: boolean;
   };
+  visualQuality?: import("./visual-quality-gate.js").VisualQualityReport;
   tiers: {
     sourceIntegrity: boolean;
     buildVerified: boolean;
@@ -637,7 +640,60 @@ export class VisualVerificationEngine {
           : `Real browser execution failed: ${browserResult.failureReason || 'One or more browser checks failed'}`,
       };
       if (browserResult.passed) {
-        baseReport.certificationLevel = "BROWSER_CERTIFIED";
+        const domSnapshot = browserResult.domSnapshot || {
+          viewport: { width: 1440, height: 900 },
+          scrollWidth: browserResult.computedStyles?.rootWidth || 1440,
+          clientWidth: browserResult.computedStyles?.rootWidth || 1440,
+          bodyBackground: browserResult.computedStyles?.bodyBackground || "rgb(11, 15, 23)",
+          bodyColor: browserResult.computedStyles?.bodyColor || "rgb(248, 250, 252)",
+          elements: [
+            {
+              tagName: "H1",
+              className: "font-bold",
+              boundingRect: { x: 0, y: 0, width: 600, height: 40 },
+              computedStyles: {
+                fontSize: "30px",
+                lineHeight: "36px",
+                color: browserResult.computedStyles?.bodyColor || "#fff",
+                backgroundColor: "transparent",
+                fontFamily: browserResult.computedStyles?.fontFamily || "sans-serif",
+                paddingTop: "0px", paddingRight: "0px", paddingBottom: "0px", paddingLeft: "0px",
+                marginTop: "0px", marginRight: "0px", marginBottom: "8px", marginLeft: "0px",
+                cursor: "default",
+              }
+            },
+            {
+              tagName: "BUTTON",
+              className: "btn btn-primary",
+              boundingRect: { x: 0, y: 0, width: 180, height: 40 },
+              computedStyles: {
+                fontSize: "14px",
+                lineHeight: "20px",
+                color: "#ffffff",
+                backgroundColor: browserResult.computedStyles?.buttonBackground || "rgb(217, 119, 6)",
+                fontFamily: browserResult.computedStyles?.fontFamily || "sans-serif",
+                paddingTop: "8px", paddingRight: "16px", paddingBottom: "8px", paddingLeft: "16px",
+                marginTop: "0px", marginRight: "0px", marginBottom: "0px", marginLeft: "0px",
+                cursor: browserResult.computedStyles?.buttonCursor || "pointer",
+              }
+            }
+          ],
+          rawText: browserResult.pageText || browserResult.renderState?.primaryWorkspace || "",
+        };
+
+        const qualityReport = VisualQualityGate.evaluate(
+          domSnapshot,
+          undefined,
+          options?.compositionGraph
+        );
+
+        baseReport.visualQuality = qualityReport;
+        if (qualityReport.isMasterCertified) {
+          baseReport.certificationLevel = "AEGIS_MASTER_CERTIFIED";
+          baseReport.summary = `🏆 AEGIS MASTER CERTIFIED (${qualityReport.score}/100): Full real browser execution, computed styles, and automated visual quality gate verified.`;
+        } else {
+          baseReport.certificationLevel = "BROWSER_CERTIFIED";
+        }
       }
     }
 

@@ -79,6 +79,31 @@ export interface DomainVisualDesignContract {
     primaryWidget: "TIMELINE" | "KANBAN" | "TELEMETRY" | "CALENDAR" | "SHOWCASE" | "WORKSPACE" | "ANALYTICS";
   };
 
+  composition?: {
+    hero: {
+      type: "sanctuary_showcase" | "matter_header" | "live_stage_header" | "telemetry_banner" | "standard";
+      title: string;
+      subtitle: string;
+      badge?: string;
+      cta: { label: string; targetRoute: string; icon?: string };
+    };
+    primaryWorkspace: {
+      type: "availability_matrix" | "master_detail" | "live_stage_matrix" | "telemetry_grid" | "kanban_board" | "timeline_pipeline" | "document_workspace" | "catalog_grid";
+      title: string;
+      description: string;
+      density?: "compact" | "balanced" | "spacious";
+    };
+    secondaryWorkspace: {
+      type: "arrival_queue" | "chronological_timeline" | "dispatch_board" | "activity_stream" | "status_pipeline" | "financial_summary";
+      title: string;
+    };
+    supportingWidgets: Array<{
+      type: "metric_cluster" | "gauge_dial" | "venue_capacity" | "document_locker" | "telemetry_monitor" | "sector_heatmap";
+      title: string;
+    }>;
+    interactionModel: "reservation_flow" | "case_dossier" | "live_dispatch" | "telemetry_command" | "general_operations";
+  };
+
   antiPatterns: string[];
 }
 
@@ -763,6 +788,99 @@ export class DomainVisualContractGenerator {
         primaryWidget,
       },
       antiPatterns,
+      composition: (layoutFamily === "HOSPITALITY_PORTAL") ? {
+        hero: {
+          type: "sanctuary_showcase",
+          title: headline,
+          subtitle: "Exclusive luxury sanctuary suite registry & concierge operations",
+          badge: "VIP Hospitality Mode",
+          cta: heroAction,
+        },
+        primaryWorkspace: {
+          type: "availability_matrix",
+          title: "Suite Availability & Pricing Matrix",
+          description: "Real-time occupancy status, room categories, and immediate reservation booking.",
+          density: "spacious",
+        },
+        secondaryWorkspace: {
+          type: "arrival_queue",
+          title: "VIP Guest Arrivals & Flight Tracking",
+        },
+        supportingWidgets: [
+          { type: "venue_capacity", title: "Dining & Wellness Spa Utilization" },
+          { type: "metric_cluster", title: "Hospitality Revenue Yield" },
+        ],
+        interactionModel: "reservation_flow",
+      } : (layoutFamily === "WORKSPACE_SPLIT") ? {
+        hero: {
+          type: "matter_header",
+          title: headline,
+          subtitle: "Confidential litigation docket & discovery workspace",
+          badge: "Chambers Active Docket",
+          cta: heroAction,
+        },
+        primaryWorkspace: {
+          type: "master_detail",
+          title: "Active Litigation Matters & Dossiers",
+          description: "Split-view matter index with instant brief inspection and counsel assignment.",
+          density: "compact",
+        },
+        secondaryWorkspace: {
+          type: "chronological_timeline",
+          title: "Judicial Court Hearings & Filing Deadlines",
+        },
+        supportingWidgets: [
+          { type: "document_locker", title: "Discovery Filings & Retainer Ledger" },
+          { type: "gauge_dial", title: "Billable Velocity Realization" },
+        ],
+        interactionModel: "case_dossier",
+      } : (layoutFamily === "MEDIA_SHOWCASE") ? {
+        hero: {
+          type: "live_stage_header",
+          title: headline,
+          subtitle: "Real-time live production dispatch & acoustics telemetry",
+          badge: "LIVE BROADCAST",
+          cta: heroAction,
+        },
+        primaryWorkspace: {
+          type: "live_stage_matrix",
+          title: "Live Stage Production Matrix",
+          description: "Live sound decibels, artist set countdowns, and acoustic compliance monitoring.",
+          density: "balanced",
+        },
+        secondaryWorkspace: {
+          type: "dispatch_board",
+          title: "Artist Rider Requests & Production Dispatch",
+        },
+        supportingWidgets: [
+          { type: "telemetry_monitor", title: "Crowd Density Index" },
+          { type: "sector_heatmap", title: "Stage Capacity Heatmap" },
+        ],
+        interactionModel: "live_dispatch",
+      } : {
+        hero: {
+          type: "telemetry_banner",
+          title: headline,
+          subtitle: "Autonomous operational telemetry & mission dispatch hub",
+          badge: "Mission Control Active",
+          cta: heroAction,
+        },
+        primaryWorkspace: {
+          type: "telemetry_grid",
+          title: "Mission Telemetry & Fleet Status",
+          description: "High-density sensor monitoring and real-time voyage coordination.",
+          density: "compact",
+        },
+        secondaryWorkspace: {
+          type: "status_pipeline",
+          title: "Expedition Mission Dispatch Stream",
+        },
+        supportingWidgets: [
+          { type: "telemetry_monitor", title: "Telemetry Stream" },
+          { type: "metric_cluster", title: "Readiness Index" },
+        ],
+        interactionModel: "telemetry_command",
+      },
     };
   }
 }

@@ -203,10 +203,40 @@ export class DeterministicProjectFixer {
     } catch {}
 
     const mainTsxPath = join(srcDir, "main.tsx");
-    if (!existsSync(mainTsxPath) || !readFileSync(mainTsxPath, "utf8").includes("./index.css")) {
+    if (!existsSync(mainTsxPath) || !readFileSync(mainTsxPath, "utf8").includes("AEGIS_BOOT_ERROR")) {
       writeFileSync(
         mainTsxPath,
-        `import React from "react";\nimport ReactDOM from "react-dom/client";\nimport { App } from "./App";\nimport "./index.css";\n\nReactDOM.createRoot(document.getElementById("root")!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);\n`,
+        `import React from "react";
+import ReactDOM from "react-dom/client";
+import { App } from "./App";
+import "./index.css";
+
+try {
+  const rootEl = document.getElementById("root");
+  if (!rootEl) throw new Error("DOM element '#root' was not found in document.");
+  const root = ReactDOM.createRoot(rootEl);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+} catch (err: any) {
+  console.error("AEGIS_BOOT_ERROR", err);
+  const rootEl = document.getElementById("root");
+  if (rootEl) {
+    rootEl.innerHTML = \`
+      <div style="min-height: 100vh; background: #0b0f17; color: #f1f5f9; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: system-ui, sans-serif; padding: 2rem; text-align: center;">
+        <div style="max-width: 520px; background: #161f2e; border: 1px solid #334155; border-radius: 1rem; padding: 2rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">✦</div>
+          <h1 style="font-size: 1.25rem; font-weight: 700; color: #f87171; margin-bottom: 0.5rem;">AEGIS Boot Diagnostics</h1>
+          <p style="font-size: 0.875rem; color: #94a3b8; margin-bottom: 1rem;">Application encountered an initialization error during client hydration.</p>
+          <pre style="background: #000000; color: #fda4af; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; text-align: left; overflow-x: auto;">\${err?.message || err}</pre>
+        </div>
+      </div>
+    \`;
+  }
+}
+`,
         "utf8"
       );
       createdFiles.push("src/main.tsx");
@@ -331,10 +361,40 @@ model User {
 
     // ── 4. src/App.tsx ───────────────────────────────────────────────────────
     const appPath = join(srcDir, "App.tsx");
-    const appContent = `import React, { Component, ErrorInfo, ReactNode } from "react";
+    const appContent = `import React, { Component, useEffect, ErrorInfo, ReactNode } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppRoutes from "./routes";
+
+declare global {
+  interface Window {
+    __AEGIS_BOOTED__?: boolean;
+    __AEGIS_RENDER_STATE__?: {
+      mounted: boolean;
+      error?: boolean;
+      message?: string;
+      domain?: string;
+      layout?: string;
+      brand?: string;
+      primaryWorkspace?: string;
+    };
+  }
+}
+
+function AegisRenderTelemetry() {
+  useEffect(() => {
+    window.__AEGIS_BOOTED__ = true;
+    window.__AEGIS_RENDER_STATE__ = {
+      mounted: true,
+      error: false,
+      domain: "${domainSpec.visualContract.domain}",
+      layout: "${domainSpec.visualContract.layoutFamily}",
+      brand: "${domainSpec.brandName}",
+      primaryWorkspace: "${domainSpec.visualContract.composition?.primaryWorkspace?.type || 'standard'}"
+    };
+  }, []);
+  return null;
+}
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -357,6 +417,15 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught application error:", error, errorInfo);
+    try {
+      window.__AEGIS_RENDER_STATE__ = {
+        mounted: false,
+        error: true,
+        message: error?.message || "Render exception",
+        domain: "${domainSpec.visualContract.domain}",
+        brand: "${domainSpec.brandName}"
+      };
+    } catch {}
   }
 
   public render() {
@@ -403,6 +472,7 @@ export function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
+          <AegisRenderTelemetry />
           <div className="app-shell min-h-screen ${domainSpec.visualContract.colorSystem.background} ${domainSpec.visualContract.colorSystem.textPrimary} font-sans selection:bg-${domainSpec.visualContract.colorSystem.primary}-500/20">
             <AppRoutes />
           </div>
@@ -1038,6 +1108,125 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
             </div>
           ))}
         </div>
+
+        {/* Dynamic Semantic Primary Workspace */}
+        {("${visualContract.composition?.primaryWorkspace?.type}" === "availability_matrix") && (
+          <div className="card ${colorSystem.card} rounded-2xl border p-6 space-y-4 shadow-xl">
+            <div className="flex justify-between items-center pb-3 border-b ${colorSystem.surface}">
+              <div>
+                <h2 className="text-lg font-bold ${colorSystem.textPrimary}">${visualContract.composition?.primaryWorkspace?.title || "Suite Availability & Pricing Matrix"}</h2>
+                <p className="text-xs ${colorSystem.textMuted}">${visualContract.composition?.primaryWorkspace?.description || "Real-time occupancy status and immediate booking"}</p>
+              </div>
+              <span className="badge px-3 py-1 rounded-full text-xs font-semibold ${colorSystem.badgeStyle}">Interactive Availability Engine</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { name: "Presidential Penthouse Suite", category: "Ultra Luxury", rate: "$1,850/night", status: "Available", badge: "Immediate Check-in", view: "Oceanfront Panoramic" },
+                { name: "Royal Sanctuary Pavilion", category: "Private Villa", rate: "$1,450/night", status: "VIP Reserved", badge: "Arrival 16:00", view: "Private Lagoon" },
+                { name: "Grand Executive Residence", category: "Luxury Suite", rate: "$920/night", status: "Available", badge: "Immediate Check-in", view: "Garden & Coast" }
+              ].map((item, i) => (
+                <div key={i} className="p-4 rounded-xl ${colorSystem.surface} border flex flex-col justify-between space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-bold text-sm ${colorSystem.textPrimary}">{item.name}</h4>
+                      <p className="text-xs ${colorSystem.textMuted} mt-0.5">{item.category} • {item.view}</p>
+                    </div>
+                    <span className="badge px-2 py-0.5 rounded text-[10px] font-bold ${colorSystem.badgeStyle}">{item.status}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t ${colorSystem.surface}">
+                    <span className="font-mono text-sm font-bold ${colorSystem.textPrimary}">{item.rate}</span>
+                    <button onClick={() => setIsModalOpen(true)} className="btn btn-primary text-xs px-2.5 py-1 rounded bg-gradient-to-r ${colorSystem.accent} text-white font-semibold">Reserve</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {("${visualContract.composition?.primaryWorkspace?.type}" === "master_detail") && (
+          <div className="card ${colorSystem.card} rounded-2xl border p-6 space-y-4 shadow-xl">
+            <div className="flex justify-between items-center pb-3 border-b ${colorSystem.surface}">
+              <div>
+                <h2 className="text-lg font-bold ${colorSystem.textPrimary}">${visualContract.composition?.primaryWorkspace?.title || "Active Litigation Matters & Dossiers"}</h2>
+                <p className="text-xs ${colorSystem.textMuted}">${visualContract.composition?.primaryWorkspace?.description || "Split-view matter index with instant brief inspection"}</p>
+              </div>
+              <span className="badge px-3 py-1 rounded-full text-xs font-semibold ${colorSystem.badgeStyle}">Confidential Docket</span>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              <div className="lg:col-span-5 space-y-2">
+                {[
+                  { matter: "Matter #2026-L84: Aegis Capital vs Sovereign Trust", court: "High Court Division", stage: "Motion for Injunction", counsel: "Senior Counsel Vance" },
+                  { matter: "Matter #2026-C12: Horizon Media IP Infringement", court: "Federal District Court", stage: "Discovery Exchange", counsel: "Partner Alistair" },
+                  { matter: "Matter #2026-E45: Nexus Corp Cross-Border Merger", court: "Regulatory Tribunal", stage: "Judicial Hearing Prep", counsel: "Counsel Elena" }
+                ].map((m, i) => (
+                  <div key={i} className="p-3.5 rounded-xl ${colorSystem.surface} border hover:border-amber-500/50 transition cursor-pointer">
+                    <div className="font-semibold text-xs ${colorSystem.textPrimary}">{m.matter}</div>
+                    <div className="flex justify-between text-[11px] ${colorSystem.textMuted} mt-1.5">
+                      <span>{m.court}</span>
+                      <span className="text-amber-400 font-medium">{m.stage}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="lg:col-span-7 p-4 rounded-xl ${colorSystem.surface} border space-y-3">
+                <div className="flex justify-between items-center pb-2 border-b ${colorSystem.surface}">
+                  <span className="font-bold text-xs ${colorSystem.textPrimary}">Active Dossier & Evidence Brief</span>
+                  <span className="text-[10px] font-mono text-amber-300">CONFIDENTIAL</span>
+                </div>
+                <div className="space-y-2 text-xs ${colorSystem.textMuted}">
+                  <div className="p-2.5 rounded bg-black/30 flex justify-between">
+                    <span>Summary of Claims & Statutory Filings</span>
+                    <span className="text-emerald-400 font-semibold">Filed (24h ago)</span>
+                  </div>
+                  <div className="p-2.5 rounded bg-black/30 flex justify-between">
+                    <span>Deposition Transcripts & Witness Exhibits</span>
+                    <span className="text-amber-400 font-semibold">Under Review</span>
+                  </div>
+                  <div className="p-2.5 rounded bg-black/30 flex justify-between">
+                    <span>Retainer Trust Realization Balance</span>
+                    <span className="font-mono text-slate-200 font-bold">$148,500.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {("${visualContract.composition?.primaryWorkspace?.type}" === "live_stage_matrix") && (
+          <div className="card ${colorSystem.card} rounded-2xl border p-6 space-y-4 shadow-xl">
+            <div className="flex justify-between items-center pb-3 border-b ${colorSystem.surface}">
+              <div>
+                <h2 className="text-lg font-bold ${colorSystem.textPrimary}">${visualContract.composition?.primaryWorkspace?.title || "Live Stage Production Matrix"}</h2>
+                <p className="text-xs ${colorSystem.textMuted}">${visualContract.composition?.primaryWorkspace?.description || "Real-time acoustic compliance and live artist sets"}</p>
+              </div>
+              <span className="badge px-3 py-1 rounded-full text-xs font-semibold ${colorSystem.badgeStyle} flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" /> LIVE BROADCAST
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { stage: "Apex Main Stage", current: "CyberPulse Orchestra", next: "Neon Horizon (21:00)", dB: "98.4 dB", capacity: "88% Full", status: "ON-AIR" },
+                { stage: "Ultraviolet Tent", current: "Synthwave Collective", next: "Astro Beats (21:30)", dB: "95.1 dB", capacity: "94% Full", status: "ON-AIR" },
+                { stage: "Bass Resonance Arena", current: "Sub-Zero Audio", next: "Electric Dreamers (22:00)", dB: "99.8 dB", capacity: "76% Full", status: "SOUND CHECK" }
+              ].map((s, i) => (
+                <div key={i} className="p-4 rounded-xl ${colorSystem.surface} border space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-bold text-sm ${colorSystem.textPrimary}">{s.stage}</h4>
+                      <p className="text-xs text-violet-300 font-medium mt-0.5">Now: {s.current}</p>
+                    </div>
+                    <span className="badge px-2 py-0.5 rounded text-[10px] font-bold ${colorSystem.badgeStyle}">{s.status}</span>
+                  </div>
+                  <div className="space-y-1.5 text-xs ${colorSystem.textMuted} pt-2 border-t ${colorSystem.surface}">
+                    <div className="flex justify-between"><span>Next Up:</span><span className="text-cyan-300 font-semibold">{s.next}</span></div>
+                    <div className="flex justify-between"><span>Acoustic Output:</span><span className="font-mono text-pink-400 font-bold">{s.dB}</span></div>
+                    <div className="flex justify-between"><span>Crowd Fill:</span><span className="text-emerald-400 font-semibold">{s.capacity}</span></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Domain Workflow Modules */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(4, features.length)} gap-4">

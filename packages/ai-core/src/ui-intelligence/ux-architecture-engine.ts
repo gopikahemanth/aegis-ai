@@ -2,15 +2,17 @@
  * UXArchitectureEngine
  *
  * Synthesizes structured Information Architecture (IA), user journeys, role-specific navigations,
- * and page hierarchies from product requirements.
+ * and page hierarchies driven by DomainVisualDesignContract.
  */
+
+import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "../design/domain-visual-contract.js";
 
 export interface PageNode {
   id: string;
   path: string;
   title: string;
   roleAccess: string[];
-  layoutType: "DASHBOARD" | "LANDING" | "DATA_TABLE" | "DETAIL" | "FORM" | "SETTINGS";
+  layoutType: "DASHBOARD" | "LANDING" | "DATA_TABLE" | "DETAIL" | "FORM" | "SETTINGS" | "WORKSPACE" | "TIMELINE" | "SHOWCASE";
   primaryActions: string[];
   secondaryActions: string[];
   children?: PageNode[];
@@ -27,10 +29,12 @@ export interface UXArchitecturePlan {
   planId: string;
   productName: string;
   domain: string;
+  visualContract: DomainVisualDesignContract;
   publicPages: PageNode[];
   authenticatedPages: PageNode[];
   adminPages: PageNode[];
   navigationStructure: {
+    strategy: DomainVisualDesignContract["navigation"]["strategy"];
     sidebarItems: { label: string; path: string; icon: string; role: string }[];
     topbarItems: { label: string; path: string }[];
   };
@@ -40,9 +44,7 @@ export interface UXArchitecturePlan {
 
 export class UXArchitectureEngine {
   public static planUX(productName: string, domain: string): UXArchitecturePlan {
-    const isEcom = domain.toLowerCase().includes("ecom") || domain.toLowerCase().includes("shop");
-    const isEdu = domain.toLowerCase().includes("edu") || domain.toLowerCase().includes("lms") || domain.toLowerCase().includes("learn");
-    const isGym = domain.toLowerCase().includes("gym");
+    const visualContract = DomainVisualContractGenerator.deriveContract(domain);
 
     const publicPages: PageNode[] = [
       {
@@ -65,23 +67,27 @@ export class UXArchitectureEngine {
       },
     ];
 
+    const directoryPath = visualContract.dashboardComposition.heroAction.targetRoute && visualContract.dashboardComposition.heroAction.targetRoute !== "/"
+      ? visualContract.dashboardComposition.heroAction.targetRoute
+      : "/directory";
+
     const authenticatedPages: PageNode[] = [
       {
         id: "page_dashboard",
         path: "/dashboard",
-        title: "Dashboard Overview",
-        roleAccess: ["USER", "ADMIN", "MEMBER", "STUDENT", "CUSTOMER"],
+        title: `${productName} Control Center`,
+        roleAccess: ["USER", "ADMIN", "MEMBER", "GUEST", "OPERATOR"],
         layoutType: "DASHBOARD",
-        primaryActions: ["Quick Action", "View Analytics"],
-        secondaryActions: ["Export Report", "Filter Timeline"],
+        primaryActions: [visualContract.dashboardComposition.heroAction.label, "View Operational Metrics"],
+        secondaryActions: ["Filter Events", "Audit Log"],
       },
       {
         id: "page_directory",
-        path: isEcom ? "/products" : isEdu ? "/courses" : isGym ? "/members" : "/items",
-        title: isEcom ? "Product Catalog" : isEdu ? "Course Catalog" : isGym ? "Member Directory" : "Directory",
+        path: directoryPath,
+        title: `${visualContract.domain} Resource Management`,
         roleAccess: ["USER", "ADMIN"],
         layoutType: "DATA_TABLE",
-        primaryActions: ["Create New Record", "Search & Filter"],
+        primaryActions: [visualContract.dashboardComposition.heroAction.label, "Search & Filter"],
         secondaryActions: ["Batch Export", "Bulk Edit"],
       },
     ];
@@ -100,7 +106,7 @@ export class UXArchitectureEngine {
 
     const sidebarItems = [
       { label: "Dashboard", path: "/dashboard", icon: "LayoutDashboard", role: "*" },
-      { label: isEcom ? "Catalog" : isEdu ? "Courses" : isGym ? "Members" : "Items", path: authenticatedPages[1].path, icon: "Layers", role: "*" },
+      { label: "Directory", path: directoryPath, icon: "Layers", role: "*" },
       { label: "Settings", path: "/admin/settings", icon: "Settings", role: "ADMIN" },
     ];
 
@@ -117,11 +123,11 @@ export class UXArchitectureEngine {
       },
       {
         journeyId: "jrn_primary_task",
-        name: "Primary Resource Management",
-        userRole: "ADMIN",
+        name: `${visualContract.domain} Core Execution Flow`,
+        userRole: "OPERATOR",
         flowSteps: [
-          { stepOrder: 1, pagePath: "/dashboard", goal: "View KPIs" },
-          { stepOrder: 2, pagePath: authenticatedPages[1].path, goal: "Search, create, and update records" },
+          { stepOrder: 1, pagePath: "/dashboard", goal: "Review primary operational KPIs & telemetry" },
+          { stepOrder: 2, pagePath: directoryPath, goal: visualContract.dashboardComposition.heroAction.label },
         ],
       },
     ];
@@ -130,10 +136,12 @@ export class UXArchitectureEngine {
       planId: `ux_plan_${Date.now()}`,
       productName,
       domain,
+      visualContract,
       publicPages,
       authenticatedPages,
       adminPages,
       navigationStructure: {
+        strategy: visualContract.navigation.strategy,
         sidebarItems,
         topbarItems: [{ label: "Profile", path: "/profile" }, { label: "Sign Out", path: "/logout" }],
       },

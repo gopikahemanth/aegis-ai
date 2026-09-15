@@ -121,7 +121,8 @@ export class FailoverProvider implements AIProvider {
           );
 
           const is402 = error.message?.includes("402") || error.message?.toLowerCase().includes("payment required");
-          const is404 = error.message?.includes("404") || error.message?.includes("NOT_FOUND") || error.message?.toLowerCase().includes("no longer available");
+          const is404 = error.message?.includes("404") || error.message?.includes("NOT_FOUND") || error.message?.toLowerCase().includes("no longer available") || error.message?.toLowerCase().includes("does not exist");
+          const is503 = error.message?.includes("503") || error.message?.toLowerCase().includes("high demand") || error.message?.includes("UNAVAILABLE") || error.message?.toLowerCase().includes("temporarily unavailable");
           const isFetchFailed = error.message?.includes("fetch failed") || error.message?.includes("ECONNREFUSED");
           const is429 = error.message?.includes("429") || error.message?.includes("quota") ||
             error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.toLowerCase().includes("rate limit");
@@ -150,6 +151,13 @@ export class FailoverProvider implements AIProvider {
           if (is404) {
             console.warn(`[FailoverProvider] 404 Model Not Found on provider "${provider.name}". Session disabling provider for current generation...`);
             FailoverProvider.sessionDisabled.add(provider.name);
+            FailoverProvider.healthStates.set(provider.name, "UNAVAILABLE");
+            break;
+          }
+
+          if (is503) {
+            console.warn(`[FailoverProvider] 503 High Demand / Unavailable on provider "${provider.name}". Failing over to next provider/key...`);
+            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 15000);
             FailoverProvider.healthStates.set(provider.name, "UNAVAILABLE");
             break;
           }

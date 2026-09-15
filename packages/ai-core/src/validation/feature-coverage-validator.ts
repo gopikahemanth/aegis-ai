@@ -58,7 +58,7 @@ export class FeatureCoverageValidator {
       const pathRegex = new RegExp(`path\\s*=\\s*["']${escaped}["']`, "i");
 
       for (const [file, content] of fileContents.entries()) {
-        if (file.endsWith("routes.tsx") || file.endsWith("App.tsx") || file.endsWith("routes.ts")) {
+        if (file.endsWith("routes.tsx") || file.endsWith("App.tsx") || file.endsWith("routes.ts") || file.includes("pages") || file.includes("components")) {
           if (pathRegex.test(content)) {
             found = true;
             implementedIn = file;

@@ -1,16 +1,16 @@
 export const Models = {
   cerebras: {
-    default: "llama3.3-70b",
-    strong: "llama3.3-70b",
-    fast: "llama3.1-8b",
-    balanced: "llama3.3-70b",
+    default: "llama-3.3-70b",
+    strong: "llama-3.3-70b",
+    fast: "llama-3.1-8b",
+    balanced: "llama-3.3-70b",
   },
 
   groq: {
-    default: "llama-3.3-70b-versatile",
-    strong: "llama-3.3-70b-versatile",
-    fast: "llama-3.3-70b-versatile",
-    balanced: "llama-3.3-70b-versatile",
+    default: "qwen/qwen3.8-27b",
+    strong: "openai/gpt-oss-120b",
+    fast: "qwen/qwen3.8-27b",
+    balanced: "qwen/qwen3.8-27b",
   },
 
   openai: {
@@ -28,17 +28,17 @@ export const Models = {
   },
 
   gemini: {
-    default: "gemini-3.1-flash-lite",
-    strong: "gemini-3.1-flash-lite",
-    fast: "gemini-3.1-flash-lite",
-    balanced: "gemini-3.1-flash-lite",
+    default: "gemini-3.6-flash",
+    strong: "gemini-3.6-flash",
+    fast: "gemini-3.6-flash",
+    balanced: "gemini-3.6-flash",
   },
 
   "gemini-2": {
-    default: "gemini-3.1-flash-lite",
-    strong: "gemini-3.1-flash-lite",
-    fast: "gemini-3.1-flash-lite",
-    balanced: "gemini-3.1-flash-lite",
+    default: "gemini-3.6-flash",
+    strong: "gemini-3.6-flash",
+    fast: "gemini-3.6-flash",
+    balanced: "gemini-3.6-flash",
   },
 
   ollama: {
@@ -49,10 +49,10 @@ export const Models = {
   },
 
   openrouter: {
-    default: "meta-llama/llama-3.3-70b-instruct:free",
-    strong: "meta-llama/llama-3.3-70b-instruct:free",
-    fast: "qwen/qwen-2.5-coder-32b-instruct:free",
-    balanced: "meta-llama/llama-3.3-70b-instruct:free",
+    default: "deepseek/deepseek-chat",
+    strong: "deepseek/deepseek-chat",
+    fast: "deepseek/deepseek-chat",
+    balanced: "deepseek/deepseek-chat",
   },
 
   github: {

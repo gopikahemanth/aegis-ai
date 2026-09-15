@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { ArchitectureResolver, ArchitectureContractV1 } from "../governance/architecture-resolver.js";
+import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "../design/domain-visual-contract.js";
 
 export interface BuildFixReport {
   createdFiles: string[];
@@ -135,7 +136,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+        <div className="min-h-screen ${domainSpec.visualContract.colorSystem.background} ${domainSpec.visualContract.colorSystem.textPrimary} font-sans selection:bg-${domainSpec.visualContract.colorSystem.primary}-500/20">
           <AppRoutes />
         </div>
       </BrowserRouter>
@@ -195,10 +196,10 @@ export default useDashboardData;
     }
 
     // ── 7. src/shared/components/Layout.tsx ───────────────────────────────────
-    // ── 7. src/shared/components/Layout.tsx ───────────────────────────────────
     const layoutPath = join(sharedDir, "Layout.tsx");
     if (!DeterministicProjectFixer.isRichValidLayout(layoutPath, domainSpec)) {
       const navLinksJson = JSON.stringify(domainSpec.navLinks, null, 2);
+      const isPill = domainSpec.visualContract.navigation.strategy === "TOPBAR_PILL";
       const layoutContent = `import React from "react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -211,26 +212,26 @@ export function Layout({ children }: LayoutProps) {
   const navLinks = ${navLinksJson};
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between">
+    <div className="min-h-screen ${domainSpec.visualContract.colorSystem.background} ${domainSpec.visualContract.colorSystem.textPrimary} flex flex-col font-sans">
+      <header className="border-b ${domainSpec.visualContract.colorSystem.surface} backdrop-blur-md sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center gap-2 text-decoration-none">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white shadow-lg shadow-cyan-500/20">
-              ⬡
+          <Link to="/" className="flex items-center gap-2.5 text-decoration-none group">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr ${domainSpec.visualContract.colorSystem.accent} flex items-center justify-center font-bold text-white shadow-lg shadow-black/40 group-hover:scale-105 transition-transform">
+              ✦
             </div>
-            <span className="font-bold text-lg text-white tracking-tight">${domainSpec.brandName}</span>
+            <span className="font-bold text-lg ${domainSpec.visualContract.colorSystem.textPrimary} tracking-tight group-hover:opacity-90 transition-opacity">${domainSpec.brandName}</span>
           </Link>
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1.5 ${isPill ? "p-1 rounded-full " + domainSpec.visualContract.colorSystem.surface : ""}">
             {navLinks.map((link) => {
               const active = location.pathname === link.path || (link.path !== "/" && location.pathname.startsWith(link.path));
               return (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={\`px-3 py-1.5 rounded-lg text-xs font-medium transition \${
+                  className={\`px-3.5 py-1.5 ${isPill ? "rounded-full" : "rounded-lg"} text-xs font-medium transition-all duration-150 \${
                     active
-                      ? "bg-slate-800 text-cyan-400 font-semibold border border-slate-700/60"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                      ? "${domainSpec.visualContract.colorSystem.activeNavStyle} font-semibold"
+                      : "${domainSpec.visualContract.colorSystem.textMuted} hover:${domainSpec.visualContract.colorSystem.textPrimary} hover:bg-white/5"
                   }\`}
                 >
                   {link.name}
@@ -240,21 +241,21 @@ export function Layout({ children }: LayoutProps) {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${domainSpec.visualContract.colorSystem.badgeStyle}">
+            <span className="w-1.5 h-1.5 rounded-full bg-${domainSpec.visualContract.colorSystem.primary}-400 animate-pulse mr-1.5" />
             ${domainSpec.liveBadgeText}
           </span>
           <Link
             to="/login"
-            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-medium transition border border-slate-700/60"
+            className="px-3.5 py-1.5 rounded-lg ${domainSpec.visualContract.colorSystem.surface} ${domainSpec.visualContract.colorSystem.textMuted} hover:${domainSpec.visualContract.colorSystem.textPrimary} text-xs font-medium transition border"
           >
             Portal
           </Link>
         </div>
       </header>
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6">{children}</main>
-      <footer className="border-t border-slate-900 bg-slate-950/80 px-6 py-4 text-center text-xs text-slate-500">
-        ${domainSpec.brandName} Autonomous Platform • All systems operational
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8">{children}</main>
+      <footer className="border-t ${domainSpec.visualContract.colorSystem.surface} px-6 py-4 text-center text-xs ${domainSpec.visualContract.colorSystem.textMuted}">
+        ${domainSpec.brandName} • ${domainSpec.visualContract.domain} (${domainSpec.visualContract.visualPersonality.mood})
       </footer>
     </div>
   );
@@ -593,23 +594,24 @@ export default Layout;
     const navLinks: Array<{ name: string; path: string }> = [
       { name: "Dashboard", path: "/" },
     ];
+    for (const f of features) {
+      if (f.routePath !== "/" && f.routePath !== "/dashboard" && !navLinks.some(n => n.path === f.routePath || n.name.toLowerCase() === f.navTitle.toLowerCase())) {
+        navLinks.push({ name: f.navTitle, path: f.routePath });
+      }
+    }
     if (contract?.requiredRoutes && Array.isArray(contract.requiredRoutes) && contract.requiredRoutes.length > 0) {
       for (const rr of contract.requiredRoutes) {
         const cleanPath = rr.startsWith("/") ? rr : `/${rr}`;
         if (cleanPath === "/" || cleanPath === "/dashboard") continue;
         const matchingFeat = features.find(f => f.routePath === cleanPath || f.aliases.includes(cleanPath));
         const navTitle = matchingFeat ? matchingFeat.navTitle : cleanPath.replace(/^\//, "").charAt(0).toUpperCase() + cleanPath.slice(2);
-        if (!navLinks.some(n => n.path === cleanPath)) {
+        if (!navLinks.some(n => n.path === cleanPath || n.name.toLowerCase() === navTitle.toLowerCase())) {
           navLinks.push({ name: navTitle, path: cleanPath });
         }
       }
-    } else {
-      for (const f of features) {
-        if (f.routePath !== "/" && f.routePath !== "/dashboard" && !navLinks.some(n => n.path === f.routePath || n.name.toLowerCase() === f.navTitle.toLowerCase())) {
-          navLinks.push({ name: f.navTitle, path: f.routePath });
-        }
-      }
     }
+
+    const visualContract = DomainVisualContractGenerator.deriveContract(promptText, undefined, contract);
 
     return {
       brandName,
@@ -617,15 +619,17 @@ export default Layout;
       allModels,
       features,
       navLinks,
+      visualContract,
     };
   }
 
   /**
-   * Generates DashboardPage content tailored to active domain features and KPIs.
+   * Generates DashboardPage content tailored to active domain features, metrics, and specialized visual components.
    */
   private static generateDashboardPageContent(domainSpec: ReturnType<typeof DeterministicProjectFixer.deriveDomainSpec>): string {
-    const { brandName, features, allModels } = domainSpec;
+    const { brandName, features, visualContract } = domainSpec;
     const primaryModel = features[0]?.modelName || "Item";
+    const { colorSystem, dashboardComposition, layoutFamily } = visualContract;
 
     return `import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
@@ -663,11 +667,6 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
       localStorage.setItem(storageKey, JSON.stringify(activities));
     } catch {}
   }, [activities, storageKey]);
-
-  const metrics = [
-${features.slice(0, 3).map((f, idx) => `    { title: "Total ${f.navTitle}", count: ${(idx + 1) * 24 + 18} + activities.filter(a => a.type === "${f.modelName}").length, change: "+${(idx + 1) * 7}%", status: "Active" },`).join("\n")}
-    { title: "System Health", count: 99.8, change: "Optimal", status: "Live" }
-  ];
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -710,96 +709,119 @@ ${features.slice(0, 3).map((f, idx) => `    { title: "Total ${f.navTitle}", coun
 
   return (
     <Layout>
-      <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8 text-slate-100">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-6">
+      <div className="space-y-8">
+        {/* Domain Hero Banner */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b ${colorSystem.surface}">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5" /> Live System
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${colorSystem.badgeStyle}">
+                <span className="w-1.5 h-1.5 rounded-full bg-${colorSystem.primary}-400 animate-pulse mr-1.5" /> ${visualContract.domain}
               </span>
-              <span className="text-xs text-slate-500">${brandName} Operations Hub</span>
+              <span className="text-xs ${colorSystem.textMuted}">${visualContract.productType}</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">${brandName} Overview</h1>
-            <p className="text-sm text-slate-400 mt-1">Autonomous management platform for real-time domain workflows and analytics.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold ${colorSystem.textPrimary} tracking-tight">${dashboardComposition.headline}</h1>
+            <p className="text-sm ${colorSystem.textMuted} mt-1">${visualContract.visualPersonality.mood} — Layout: ${layoutFamily}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2.5">
             <button
               onClick={() => setIsModalOpen(true)}
-              className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-cyan-500/20 cursor-pointer"
+              className="px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white font-bold text-xs transition shadow-lg shadow-black/30 hover:brightness-110 cursor-pointer flex items-center gap-1.5"
             >
-              + Register / Add ${primaryModel}
+              <span>✦</span>
+              <span>${dashboardComposition.heroAction.label}</span>
             </button>
           </div>
         </div>
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(4, features.length + 1)} gap-4">
-          {metrics.map((m, idx) => (
-            <div key={idx} className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 shadow-xl backdrop-blur">
+        {/* Operational Alerts if present */}
+        {${JSON.stringify(dashboardComposition.alerts)}.length > 0 && (
+          <div className="p-3.5 rounded-xl ${colorSystem.surface} border flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="text-base">📢</span>
+              <span className="${colorSystem.textPrimary} font-medium">${dashboardComposition.alerts[0]}</span>
+            </div>
+            <span className="text-[10px] font-mono ${colorSystem.textMuted}">LIVE NOTIFICATION</span>
+          </div>
+        )}
+
+        {/* Contract-Derived Domain Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-5 rounded-2xl ${colorSystem.card} border flex flex-col justify-between">
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider ${colorSystem.textMuted}">${dashboardComposition.primaryMetric.label}</span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full ${colorSystem.badgeStyle}">${dashboardComposition.primaryMetric.trend}</span>
+            </div>
+            <div className="text-3xl font-extrabold ${colorSystem.textPrimary} tracking-tight font-mono">${dashboardComposition.primaryMetric.value}</div>
+            <div className="text-xs ${colorSystem.textMuted} mt-2 flex items-center gap-1">
+              <span className="text-emerald-400">●</span> Primary Domain Telemetry
+            </div>
+          </div>
+
+          {${JSON.stringify(dashboardComposition.secondaryMetrics)}.map((m, idx) => (
+            <div key={idx} className="p-5 rounded-2xl ${colorSystem.card} border flex flex-col justify-between">
               <div className="flex justify-between items-start mb-2">
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{m.title}</span>
-                <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">{m.change}</span>
+                <span className="text-xs font-semibold uppercase tracking-wider ${colorSystem.textMuted}">{m.label}</span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full ${colorSystem.badgeStyle}">{m.trend}</span>
               </div>
-              <div className="text-3xl font-bold text-white tracking-tight">{m.count}</div>
-              <div className="text-xs text-slate-500 mt-1">Status: {m.status}</div>
+              <div className="text-3xl font-bold ${colorSystem.textPrimary} tracking-tight">{m.value}</div>
+              <div className="text-xs ${colorSystem.textMuted} mt-2">Active Registry Indicator</div>
             </div>
           ))}
         </div>
 
-        {/* Domain Workflow Cards */}
+        {/* Domain Workflow Modules */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(4, features.length)} gap-4">
           {${JSON.stringify(features)}.map((p) => (
             <Link
               key={p.slug}
               to={p.routePath}
-              className="p-5 rounded-xl bg-slate-900/40 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-900/80 transition flex items-center justify-between group shadow-sm"
+              className="p-5 rounded-xl ${colorSystem.surface} border hover:border-${colorSystem.primary}-500/50 transition-all flex items-center justify-between group shadow-sm"
             >
               <div>
-                <div className="font-bold text-white text-sm group-hover:text-cyan-400 transition">{p.navTitle}</div>
-                <div className="text-xs text-slate-400 mt-1">Manage {p.pluralName.toLowerCase()} & real-time actions</div>
+                <div className="font-bold ${colorSystem.textPrimary} text-sm group-hover:text-${colorSystem.primary}-400 transition">{p.navTitle}</div>
+                <div className="text-xs ${colorSystem.textMuted} mt-1">Manage {p.pluralName.toLowerCase()} & real-time actions</div>
               </div>
-              <span className="text-slate-500 group-hover:text-cyan-400 transition font-bold text-base">→</span>
+              <span className="${colorSystem.textMuted} group-hover:text-${colorSystem.primary}-400 transition font-bold text-base">→</span>
             </Link>
           ))}
         </div>
 
-        {/* Recent Operations */}
-        <div className="bg-slate-900/50 rounded-2xl border border-slate-800 p-6 space-y-4 shadow-xl">
-          <div className="flex justify-between items-center">
+        {/* Recent Operations Feed */}
+        <div className="${colorSystem.card} rounded-2xl border p-6 space-y-4 shadow-xl">
+          <div className="flex justify-between items-center pb-3 border-b ${colorSystem.surface}">
             <div>
-              <h2 className="text-lg font-bold text-white">${brandName} Operations Feed</h2>
-              <p className="text-xs text-slate-400">Live operational events across registered domain entities</p>
+              <h2 className="text-lg font-bold ${colorSystem.textPrimary}">${brandName} Operations Stream</h2>
+              <p className="text-xs ${colorSystem.textMuted}">Live domain events and audit records</p>
             </div>
             <div className="flex gap-1.5">
               {["All", "Active", "Completed"].map(status => (
                 <button
                   key={status}
                   onClick={() => setFilter(status)}
-                  className={filter === status ? "px-3 py-1 rounded-lg text-xs font-semibold transition bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "px-3 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:bg-slate-800"}
+                  className={filter === status ? "px-3 py-1 rounded-lg text-xs font-semibold transition ${colorSystem.badgeStyle}" : "px-3 py-1 rounded-lg text-xs font-semibold transition ${colorSystem.textMuted} hover:bg-white/5"}
                 >
                   {status}
                 </button>
               ))}
             </div>
           </div>
-          <div className="divide-y divide-slate-800/60">
+          <div className="divide-y ${colorSystem.surface}">
             {filteredActivities.length === 0 ? (
-              <div className="py-8 text-center text-slate-500 text-xs">No active operations found. Use the button above to register a new record.</div>
+              <div className="py-8 text-center ${colorSystem.textMuted} text-xs">No active operations found. Use the button above to register a new record.</div>
             ) : filteredActivities.map((act) => (
-              <div key={act.id} className="py-3 flex items-center justify-between group">
+              <div key={act.id} className="py-3.5 flex items-center justify-between group">
                 <div>
-                  <div className="text-sm font-semibold text-white">{act.title}</div>
-                  <div className="text-xs text-slate-400">{act.type} • {act.time}</div>
+                  <div className="text-sm font-semibold ${colorSystem.textPrimary}">{act.title}</div>
+                  <div className="text-xs ${colorSystem.textMuted} mt-0.5">{act.type} • {act.time}</div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-medium ${colorSystem.badgeStyle}">
                     {act.status}
                   </span>
                   <button
                     onClick={() => handleDelete(act.id, act.type)}
                     title="Delete record"
-                    className="p-1 rounded hover:bg-rose-500/20 text-rose-400 text-xs transition cursor-pointer"
+                    className="p-1.5 rounded hover:bg-rose-500/20 text-rose-400 text-xs transition cursor-pointer"
                   >
                     🗑️
                   </button>
@@ -811,28 +833,28 @@ ${features.slice(0, 3).map((f, idx) => `    { title: "Total ${f.navTitle}", coun
 
         {/* Modal */}
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-              <h3 className="text-lg font-bold text-white">Register / Add {selectedType}</h3>
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="${colorSystem.card} border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+              <h3 className="text-lg font-bold ${colorSystem.textPrimary}">Register / Add {selectedType}</h3>
               <form onSubmit={handleCreate} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Title / Name</label>
+                  <label className="block text-xs font-semibold ${colorSystem.textMuted} mb-1">Title / Identifier</label>
                   <input
                     type="text"
                     value={newItemTitle}
                     onChange={(e) => setNewItemTitle(e.target.value)}
                     placeholder="Enter name or identifier..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+                    className="w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
                     autoFocus
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Entity Type</label>
+                  <label className="block text-xs font-semibold ${colorSystem.textMuted} mb-1">Entity Domain Type</label>
                   <select
                     value={selectedType}
                     onChange={(e) => setSelectedType(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+                    className="w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
                   >
 ${features.map(f => `                    <option value="${f.modelName}">${f.modelName}</option>`).join("\n")}
                   </select>
@@ -841,13 +863,13 @@ ${features.map(f => `                    <option value="${f.modelName}">${f.mode
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300"
+                    className="px-4 py-2 rounded-lg ${colorSystem.surface} text-xs font-semibold ${colorSystem.textMuted}"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-xs font-bold text-slate-950"
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white text-xs font-bold shadow-md hover:brightness-110"
                   >
                     Save {selectedType}
                   </button>
@@ -870,6 +892,7 @@ export default DashboardPage;
    */
   private static generateFeaturePageContent(feat: DomainFeatureSpec, domainSpec: ReturnType<typeof DeterministicProjectFixer.deriveDomainSpec>): string {
     const brandKey = domainSpec.brandName.toLowerCase().replace(/[^a-z0-9]/g, "_");
+    const { colorSystem } = domainSpec.visualContract;
 
     return `import React, { useState, useEffect } from "react";
 import Layout from "../shared/components/Layout";
@@ -930,9 +953,7 @@ export function ${feat.name}() {
           try { localStorage.setItem(storageKey, JSON.stringify(mapped)); } catch {}
         }
       })
-      .catch(() => {
-        // Retain local state
-      })
+      .catch(() => {})
       .finally(() => {
         if (active) setLoading(false);
       });
@@ -1008,34 +1029,34 @@ export function ${feat.name}() {
 
   return (
     <Layout>
-      <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 text-slate-100">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-6">
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b ${colorSystem.surface} pb-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">${domainSpec.brandName}</span>
-              <span className="text-slate-600">•</span>
-              <span className="text-xs text-slate-400">${feat.navTitle} Management</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-${colorSystem.primary}-400">${domainSpec.brandName}</span>
+              <span className="${colorSystem.textMuted}">•</span>
+              <span className="text-xs ${colorSystem.textMuted}">${feat.navTitle} Registry</span>
             </div>
-            <h1 className="text-2xl font-bold text-white">${feat.navTitle}</h1>
-            <p className="text-sm text-slate-400 mt-1">Manage real-time ${feat.pluralName.toLowerCase()}, operational queues, and database records.</p>
+            <h1 className="text-2xl font-bold ${colorSystem.textPrimary}">${feat.navTitle}</h1>
+            <p className="text-sm ${colorSystem.textMuted} mt-1">Manage ${feat.pluralName.toLowerCase()} and operational data records.</p>
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-cyan-500/20 cursor-pointer"
+            className="px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white font-bold text-xs transition shadow-md hover:brightness-110 cursor-pointer"
           >
-            + New ${feat.modelName}
+            + Register ${feat.modelName}
           </button>
         </div>
 
         {/* Filter Toolbar */}
-        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between ${colorSystem.surface} p-4 rounded-xl border">
           <div className="relative w-full sm:w-80">
             <input
               type="text"
               placeholder="Search ${feat.pluralName.toLowerCase()}..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-3 pr-4 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+              className="w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg pl-3 pr-4 py-2 text-xs ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
             />
           </div>
           <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
@@ -1043,7 +1064,7 @@ export function ${feat.name}() {
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={statusFilter === st ? "px-3 py-1.5 rounded-lg text-xs font-medium transition bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "px-3 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:bg-slate-800"}
+                className={statusFilter === st ? "px-3 py-1.5 rounded-lg text-xs font-medium transition ${colorSystem.badgeStyle}" : "px-3 py-1.5 rounded-lg text-xs font-medium transition ${colorSystem.textMuted} hover:bg-white/5"}
               >
                 {st}
               </button>
@@ -1053,37 +1074,37 @@ export function ${feat.name}() {
 
         {/* Grid List */}
         {loading ? (
-          <div className="p-12 text-center text-slate-500 text-xs">Synchronizing ${feat.pluralName.toLowerCase()} with backend...</div>
+          <div className="p-12 text-center ${colorSystem.textMuted} text-xs">Synchronizing ${feat.pluralName.toLowerCase()} with database...</div>
         ) : filtered.length === 0 ? (
-          <div className="p-12 text-center bg-slate-900/30 border border-slate-800 rounded-2xl">
-            <div className="text-slate-400 text-sm font-semibold">No ${feat.pluralName.toLowerCase()} found</div>
-            <p className="text-slate-500 text-xs mt-1">Create a new ${feat.modelName.toLowerCase()} using the button above.</p>
+          <div className="p-12 text-center ${colorSystem.surface} border rounded-2xl">
+            <div className="${colorSystem.textPrimary} text-sm font-semibold">No ${feat.pluralName.toLowerCase()} registered</div>
+            <p className="${colorSystem.textMuted} text-xs mt-1">Use the registration button above to create a record.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(item => (
-              <div key={item.id} className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition flex flex-col justify-between group shadow-sm">
+              <div key={item.id} className="p-5 rounded-xl ${colorSystem.card} border hover:border-${colorSystem.primary}-500/40 transition flex flex-col justify-between group shadow-md">
                 <div>
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/50">
+                    <span className="text-[11px] font-medium px-2 py-0.5 rounded ${colorSystem.surface} ${colorSystem.textMuted} border">
                       {item.category}
                     </span>
                     <button
                       onClick={() => handleToggleStatus(item.id)}
-                      className={item.status === "Active" ? "text-xs font-semibold px-2 py-0.5 rounded-full border transition bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : item.status === "Pending" ? "text-xs font-semibold px-2 py-0.5 rounded-full border transition bg-amber-500/10 text-amber-400 border-amber-500/20" : "text-xs font-semibold px-2 py-0.5 rounded-full border transition bg-cyan-500/10 text-cyan-400 border-cyan-500/20"}
+                      className="text-[11px] font-semibold px-2 py-0.5 rounded-full border transition ${colorSystem.badgeStyle}"
                     >
                       {item.status}
                     </button>
                   </div>
-                  <h3 className="text-base font-bold text-white group-hover:text-cyan-400 transition">{item.name}</h3>
-                  <p className="text-xs text-slate-400 mt-2 line-clamp-2">{item.description}</p>
+                  <h3 className="text-base font-bold ${colorSystem.textPrimary} group-hover:text-${colorSystem.primary}-300 transition">{item.name}</h3>
+                  <p className="text-xs ${colorSystem.textMuted} mt-2 line-clamp-2">{item.description}</p>
                 </div>
-                <div className="flex items-center justify-between border-t border-slate-800/80 pt-3 mt-4 text-[11px] text-slate-500">
-                  <span>{item.createdAt}</span>
+                <div className="flex items-center justify-between border-t ${colorSystem.surface} pt-3 mt-4 text-[11px] ${colorSystem.textMuted}">
+                  <span className="font-mono">{item.createdAt}</span>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleToggleStatus(item.id)}
-                      className="hover:text-cyan-400 transition cursor-pointer"
+                      className="hover:text-${colorSystem.primary}-300 transition cursor-pointer"
                     >
                       Toggle
                     </button>
@@ -1102,28 +1123,28 @@ export function ${feat.name}() {
 
         {/* Modal */}
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-              <h3 className="text-lg font-bold text-white">New ${feat.modelName}</h3>
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="${colorSystem.card} border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+              <h3 className="text-lg font-bold ${colorSystem.textPrimary}">Register ${feat.modelName}</h3>
               <form onSubmit={handleCreate} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Name / Title</label>
+                  <label className="block text-xs font-semibold ${colorSystem.textMuted} mb-1">Name / Title</label>
                   <input
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     placeholder="Enter ${feat.modelName.toLowerCase()} title..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+                    className="w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
                     autoFocus
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Category / Group</label>
+                  <label className="block text-xs font-semibold ${colorSystem.textMuted} mb-1">Category / Group</label>
                   <select
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+                    className="w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
                   >
                     <option value="Standard">Standard</option>
                     <option value="Priority">Priority</option>
@@ -1131,26 +1152,26 @@ export function ${feat.name}() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Description</label>
+                  <label className="block text-xs font-semibold ${colorSystem.textMuted} mb-1">Description</label>
                   <textarea
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
                     placeholder="Operational notes or details..."
                     rows={3}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+                    className="w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300"
+                    className="px-4 py-2 rounded-lg ${colorSystem.surface} text-xs font-semibold ${colorSystem.textMuted}"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-xs font-bold text-slate-950 cursor-pointer"
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white text-xs font-bold shadow-md hover:brightness-110"
                   >
                     Save ${feat.modelName}
                   </button>

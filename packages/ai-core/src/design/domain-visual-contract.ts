@@ -428,6 +428,46 @@ export class DomainVisualContractGenerator {
       antiPatterns.push("Corporate gray styling", "Boring data spreadsheets", "Subdued pastel beige", "Generic CRUD cards");
     }
 
+    // B0. Heritage Craft Atelier / Artisan Studio / Kerala Decor & Textiles
+    else if (rawText.includes("handicraft") || rawText.includes("craft") || rawText.includes("brass") || rawText.includes("textile") || rawText.includes("decor") || rawText.includes("atelier") || rawText.includes("artisan") || (rawText.includes("kerala") && rawText.includes("brand"))) {
+      domain = "Heritage Craft Atelier & Contemporary Decor";
+      productType = "Atelier Collection & Provenance Portal";
+      layoutFamily = "EDITORIAL_CATALOG";
+      navStrategy = "TOPBAR_PILL";
+      density = "spacious";
+      formality = "luxury";
+      mood = "Rooted, refined, tactile, and editorial with Kerala teak, warm dark bronze, and handloom linen textures";
+
+      mode = "warm_dark";
+      bgClass = "bg-[#0D0B09]";
+      surfaceClass = "bg-[#16130F]/80 border-[#2D241C]";
+      cardClass = "bg-[#1C1813]/90 border border-[#2D241C]/80 shadow-xl shadow-black/50 backdrop-blur-md";
+      primary = "amber";
+      secondary = "stone";
+      accent = "from-amber-500 via-orange-600 to-amber-700";
+      textPrimary = "text-stone-100";
+      textMuted = "text-stone-400";
+      badgeStyle = "bg-amber-500/15 text-amber-300 border border-amber-500/30";
+      activeNavStyle = "bg-amber-500/20 text-amber-200 border-b-2 border-amber-400";
+      fontFamily = "Cinzel, Plus Jakarta Sans, serif";
+      headingStyle = "font-serif tracking-normal font-medium text-stone-100";
+      bodyStyle = "text-sm text-stone-300 font-light";
+      emphasis = "font-medium text-amber-300";
+
+      headline = "Kerala Heritage Craft Atelier & Guild Provenance";
+      primaryMetric = { label: "Guild Masterworks", value: "48 Artifacts", trend: "100% GI Tag Certified", icon: "Sparkles" };
+      secondaryMetrics = [
+        { label: "Active Village Guilds", value: "8 Guilds", trend: "Aranmula, Mannar, Balaramapuram", icon: "Users" },
+        { label: "Handloom & Metal Castings", value: "14 Collections", trend: "Fair Trade Direct Dispatch", icon: "Package" },
+        { label: "Bespoke Commissions", value: "6 Inquiries", trend: "Studio response < 24h", icon: "Mail" },
+      ];
+      heroAction = { label: "+ Discover Craft Collections", targetRoute: "/collections", icon: "Compass" };
+      alerts = ["Mannar Lost-Wax Bell Metal casting monograph updated with 4th generation artisan lineage."];
+      primaryWidget = "SHOWCASE";
+      components = ["ShowcaseGrid", "AvailabilityGrid", "DocumentWorkspace", "Timeline"];
+      antiPatterns.push("Generic SaaS blue", "Boring data spreadsheets", "Flashy neon cyberpunk styling", "Raw unstyled tables");
+    }
+
     // B. Hospitality / Luxury Hotel / Resort / Concierge
     else if (rawText.includes("hotel") || rawText.includes("resort") || rawText.includes("concierge") || rawText.includes("suite") || rawText.includes("lodging") || (rawText.includes("hospitality") && !rawText.includes("festival") && !rawText.includes("music"))) {
       domain = "Hospitality & Luxury Resort";

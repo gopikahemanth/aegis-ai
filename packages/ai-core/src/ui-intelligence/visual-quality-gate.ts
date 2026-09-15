@@ -242,11 +242,23 @@ export class VisualQualityGate {
 
     // ── 4. Information Density Match Analyzer ────────────────────────────────
     const targetDensity = graph?.primaryFocus?.density || contract?.visualPersonality?.density || "balanced";
-    const elementCount = snapshot.elements.length;
+    
+    // Calculate average vertical padding across sampled UI elements to determine density
+    let totalPadding = 0;
+    let paddingCount = 0;
+    for (const el of snapshot.elements) {
+      const pt = parseFloat(el.computedStyles.paddingTop) || 0;
+      const pb = parseFloat(el.computedStyles.paddingBottom) || 0;
+      if (pt + pb > 0) {
+        totalPadding += (pt + pb);
+        paddingCount++;
+      }
+    }
+    const avgPadding = paddingCount > 0 ? totalPadding / paddingCount : 16;
     let measuredDensity: "compact" | "balanced" | "spacious" = "balanced";
 
-    if (elementCount >= 18) measuredDensity = "compact";
-    else if (elementCount <= 6) measuredDensity = "spacious";
+    if (avgPadding >= 24) measuredDensity = "spacious";
+    else if (avgPadding < 12) measuredDensity = "compact";
     else measuredDensity = "balanced";
 
     const densityMatches =
@@ -255,16 +267,16 @@ export class VisualQualityGate {
       (targetDensity === "spacious" && (measuredDensity === "spacious" || measuredDensity === "balanced")) ||
       (targetDensity === "balanced");
 
-    const densityScore = densityMatches ? 94 : 70;
+    const densityScore = densityMatches ? 96 : 70;
     if (!densityMatches) {
-      defects.push(`Density mismatch: Expected "${targetDensity}" density layout, but measured "${measuredDensity}" structure.`);
+      defects.push(`Density mismatch: Expected "${targetDensity}" density layout, but measured "${measuredDensity}" structure (avg padding: ${avgPadding.toFixed(1)}px).`);
     }
 
     const density: DensityQualityMetrics = {
       score: densityScore,
       contractDensity: targetDensity,
       measuredDensity,
-      elementsPerKilopixel: Number(((elementCount / (snapshot.viewport.width * snapshot.viewport.height)) * 1000).toFixed(2)),
+      elementsPerKilopixel: Number(((snapshot.elements.length / (snapshot.viewport.width * snapshot.viewport.height)) * 1000).toFixed(2)),
     };
 
     // ── 5. Responsive Viewport Analyzer ──────────────────────────────────────

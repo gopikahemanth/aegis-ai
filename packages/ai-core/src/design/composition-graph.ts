@@ -104,7 +104,7 @@ export class CompositionGraphSynthesizer {
    */
   public static deriveIntent(prompt: string): UXIntentType {
     const p = prompt.toLowerCase();
-    if (p.includes("reserve") || p.includes("book") || p.includes("hotel") || p.includes("resort") || p.includes("yacht") || p.includes("charter") || p.includes("order") || p.includes("checkout")) {
+    if (p.includes("reserve") || p.includes("book") || p.includes("hotel") || p.includes("resort") || p.includes("yacht") || p.includes("charter") || p.includes("order") || p.includes("checkout") || p.includes("cart") || p.includes("handicraft") || p.includes("craft") || p.includes("brand") || p.includes("selling") || p.includes("decor") || p.includes("textile") || p.includes("lamp")) {
       return "TRANSACT_BROWSE";
     }
     if (p.includes("legal") || p.includes("law") || p.includes("court") || p.includes("litigation") || p.includes("dossier") || p.includes("case") || p.includes("compliance") || p.includes("audit")) {
@@ -116,7 +116,7 @@ export class CompositionGraphSynthesizer {
     if (p.includes("rail") || p.includes("transit") || p.includes("train") || p.includes("fleet") || p.includes("dispatch") || p.includes("expedition") || p.includes("antarctic") || p.includes("flight") || p.includes("vessel")) {
       return "DISPATCH_COORDINATE";
     }
-    if (p.includes("film") || p.includes("studio") || p.includes("shoot") || p.includes("cinema") || p.includes("creative") || p.includes("conservation") || p.includes("architecture")) {
+    if (p.includes("film") || p.includes("shoot") || p.includes("cinema") || p.includes("creative") || p.includes("conservation") || p.includes("architecture")) {
       return "CREATE_AUTHOR";
     }
     return "ANALYZE_DISCOVER";
@@ -133,8 +133,9 @@ export class CompositionGraphSynthesizer {
     const intent = CompositionGraphSynthesizer.deriveIntent(prompt);
     const text = `${prompt} ${domain || ""} ${layoutFamily || ""}`.toLowerCase();
 
-    // 1. TRANSACT_BROWSE (Resort, Yacht Charter, Luxury Travel, Bookings)
-    if (intent === "TRANSACT_BROWSE" || text.includes("yacht") || text.includes("charter") || text.includes("resort")) {
+    // 1. TRANSACT_BROWSE (Craft Atelier, Resort, Yacht Charter, Luxury Travel, Bookings)
+    if (intent === "TRANSACT_BROWSE" || text.includes("yacht") || text.includes("charter") || text.includes("resort") || text.includes("craft") || text.includes("handicraft") || text.includes("cart")) {
+      const isCraft = text.includes("craft") || text.includes("handicraft") || text.includes("brass") || text.includes("textile") || text.includes("decor") || text.includes("atelier");
       const isYacht = text.includes("yacht") || text.includes("charter") || text.includes("fleet");
       return {
         intent: "TRANSACT_BROWSE",
@@ -147,23 +148,23 @@ export class CompositionGraphSynthesizer {
           ],
         },
         primaryFocus: {
-          type: "availability_matrix",
-          entity: isYacht ? "VesselCharter" : "SuiteReservation",
-          title: isYacht ? "Fleet Charter Availability & Berthing Matrix" : "Suite & Inventory Availability Matrix",
-          description: isYacht ? "Live charter vessel readiness, cabin tiers, and instant charter booking." : "Real-time tier capacity, reservation slots, and immediate booking engine.",
+          type: isCraft ? "catalog_grid" : "availability_matrix",
+          entity: isCraft ? "ArtisanProduct" : isYacht ? "VesselCharter" : "SuiteReservation",
+          title: isCraft ? "Curated Craft Collections & Monograph Showcase" : isYacht ? "Fleet Charter Availability & Berthing Matrix" : "Suite & Inventory Availability Matrix",
+          description: isCraft ? "Living heritage craft pieces, provenance lineages, and instant cart reservation." : isYacht ? "Live charter vessel readiness, cabin tiers, and instant charter booking." : "Real-time tier capacity, reservation slots, and immediate booking engine.",
           density: "spacious",
         },
         secondaryFocus: {
-          type: "arrival_queue",
-          entity: isYacht ? "CharterEmbarkation" : "VIPArrival",
-          title: isYacht ? "Embarkation & Port Departure Schedule" : "VIP Arrivals & Concierge Queue",
+          type: isCraft ? "arrival_queue" : "arrival_queue",
+          entity: isCraft ? "CraftProvenance" : isYacht ? "CharterEmbarkation" : "VIPArrival",
+          title: isCraft ? "Craft Lineage & Price Transparency Matrix" : isYacht ? "Embarkation & Port Departure Schedule" : "VIP Arrivals & Concierge Queue",
         },
         widgets: [
-          { id: "w1", type: "capacity_gauge", title: isYacht ? "Charter Fleet Utilization" : "Occupancy Index", regionId: "hero" },
-          { id: "w2", type: "amenity_utilization", title: isYacht ? "Berth Allocation" : "Amenity Utilization", regionId: "secondary" },
+          { id: "w1", type: "capacity_gauge", title: isCraft ? "Guild Authentication Rate" : isYacht ? "Charter Fleet Utilization" : "Occupancy Index", regionId: "hero" },
+          { id: "w2", type: "amenity_utilization", title: isCraft ? "Village Guild Dispatch" : isYacht ? "Berth Allocation" : "Amenity Utilization", regionId: "secondary" },
         ],
         interactions: [
-          { trigger: "click", target: isYacht ? "+ Charter Luxury Vessel" : "+ Reserve Luxury Suite", action: "open_modal", description: "Opens instant reservation flow" },
+          { trigger: "click", target: isCraft ? "+ Add to Atelier Cart" : isYacht ? "+ Charter Luxury Vessel" : "+ Reserve Luxury Suite", action: "open_modal", description: "Opens instant reservation flow" },
           { trigger: "select", target: "filter_status", action: "filter_feed", description: "Filters guest activity stream" },
         ],
         responsiveStrategy: {

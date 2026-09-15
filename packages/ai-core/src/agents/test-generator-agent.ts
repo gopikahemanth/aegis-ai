@@ -152,16 +152,16 @@ export default defineConfig({
     writeFileSync(testSetupPath, testSetupContent, "utf8");
     generatedFiles.push("test/setup.ts");
 
-    // 4.5. Ensure tsconfig.json includes vitest/jest-dom types
+    // 4.5. Ensure tsconfig.json includes vitest/jest-dom types safely
     const tsconfigPath = join(projectRoot, "tsconfig.json");
     if (existsSync(tsconfigPath)) {
       try {
         const tsconfig = JSON.parse(readFileSync(tsconfigPath, "utf8"));
         tsconfig.compilerOptions = tsconfig.compilerOptions || {};
-        const types = tsconfig.compilerOptions.types || [];
-        if (!types.includes("vitest/globals")) types.push("vitest/globals");
-        if (!types.includes("@testing-library/jest-dom")) types.push("@testing-library/jest-dom");
-        tsconfig.compilerOptions.types = types;
+        if (tsconfig.compilerOptions.types && Array.isArray(tsconfig.compilerOptions.types)) {
+          tsconfig.compilerOptions.types = tsconfig.compilerOptions.types.filter((t: string) => t !== "@testing-library/jest-dom");
+          if (tsconfig.compilerOptions.types.length === 0) delete tsconfig.compilerOptions.types;
+        }
         writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2), "utf8");
       } catch {}
     }

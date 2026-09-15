@@ -653,7 +653,7 @@ export default CircularProgress;
       return a.name.localeCompare(b.name);
     });
 
-    const imports = pages.map(p => `import ${p.name}Module, { ${p.name} as Named${p.name} } from "${p.importPath}";\nconst ${p.name} = (${p.name}Module as any)?.default || ${p.name}Module || Named${p.name} || (() => null);`).join("\n");
+    const imports = pages.map(p => `import ${p.name}Module, { ${p.name} as Named${p.name} } from "${p.importPath}";\nconst ${p.name} = resolveComponent(${p.name}Module, Named${p.name}, "${p.name}");`).join("\n");
     const routeElements = pages.map(p => `      <Route path="${p.routePath}" element={<${p.name} />} />`).join("\n");
     const extraRouteElements = extraRoutes.map(r => `      <Route path="${r.path}" element={<${r.pageName} />} />`).join("\n");
     const hasRootRoute = pages.some(p => p.routePath === "/");
@@ -661,6 +661,21 @@ export default CircularProgress;
 
     return `import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+
+function resolveComponent(mod: any, named: any, fallbackTitle: string): React.ComponentType<any> {
+  if (typeof mod === "function") return mod;
+  if (mod && typeof mod.default === "function") return mod.default;
+  if (typeof named === "function") return named;
+  return function SafeFallback() {
+    return (
+      <div className="p-8 text-center text-slate-300 font-sans">
+        <h2 className="text-xl font-bold mb-2">{fallbackTitle}</h2>
+        <p className="text-sm text-slate-400">Loading module interface...</p>
+      </div>
+    );
+  };
+}
+
 ${imports}
 
 export function AppRoutes() {

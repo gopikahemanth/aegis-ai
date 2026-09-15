@@ -15,9 +15,9 @@ export interface DesignTokens {
  * DesignSystemGenerator
  *
  * Generates a contract-driven design system before any UI code is written.
- * Components produced by the CoderAgent and DeterministicFixer import tokens from here.
- * Design language, palette, typography, shapes, and components adapt dynamically
- * based on the DomainVisualDesignContract.
+ * Components produced by the CoderAgent and DeterministicFixer import tokens and components from here.
+ * Provides a rock-solid, browser-resilient CSS reset, token-driven CSS custom properties,
+ * utility/component classes, and Tailwind configuration.
  */
 export class DesignSystemGenerator {
 
@@ -28,6 +28,7 @@ export class DesignSystemGenerator {
 
   generate(spec: ProjectSpecification, visualContract?: DomainVisualDesignContract): GeneratedFile[] {
     const contract = visualContract || this.getVisualContract(spec);
+    const resolved = DomainVisualContractGenerator.resolveCssTokens(contract);
     const files: GeneratedFile[] = [];
 
     const brand = contract.colorSystem.primary;
@@ -46,38 +47,26 @@ export class DesignSystemGenerator {
  */
 
 export const visualContract = ${JSON.stringify(contract, null, 2)} as const;
+export const resolvedTokens = ${JSON.stringify(resolved, null, 2)} as const;
 
 export const colors = {
-  brand: {
-    50:  "var(--color-brand-50)",
-    100: "var(--color-brand-100)",
-    200: "var(--color-brand-200)",
-    300: "var(--color-brand-300)",
-    400: "var(--color-brand-400)",
-    500: "var(--color-brand-500)",
-    600: "var(--color-brand-600)",
-    700: "var(--color-brand-700)",
-    800: "var(--color-brand-800)",
-    900: "var(--color-brand-900)",
-  },
-  neutral: {
-    50:  "var(--color-neutral-50)",
-    100: "var(--color-neutral-100)",
-    200: "var(--color-neutral-200)",
-    300: "var(--color-neutral-300)",
-    400: "var(--color-neutral-400)",
-    500: "var(--color-neutral-500)",
-    600: "var(--color-neutral-600)",
-    700: "var(--color-neutral-700)",
-    800: "var(--color-neutral-800)",
-    900: "var(--color-neutral-900)",
-    950: "var(--color-neutral-950)",
-  },
+  background: "${resolved.backgroundColor}",
+  surface: "${resolved.surfaceColor}",
+  surfaceElevated: "${resolved.surfaceElevatedColor}",
+  primary: "${resolved.primaryColor}",
+  primaryHover: "${resolved.primaryHoverColor}",
+  primarySubtle: "${resolved.primarySubtleColor}",
+  secondary: "${resolved.secondaryColor}",
+  border: "${resolved.borderColor}",
+  borderSubtle: "${resolved.borderSubtleColor}",
+  textPrimary: "${resolved.textPrimaryColor}",
+  textSecondary: "${resolved.textSecondaryColor}",
+  textMuted: "${resolved.textMutedColor}",
   semantic: {
-    success: "${contract.colorSystem.success}",
-    warning: "${contract.colorSystem.warning}",
-    error:   "${contract.colorSystem.danger}",
-    info:    "var(--color-brand-500)",
+    success: "${resolved.successColor}",
+    warning: "${resolved.warningColor}",
+    error:   "${resolved.dangerColor}",
+    info:    "${resolved.primaryColor}",
   },
 } as const;
 
@@ -96,21 +85,18 @@ export const spacing = {
   16: "4rem",
 } as const;
 
-export const radius = {
-  none: "0",
-  sm:   "0.25rem",
-  md:   "0.375rem",
-  DEFAULT: "${radius === "sm" ? "0.25rem" : radius === "xl" ? "0.75rem" : "0.375rem"}",
-  lg:   "0.5rem",
-  xl:   "0.75rem",
-  "2xl":"1rem",
-  full: "9999px",
+export const radiusTokens = {
+  sm:   "${resolved.radiusSm}",
+  md:   "${resolved.radiusMd}",
+  lg:   "${resolved.radiusLg}",
+  xl:   "${resolved.radiusXl}",
+  full: "${resolved.radiusFull}",
 } as const;
 
 export const typography = {
   fontFamily: {
-    sans: ["${font}", "system-ui", "sans-serif"],
-    mono: ["JetBrains Mono", "Fira Code", "monospace"],
+    display: ["${resolved.fontDisplay}", "system-ui", "sans-serif"],
+    body: ["${resolved.fontBody}", "system-ui", "sans-serif"],
   },
   headingStyle: "${contract.typography.headingStyle}",
   bodyStyle: "${contract.typography.bodyStyle}",
@@ -119,36 +105,500 @@ export const typography = {
 `,
     });
 
-    // ── 2. Button.tsx ─────────────────────────────────────────────────────────
+    // ── 2. index.css (Complete CSS Reset + Tokens + Resilient Component Styling) ──
+    files.push({
+      path: "src/index.css",
+      content: `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 1. DOMAIN-AGNOSTIC CSS RESET
+ * ═══════════════════════════════════════════════════════════════════════════ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  width: 100%;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+  font-feature-settings: normal;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: var(--font-body);
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  background-attachment: fixed;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hyperlinks Reset & Styling */
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+a:hover {
+  opacity: 0.85;
+}
+
+/* Button Reset & Normalization */
+button {
+  font-family: inherit;
+  font-size: 100%;
+  line-height: 1.15;
+  margin: 0;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: inherit;
+}
+
+/* Form Controls Reset */
+input, optgroup, select, textarea {
+  font-family: inherit;
+  font-size: 100%;
+  line-height: 1.15;
+  margin: 0;
+  color: inherit;
+}
+
+/* Media Display */
+img, svg, video, canvas, audio, iframe, embed, object {
+  display: block;
+  max-width: 100%;
+}
+
+/* Heading Structure */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  color: var(--color-text-primary);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 2. TOKEN-DRIVEN DESIGN SYSTEM VARIABLES (:root)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --color-background: ${resolved.backgroundColor};
+  --color-surface: ${resolved.surfaceColor};
+  --color-surface-elevated: ${resolved.surfaceElevatedColor};
+  --color-primary: ${resolved.primaryColor};
+  --color-primary-hover: ${resolved.primaryHoverColor};
+  --color-primary-subtle: ${resolved.primarySubtleColor};
+  --color-secondary: ${resolved.secondaryColor};
+  --color-accent: ${resolved.primaryColor};
+  --color-text-primary: ${resolved.textPrimaryColor};
+  --color-text-secondary: ${resolved.textSecondaryColor};
+  --color-text-muted: ${resolved.textMutedColor};
+  --color-border: ${resolved.borderColor};
+  --color-border-subtle: ${resolved.borderSubtleColor};
+  --color-success: ${resolved.successColor};
+  --color-warning: ${resolved.warningColor};
+  --color-danger: ${resolved.dangerColor};
+
+  --radius-sm: ${resolved.radiusSm};
+  --radius-md: ${resolved.radiusMd};
+  --radius-lg: ${resolved.radiusLg};
+  --radius-xl: ${resolved.radiusXl};
+  --radius-full: ${resolved.radiusFull};
+
+  --shadow-sm: ${resolved.shadowSm};
+  --shadow-md: ${resolved.shadowMd};
+  --shadow-lg: ${resolved.shadowLg};
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  --font-display: ${resolved.fontDisplay};
+  --font-body: ${resolved.fontBody};
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 3. RESILIENT DOMAIN-ADAPTIVE COMPONENT & LAYOUT CLASSES
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* App Shell & Header */
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+.app-header {
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding: 0.875rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-pill-group {
+  padding: 0.25rem;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.nav-item, .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: all 0.15s ease;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav-item:hover, .nav-link:hover {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nav-item.active, .nav-link.active {
+  color: #ffffff;
+  background: var(--color-primary);
+  font-weight: 600;
+  box-shadow: 0 2px 10px var(--color-primary-subtle);
+}
+
+.main-container {
+  flex: 1;
+  max-width: 1320px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.5rem 2rem;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.5rem 1.125rem;
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+  line-height: 1.25;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px var(--color-primary-subtle);
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px var(--color-primary-subtle);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-surface-elevated);
+  border-color: var(--color-text-secondary);
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-warning));
+  color: #ffffff;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: #ffffff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+/* Cards & Surfaces */
+.card, .glass-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card-hover:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+}
+
+.badge-live {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  display: inline-block;
+}
+
+/* Form Controls */
+.form-input, .form-select {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+
+/* Tables */
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.875rem;
+}
+
+.data-table th {
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.data-table td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-primary);
+}
+
+.data-table tr:hover td {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Telemetry & Metrics */
+.metric-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.metric-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+}
+
+.telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.skeleton-box {
+  background: var(--color-surface-elevated);
+  border-radius: var(--radius-md);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+`,
+    });
+
+    // ── 3. tailwind.config.js & postcss.config.js ─────────────────────────────
+    files.push({
+      path: "tailwind.config.js",
+      content: `/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        background: "var(--color-background)",
+        surface: "var(--color-surface)",
+        "surface-elevated": "var(--color-surface-elevated)",
+        primary: "var(--color-primary)",
+        "primary-hover": "var(--color-primary-hover)",
+        "primary-subtle": "var(--color-primary-subtle)",
+        secondary: "var(--color-secondary)",
+        border: "var(--color-border)",
+        textPrimary: "var(--color-text-primary)",
+        textSecondary: "var(--color-text-secondary)",
+        textMuted: "var(--color-text-muted)",
+      },
+      borderRadius: {
+        sm: "var(--radius-sm)",
+        DEFAULT: "var(--radius-md)",
+        md: "var(--radius-md)",
+        lg: "var(--radius-lg)",
+        xl: "var(--radius-xl)",
+      },
+      fontFamily: {
+        sans: ["var(--font-body)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "monospace"],
+      },
+    },
+  },
+  plugins: [],
+};
+`,
+    });
+
+    files.push({
+      path: "postcss.config.js",
+      content: `export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+`,
+    });
+
+    // ── 4. Button.tsx ─────────────────────────────────────────────────────────
     files.push({
       path: "src/design-system/components/Button.tsx",
       content: `import React from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent' | string;
-export type ButtonSize = 'sm' | 'md' | 'lg' | string;
+export type ButtonVariant = 'primary' | 'secondary' | 'accent' | 'ghost' | 'danger';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: any;
-  size?: any;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
   icon?: React.ReactNode;
   children?: React.ReactNode;
-  [key: string]: any;
 }
-
-const variantClasses: Record<string, string> = {
-  primary:   'bg-${brand}-600 text-white hover:bg-${brand}-500 focus-visible:ring-${brand}-500 shadow-md shadow-${brand}-950/30',
-  accent:    'bg-gradient-to-r ${contract.colorSystem.accent} text-white hover:brightness-110 shadow-md shadow-black/40',
-  secondary: '${contract.colorSystem.surface} text-${neutral}-200 hover:brightness-125 focus-visible:ring-${neutral}-600',
-  ghost:     'text-${neutral}-400 hover:text-${neutral}-100 hover:bg-${neutral}-800/40 focus-visible:ring-${neutral}-600',
-  danger:    'bg-rose-600 text-white hover:bg-rose-500 focus-visible:ring-rose-500 shadow-sm',
-};
-
-const sizeClasses: Record<string, string> = {
-  sm: 'px-3 py-1.5 text-xs gap-1.5',
-  md: 'px-4 py-2 text-sm gap-2',
-  lg: 'px-6 py-3 text-base gap-2.5',
-};
 
 export const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
@@ -161,29 +611,24 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const isDisabled = disabled || loading;
+  const sizeClass = size === 'sm' ? 'px-3 py-1.5 text-xs' : size === 'lg' ? 'px-6 py-3 text-base' : 'px-4 py-2 text-sm';
+  const variantClass = \`btn-\${variant}\`;
+
   return (
     <button
       disabled={isDisabled}
       aria-disabled={isDisabled}
       aria-busy={loading}
-      className={[
-        'inline-flex items-center justify-center font-medium rounded-${radius}',
-        'transition-all duration-150 active:scale-[0.98]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-        'disabled:opacity-40 disabled:cursor-not-allowed',
-        variantClasses[variant] || variantClasses.primary,
-        sizeClasses[size] || sizeClasses.md,
-        className,
-      ].join(' ')}
+      className={\`btn \${variantClass} \${sizeClass} \${className}\`}
       {...props}
     >
       {loading && (
-        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+        <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" aria-hidden="true">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
       )}
-      {!loading && icon && <span aria-hidden="true">{icon}</span>}
+      {!loading && icon && <span className="inline-flex mr-1.5" aria-hidden="true">{icon}</span>}
       {children && <span>{children}</span>}
     </button>
   );
@@ -192,13 +637,17 @@ export default Button;
 `,
     });
 
-    // ── 3. GlassCard.tsx ──────────────────────────────────────────────────────
+    // ── 5. GlassCard.tsx ──────────────────────────────────────────────────────
     files.push({
       path: "src/design-system/components/GlassCard.tsx",
       content: `import React from 'react';
 
-export const GlassCard: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ children, className = '', ...props }) => (
-  <div className={\`${contract.colorSystem.card} rounded-${radius} p-6 transition-all duration-200 hover:border-${brand}-500/30 \${className}\`} {...props}>
+export interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
+  hoverable?: boolean;
+}
+
+export const GlassCard: React.FC<GlassCardProps> = ({ children, hoverable = false, className = '', ...props }) => (
+  <div className={\`glass-card \${hoverable ? 'card-hover' : ''} \${className}\`} {...props}>
     {children}
   </div>
 );
@@ -206,51 +655,157 @@ export default GlassCard;
 `,
     });
 
-    // ── 4. Skeleton.tsx ───────────────────────────────────────────────────────
+    // ── 6. Badge.tsx ──────────────────────────────────────────────────────────
+    files.push({
+      path: "src/design-system/components/Badge.tsx",
+      content: `import React from 'react';
+
+export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  variant?: 'primary' | 'live' | 'warning' | 'danger';
+  dot?: boolean;
+}
+
+export const Badge: React.FC<BadgeProps> = ({ children, variant = 'primary', dot = false, className = '', ...props }) => {
+  const variantClass = variant === 'live' ? 'badge-live' : 'badge';
+  return (
+    <span className={\`\${variantClass} \${className}\`} {...props}>
+      {dot && <span className="live-dot mr-1" />}
+      {children}
+    </span>
+  );
+};
+export default Badge;
+`,
+    });
+
+    // ── 7. Input.tsx & Select.tsx ─────────────────────────────────────────────
+    files.push({
+      path: "src/design-system/components/Input.tsx",
+      content: `import React from 'react';
+
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  error?: string;
+}
+
+export const Input: React.FC<InputProps> = ({ label, error, className = '', ...props }) => (
+  <div className="w-full flex flex-col gap-1.5">
+    {label && <label className="text-xs font-semibold text-[var(--color-text-secondary)]">{label}</label>}
+    <input className={\`form-input \${className}\`} {...props} />
+    {error && <span className="text-xs text-[var(--color-danger)]">{error}</span>}
+  </div>
+);
+export default Input;
+`,
+    });
+
+    files.push({
+      path: "src/design-system/components/Select.tsx",
+      content: `import React from 'react';
+
+export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  label?: string;
+  options: Array<{ value: string; label: string }>;
+  error?: string;
+}
+
+export const Select: React.FC<SelectProps> = ({ label, options, error, className = '', ...props }) => (
+  <div className="w-full flex flex-col gap-1.5">
+    {label && <label className="text-xs font-semibold text-[var(--color-text-secondary)]">{label}</label>}
+    <select className={\`form-select \${className}\`} {...props}>
+      {options.map(opt => (
+        <option key={opt.value} value={opt.value} className="bg-[var(--color-surface)] text-[var(--color-text-primary)]">
+          {opt.label}
+        </option>
+      ))}
+    </select>
+    {error && <span className="text-xs text-[var(--color-danger)]">{error}</span>}
+  </div>
+);
+export default Select;
+`,
+    });
+
+    // ── 8. MetricCard.tsx & PageHeader.tsx ────────────────────────────────────
+    files.push({
+      path: "src/design-system/components/MetricCard.tsx",
+      content: `import React from 'react';
+
+export interface MetricCardProps {
+  label: string;
+  value: string | number;
+  trend?: string;
+  icon?: React.ReactNode;
+  className?: string;
+}
+
+export const MetricCard: React.FC<MetricCardProps> = ({ label, value, trend, icon, className = '' }) => (
+  <div className={\`metric-card \${className}\`}>
+    <div className="flex items-center justify-between text-xs font-medium text-[var(--color-text-muted)]">
+      <span>{label}</span>
+      {icon && <span className="text-[var(--color-primary)]">{icon}</span>}
+    </div>
+    <div className="metric-value mt-1">{value}</div>
+    {trend && (
+      <div className="text-xs font-medium text-[var(--color-primary)] mt-0.5">
+        {trend}
+      </div>
+    )}
+  </div>
+);
+export default MetricCard;
+`,
+    });
+
+    files.push({
+      path: "src/design-system/components/PageHeader.tsx",
+      content: `import React from 'react';
+
+export interface PageHeaderProps {
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+  badge?: React.ReactNode;
+  className?: string;
+}
+
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, actions, badge, className = '' }) => (
+  <div className={\`flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[var(--color-border)] mb-6 \${className}\`}>
+    <div>
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--color-text-primary)]">{title}</h1>
+        {badge}
+      </div>
+      {description && <p className="text-sm text-[var(--color-text-muted)] mt-1">{description}</p>}
+    </div>
+    {actions && <div className="flex items-center gap-3">{actions}</div>}
+  </div>
+);
+export default PageHeader;
+`,
+    });
+
+    // ── 9. Skeleton.tsx & EmptyState.tsx ──────────────────────────────────────
     files.push({
       path: "src/design-system/components/Skeleton.tsx",
       content: `import React from 'react';
 
-interface SkeletonProps {
-  className?: string;
-  lines?: number;
-  count?: number;
-  height?: string | number;
-  width?: string | number;
-}
-
-export const Skeleton: React.FC<SkeletonProps> = ({ className = '', lines = 1, count }) => {
-  const effectiveLines = count ?? lines;
-  if (effectiveLines > 1) {
-    return (
-      <div className="space-y-2.5" role="status" aria-label="Loading">
-        {Array.from({ length: effectiveLines }).map((_, i) => (
-          <div
-            key={i}
-            className={\`h-4 rounded-${radius} bg-${neutral}-800/60 animate-pulse \${i === effectiveLines - 1 ? 'w-3/4' : 'w-full'} \${className}\`}
-          />
-        ))}
-      </div>
-    );
-  }
-  return (
-    <div
-      role="status"
-      aria-label="Loading"
-      className={\`rounded-${radius} bg-${neutral}-800/60 animate-pulse \${className}\`}
-    />
-  );
-};
+export const Skeleton: React.FC<{ className?: string; lines?: number }> = ({ className = '', lines = 1 }) => (
+  <div className="space-y-2.5 w-full">
+    {Array.from({ length: lines }).map((_, i) => (
+      <div key={i} className={\`skeleton-box h-4 \${i === lines - 1 && lines > 1 ? 'w-3/4' : 'w-full'} \${className}\`} />
+    ))}
+  </div>
+);
 export default Skeleton;
 `,
     });
 
-    // ── 5. EmptyState.tsx ─────────────────────────────────────────────────────
     files.push({
       path: "src/design-system/components/EmptyState.tsx",
       content: `import React from 'react';
 
-interface EmptyStateProps {
+export interface EmptyStateProps {
   icon?: React.ReactNode;
   title: string;
   description?: string;
@@ -258,16 +813,10 @@ interface EmptyStateProps {
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description, action }) => (
-  <div className="flex flex-col items-center justify-center py-16 px-4 text-center ${contract.colorSystem.surface} rounded-${radius} border border-dashed">
-    {icon && (
-      <div className="mb-4 text-${brand}-400/80 p-3 rounded-full bg-${brand}-500/10 border border-${brand}-500/20" aria-hidden="true">
-        {icon}
-      </div>
-    )}
-    <h3 className="text-base font-semibold ${contract.colorSystem.textPrimary} mb-1">${contract.typography.headingStyle} {title}</h3>
-    {description && (
-      <p className="text-sm ${contract.colorSystem.textMuted} max-w-sm mb-6">{description}</p>
-    )}
+  <div className="empty-state">
+    {icon && <div className="mb-4 text-[var(--color-primary)] text-3xl">{icon}</div>}
+    <h3 className="text-base font-semibold text-[var(--color-text-primary)] mb-1">{title}</h3>
+    {description && <p className="text-sm text-[var(--color-text-muted)] max-w-sm mb-6">{description}</p>}
     {action && <div>{action}</div>}
   </div>
 );
@@ -275,7 +824,7 @@ export default EmptyState;
 `,
     });
 
-    // ── 6. Timeline.tsx (Specialized Component) ──────────────────────────────
+    // ── 10. Timeline.tsx & KanbanBoard.tsx ─────────────────────────────────────
     files.push({
       path: "src/design-system/components/Timeline.tsx",
       content: `import React from 'react';
@@ -286,8 +835,6 @@ export interface TimelineEvent {
   timestamp: string;
   description?: string;
   status?: string;
-  icon?: React.ReactNode;
-  highlight?: boolean;
 }
 
 export interface TimelineProps {
@@ -296,35 +843,28 @@ export interface TimelineProps {
   className?: string;
 }
 
-export const Timeline: React.FC<TimelineProps> = ({ events, title, className = '' }) => {
-  return (
-    <div className={\`${contract.colorSystem.card} rounded-${radius} p-6 \${className}\`}>
-      {title && <h3 className="text-base font-semibold ${contract.colorSystem.textPrimary} mb-4">{title}</h3>}
-      <div className="relative pl-6 border-l border-${neutral}-800 space-y-6">
-        {events.map((event) => (
-          <div key={event.id} className="relative group">
-            <div className={\`absolute -left-[31px] top-1 h-4 w-4 rounded-full border-2 \${event.highlight ? 'bg-${brand}-500 border-${brand}-300 shadow-sm shadow-${brand}-500/50' : 'bg-${neutral}-900 border-${neutral}-700'}\`} />
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium ${contract.colorSystem.textPrimary}">{event.title}</span>
-              <span className="text-xs ${contract.colorSystem.textMuted} font-mono">{event.timestamp}</span>
-            </div>
-            {event.description && <p className="text-xs ${contract.colorSystem.textMuted} mt-1">{event.description}</p>}
-            {event.status && (
-              <span className="inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full ${contract.colorSystem.badgeStyle}">
-                {event.status}
-              </span>
-            )}
+export const Timeline: React.FC<TimelineProps> = ({ events, title, className = '' }) => (
+  <div className={\`card \${className}\`}>
+    {title && <h3 className="text-base font-semibold text-[var(--color-text-primary)] mb-4">{title}</h3>}
+    <div className="relative pl-6 border-l-2 border-[var(--color-border)] space-y-6">
+      {events.map((event) => (
+        <div key={event.id} className="relative">
+          <div className="absolute -left-[31px] top-1.5 h-3.5 w-3.5 rounded-full bg-[var(--color-primary)] border-2 border-[var(--color-surface)]" />
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold text-[var(--color-text-primary)]">{event.title}</span>
+            <span className="text-xs font-mono text-[var(--color-text-muted)]">{event.timestamp}</span>
           </div>
-        ))}
-      </div>
+          {event.description && <p className="text-xs text-[var(--color-text-muted)] mt-1">{event.description}</p>}
+          {event.status && <span className="inline-block mt-2 badge">{event.status}</span>}
+        </div>
+      ))}
     </div>
-  );
-};
+  </div>
+);
 export default Timeline;
 `,
     });
 
-    // ── 7. KanbanBoard.tsx (Specialized Component) ───────────────────────────
     files.push({
       path: "src/design-system/components/KanbanBoard.tsx",
       content: `import React from 'react';
@@ -335,61 +875,47 @@ export interface KanbanItem {
   subtitle?: string;
   status: string;
   tags?: string[];
-  metrics?: string;
 }
 
 export interface KanbanBoardProps {
-  columns: { id: string; title: string; count?: number }[];
+  columns: { id: string; title: string }[];
   items: KanbanItem[];
   onItemClick?: (item: KanbanItem) => void;
   className?: string;
 }
 
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({ columns, items, onItemClick, className = '' }) => {
-  return (
-    <div className={\`grid grid-cols-1 md:grid-cols-\${Math.min(columns.length, 4)} gap-4 \${className}\`}>
-      {columns.map(col => {
-        const colItems = items.filter(i => i.status.toLowerCase() === col.id.toLowerCase() || i.status.toLowerCase() === col.title.toLowerCase());
-        return (
-          <div key={col.id} className="${contract.colorSystem.surface} rounded-${radius} p-4 flex flex-col gap-3 min-h-[320px]">
-            <div className="flex items-center justify-between pb-2 border-b border-${neutral}-800/80">
-              <span className="text-xs font-semibold uppercase tracking-wider ${contract.colorSystem.textPrimary}">{col.title}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full ${contract.colorSystem.badgeStyle} font-mono">{colItems.length}</span>
-            </div>
-            <div className="space-y-2.5 overflow-y-auto max-h-[500px]">
-              {colItems.map(item => (
-                <div
-                  key={item.id}
-                  onClick={() => onItemClick?.(item)}
-                  className="${contract.colorSystem.card} rounded-${radius} p-3 cursor-pointer hover:border-${brand}-500/50 transition-all text-left"
-                >
-                  <div className="text-sm font-medium ${contract.colorSystem.textPrimary}">{item.title}</div>
-                  {item.subtitle && <div className="text-xs ${contract.colorSystem.textMuted} mt-0.5">{item.subtitle}</div>}
-                  {item.metrics && <div className="text-[11px] font-mono text-${brand}-400 mt-2">{item.metrics}</div>}
-                  {item.tags && item.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {item.tags.map((t, idx) => (
-                        <span key={idx} className="text-[9px] px-1.5 py-0.5 rounded ${contract.colorSystem.badgeStyle}">{t}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-              {colItems.length === 0 && (
-                <div className="text-center py-8 text-xs ${contract.colorSystem.textMuted} italic">No active items</div>
-              )}
-            </div>
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ columns, items, onItemClick, className = '' }) => (
+  <div className={\`grid grid-cols-1 md:grid-cols-\${Math.min(columns.length, 4)} gap-4 \${className}\`}>
+    {columns.map(col => {
+      const colItems = items.filter(i => i.status.toLowerCase() === col.id.toLowerCase() || i.status.toLowerCase() === col.title.toLowerCase());
+      return (
+        <div key={col.id} className="card flex flex-col gap-3 min-h-[300px]">
+          <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-primary)]">{col.title}</span>
+            <span className="badge">{colItems.length}</span>
           </div>
-        );
-      })}
-    </div>
-  );
-};
+          <div className="space-y-2.5 overflow-y-auto max-h-[480px]">
+            {colItems.map(item => (
+              <div
+                key={item.id}
+                onClick={() => onItemClick?.(item)}
+                className="card card-hover p-3 cursor-pointer text-left"
+              >
+                <div className="text-sm font-semibold text-[var(--color-text-primary)]">{item.title}</div>
+                {item.subtitle && <div className="text-xs text-[var(--color-text-muted)] mt-0.5">{item.subtitle}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+);
 export default KanbanBoard;
 `,
     });
 
-    // ── 8. TelemetryGrid.tsx (Specialized Component) ─────────────────────────
+    // ── 11. TelemetryGrid.tsx & ShowcaseGrid.tsx ──────────────────────────────
     files.push({
       path: "src/design-system/components/TelemetryGrid.tsx",
       content: `import React from 'react';
@@ -399,7 +925,6 @@ export interface TelemetryMetric {
   label: string;
   value: string | number;
   unit?: string;
-  status?: 'optimal' | 'warning' | 'critical' | 'idle';
   trend?: string;
 }
 
@@ -409,38 +934,34 @@ export interface TelemetryGridProps {
   className?: string;
 }
 
-export const TelemetryGrid: React.FC<TelemetryGridProps> = ({ metrics, title, className = '' }) => {
-  return (
-    <div className={\`${contract.colorSystem.card} rounded-${radius} p-6 \${className}\`}>
-      {title && (
-        <div className="flex items-center justify-between mb-4 pb-2 border-b border-${neutral}-800">
-          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-${brand}-400 flex items-center gap-2">
-            <span className="inline-block h-2 w-2 rounded-full bg-${brand}-500 animate-ping" />
-            {title}
-          </h3>
-          <span className="text-[10px] font-mono ${contract.colorSystem.textMuted}">LIVE TELEMETRY STREAM</span>
-        </div>
-      )}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {metrics.map(m => (
-          <div key={m.id} className="${contract.colorSystem.surface} rounded-${radius} p-3 border">
-            <div className="text-[11px] font-mono ${contract.colorSystem.textMuted} truncate">{m.label}</div>
-            <div className="text-lg font-mono font-bold ${contract.colorSystem.textPrimary} mt-1 flex items-baseline gap-1">
-              {m.value}
-              {m.unit && <span className="text-xs font-normal ${contract.colorSystem.textMuted}">{m.unit}</span>}
-            </div>
-            {m.trend && <div className="text-[10px] font-mono text-${brand}-400/90 mt-1">{m.trend}</div>}
-          </div>
-        ))}
+export const TelemetryGrid: React.FC<TelemetryGridProps> = ({ metrics, title, className = '' }) => (
+  <div className={\`card \${className}\`}>
+    {title && (
+      <div className="flex items-center justify-between mb-4 pb-2 border-b border-[var(--color-border)]">
+        <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--color-primary)] flex items-center gap-2">
+          <span className="live-dot" />
+          {title}
+        </h3>
+        <span className="badge badge-live">LIVE TELEMETRY</span>
       </div>
+    )}
+    <div className="telemetry-grid">
+      {metrics.map(m => (
+        <div key={m.id} className="card p-3 border border-[var(--color-border)]">
+          <div className="text-xs font-mono text-[var(--color-text-muted)] truncate">{m.label}</div>
+          <div className="text-lg font-mono font-bold text-[var(--color-text-primary)] mt-1">
+            {m.value} {m.unit && <span className="text-xs font-normal text-[var(--color-text-muted)]">{m.unit}</span>}
+          </div>
+          {m.trend && <div className="text-xs font-mono text-[var(--color-primary)] mt-1">{m.trend}</div>}
+        </div>
+      ))}
     </div>
-  );
-};
+  </div>
+);
 export default TelemetryGrid;
 `,
     });
 
-    // ── 9. ShowcaseGrid.tsx (Specialized Component) ──────────────────────────
     files.push({
       path: "src/design-system/components/ShowcaseGrid.tsx",
       content: `import React from 'react';
@@ -451,9 +972,7 @@ export interface ShowcaseCardItem {
   category: string;
   subtitle?: string;
   status?: string;
-  rating?: string | number;
   highlightText?: string;
-  imageUrl?: string;
 }
 
 export interface ShowcaseGridProps {
@@ -462,55 +981,49 @@ export interface ShowcaseGridProps {
   className?: string;
 }
 
-export const ShowcaseGrid: React.FC<ShowcaseGridProps> = ({ items, onSelect, className = '' }) => {
-  return (
-    <div className={\`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 \${className}\`}>
-      {items.map(item => (
-        <div
-          key={item.id}
-          onClick={() => onSelect?.(item)}
-          className="${contract.colorSystem.card} rounded-${radius} overflow-hidden group cursor-pointer hover:border-${brand}-500/50 transition-all duration-300 flex flex-col"
-        >
-          <div className="h-44 w-full bg-gradient-to-br ${contract.colorSystem.accent} flex items-center justify-center relative p-4">
-            <div className="text-white/90 font-serif text-2xl font-bold tracking-tight text-center drop-shadow-md">
-              {item.title}
-            </div>
-            {item.status && (
-              <span className="absolute top-3 right-3 text-[10px] px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white font-medium border border-white/10">
-                {item.status}
-              </span>
-            )}
+export const ShowcaseGrid: React.FC<ShowcaseGridProps> = ({ items, onSelect, className = '' }) => (
+  <div className={\`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 \${className}\`}>
+    {items.map(item => (
+      <div
+        key={item.id}
+        onClick={() => onSelect?.(item)}
+        className="card card-hover overflow-hidden cursor-pointer flex flex-col justify-between"
+      >
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold uppercase text-[var(--color-primary)]">{item.category}</span>
+            {item.status && <span className="badge">{item.status}</span>}
           </div>
-          <div className="p-5 flex-1 flex flex-col justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-${brand}-400">{item.category}</div>
-              <h4 className="text-base font-bold ${contract.colorSystem.textPrimary} mt-1 group-hover:text-${brand}-300 transition-colors">{item.title}</h4>
-              {item.subtitle && <p className="text-xs ${contract.colorSystem.textMuted} mt-2 line-clamp-2">{item.subtitle}</p>}
-            </div>
-            {item.highlightText && (
-              <div className="mt-4 pt-3 border-t border-${neutral}-800/80 flex items-center justify-between text-xs">
-                <span className="${contract.colorSystem.textMuted}">Rate / Yield:</span>
-                <span className="font-bold text-${brand}-300">{item.highlightText}</span>
-              </div>
-            )}
-          </div>
+          <h4 className="text-base font-bold text-[var(--color-text-primary)]">{item.title}</h4>
+          {item.subtitle && <p className="text-xs text-[var(--color-text-muted)] mt-1 line-clamp-2">{item.subtitle}</p>}
         </div>
-      ))}
-    </div>
-  );
-};
+        {item.highlightText && (
+          <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex items-center justify-between text-xs">
+            <span className="text-[var(--color-text-muted)]">Metric:</span>
+            <span className="font-bold text-[var(--color-primary)]">{item.highlightText}</span>
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+);
 export default ShowcaseGrid;
 `,
     });
 
-    // ── 10. index.ts ──────────────────────────────────────────────────────────
+    // ── 12. index.ts ──────────────────────────────────────────────────────────
     files.push({
       path: "src/design-system/index.ts",
       content: `export * from './tokens.js';
 export * from './components/Button.js';
+export * from './components/GlassCard.js';
+export * from './components/Badge.js';
+export * from './components/Input.js';
+export * from './components/Select.js';
+export * from './components/MetricCard.js';
+export * from './components/PageHeader.js';
 export * from './components/Skeleton.js';
 export * from './components/EmptyState.js';
-export * from './components/GlassCard.js';
 export * from './components/Timeline.js';
 export * from './components/KanbanBoard.js';
 export * from './components/TelemetryGrid.js';
@@ -540,7 +1053,7 @@ Color Palette Tokens:
   Active Nav: ${contract.colorSystem.activeNavStyle}
 
 Pre-generated Specialized Components available in src/design-system/:
-  import { Button, GlassCard, Skeleton, EmptyState, Timeline, KanbanBoard, TelemetryGrid, ShowcaseGrid } from '../design-system/index.js';
+  import { Button, GlassCard, Badge, Input, Select, PageHeader, MetricCard, Skeleton, EmptyState, Timeline, KanbanBoard, TelemetryGrid, ShowcaseGrid } from '../design-system/index.js';
 
 ANTI-PATTERNS (STRICTLY PROHIBITED):
 ${contract.antiPatterns.map(a => `  ✗ ${a}`).join('\n')}

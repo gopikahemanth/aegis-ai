@@ -297,6 +297,34 @@ export class ArchitectureResolver {
       }
     }
 
+    // Natural Language Entity Extraction from prose prompts (e.g. "manage vessels, expeditions, scientists, ...")
+    if (explicitModels.length === 0) {
+      const manageMatch = userPrompt.match(/(?:manage|manages|track|tracking|monitor|handling|coordinates|supporting)\s+([a-zA-Z0-9_,\s]+?)(?:\.|\n|The dashboard|Create appropriate|with persistent|Do not)/i);
+      if (manageMatch && manageMatch[1]) {
+        const words = manageMatch[1].split(/,| and |\s+and\s+/).map(w => w.trim()).filter(Boolean);
+        for (const w of words) {
+          const clean = w.replace(/^(research|oceanographic|scientific|active|live|stage|court|trial|guest)\s+/i, "").trim();
+          const singular = clean.endsWith("ies") ? clean.slice(0, -3) + "y" : clean.replace(/s$/, "");
+          const pascal = singular.split(/[\s_-]+/).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join("");
+          if (pascal && pascal.length > 2 && !["User", "Record", "Item", "None", "System", "Operation", "Platform"].includes(pascal) && !explicitModels.includes(pascal)) {
+            explicitModels.push(pascal);
+          }
+        }
+      }
+    }
+
+    // Derive canonical routes from extracted models if explicit routes not provided
+    if (explicitRoutes.length === 0 && explicitModels.length > 0) {
+      explicitRoutes.push("/");
+      for (const m of explicitModels) {
+        const plural = toModelPlural(m);
+        const slug = plural.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+        if (!explicitRoutes.includes(`/${slug}`)) {
+          explicitRoutes.push(`/${slug}`);
+        }
+      }
+    }
+
     let resolvedRoutes = explicitRoutes.length > 0
       ? explicitRoutes
       : (canonical.userFlows && canonical.userFlows.length > 0
@@ -310,6 +338,13 @@ export class ArchitectureResolver {
       ? ["User", ...explicitModels]
       : (dbProvider === "None" ? [] : (canonical.dataModels || raw.dataModels || ["User"]));
     resolvedModels = Array.from(new Set(resolvedModels));
+
+    const resolvedFeatures = canonical.features || raw.features || (explicitModels.length > 0
+      ? explicitModels.map(m => {
+          const plural = toModelPlural(m);
+          return plural.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+        })
+      : []);
 
     const contract: ArchitectureContractV1 = Object.freeze({
       version: 1,
@@ -358,7 +393,7 @@ export class ArchitectureResolver {
         "Input Sanitization",
       ],
       requiredLibraries: canonical.inferredLibraries || raw.inferredLibraries || [],
-      requiredFeatures: canonical.features || raw.features || [],
+      requiredFeatures: resolvedFeatures,
       requiredRoutes: resolvedRoutes,
       requiredModels: resolvedModels,
       projectStructure: Object.freeze({
@@ -407,4 +442,13 @@ export class ArchitectureResolver {
       return null;
     }
   }
+}
+
+export function toModelPlural(name: string): string {
+  const lower = name.toLowerCase();
+  const uncountables = ["equipment", "information", "analytics", "telemetry", "research", "feedback", "software", "hardware", "inventory", "staff", "personnel"];
+  if (uncountables.includes(lower)) return name;
+  if (name.endsWith("y") && !name.endsWith("ey")) return `${name.slice(0, -1)}ies`;
+  if (name.endsWith("s") || name.endsWith("sh") || name.endsWith("ch") || name.endsWith("x") || name.endsWith("z")) return `${name}es`;
+  return `${name}s`;
 }

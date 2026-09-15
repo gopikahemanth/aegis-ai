@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { ArchitectureResolver, ArchitectureContractV1 } from "../governance/architecture-resolver.js";
 import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "../design/domain-visual-contract.js";
+import { DesignSystemGenerator } from "../design/design-system-generator.js";
 
 export interface BuildFixReport {
   createdFiles: string[];
@@ -70,6 +71,218 @@ export class DeterministicProjectFixer {
     // ── 1. Derive Generic Domain Specifications from Contract ────────────────
     const domainSpec = DeterministicProjectFixer.deriveDomainSpec(projectRoot, contract);
 
+    // ── 1b. Ensure package.json exists with scripts & dependencies ───────────
+    const pkgPath = join(projectRoot, "package.json");
+    if (!existsSync(pkgPath)) {
+      const pkgContent = JSON.stringify({
+        name: domainSpec.brandName.toLowerCase().replace(/[^a-z0-9_-]/g, "-"),
+        version: "0.1.0",
+        private: true,
+        type: "module",
+        scripts: {
+          dev: "node scripts/dev.js",
+          server: "node server/index.js",
+          build: "npx vite build",
+          test: "vitest run"
+        },
+        dependencies: {
+          react: "^18.3.1",
+          "react-dom": "^18.3.1",
+          "react-router-dom": "^6.23.0",
+          "@tanstack/react-query": "^5.28.0",
+          axios: "^1.6.8",
+          express: "^4.19.2",
+          cors: "^2.8.5",
+          dotenv: "^16.4.5",
+          "lucide-react": "^0.363.0",
+          clsx: "^2.1.0",
+          "tailwind-merge": "^2.2.2",
+          "@prisma/client": "^5.11.0"
+        },
+        devDependencies: {
+          typescript: "^5.4.3",
+          "@types/react": "^18.2.66",
+          "@types/react-dom": "^18.2.22",
+          "@types/express": "^4.17.21",
+          "@types/cors": "^2.8.17",
+          "@types/node": "^20.11.30",
+          "@vitejs/plugin-react": "^4.2.1",
+          vite: "^5.1.6",
+          vitest: "^1.4.0",
+          prisma: "^5.11.0",
+          tailwindcss: "^3.4.1",
+          autoprefixer: "^10.4.19",
+          postcss: "^8.4.38"
+        }
+      }, null, 2);
+      writeFileSync(pkgPath, pkgContent, "utf8");
+      createdFiles.push("package.json");
+    }
+
+    // ── 1c. Ensure scripts/dev.js exists ─────────────────────────────────────
+    const scriptsDir = join(projectRoot, "scripts");
+    if (!existsSync(scriptsDir)) mkdirSync(scriptsDir, { recursive: true });
+    const devScriptPath = join(scriptsDir, "dev.js");
+    if (!existsSync(devScriptPath)) {
+      writeFileSync(
+        devScriptPath,
+        `import { spawn } from "node:child_process";\n\nconsole.log("🚀 Starting Aegis Fullstack Application (Backend + Frontend)...");\nconst serverProc = spawn("npm", ["run", "server"], { stdio: "inherit", shell: true });\nconst viteProc = spawn("npx", ["vite", "--host"], { stdio: "inherit", shell: true });\n\nprocess.on("SIGINT", () => {\n  serverProc.kill();\n  viteProc.kill();\n  process.exit();\n});\n`,
+        "utf8"
+      );
+      createdFiles.push("scripts/dev.js");
+    }
+
+    // ── 1d. Ensure index.html, src/main.tsx, src/index.css, and vite.config.ts ───
+    const resolvedTokens = DomainVisualContractGenerator.resolveCssTokens(domainSpec.visualContract);
+    const indexHtmlPath = join(projectRoot, "index.html");
+    if (!existsSync(indexHtmlPath)) {
+      writeFileSync(
+        indexHtmlPath,
+        `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${domainSpec.brandName}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --color-background: ${resolvedTokens.backgroundColor};
+        --color-text-primary: ${resolvedTokens.textPrimaryColor};
+        --font-body: ${resolvedTokens.fontBody};
+      }
+      html, body, #root {
+        min-height: 100vh;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background-color: ${resolvedTokens.backgroundColor};
+        color: ${resolvedTokens.textPrimaryColor};
+        font-family: ${resolvedTokens.fontBody};
+      }
+      #root {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+    </style>
+  </head>
+  <body class="${domainSpec.visualContract.colorSystem.background} ${domainSpec.visualContract.colorSystem.textPrimary}" style="margin: 0; min-height: 100vh; background-color: ${resolvedTokens.backgroundColor}; color: ${resolvedTokens.textPrimaryColor}; font-family: ${resolvedTokens.fontBody};">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+`,
+        "utf8"
+      );
+      createdFiles.push("index.html");
+    }
+
+    // ── 1.1. Ensure Design System Tokens, CSS Reset, Components & Build Configs ─
+    try {
+      const dsGen = new DesignSystemGenerator();
+      const dsFiles = dsGen.generate(
+        { name: domainSpec.brandName, dataModels: domainSpec.allModels } as any,
+        domainSpec.visualContract
+      );
+      for (const df of dsFiles) {
+        const fullPath = join(projectRoot, df.path);
+        const parentDir = join(fullPath, "..");
+        if (!existsSync(parentDir)) mkdirSync(parentDir, { recursive: true });
+        // Always write/update if missing or if index.css is unpopulated
+        if (!existsSync(fullPath) || (df.path === "src/index.css" && (!readFileSync(fullPath, "utf8").includes(":root") || !readFileSync(fullPath, "utf8").includes(".btn")))) {
+          writeFileSync(fullPath, df.content, "utf8");
+          createdFiles.push(df.path);
+        }
+      }
+    } catch {}
+
+    const mainTsxPath = join(srcDir, "main.tsx");
+    if (!existsSync(mainTsxPath) || !readFileSync(mainTsxPath, "utf8").includes("./index.css")) {
+      writeFileSync(
+        mainTsxPath,
+        `import React from "react";\nimport ReactDOM from "react-dom/client";\nimport { App } from "./App";\nimport "./index.css";\n\nReactDOM.createRoot(document.getElementById("root")!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);\n`,
+        "utf8"
+      );
+      createdFiles.push("src/main.tsx");
+    }
+
+    const viteConfigPath = join(projectRoot, "vite.config.ts");
+    if (!existsSync(viteConfigPath)) {
+      writeFileSync(
+        viteConfigPath,
+        `import { defineConfig } from "vite";\nimport react from "@vitejs/plugin-react";\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 5173,\n    proxy: {\n      "/api": {\n        target: "http://localhost:3001",\n        changeOrigin: true,\n      },\n    },\n  },\n});\n`,
+        "utf8"
+      );
+      createdFiles.push("vite.config.ts");
+    }
+
+    const tsconfigPath = join(projectRoot, "tsconfig.json");
+    if (!existsSync(tsconfigPath)) {
+      writeFileSync(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: {
+            target: "ES2020",
+            useDefineForClassFields: true,
+            lib: ["ES2020", "DOM", "DOM.Iterable"],
+            module: "ESNext",
+            skipLibCheck: true,
+            moduleResolution: "bundler",
+            allowImportingTsExtensions: true,
+            resolveJsonModule: true,
+            isolatedModules: true,
+            noEmit: true,
+            jsx: "react-jsx",
+            strict: false,
+            noUnusedLocals: false,
+            noUnusedParameters: false,
+            noFallthroughCasesInSwitch: true,
+          },
+          include: ["src"],
+          references: [{ path: "./tsconfig.node.json" }],
+        }, null, 2),
+        "utf8"
+      );
+      createdFiles.push("tsconfig.json");
+    } else {
+      try {
+        const tsconfig = JSON.parse(readFileSync(tsconfigPath, "utf8"));
+        if (tsconfig.compilerOptions) {
+          tsconfig.compilerOptions.skipLibCheck = true;
+          if (tsconfig.compilerOptions.types && Array.isArray(tsconfig.compilerOptions.types)) {
+            tsconfig.compilerOptions.types = tsconfig.compilerOptions.types.filter((t: string) => t !== "@testing-library/jest-dom");
+            if (tsconfig.compilerOptions.types.length === 0) delete tsconfig.compilerOptions.types;
+          }
+          writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2), "utf8");
+        }
+      } catch {}
+    }
+
+    const tsconfigNodePath = join(projectRoot, "tsconfig.node.json");
+    if (!existsSync(tsconfigNodePath)) {
+      writeFileSync(
+        tsconfigNodePath,
+        JSON.stringify({
+          compilerOptions: {
+            composite: true,
+            skipLibCheck: true,
+            module: "ESNext",
+            moduleResolution: "bundler",
+            allowSyntheticDefaultImports: true,
+          },
+          include: ["vite.config.ts"],
+        }, null, 2),
+        "utf8"
+      );
+      createdFiles.push("tsconfig.node.json");
+    }
+
     // ── 2. Ensure prisma/schema.prisma exists with all Domain Models ──────────
     try {
       const prismaDir = join(projectRoot, "prisma");
@@ -118,10 +331,63 @@ model User {
 
     // ── 4. src/App.tsx ───────────────────────────────────────────────────────
     const appPath = join(srcDir, "App.tsx");
-    const appContent = `import React from "react";
+    const appContent = `import React, { Component, ErrorInfo, ReactNode } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppRoutes from "./routes";
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  public static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught application error:", error, errorInfo);
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen ${domainSpec.visualContract.colorSystem.background} ${domainSpec.visualContract.colorSystem.textPrimary} flex flex-col items-center justify-center p-6 font-sans text-center">
+          <div className="card p-8 rounded-2xl max-w-lg w-full ${domainSpec.visualContract.colorSystem.card} border space-y-4">
+            <div className="text-3xl">✦</div>
+            <h2 className="text-xl font-bold ${domainSpec.visualContract.colorSystem.textPrimary}">${domainSpec.brandName}</h2>
+            <p className="text-sm ${domainSpec.visualContract.colorSystem.textMuted}">
+              The application encountered a transient runtime error during rendering.
+            </p>
+            <div className="p-3 rounded-lg bg-black/40 text-xs font-mono text-rose-300 text-left overflow-x-auto">
+              {this.state.error?.message || "Render exception"}
+            </div>
+            <button
+              onClick={() => {
+                try { localStorage.clear(); } catch {}
+                window.location.href = "/";
+              }}
+              className="btn btn-primary px-4 py-2 rounded-lg bg-gradient-to-r ${domainSpec.visualContract.colorSystem.accent} text-white font-bold text-xs"
+            >
+              Reset Session & Reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -134,19 +400,21 @@ const queryClient = new QueryClient({
 
 export function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <div className="min-h-screen ${domainSpec.visualContract.colorSystem.background} ${domainSpec.visualContract.colorSystem.textPrimary} font-sans selection:bg-${domainSpec.visualContract.colorSystem.primary}-500/20">
-          <AppRoutes />
-        </div>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <div className="app-shell min-h-screen ${domainSpec.visualContract.colorSystem.background} ${domainSpec.visualContract.colorSystem.textPrimary} font-sans selection:bg-${domainSpec.visualContract.colorSystem.primary}-500/20">
+            <AppRoutes />
+          </div>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
 export default App;
 `;
-    if (!existsSync(appPath) || !readFileSync(appPath, "utf8").includes("QueryClientProvider")) {
+    if (!existsSync(appPath) || !readFileSync(appPath, "utf8").includes("ErrorBoundary")) {
       writeFileSync(appPath, appContent, "utf8");
       createdFiles.push("src/App.tsx");
     }
@@ -212,8 +480,8 @@ export function Layout({ children }: LayoutProps) {
   const navLinks = ${navLinksJson};
 
   return (
-    <div className="min-h-screen ${domainSpec.visualContract.colorSystem.background} ${domainSpec.visualContract.colorSystem.textPrimary} flex flex-col font-sans">
-      <header className="border-b ${domainSpec.visualContract.colorSystem.surface} backdrop-blur-md sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between">
+    <div className="app-shell min-h-screen ${domainSpec.visualContract.colorSystem.background} ${domainSpec.visualContract.colorSystem.textPrimary} flex flex-col font-sans">
+      <header className="app-header border-b ${domainSpec.visualContract.colorSystem.surface} backdrop-blur-md sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center gap-2.5 text-decoration-none group">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr ${domainSpec.visualContract.colorSystem.accent} flex items-center justify-center font-bold text-white shadow-lg shadow-black/40 group-hover:scale-105 transition-transform">
@@ -221,16 +489,16 @@ export function Layout({ children }: LayoutProps) {
             </div>
             <span className="font-bold text-lg ${domainSpec.visualContract.colorSystem.textPrimary} tracking-tight group-hover:opacity-90 transition-opacity">${domainSpec.brandName}</span>
           </Link>
-          <nav className="hidden md:flex items-center gap-1.5 ${isPill ? "p-1 rounded-full " + domainSpec.visualContract.colorSystem.surface : ""}">
+          <nav className="app-nav hidden md:flex items-center gap-1.5 ${isPill ? "nav-pill-group p-1 rounded-full " + domainSpec.visualContract.colorSystem.surface : ""}">
             {navLinks.map((link) => {
               const active = location.pathname === link.path || (link.path !== "/" && location.pathname.startsWith(link.path));
               return (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={\`px-3.5 py-1.5 ${isPill ? "rounded-full" : "rounded-lg"} text-xs font-medium transition-all duration-150 \${
+                  className={\`nav-item ${isPill ? "rounded-full" : "rounded-lg"} px-3.5 py-1.5 text-xs font-medium transition-all duration-150 \${
                     active
-                      ? "${domainSpec.visualContract.colorSystem.activeNavStyle} font-semibold"
+                      ? "active ${domainSpec.visualContract.colorSystem.activeNavStyle} font-semibold"
                       : "${domainSpec.visualContract.colorSystem.textMuted} hover:${domainSpec.visualContract.colorSystem.textPrimary} hover:bg-white/5"
                   }\`}
                 >
@@ -241,19 +509,19 @@ export function Layout({ children }: LayoutProps) {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${domainSpec.visualContract.colorSystem.badgeStyle}">
-            <span className="w-1.5 h-1.5 rounded-full bg-${domainSpec.visualContract.colorSystem.primary}-400 animate-pulse mr-1.5" />
+          <span className="badge badge-live inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${domainSpec.visualContract.colorSystem.badgeStyle}">
+            <span className="live-dot w-1.5 h-1.5 rounded-full bg-${domainSpec.visualContract.colorSystem.primary}-400 animate-pulse mr-1.5" />
             ${domainSpec.liveBadgeText}
           </span>
           <Link
             to="/login"
-            className="px-3.5 py-1.5 rounded-lg ${domainSpec.visualContract.colorSystem.surface} ${domainSpec.visualContract.colorSystem.textMuted} hover:${domainSpec.visualContract.colorSystem.textPrimary} text-xs font-medium transition border"
+            className="btn btn-secondary px-3.5 py-1.5 rounded-lg ${domainSpec.visualContract.colorSystem.surface} ${domainSpec.visualContract.colorSystem.textMuted} hover:${domainSpec.visualContract.colorSystem.textPrimary} text-xs font-medium transition border"
           >
             Portal
           </Link>
         </div>
       </header>
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8">{children}</main>
+      <main className="main-container flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8">{children}</main>
       <footer className="border-t ${domainSpec.visualContract.colorSystem.surface} px-6 py-4 text-center text-xs ${domainSpec.visualContract.colorSystem.textMuted}">
         ${domainSpec.brandName} • ${domainSpec.visualContract.domain} (${domainSpec.visualContract.visualPersonality.mood})
       </footer>
@@ -552,8 +820,10 @@ export default Layout;
     }
 
     // ── Priority 3: Map features from models if not enough features ──────────
+    const uncountables = ["equipment", "information", "analytics", "telemetry", "research", "feedback", "software", "hardware", "inventory", "staff", "personnel"];
     for (const m of allModels) {
-      const plural = m.endsWith("y") && !m.endsWith("ey") ? `${m.slice(0, -1)}ies` : `${m}s`;
+      const lowerM = m.toLowerCase();
+      const plural = uncountables.includes(lowerM) ? m : (m.endsWith("y") && !m.endsWith("ey") ? `${m.slice(0, -1)}ies` : `${m}s`);
       const slug = plural.toLowerCase();
       if (usedSlugs.has(slug) || usedSlugs.has(m.toLowerCase()) || slug === "dashboard") continue;
 
@@ -714,8 +984,8 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b ${colorSystem.surface}">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${colorSystem.badgeStyle}">
-                <span className="w-1.5 h-1.5 rounded-full bg-${colorSystem.primary}-400 animate-pulse mr-1.5" /> ${visualContract.domain}
+              <span className="badge badge-live inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${colorSystem.badgeStyle}">
+                <span className="live-dot w-1.5 h-1.5 rounded-full bg-${colorSystem.primary}-400 animate-pulse mr-1.5" /> ${visualContract.domain}
               </span>
               <span className="text-xs ${colorSystem.textMuted}">${visualContract.productType}</span>
             </div>
@@ -725,7 +995,7 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
           <div className="flex gap-2.5">
             <button
               onClick={() => setIsModalOpen(true)}
-              className="px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white font-bold text-xs transition shadow-lg shadow-black/30 hover:brightness-110 cursor-pointer flex items-center gap-1.5"
+              className="btn btn-primary px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white font-bold text-xs transition shadow-lg shadow-black/30 hover:brightness-110 cursor-pointer flex items-center gap-1.5"
             >
               <span>✦</span>
               <span>${dashboardComposition.heroAction.label}</span>
@@ -735,35 +1005,35 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
 
         {/* Operational Alerts if present */}
         {${JSON.stringify(dashboardComposition.alerts)}.length > 0 && (
-          <div className="p-3.5 rounded-xl ${colorSystem.surface} border flex items-center justify-between text-xs">
+          <div className="card p-3.5 rounded-xl ${colorSystem.surface} border flex items-center justify-between text-xs">
             <div className="flex items-center gap-2.5">
               <span className="text-base">📢</span>
               <span className="${colorSystem.textPrimary} font-medium">${dashboardComposition.alerts[0]}</span>
             </div>
-            <span className="text-[10px] font-mono ${colorSystem.textMuted}">LIVE NOTIFICATION</span>
+            <span className="badge badge-live text-[10px] font-mono ${colorSystem.textMuted}">LIVE NOTIFICATION</span>
           </div>
         )}
 
         {/* Contract-Derived Domain Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-5 rounded-2xl ${colorSystem.card} border flex flex-col justify-between">
+        <div className="telemetry-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="metric-card p-5 rounded-2xl ${colorSystem.card} border flex flex-col justify-between">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider ${colorSystem.textMuted}">${dashboardComposition.primaryMetric.label}</span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full ${colorSystem.badgeStyle}">${dashboardComposition.primaryMetric.trend}</span>
+              <span className="metric-label text-xs font-semibold uppercase tracking-wider ${colorSystem.textMuted}">${dashboardComposition.primaryMetric.label}</span>
+              <span className="badge text-[10px] font-semibold px-2 py-0.5 rounded-full ${colorSystem.badgeStyle}">${dashboardComposition.primaryMetric.trend}</span>
             </div>
-            <div className="text-3xl font-extrabold ${colorSystem.textPrimary} tracking-tight font-mono">${dashboardComposition.primaryMetric.value}</div>
+            <div className="metric-value text-3xl font-extrabold ${colorSystem.textPrimary} tracking-tight font-mono">${dashboardComposition.primaryMetric.value}</div>
             <div className="text-xs ${colorSystem.textMuted} mt-2 flex items-center gap-1">
               <span className="text-emerald-400">●</span> Primary Domain Telemetry
             </div>
           </div>
 
           {${JSON.stringify(dashboardComposition.secondaryMetrics)}.map((m, idx) => (
-            <div key={idx} className="p-5 rounded-2xl ${colorSystem.card} border flex flex-col justify-between">
+            <div key={idx} className="metric-card p-5 rounded-2xl ${colorSystem.card} border flex flex-col justify-between">
               <div className="flex justify-between items-start mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider ${colorSystem.textMuted}">{m.label}</span>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full ${colorSystem.badgeStyle}">{m.trend}</span>
+                <span className="metric-label text-xs font-semibold uppercase tracking-wider ${colorSystem.textMuted}">{m.label}</span>
+                <span className="badge text-[10px] font-semibold px-2 py-0.5 rounded-full ${colorSystem.badgeStyle}">{m.trend}</span>
               </div>
-              <div className="text-3xl font-bold ${colorSystem.textPrimary} tracking-tight">{m.value}</div>
+              <div className="metric-value text-3xl font-bold ${colorSystem.textPrimary} tracking-tight">{m.value}</div>
               <div className="text-xs ${colorSystem.textMuted} mt-2">Active Registry Indicator</div>
             </div>
           ))}
@@ -775,7 +1045,7 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
             <Link
               key={p.slug}
               to={p.routePath}
-              className="p-5 rounded-xl ${colorSystem.surface} border hover:border-${colorSystem.primary}-500/50 transition-all flex items-center justify-between group shadow-sm"
+              className="card card-hover p-5 rounded-xl ${colorSystem.surface} border hover:border-${colorSystem.primary}-500/50 transition-all flex items-center justify-between group shadow-sm"
             >
               <div>
                 <div className="font-bold ${colorSystem.textPrimary} text-sm group-hover:text-${colorSystem.primary}-400 transition">{p.navTitle}</div>
@@ -787,7 +1057,7 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
         </div>
 
         {/* Recent Operations Feed */}
-        <div className="${colorSystem.card} rounded-2xl border p-6 space-y-4 shadow-xl">
+        <div className="card ${colorSystem.card} rounded-2xl border p-6 space-y-4 shadow-xl">
           <div className="flex justify-between items-center pb-3 border-b ${colorSystem.surface}">
             <div>
               <h2 className="text-lg font-bold ${colorSystem.textPrimary}">${brandName} Operations Stream</h2>
@@ -798,7 +1068,7 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
                 <button
                   key={status}
                   onClick={() => setFilter(status)}
-                  className={filter === status ? "px-3 py-1 rounded-lg text-xs font-semibold transition ${colorSystem.badgeStyle}" : "px-3 py-1 rounded-lg text-xs font-semibold transition ${colorSystem.textMuted} hover:bg-white/5"}
+                  className={filter === status ? "btn btn-primary px-3 py-1 rounded-lg text-xs font-semibold transition ${colorSystem.badgeStyle}" : "btn btn-ghost px-3 py-1 rounded-lg text-xs font-semibold transition ${colorSystem.textMuted} hover:bg-white/5"}
                 >
                   {status}
                 </button>
@@ -807,7 +1077,7 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
           </div>
           <div className="divide-y ${colorSystem.surface}">
             {filteredActivities.length === 0 ? (
-              <div className="py-8 text-center ${colorSystem.textMuted} text-xs">No active operations found. Use the button above to register a new record.</div>
+              <div className="empty-state py-8 text-center ${colorSystem.textMuted} text-xs">No active operations found. Use the button above to register a new record.</div>
             ) : filteredActivities.map((act) => (
               <div key={act.id} className="py-3.5 flex items-center justify-between group">
                 <div>
@@ -815,7 +1085,7 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
                   <div className="text-xs ${colorSystem.textMuted} mt-0.5">{act.type} • {act.time}</div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-medium ${colorSystem.badgeStyle}">
+                  <span className="badge px-2.5 py-0.5 rounded-full text-xs font-medium ${colorSystem.badgeStyle}">
                     {act.status}
                   </span>
                   <button
@@ -834,7 +1104,7 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
         {/* Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="${colorSystem.card} border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="card ${colorSystem.card} border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
               <h3 className="text-lg font-bold ${colorSystem.textPrimary}">Register / Add {selectedType}</h3>
               <form onSubmit={handleCreate} className="space-y-4">
                 <div>
@@ -844,7 +1114,7 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
                     value={newItemTitle}
                     onChange={(e) => setNewItemTitle(e.target.value)}
                     placeholder="Enter name or identifier..."
-                    className="w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
+                    className="form-input w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
                     autoFocus
                     required
                   />
@@ -854,7 +1124,7 @@ ${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.mode
                   <select
                     value={selectedType}
                     onChange={(e) => setSelectedType(e.target.value)}
-                    className="w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
+                    className="form-select w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
                   >
 ${features.map(f => `                    <option value="${f.modelName}">${f.modelName}</option>`).join("\n")}
                   </select>
@@ -863,13 +1133,13 @@ ${features.map(f => `                    <option value="${f.modelName}">${f.mode
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-lg ${colorSystem.surface} text-xs font-semibold ${colorSystem.textMuted}"
+                    className="btn btn-secondary px-4 py-2 rounded-lg ${colorSystem.surface} text-xs font-semibold ${colorSystem.textMuted}"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white text-xs font-bold shadow-md hover:brightness-110"
+                    className="btn btn-primary px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white text-xs font-bold shadow-md hover:brightness-110"
                   >
                     Save {selectedType}
                   </button>
@@ -1033,7 +1303,7 @@ export function ${feat.name}() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b ${colorSystem.surface} pb-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-${colorSystem.primary}-400">${domainSpec.brandName}</span>
+              <span className="badge text-xs font-semibold uppercase tracking-wider text-${colorSystem.primary}-400">${domainSpec.brandName}</span>
               <span className="${colorSystem.textMuted}">•</span>
               <span className="text-xs ${colorSystem.textMuted}">${feat.navTitle} Registry</span>
             </div>
@@ -1042,21 +1312,21 @@ export function ${feat.name}() {
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white font-bold text-xs transition shadow-md hover:brightness-110 cursor-pointer"
+            className="btn btn-primary px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white font-bold text-xs transition shadow-md hover:brightness-110 cursor-pointer"
           >
             + Register ${feat.modelName}
           </button>
         </div>
 
         {/* Filter Toolbar */}
-        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between ${colorSystem.surface} p-4 rounded-xl border">
+        <div className="card flex flex-col sm:flex-row gap-3 items-center justify-between ${colorSystem.surface} p-4 rounded-xl border">
           <div className="relative w-full sm:w-80">
             <input
               type="text"
               placeholder="Search ${feat.pluralName.toLowerCase()}..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg pl-3 pr-4 py-2 text-xs ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
+              className="form-input w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg pl-3 pr-4 py-2 text-xs ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
             />
           </div>
           <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
@@ -1064,7 +1334,7 @@ export function ${feat.name}() {
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={statusFilter === st ? "px-3 py-1.5 rounded-lg text-xs font-medium transition ${colorSystem.badgeStyle}" : "px-3 py-1.5 rounded-lg text-xs font-medium transition ${colorSystem.textMuted} hover:bg-white/5"}
+                className={statusFilter === st ? "btn btn-primary px-3 py-1.5 rounded-lg text-xs font-medium transition ${colorSystem.badgeStyle}" : "btn btn-ghost px-3 py-1.5 rounded-lg text-xs font-medium transition ${colorSystem.textMuted} hover:bg-white/5"}
               >
                 {st}
               </button>
@@ -1076,22 +1346,22 @@ export function ${feat.name}() {
         {loading ? (
           <div className="p-12 text-center ${colorSystem.textMuted} text-xs">Synchronizing ${feat.pluralName.toLowerCase()} with database...</div>
         ) : filtered.length === 0 ? (
-          <div className="p-12 text-center ${colorSystem.surface} border rounded-2xl">
+          <div className="empty-state p-12 text-center ${colorSystem.surface} border rounded-2xl">
             <div className="${colorSystem.textPrimary} text-sm font-semibold">No ${feat.pluralName.toLowerCase()} registered</div>
             <p className="${colorSystem.textMuted} text-xs mt-1">Use the registration button above to create a record.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(item => (
-              <div key={item.id} className="p-5 rounded-xl ${colorSystem.card} border hover:border-${colorSystem.primary}-500/40 transition flex flex-col justify-between group shadow-md">
+              <div key={item.id} className="card card-hover p-5 rounded-xl ${colorSystem.card} border hover:border-${colorSystem.primary}-500/40 transition flex flex-col justify-between group shadow-md">
                 <div>
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-[11px] font-medium px-2 py-0.5 rounded ${colorSystem.surface} ${colorSystem.textMuted} border">
+                    <span className="badge text-[11px] font-medium px-2 py-0.5 rounded ${colorSystem.surface} ${colorSystem.textMuted} border">
                       {item.category}
                     </span>
                     <button
                       onClick={() => handleToggleStatus(item.id)}
-                      className="text-[11px] font-semibold px-2 py-0.5 rounded-full border transition ${colorSystem.badgeStyle}"
+                      className="badge text-[11px] font-semibold px-2 py-0.5 rounded-full border transition ${colorSystem.badgeStyle}"
                     >
                       {item.status}
                     </button>
@@ -1104,13 +1374,13 @@ export function ${feat.name}() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleToggleStatus(item.id)}
-                      className="hover:text-${colorSystem.primary}-300 transition cursor-pointer"
+                      className="btn btn-ghost hover:text-${colorSystem.primary}-300 transition cursor-pointer text-xs"
                     >
                       Toggle
                     </button>
                     <button
                       onClick={() => handleDelete(item.id)}
-                      className="hover:text-rose-400 transition cursor-pointer"
+                      className="btn btn-ghost hover:text-rose-400 transition cursor-pointer text-xs"
                     >
                       Delete
                     </button>
@@ -1124,7 +1394,7 @@ export function ${feat.name}() {
         {/* Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="${colorSystem.card} border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="card ${colorSystem.card} border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
               <h3 className="text-lg font-bold ${colorSystem.textPrimary}">Register ${feat.modelName}</h3>
               <form onSubmit={handleCreate} className="space-y-4">
                 <div>
@@ -1134,7 +1404,7 @@ export function ${feat.name}() {
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     placeholder="Enter ${feat.modelName.toLowerCase()} title..."
-                    className="w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
+                    className="form-input w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
                     autoFocus
                     required
                   />
@@ -1144,7 +1414,7 @@ export function ${feat.name}() {
                   <select
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value)}
-                    className="w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
+                    className="form-select w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
                   >
                     <option value="Standard">Standard</option>
                     <option value="Priority">Priority</option>
@@ -1158,20 +1428,20 @@ export function ${feat.name}() {
                     onChange={(e) => setNewDesc(e.target.value)}
                     placeholder="Operational notes or details..."
                     rows={3}
-                    className="w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
+                    className="form-input w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-lg ${colorSystem.surface} text-xs font-semibold ${colorSystem.textMuted}"
+                    className="btn btn-secondary px-4 py-2 rounded-lg ${colorSystem.surface} text-xs font-semibold ${colorSystem.textMuted}"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white text-xs font-bold shadow-md hover:brightness-110"
+                    className="btn btn-primary px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white text-xs font-bold shadow-md hover:brightness-110"
                   >
                     Save ${feat.modelName}
                   </button>
@@ -1185,6 +1455,7 @@ export function ${feat.name}() {
   );
 }
 
+
 export default ${feat.name};
 `;
   }
@@ -1196,8 +1467,8 @@ export default ${feat.name};
     const { features } = domainSpec;
 
     const imports = [
-      `import DashboardPageModule, { DashboardPage as NamedDashboardPage } from "./features/dashboard/DashboardPage";\nconst DashboardPage = (DashboardPageModule as any)?.default || DashboardPageModule || NamedDashboardPage || (() => null);`,
-      ...features.map(f => `import ${f.name}Module, { ${f.name} as Named${f.name} } from "./pages/${f.name}";\nconst ${f.name} = (${f.name}Module as any)?.default || ${f.name}Module || Named${f.name} || (() => null);`),
+      `import DashboardPageModule, { DashboardPage as NamedDashboardPage } from "./features/dashboard/DashboardPage";\nconst DashboardPage = resolveComponent(DashboardPageModule, NamedDashboardPage, "Dashboard");`,
+      ...features.map(f => `import ${f.name}Module, { ${f.name} as Named${f.name} } from "./pages/${f.name}";\nconst ${f.name} = resolveComponent(${f.name}Module, Named${f.name}, "${f.navTitle}");`),
     ].join("\n");
 
     const routeList: Array<{ path: string; component: string }> = [
@@ -1220,6 +1491,21 @@ export default ${feat.name};
 
     return `import React, { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+
+function resolveComponent(mod: any, named: any, fallbackTitle: string): React.ComponentType<any> {
+  if (typeof mod === "function") return mod;
+  if (mod && typeof mod.default === "function") return mod.default;
+  if (typeof named === "function") return named;
+  return function SafeFallback() {
+    return (
+      <div className="p-8 text-center text-slate-300 font-sans">
+        <h2 className="text-xl font-bold mb-2">{fallbackTitle}</h2>
+        <p className="text-sm text-slate-400">Loading module interface...</p>
+      </div>
+    );
+  };
+}
+
 ${imports}
 
 export function AppRoutes(props: any) {
@@ -1455,51 +1741,116 @@ export default router;
   private static ensureServerIndexIntegrity(serverIndexPath: string, domainSpec: ReturnType<typeof DeterministicProjectFixer.deriveDomainSpec>): void {
     const { features, brandName } = domainSpec;
 
-    if (!existsSync(serverIndexPath)) {
-      const imports = features.map(f => `import ${f.slug.replace(/-/g, "")}Router from "./routes/${f.slug}.routes";`).join("\n");
-      const mounts = features.map(f => `app.use("/api/${f.slug}", ${f.slug.replace(/-/g, "")}Router);`).join("\n");
+    const serverJsPath = serverIndexPath.replace(/\.ts$/, ".js");
+    const serverCode = `import http from "node:http";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 
-      const serverCode = `import "dotenv/config";
-import express, { Request, Response, NextFunction } from "express";
-import cors from "cors";
-import { prisma } from "./lib/prisma";
-${imports}
+const PORT = process.env.PORT || 3001;
+const dataDir = join(process.cwd(), ".aegis", "data");
+if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
 
-const app = express();
-const PORT = 5000;
+function getStore(name) {
+  const p = join(dataDir, \`\${name}.json\`);
+  if (!existsSync(p)) return [];
+  try { return JSON.parse(readFileSync(p, "utf8")); } catch { return []; }
+}
 
-app.use(cors());
-app.use(express.json());
+function saveStore(name, data) {
+  const p = join(dataDir, \`\${name}.json\`);
+  try { writeFileSync(p, JSON.stringify(data, null, 2), "utf8"); } catch {}
+}
 
-app.get("/api/health", async (_req: Request, res: Response) => {
-  res.json({ status: "healthy", timestamp: new Date() });
+const server = http.createServer((req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  const url = new URL(req.url, \`http://\${req.headers.host || "localhost"}\`);
+  const pathname = url.pathname;
+
+  let body = "";
+  req.on("data", chunk => body += chunk);
+  req.on("end", () => {
+    let jsonBody = {};
+    try { jsonBody = JSON.parse(body || "{}"); } catch {}
+
+    const sendJson = (status, data) => {
+      res.writeHead(status, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(data));
+    };
+
+    if (pathname === "/api/health") {
+      return sendJson(200, { status: "healthy", timestamp: new Date() });
+    }
+
+${features.map(f => `
+    // Routes for ${f.navTitle}
+    if (pathname === "/api/${f.slug}") {
+      if (req.method === "GET") return sendJson(200, getStore("${f.slug}"));
+      if (req.method === "POST") {
+        const items = getStore("${f.slug}");
+        const newItem = { id: Date.now().toString(), ...jsonBody, createdAt: new Date().toISOString() };
+        items.push(newItem);
+        saveStore("${f.slug}", items);
+        return sendJson(201, newItem);
+      }
+    }
+    if (pathname.startsWith("/api/${f.slug}/")) {
+      const id = pathname.replace("/api/${f.slug}/", "");
+      let items = getStore("${f.slug}");
+      const found = items.find(i => String(i.id) === String(id));
+      if (req.method === "GET") {
+        if (!found) return sendJson(404, { error: "${f.modelName} not found" });
+        return sendJson(200, found);
+      }
+      if (req.method === "PUT") {
+        const idx = items.findIndex(i => String(i.id) === String(id));
+        if (idx === -1) {
+          const created = { id, ...jsonBody, createdAt: new Date().toISOString() };
+          items.push(created);
+          saveStore("${f.slug}", items);
+          return sendJson(200, created);
+        }
+        items[idx] = { ...items[idx], ...jsonBody, updatedAt: new Date().toISOString() };
+        saveStore("${f.slug}", items);
+        return sendJson(200, items[idx]);
+      }
+      if (req.method === "DELETE") {
+        items = items.filter(i => String(i.id) !== String(id));
+        saveStore("${f.slug}", items);
+        return sendJson(200, { success: true, message: "Deleted successfully" });
+      }
+    }
+`).join("\n")}
+
+    sendJson(404, { error: "Route not found" });
+  });
 });
 
-${mounts}
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.warn(\`[Backend] Port \${PORT} already in use. Retrying on port \${Number(PORT) + 1}...\`);
+    server.listen(Number(PORT) + 1);
+  }
+});
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(\`🚀 ${brandName} Express Backend running on http://localhost:\${PORT}\`);
 });
 
-export default app;
+export default server;
 `;
+
+    writeFileSync(serverJsPath, serverCode, "utf8");
+    if (!existsSync(serverIndexPath)) {
       writeFileSync(serverIndexPath, serverCode, "utf8");
-    } else {
-      let content = readFileSync(serverIndexPath, "utf8");
-      let modified = false;
-
-      for (const f of features) {
-        const varName = `${f.slug.replace(/-/g, "")}Router`;
-        if (!content.includes(`/routes/${f.slug}.routes`) && !content.includes(`api/${f.slug}`)) {
-          content = `import ${varName} from "./routes/${f.slug}.routes";\n` + content;
-          content = content.replace(/const\s+app\s*=\s*express\(\);/s, `const app = express();\napp.use("/api/${f.slug}", ${varName});`);
-          modified = true;
-        }
-      }
-
-      if (modified) {
-        writeFileSync(serverIndexPath, content, "utf8");
-      }
     }
   }
 }

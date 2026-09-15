@@ -1,6 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "generated/*"
 
 onlyBuiltDependencies:
   - puppeteer

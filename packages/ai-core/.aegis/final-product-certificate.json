@@ -2,7 +2,7 @@
   "gate": "FinalProductGate",
   "tier": 37,
   "status": "CERTIFIED",
-  "certificateId": "cert_final_1789411862125",
+  "certificateId": "cert_final_1789497426500",
   "product": "AegisAnalytics",
   "domain": "SAAS",
   "requirementsVerified": true,
@@ -13,6 +13,6 @@
   "responsiveVerified": true,
   "accessibilityVerified": true,
   "criticalDefects": 0,
-  "cryptographicSignature": "sha256_final_prod_se1zhesw57",
-  "certifiedAt": "2026-09-14T18:51:02.125Z"
+  "cryptographicSignature": "sha256_final_prod_rr1xdlmp3d",
+  "certifiedAt": "2026-09-15T18:37:06.500Z"
 }

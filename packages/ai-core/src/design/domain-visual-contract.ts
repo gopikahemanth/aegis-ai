@@ -82,7 +82,224 @@ export interface DomainVisualDesignContract {
   antiPatterns: string[];
 }
 
+export interface ResolvedCssTokens {
+  backgroundColor: string;
+  surfaceColor: string;
+  surfaceElevatedColor: string;
+  primaryColor: string;
+  primaryHoverColor: string;
+  primarySubtleColor: string;
+  secondaryColor: string;
+  accentGradient: string;
+  textPrimaryColor: string;
+  textSecondaryColor: string;
+  textMutedColor: string;
+  borderColor: string;
+  borderSubtleColor: string;
+  successColor: string;
+  warningColor: string;
+  dangerColor: string;
+  radiusSm: string;
+  radiusMd: string;
+  radiusLg: string;
+  radiusXl: string;
+  radiusFull: string;
+  shadowSm: string;
+  shadowMd: string;
+  shadowLg: string;
+  fontDisplay: string;
+  fontBody: string;
+}
 export class DomainVisualContractGenerator {
+  /**
+   * Computes the relative luminance of an sRGB color per WCAG 2.1 specifications.
+   */
+  public static getLuminance(color: string): number {
+    const rgb = DomainVisualContractGenerator.parseColor(color);
+    if (!rgb) return 0.5;
+    const [r, g, b] = [rgb.r, rgb.g, rgb.b].map((v) => {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+
+  /**
+   * Computes the WCAG contrast ratio between two colors (ranging from 1:1 to 21:1).
+   */
+  public static getContrastRatio(color1: string, color2: string): number {
+    const l1 = DomainVisualContractGenerator.getLuminance(color1);
+    const l2 = DomainVisualContractGenerator.getLuminance(color2);
+    const lighter = Math.max(l1, l2);
+    const darker = Math.min(l1, l2);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  /**
+   * Helper to parse hex or rgb string into { r, g, b }.
+   */
+  public static parseColor(color: string): { r: number; g: number; b: number } | null {
+    if (!color || typeof color !== "string") return null;
+    const hexMatch = color.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/);
+    if (hexMatch) {
+      const hex = hexMatch[1];
+      if (hex.length === 3) {
+        return {
+          r: parseInt(hex[0] + hex[0], 16),
+          g: parseInt(hex[1] + hex[1], 16),
+          b: parseInt(hex[2] + hex[2], 16),
+        };
+      }
+      return {
+        r: parseInt(hex.slice(0, 2), 16),
+        g: parseInt(hex.slice(2, 4), 16),
+        b: parseInt(hex.slice(4, 6), 16),
+      };
+    }
+    const rgbMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (rgbMatch) {
+      return {
+        r: parseInt(rgbMatch[1], 10),
+        g: parseInt(rgbMatch[2], 10),
+        b: parseInt(rgbMatch[3], 10),
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Translates domain color names and theme parameters into concrete, guaranteed CSS hex/rgba tokens.
+   * Enforces WCAG contrast safeguards to guarantee text visibility across all palettes.
+   */
+  public static resolveCssTokens(contract: DomainVisualDesignContract): ResolvedCssTokens {
+    const isLight = contract.colorSystem.mode.includes("light");
+    const primary = (contract.colorSystem.primary || "teal").toLowerCase();
+    
+    // Primary palette map
+    const primaryMap: Record<string, { hex: string; hover: string; subtle: string }> = {
+      teal:     { hex: "#0d9488", hover: "#0f766e", subtle: "rgba(13, 148, 136, 0.18)" },
+      amber:    { hex: "#d97706", hover: "#b45309", subtle: "rgba(217, 119, 6, 0.18)" },
+      emerald:  { hex: "#059669", hover: "#047857", subtle: "rgba(5, 150, 105, 0.18)" },
+      violet:   { hex: "#7c3aed", hover: "#6d28d9", subtle: "rgba(124, 58, 237, 0.18)" },
+      cyan:     { hex: "#0891b2", hover: "#0e7490", subtle: "rgba(8, 145, 178, 0.18)" },
+      rose:     { hex: "#e11d48", hover: "#be123c", subtle: "rgba(225, 29, 72, 0.18)" },
+      sky:      { hex: "#0284c7", hover: "#0369a1", subtle: "rgba(2, 132, 199, 0.18)" },
+      indigo:   { hex: "#4f46e5", hover: "#4338ca", subtle: "rgba(79, 70, 229, 0.18)" },
+      blue:     { hex: "#2563eb", hover: "#1d4ed8", subtle: "rgba(37, 99, 235, 0.18)" },
+      fuchsia:  { hex: "#c026d3", hover: "#a21caf", subtle: "rgba(192, 38, 211, 0.18)" },
+    };
+
+    const pTokens = primaryMap[primary] || { hex: "#0d9488", hover: "#0f766e", subtle: "rgba(13, 148, 136, 0.18)" };
+
+    // Background & surface resolution
+    let bg = "#020617";
+    let surface = "rgba(15, 23, 42, 0.85)";
+    let surfaceElevated = "rgba(30, 41, 59, 0.95)";
+    let border = "rgba(255, 255, 255, 0.1)";
+    let borderSubtle = "rgba(255, 255, 255, 0.05)";
+    let textPrimary = "#f8fafc";
+    let textSecondary = "#94a3b8";
+    let textMuted = "#64748b";
+
+    if (contract.colorSystem.background && contract.colorSystem.background.includes("#")) {
+      const hexMatch = contract.colorSystem.background.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/);
+      if (hexMatch) bg = hexMatch[0];
+    } else if (contract.colorSystem.mode === "warm_dark") {
+      bg = "#0c0a09";
+      surface = "rgba(28, 25, 23, 0.85)";
+      surfaceElevated = "rgba(41, 37, 36, 0.95)";
+      textPrimary = "#fafaf9";
+      textSecondary = "#a8a29e";
+      textMuted = "#78716c";
+      border = "rgba(214, 211, 209, 0.12)";
+    } else if (contract.colorSystem.mode === "deep_obsidian") {
+      bg = "#030712";
+      surface = "rgba(17, 24, 39, 0.85)";
+      surfaceElevated = "rgba(31, 41, 55, 0.95)";
+      textPrimary = "#f9fafb";
+      textSecondary = "#9ca3af";
+      textMuted = "#6b7280";
+    } else if (contract.colorSystem.mode === "neon_dark") {
+      bg = "#07060d";
+      surface = "rgba(17, 13, 31, 0.85)";
+      surfaceElevated = "rgba(32, 24, 58, 0.95)";
+      textPrimary = "#fdf4ff";
+      textSecondary = "#d8b4fe";
+      textMuted = "#a855f7";
+      border = "rgba(168, 85, 247, 0.2)";
+    } else if (isLight) {
+      bg = "#f8fafc";
+      surface = "#ffffff";
+      surfaceElevated = "#f1f5f9";
+      textPrimary = "#0f172a";
+      textSecondary = "#475569";
+      textMuted = "#94a3b8";
+      border = "rgba(0, 0, 0, 0.08)";
+      borderSubtle = "rgba(0, 0, 0, 0.04)";
+    }
+
+    // WCAG Contrast Safeguard: Ensure textPrimary has minimum 4.5:1 contrast against background
+    const bgLuminance = DomainVisualContractGenerator.getLuminance(bg);
+    const contrast = DomainVisualContractGenerator.getContrastRatio(textPrimary, bg);
+    if (contrast < 4.5) {
+      if (bgLuminance < 0.5) {
+        textPrimary = "#f8fafc";
+        textSecondary = "#94a3b8";
+        textMuted = "#64748b";
+      } else {
+        textPrimary = "#0f172a";
+        textSecondary = "#475569";
+        textMuted = "#94a3b8";
+      }
+    }
+
+    // Radius density
+    let radiusSm = "4px";
+    let radiusMd = "8px";
+    let radiusLg = "12px";
+    let radiusXl = "16px";
+    if (contract.visualPersonality.density === "compact") {
+      radiusSm = "2px";
+      radiusMd = "4px";
+      radiusLg = "6px";
+      radiusXl = "8px";
+    } else if (contract.visualPersonality.density === "spacious") {
+      radiusSm = "6px";
+      radiusMd = "12px";
+      radiusLg = "18px";
+      radiusXl = "24px";
+    }
+
+    return {
+      backgroundColor: bg,
+      surfaceColor: surface,
+      surfaceElevatedColor: surfaceElevated,
+      primaryColor: pTokens.hex,
+      primaryHoverColor: pTokens.hover,
+      primarySubtleColor: pTokens.subtle,
+      secondaryColor: isLight ? "#64748b" : "#475569",
+      accentGradient: contract.colorSystem.accent,
+      textPrimaryColor: textPrimary,
+      textSecondaryColor: textSecondary,
+      textMutedColor: textMuted,
+      borderColor: border,
+      borderSubtleColor: borderSubtle,
+      successColor: contract.colorSystem.success || "#22c55e",
+      warningColor: contract.colorSystem.warning || "#f59e0b",
+      dangerColor: contract.colorSystem.danger || "#ef4444",
+      radiusSm,
+      radiusMd,
+      radiusLg,
+      radiusXl,
+      radiusFull: "9999px",
+      shadowSm: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+      shadowMd: "0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -2px rgba(0, 0, 0, 0.2)",
+      shadowLg: "0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3)",
+      fontDisplay: contract.typography.fontFamily || "Plus Jakarta Sans, Inter, sans-serif",
+      fontBody: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    };
+  }
+
   /**
    * Synthesize a complete DomainVisualDesignContract from prompt, spec, and architecture contract.
    * Derives design tokens, colors, layouts, navigation, components, and dashboard compositions
@@ -142,8 +359,48 @@ export class DomainVisualContractGenerator {
 
     // ── 2. Domain-Specific Visual Adaptation ──────────────────────────────────
 
-    // A. Hospitality / Luxury Hotel / Resort / Concierge
-    if (rawText.includes("hotel") || rawText.includes("resort") || rawText.includes("hospitality") || rawText.includes("guest") || rawText.includes("concierge") || rawText.includes("suite") || rawText.includes("room")) {
+    // A. Music Festival / Live Production / Entertainment / Tour
+    if (rawText.includes("music") || rawText.includes("festival") || rawText.includes("concert") || rawText.includes("soundwave") || rawText.includes("live-event") || rawText.includes("performer") || (rawText.includes("artist") && rawText.includes("stage"))) {
+      domain = "Music & Live Entertainment";
+      productType = "Festival Operations & Stage Dispatch";
+      layoutFamily = "MEDIA_SHOWCASE";
+      navStrategy = "COMMAND_CONSOLE";
+      density = "balanced";
+      formality = "expressive";
+      mood = "Electric, immersive, energetic, and high-impact with obsidian, cyan neon, and ultraviolet glows";
+
+      mode = "neon_dark";
+      bgClass = "bg-[#07060D]";
+      surfaceClass = "bg-[#110D1F]/80 border-[#281E45]";
+      cardClass = "bg-[#100C1D]/90 border border-[#2B1F4C]/80 shadow-2xl shadow-violet-950/40 backdrop-blur-lg";
+      primary = "violet";
+      secondary = "zinc";
+      accent = "from-fuchsia-500 via-purple-600 to-cyan-400";
+      textPrimary = "text-violet-50";
+      textMuted = "text-violet-300/60";
+      badgeStyle = "bg-violet-500/20 text-violet-300 border border-violet-500/40 shadow-sm shadow-violet-500/20";
+      activeNavStyle = "bg-gradient-to-r from-violet-600/30 to-cyan-500/20 text-cyan-300 border-l-2 border-cyan-400";
+      fontFamily = "Plus Jakarta Sans, Syne, sans-serif";
+      headingStyle = "font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-violet-200 via-pink-200 to-cyan-200";
+      bodyStyle = "text-sm text-violet-200/80";
+      emphasis = "font-bold text-cyan-400";
+
+      headline = "Live Stage Production Command & Crowd Telemetry";
+      primaryMetric = { label: "Main Stage Status", value: "LIVE ON-AIR", trend: "98.2 dB sound compliance", icon: "Radio" };
+      secondaryMetrics = [
+        { label: "Artists On-Site & Checked-In", value: "34 / 38", trend: "Next: Neon Horizon 21:00", icon: "Mic" },
+        { label: "Active Stage Capacity", value: "48,200 Fans", trend: "Main Arena 88% full", icon: "Users" },
+        { label: "Production Cues Completed", value: "142 Cues", trend: "0 Technical delays", icon: "CheckCircle" },
+      ];
+      heroAction = { label: "+ Schedule Stage Performance", targetRoute: "/performances", icon: "Zap" };
+      alerts = ["Sound check passed: Main Stage Subwoofers synchronized. Next performance: 20:45."];
+      primaryWidget = "TIMELINE";
+      components = ["ScheduleMatrix", "ShowcaseGrid", "Timeline", "TelemetryGrid"];
+      antiPatterns.push("Corporate gray styling", "Boring data spreadsheets", "Subdued pastel beige", "Generic CRUD cards");
+    }
+
+    // B. Hospitality / Luxury Hotel / Resort / Concierge
+    else if (rawText.includes("hotel") || rawText.includes("resort") || rawText.includes("concierge") || rawText.includes("suite") || rawText.includes("lodging") || (rawText.includes("hospitality") && !rawText.includes("festival") && !rawText.includes("music"))) {
       domain = "Hospitality & Luxury Resort";
       productType = "Guest Experience & Reservation Suite";
       layoutFamily = "HOSPITALITY_PORTAL";
@@ -182,8 +439,8 @@ export class DomainVisualContractGenerator {
       antiPatterns.push("Industrial dense telemetry", "Cold neon colors", "Generic SaaS blue", "Raw monospace tables");
     }
 
-    // B. Legal Practice / Chambers / Law Firm / Court Litigations
-    else if (rawText.includes("legal") || rawText.includes("law") || rawText.includes("court") || rawText.includes("litigation") || rawText.includes("chambers") || rawText.includes("case") || rawText.includes("hearing") || rawText.includes("attorney")) {
+    // C. Legal Practice / Chambers / Law Firm / Court Litigations
+    else if (rawText.includes("legal") || rawText.includes("law") || rawText.includes("court") || rawText.includes("litigation") || rawText.includes("chambers") || rawText.includes("hearing") || rawText.includes("attorney") || rawText.includes("casematter")) {
       domain = "Legal Practice & Litigation";
       productType = "Case Intelligence & Matter Workspace";
       layoutFamily = "WORKSPACE_SPLIT";
@@ -342,7 +599,47 @@ export class DomainVisualContractGenerator {
       antiPatterns.push("Generic white themes", "Corporate blue headers", "Generic CRUD cards");
     }
 
-    // F. Healthcare / Clinical / Medical / Hospital
+    // F. Marine & Oceanographic Research / Maritime Expeditions
+    else if (rawText.includes("ocean") || rawText.includes("marine") || rawText.includes("expedition") || rawText.includes("vessel") || rawText.includes("maritime") || rawText.includes("voyage") || rawText.includes("sampling") || rawText.includes("oceanographic") || rawText.includes("nautical") || rawText.includes("deepsea") || rawText.includes("sea")) {
+      domain = "Marine & Oceanographic Research";
+      productType = "Expedition Telemetry & Ocean Discovery Hub";
+      layoutFamily = "COMMAND_CENTER";
+      navStrategy = "DUAL_SIDEBAR";
+      density = "balanced";
+      formality = "professional";
+      mood = "Abyssal deep ocean obsidian with bioluminescent teal, cyan bathymetry, and seafoam telemetry accents";
+
+      mode = "dark";
+      bgClass = "bg-[#020B14]";
+      surfaceClass = "bg-[#061524]/80 border-[#0E2842]";
+      cardClass = "bg-[#04111E]/90 border border-[#0F3050]/80 shadow-2xl shadow-cyan-950/30 backdrop-blur-md";
+      primary = "teal";
+      secondary = "slate";
+      accent = "from-teal-400 via-cyan-500 to-emerald-600";
+      textPrimary = "text-teal-50";
+      textMuted = "text-cyan-200/60";
+      badgeStyle = "bg-teal-500/15 text-teal-300 border border-teal-500/30 shadow-sm shadow-teal-500/20";
+      activeNavStyle = "bg-gradient-to-r from-teal-600/25 to-cyan-500/20 text-cyan-200 border-l-2 border-teal-400";
+      fontFamily = "Plus Jakarta Sans, Inter, sans-serif";
+      headingStyle = "font-semibold tracking-tight text-teal-100";
+      bodyStyle = "text-sm text-cyan-100/70";
+      emphasis = "font-medium text-teal-300";
+
+      headline = "Expedition Fleet Operations & Oceanographic Telemetry";
+      primaryMetric = { label: "Active Research Voyages", value: "4 Expeditions", trend: "All vessels on-station", icon: "Compass" };
+      secondaryMetrics = [
+        { label: "CTD Profiles Logged", value: "1,842 Casts", trend: "+36 deep casts today", icon: "Waves" },
+        { label: "Vessel Fleet Readiness", value: "100% Operational", trend: "0 Mechanical alerts", icon: "Anchor" },
+        { label: "Sampling Specimens", value: "628 Findings", trend: "14 Novel benthic taxa", icon: "FlaskConical" },
+      ];
+      heroAction = { label: "+ Launch Expedition Mission", targetRoute: "/expeditions", icon: "Send" };
+      alerts = ["R/V Pelagia reporting: Acoustic Doppler profiler calibrated. Bathymetric transect #12 active."];
+      primaryWidget = "TELEMETRY";
+      components = ["TelemetryGrid", "Timeline", "StatusPipeline", "ShowcaseGrid"];
+      antiPatterns.push("Generic corporate blue", "Dry spreadsheet UI", "Generic CRUD cards");
+    }
+
+    // G. Healthcare / Clinical / Medical / Hospital
     else if (rawText.includes("health") || rawText.includes("clinic") || rawText.includes("medical") || rawText.includes("patient") || rawText.includes("doctor") || rawText.includes("hospital")) {
       domain = "Healthcare & Clinical Care";
       productType = "Clinical Intelligence & Patient Registry";
@@ -380,6 +677,46 @@ export class DomainVisualContractGenerator {
       primaryWidget = "TIMELINE";
       components = ["Timeline", "StatusPipeline", "DocumentWorkspace", "KanbanBoard"];
       antiPatterns.push("Generic CRUD card grids", "Unstyled forms", "Playful bright neon");
+    }
+
+    // H. Fintech / Trading / Asset Management / Banking
+    else if (rawText.includes("fintech") || rawText.includes("trading") || rawText.includes("bank") || rawText.includes("crypto") || rawText.includes("portfolio") || rawText.includes("ledger") || rawText.includes("wallet") || rawText.includes("invest")) {
+      domain = "Financial Markets & Asset Management";
+      productType = "High-Frequency Portfolio & Settlement Console";
+      layoutFamily = "ANALYTICS_CONSOLE";
+      navStrategy = "COMMAND_CONSOLE";
+      density = "compact";
+      formality = "technical";
+      mood = "High-precision dark terminal with emerald liquidity yields and graphite surfaces";
+
+      mode = "dark";
+      bgClass = "bg-[#05090C]";
+      surfaceClass = "bg-[#0C1217]/80 border-[#15222B]";
+      cardClass = "bg-[#091014]/90 border border-[#192832]/80 shadow-xl shadow-black/60";
+      primary = "emerald";
+      secondary = "slate";
+      accent = "from-emerald-400 via-teal-500 to-green-600";
+      textPrimary = "text-emerald-50";
+      textMuted = "text-slate-400";
+      badgeStyle = "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30";
+      activeNavStyle = "bg-emerald-500/20 text-emerald-200 border-l-2 border-emerald-400";
+      fontFamily = "JetBrains Mono, Inter, monospace";
+      headingStyle = "font-mono tracking-tight font-semibold text-emerald-100";
+      bodyStyle = "text-sm text-slate-300 font-mono";
+      emphasis = "font-mono font-bold text-emerald-400";
+
+      headline = "Asset Liquidity & High-Frequency Settlement Desk";
+      primaryMetric = { label: "Total Asset NAV", value: "$124.8M", trend: "+4.2% daily Alpha", icon: "DollarSign" };
+      secondaryMetrics = [
+        { label: "Active Yield Velocity", value: "18.4% APY", trend: "0 Liquidation risk", icon: "TrendingUp" },
+        { label: "Pending Settlements", value: "32 Orders", trend: "T+0 instant clearing", icon: "CheckCircle" },
+        { label: "Risk Exposure Index", value: "Low (0.12 Beta)", trend: "Fully hedged", icon: "ShieldCheck" },
+      ];
+      heroAction = { label: "+ Execute Trade Order", targetRoute: "/trades", icon: "ArrowRightLeft" };
+      alerts = ["Settlement executed: $2.4M treasury hedge locked at 0.04% spread."];
+      primaryWidget = "ANALYTICS";
+      components = ["TelemetryGrid", "Timeline", "StatusPipeline", "KanbanBoard"];
+      antiPatterns.push("Casual playful styling", "Unrounded borders", "Generic CRUD cards");
     }
 
     return {

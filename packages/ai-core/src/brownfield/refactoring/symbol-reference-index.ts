@@ -31,6 +31,15 @@ export class SymbolReferenceIndex {
   }
 
   /**
+   * Discovers all references to the target symbol across the entire project.
+   */
+  public discoverReferences(target: ResolvedSymbolDefinition): SymbolReferenceLocation[] {
+    const summaryMap = this.resolver.parseProject();
+    const candidateFiles = Array.from(summaryMap.keys());
+    return this.findReferences(target, candidateFiles, target.name);
+  }
+
+  /**
    * Discovers all references to the target symbol across all candidate files.
    */
   public findReferences(

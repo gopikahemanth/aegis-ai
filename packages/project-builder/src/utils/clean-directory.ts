@@ -10,8 +10,10 @@ export function cleanDirectory(targetPath: string): void {
 
   if (process.platform === "win32") {
     try {
-      // Terminate any node/vite processes locking files in the generated project directory
-      const psCommand = `powershell -Command "Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*generated*project*' -or $_.CommandLine -like '*5173*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`;
+      const myPid = process.pid;
+      const myPpid = process.ppid;
+      // Terminate only orphan dev servers locking port 5173, never the generator itself
+      const psCommand = `powershell -Command "Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessId -ne ${myPid} -and $_.ProcessId -ne ${myPpid} -and ($_.CommandLine -like '*vite*5173*' -or $_.CommandLine -like '*--port 5173*') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`;
       execSync(psCommand, { stdio: "ignore" });
     } catch {
       /* ignore if process termination fails */

@@ -214,13 +214,22 @@ REQUIRED UI PATTERNS (every project must have these):
 ═══════════════════════════════════════════════════════
 
 PRODUCTION CODE STANDARDS:
-  ✓ FULL FEATURE & ROUTING COMPLETENESS (STRICTLY MANDATORY):
-    - Every route, navigation link, tab, and view (e.g. /orders, /inventory, /portfolio, /checkout, /upload, /settings) MUST be fully mapped in App.tsx or routes.tsx to a real, rendered React component view.
-    - NEVER leave dead links, unmapped routes, or empty placeholder 404 pages.
-    - EVERY interactive button, tab, search input, filter dropdown, and modal trigger MUST have a fully working, reactive click/submit handler that updates state or calls API endpoints.
-    - NO dummy console.log() handlers or broken buttons.
-    - Slide-over drawers, multi-step checkout modals, and detail preview modals MUST have working toggle state and complete form submission flows.
-    - Provide a robust local state/store fallback initialized with domain-specific data so all tabs and features are 100% interactive and functional out-of-the-box both online and offline.
+  ✓ RICH FEATURE DENSITY & COMPLETE DOMAIN WORKFLOWS (STRICTLY MANDATORY):
+    - The website MUST feel like a finished, commercial SaaS product — never an empty skeleton or just bare metric cards.
+    - MAIN DASHBOARD / FEATURE VIEWS MUST ALWAYS INCLUDE:
+        1. Top Application Shell & Navigation: Sticky header with brand logo, product title, domain suite badge, navigation links, and live online status pill.
+        2. Live Domain KPI Metric Cards: Metrics with trend percentages (+18%), status pills, and descriptive subtext.
+        3. Interactive Domain Data Table / Feed: Full data table with realistic seed items (4-8 domain-specific records), ticket/ID badges, customer/asset details, priority tags, semantic status pills, price/value tags, and inline workflow status selectors.
+        4. Live Search & Multi-Tab Filter Bar: Status tabs (All, In Progress, Pending, Completed, etc.) and search bar filtering records in real-time.
+        5. Interactive Intake / Create Modal: "+ New [Entity]" button opening a fully-interactive modal dialog with input fields, select dropdowns, validation, and a form submit handler that appends new records to the live table and updates metric counts.
+        6. Operational Breakdown & Quick Action Panels: Staff/resource workload widget, parts/inventory status widget, and quick action buttons (e.g. Notify, Export CSV, Sync).
+    - FULL FEATURE & ROUTING COMPLETENESS:
+        - Every route, navigation link, tab, and view (e.g. /orders, /inventory, /portfolio, /checkout, /upload, /settings) MUST be fully mapped in App.tsx or routes.tsx to a real, rendered React component view.
+        - NEVER leave dead links, unmapped routes, or empty placeholder 404 pages.
+        - EVERY interactive button, tab, search input, filter dropdown, and modal trigger MUST have a fully working, reactive click/submit handler that updates state or calls API endpoints.
+        - NO dummy console.log() handlers or broken buttons.
+        - Slide-over drawers, multi-step checkout modals, and detail preview modals MUST have working toggle state and complete form submission flows.
+        - Provide a robust local state/store fallback initialized with domain-specific data so all tabs and features are 100% interactive and functional out-of-the-box both online and offline.
   ✓ Real Data Flows: If the application needs data (e.g., studies, plans, chat logs, scores, history):
     - Connect the frontend to the backend or local database schema using real api endpoints.
     - Implement React Query (useQuery/useMutation) or native fetch hooks that call backend controllers.

@@ -54,20 +54,16 @@ export class FeatureCoverageValidator {
       const routePath = typeof route === "string" ? route : (route as any).path || "/";
       const routeName = typeof route === "string" ? route : (route as any).name || routePath;
       const routeDesc = typeof route === "string" ? route : (route as any).description || "";
-      const slug = routePath === "/" ? "dashboard" : routePath.replace(/^\//, "").toLowerCase();
+      const escaped = routePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pathRegex = new RegExp(`path\\s*=\\s*["']${escaped}["']`, "i");
 
       for (const [file, content] of fileContents.entries()) {
         if (file.endsWith("routes.tsx") || file.endsWith("App.tsx") || file.endsWith("routes.ts")) {
-          if (content.includes(`path="${routePath}"`) || content.includes(`path='${routePath}'`)) {
+          if (pathRegex.test(content)) {
             found = true;
             implementedIn = file;
             break;
           }
-        }
-        if (file.toLowerCase().includes(slug) && (file.endsWith(".tsx") || file.endsWith(".ts"))) {
-          found = true;
-          implementedIn = file;
-          break;
         }
       }
 
@@ -109,15 +105,29 @@ export class FeatureCoverageValidator {
 
     // 3. Validate Domain Models in Prisma schema or TypeScript types
     const prismaSchema = fileContents.get("prisma/schema.prisma") || "";
+    const declaredPrismaModels = Array.from(prismaSchema.matchAll(/model\s+(\w+)\s*\{/g)).map(match => match[1]);
     const domainModels: any[] = (contract as any).domainModels || contract.requiredModels || [];
+
     for (const model of domainModels) {
       let found = false;
       let implementedIn: string | undefined;
       const modelName = typeof model === "string" ? model : (model.name || "");
+      const cleanM = modelName.toLowerCase().replace(/[-_\s]+/g, "");
+      const singularM = cleanM.endsWith("ies") ? cleanM.slice(0, -3) + "y" : cleanM.replace(/s$/, "");
 
-      if (prismaSchema.includes(`model ${modelName}`)) {
+      const matchedPrisma = declaredPrismaModels.find(dm => {
+        const cleanDm = dm.toLowerCase().replace(/[-_\s]+/g, "");
+        const singularDm = cleanDm.endsWith("ies") ? cleanDm.slice(0, -3) + "y" : cleanDm.replace(/s$/, "");
+        if (cleanDm === cleanM || singularDm === singularM) return true;
+        if (cleanDm.includes(singularM) || cleanM.includes(singularDm)) return true;
+        if ((singularM === "team" && cleanDm.includes("member")) || (singularM === "member" && cleanDm.includes("team"))) return true;
+        if ((singularM === "activity" && cleanDm.includes("log")) || (singularM === "log" && cleanDm.includes("activity"))) return true;
+        return false;
+      });
+
+      if (matchedPrisma) {
         found = true;
-        implementedIn = "prisma/schema.prisma";
+        implementedIn = `prisma/schema.prisma (model ${matchedPrisma})`;
       } else {
         // Look for TypeScript interface/type in types or models
         for (const [file, content] of fileContents.entries()) {

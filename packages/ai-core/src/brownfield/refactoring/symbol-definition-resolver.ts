@@ -20,6 +20,30 @@ export class SymbolDefinitionResolver {
   }
 
   /**
+   * Resolves the exact AST definition by file path and symbol name.
+   */
+  public resolveByName(
+    filePath: string,
+    symbolName: string,
+    expectedKind?: SymbolKind
+  ): ResolvedSymbolDefinition | null {
+    return this.resolveDefinition(filePath, symbolName, expectedKind);
+  }
+
+  /**
+   * Resolves the exact AST definition by canonical symbolId (<filePath>#<name>@<line>:<col>).
+   */
+  public resolveById(symbolId: string): ResolvedSymbolDefinition | null {
+    const hashIdx = symbolId.indexOf("#");
+    const atIdx = symbolId.indexOf("@");
+    if (hashIdx === -1) return null;
+
+    const filePath = symbolId.substring(0, hashIdx);
+    const symbolName = atIdx !== -1 ? symbolId.substring(hashIdx + 1, atIdx) : symbolId.substring(hashIdx + 1);
+    return this.resolveDefinition(filePath, symbolName);
+  }
+
+  /**
    * Resolves the exact AST definition for a given symbol name and optional kind within a file.
    */
   public resolveDefinition(
@@ -57,10 +81,10 @@ export class SymbolDefinitionResolver {
             symbolId: `${relPath}#${symbolName}@${line + 1}:${character + 1}`,
             filePath: relPath,
             name: symbolName,
-            kind: this.isReactComponent(node) ? "component" : "function",
+            kind: this.isReactComponent(node) ? "component" : this.isReactHook(node) ? "hook" : "function",
             isExported,
             isDefaultExport,
-            startPos: node.getStart(sourceFile),
+            startPos: this.getDeclarationStartWithComments(sourceFile, node),
             endPos: node.getEnd(),
             nameStartPos: node.name.getStart(sourceFile),
             nameEndPos: node.name.getEnd(),
@@ -83,7 +107,7 @@ export class SymbolDefinitionResolver {
             kind: "class",
             isExported,
             isDefaultExport,
-            startPos: node.getStart(sourceFile),
+            startPos: this.getDeclarationStartWithComments(sourceFile, node),
             endPos: node.getEnd(),
             nameStartPos: node.name.getStart(sourceFile),
             nameEndPos: node.name.getEnd(),
@@ -105,7 +129,7 @@ export class SymbolDefinitionResolver {
             kind: "interface",
             isExported,
             isDefaultExport: false,
-            startPos: node.getStart(sourceFile),
+            startPos: this.getDeclarationStartWithComments(sourceFile, node),
             endPos: node.getEnd(),
             nameStartPos: node.name.getStart(sourceFile),
             nameEndPos: node.name.getEnd(),
@@ -127,7 +151,7 @@ export class SymbolDefinitionResolver {
             kind: "type",
             isExported,
             isDefaultExport: false,
-            startPos: node.getStart(sourceFile),
+            startPos: this.getDeclarationStartWithComments(sourceFile, node),
             endPos: node.getEnd(),
             nameStartPos: node.name.getStart(sourceFile),
             nameEndPos: node.name.getEnd(),
@@ -273,6 +297,14 @@ export class SymbolDefinitionResolver {
     return false;
   }
 
+  private isReactHook(node: ts.FunctionDeclaration): boolean {
+    if (node.name) {
+      const name = node.name.text;
+      return /^use[A-Z]/.test(name);
+    }
+    return false;
+  }
+
   private inferVariableKind(decl: ts.VariableDeclaration): SymbolKind {
     if (ts.isIdentifier(decl.name) && /^[A-Z]/.test(decl.name.text)) {
       if (decl.initializer && (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer))) {
@@ -286,5 +318,14 @@ export class SymbolDefinitionResolver {
       return "constant";
     }
     return "variable";
+  }
+
+  private getDeclarationStartWithComments(sourceFile: ts.SourceFile, node: ts.Node): number {
+    const fullText = sourceFile.getFullText();
+    const commentRanges = ts.getLeadingCommentRanges(fullText, node.getFullStart());
+    if (commentRanges && commentRanges.length > 0) {
+      return commentRanges[0].pos;
+    }
+    return node.getStart(sourceFile);
   }
 }

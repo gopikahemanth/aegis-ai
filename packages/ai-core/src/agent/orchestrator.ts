@@ -1478,8 +1478,9 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
 
       this.resolveMissingLocalImports(outputDirectory);
 
+      const projectContract = ArchitectureResolver.loadContract(outputDirectory) || (specification as any);
       // Deterministic Project Fixer: Create real implementation modules (routes.tsx, prisma.ts, MatchScoreDial, Layout, api.ts, pdf-parse fix)
-      const buildFixReport = DeterministicProjectFixer.fixProject(outputDirectory);
+      const buildFixReport = DeterministicProjectFixer.fixProject(outputDirectory, projectContract);
       if (buildFixReport.createdFiles.length > 0 || buildFixReport.modifiedFiles.length > 0) {
         console.log(`[DeterministicFixer] ✓ Created ${buildFixReport.createdFiles.length} missing module(s), repaired ${buildFixReport.modifiedFiles.length} file(s).`);
       }
@@ -1494,7 +1495,7 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
       }
 
       // Fast Deterministic Sanitation (Dependency Closure, Casing, Export contracts, DB URL)
-      const sanitizeReport = FastDeterministicSanitizer.sanitizeProject(outputDirectory);
+      const sanitizeReport = FastDeterministicSanitizer.sanitizeProject(outputDirectory, projectContract);
       console.log(`[FastSanitizer] ✓ Pre-build sanitation complete (Collisions resolved: ${sanitizeReport.casingCollisionsResolved}, Imports added: ${sanitizeReport.missingDependenciesAdded.length}, Exports fixed: ${sanitizeReport.exportFixesApplied}, DB URL valid: ${sanitizeReport.databaseUrlValid})`);
 
       // Re-scan imports post-fixer/sanitizer to ensure packages added by fixers (e.g. @tanstack/react-query, @hookform/resolvers) are installed
@@ -2220,7 +2221,8 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
                             /(button|card|component|page|navbar|spinner|dashboard|gallery|header|footer|modal|drawer|form|input)/i.test(targetPath);
           let stubExt = isUiTarget ? ".tsx" : ".ts";
           const fullStubPath = targetPath.endsWith(".ts") || targetPath.endsWith(".tsx") ? targetPath : targetPath + stubExt;
-          const stubRelName = relative(outputDirectory, fullStubPath);
+          const stubRelName = relative(outputDirectory, fullStubPath).replace(/\\/g, "/");
+          const isStubFrontend = stubRelName.startsWith("src/");
 
           // Fuzzy resolution: check if a file with the same component/module name exists elsewhere in diskFiles
           const componentName = stubRelName.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Component";
@@ -2229,10 +2231,14 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
             const bName = f.relPath.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "";
             const lowerBName = bName.toLowerCase();
             if (f.fullPath === fullStubPath) return false;
+            if (f.relPath.includes("__tests__") || f.relPath.endsWith(".test.ts") || f.relPath.endsWith(".test.tsx") || f.relPath.endsWith(".spec.ts")) return false;
+            const isTargetFrontend = f.relPath.startsWith("src/");
+            if (isStubFrontend !== isTargetFrontend) return false;
+
             if (lowerBName === lowerComp) return true;
             if (lowerComp.endsWith("page") && lowerBName === lowerComp.replace("page", "")) return true;
             if (lowerComp.endsWith("dashboard") && lowerBName.includes("dashboard")) return true;
-            if (lowerBName.includes(lowerComp) || lowerComp.includes(lowerBName)) return true;
+            if (lowerComp.length >= 6 && (lowerBName.includes(lowerComp) || lowerComp.includes(lowerBName))) return true;
             return false;
           });
 

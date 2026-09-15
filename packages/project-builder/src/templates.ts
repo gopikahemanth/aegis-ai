@@ -64,6 +64,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 </body>
 </html>
 `
+        },
+        {
+          path: "test/setup.ts",
+          content: `import "@testing-library/jest-dom";
+`
         }
       ]
     };

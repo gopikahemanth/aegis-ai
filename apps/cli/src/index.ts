@@ -8,6 +8,7 @@ async function main() {
 
   try {
     await runCLI();
+    process.exit(0);
   } catch (error: any) {
     console.error("\n=== FULL EXECUTION ERROR ===");
     console.error(error);

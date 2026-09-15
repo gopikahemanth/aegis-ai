@@ -37,8 +37,8 @@ export class ExecutionEngine {
   private readonly pipeline =
     new ExecutionPipeline(this.provider);
 
-  async execute(request: string, imagePath?: string) {
-    const projectPath = resolve(process.cwd(), "./generated/project");
+  async execute(request: string, imagePath?: string, targetDir?: string) {
+    const projectPath = targetDir ? resolve(process.cwd(), targetDir) : resolve(process.cwd(), "./generated/project");
 
     // ── Clean existing project directory ────────────────────────────────────
     cleanDirectory(projectPath);

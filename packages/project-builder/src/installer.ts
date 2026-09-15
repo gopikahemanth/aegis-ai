@@ -126,7 +126,7 @@ export class DependencyInstaller {
         ? ["install", "--ignore-workspace", "--config.minimum-release-age=0", "--no-frozen-lockfile"]
         : ["install", "--legacy-peer-deps", "--silent"];
 
-    const result = await this.terminal.run(
+    let result = await this.terminal.run(
       packageManager,
       args,
       cwd,
@@ -134,6 +134,19 @@ export class DependencyInstaller {
 
     if (result.exitCode === 0) {
       this.saveCache(cwd, packageManager, "full");
+      return result;
+    }
+
+    if (packageManager === "pnpm") {
+      console.warn(`[DependencyInstaller] pnpm install exited with code ${result.exitCode}. Falling back to npm install...`);
+      result = await this.terminal.run(
+        "npm",
+        ["install", "--legacy-peer-deps", "--silent"],
+        cwd,
+      );
+      if (result.exitCode === 0) {
+        this.saveCache(cwd, "npm", "fallback");
+      }
     }
 
     return result;

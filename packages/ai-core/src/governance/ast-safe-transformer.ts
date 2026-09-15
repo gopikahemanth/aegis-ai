@@ -66,6 +66,15 @@ export class ASTSafeTransformer {
       repairs.push("Stripped trailing markdown fence/path prompt contamination");
     }
 
+    // 7. Fix hyphenated function names e.g. function foo-bar() -> function fooBar()
+    if (/(?:export\s+(?:default\s+)?)?function\s+([a-zA-Z0-9_$]+-[a-zA-Z0-9_$-]+)\s*\(/.test(currentCode)) {
+      currentCode = currentCode.replace(/((?:export\s+(?:default\s+)?)?function\s+)([a-zA-Z0-9_$]+-[a-zA-Z0-9_$-]+)(\s*\()/g, (_m, prefix, id, suffix) => {
+        const camel = id.replace(/-([a-zA-Z0-9])/g, (_: any, c: string) => c.toUpperCase());
+        return `${prefix}${camel}${suffix}`;
+      });
+      repairs.push("Normalized invalid hyphenated function identifier to camelCase");
+    }
+
     return {
       code: currentCode,
       transformed: repairs.length > 0,

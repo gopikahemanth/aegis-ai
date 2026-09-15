@@ -171,9 +171,22 @@ CANONICAL DIRECTORY BOUNDARIES:
 - server/    Express backend code ONLY (routes, controllers, services, middleware). Backend tasks MUST ONLY output files inside server/.
 - prisma/    Prisma database schema (prisma/schema.prisma). Database tasks MUST ONLY output files inside prisma/ or server/lib/.
 
+CANONICAL UI & FEATURE RICHNESS (MANDATORY FOR ALL FRONTEND VIEWS):
+- MUST implement all required domain features and models with reachable, interactive UI (dedicated pages or rich embedded components/drawers/modals).
+- NEVER output generic placeholder text (e.g. "Welcome to the application platform", "Dashboard placeholder", or unmounted views).
+- All primary views MUST render:
+  1. Top app bar / navigation header with branding, navigation links, and system status indicator.
+  2. Domain KPI metric cards with live counts and trend percentages.
+  3. Interactive Data Table / List with 4-8 realistic domain seed records, ticket/ID badges, status badges, and inline status dropdowns.
+  4. Live search input & multi-tab status filters (e.g. All, In Progress, Pending, Completed).
+  5. Interactive "+ New [Entity]" creation modal with input fields, select menus, validation, and working state updates.
+  6. Operational panels (e.g. staff/resource load, parts/inventory status, quick action buttons).
+  7. API integration calling backend endpoints via src/services/api.ts.
+
 FORBIDDEN TECHNOLOGIES:
 - Next.js, NextAuth, App Router, Server Actions, Next.js API Routes
 - MongoDB, Mongoose, Drizzle
+- Generic placeholder fallback pages or empty stub components
 - Inventing arbitrary shared/components modules or duplicate API clients
 ══════════════════════════════════════════════════════════════════════════════
 `.trim();

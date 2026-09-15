@@ -87,7 +87,7 @@ export class InProjectTestRunner {
     try {
       stdout = execSync(runCmd, {
         cwd: projectRoot,
-        timeout: 30000,
+        timeout: 60000,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
       });

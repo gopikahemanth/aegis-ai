@@ -357,7 +357,8 @@ export class DomainContractManager {
     return domain;
   }
 
-  public static load(outputDirectory: string): DomainContract | null {
+  public static load(outputDirectory?: string): DomainContract | null {
+    if (!outputDirectory || typeof outputDirectory !== "string") return null;
     const domainPath = join(outputDirectory, ".aegis", "domain-contract.json");
     if (!existsSync(domainPath)) return null;
     try {

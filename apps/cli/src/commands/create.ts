@@ -4,11 +4,18 @@ import { ProviderError } from "@aegis/ai-core";
 export async function createCommand() {
   const args = process.argv.slice(3);
   let imagePath: string | undefined;
+  let targetDir: string | undefined;
 
   const imageIdx = args.indexOf("--image");
   if (imageIdx !== -1 && args[imageIdx + 1]) {
     imagePath = args[imageIdx + 1];
     args.splice(imageIdx, 2);
+  }
+
+  const outputIdx = args.indexOf("--output") !== -1 ? args.indexOf("--output") : args.indexOf("-o");
+  if (outputIdx !== -1 && args[outputIdx + 1]) {
+    targetDir = args[outputIdx + 1];
+    args.splice(outputIdx, 2);
   }
 
   const prompt = args.join(" ");
@@ -23,7 +30,7 @@ export async function createCommand() {
   console.log("Generating project...");
 
   try {
-    const success = await engine.execute(prompt, imagePath);
+    const success = await engine.execute(prompt, imagePath, targetDir);
 
     if (success) {
       console.log("🎉 Project generated successfully.");

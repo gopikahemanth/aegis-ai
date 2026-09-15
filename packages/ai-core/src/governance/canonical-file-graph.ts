@@ -1095,10 +1095,27 @@ export class CanonicalFileGraph {
   public static isAuthorized(path: string): boolean {
     const normalized = path.replace(/\\/g, "/");
     if (CanonicalFileGraph.byPath.has(normalized)) return true;
-    // Allow design-system components and tokens
-    if (normalized.startsWith("src/design-system/")) return true;
-    // Allow features subdirectories
-    if (normalized.startsWith("src/features/")) return true;
+    // Allow standard application layers
+    if (
+      normalized.startsWith("src/pages/") ||
+      normalized.startsWith("src/components/") ||
+      normalized.startsWith("src/services/") ||
+      normalized.startsWith("src/utils/") ||
+      normalized.startsWith("src/types/") ||
+      normalized.startsWith("src/hooks/") ||
+      normalized.startsWith("src/lib/") ||
+      normalized.startsWith("src/context/") ||
+      normalized.startsWith("src/shared/") ||
+      normalized.startsWith("src/design-system/") ||
+      normalized.startsWith("src/features/") ||
+      normalized === "src/routes.tsx" ||
+      normalized === "src/routes.ts" ||
+      normalized === "src/App.tsx" ||
+      normalized === "src/main.tsx" ||
+      normalized === "src/index.css"
+    ) {
+      return true;
+    }
     // Allow server and prisma subdirectories
     if (normalized.startsWith("server/") || normalized.startsWith("prisma/")) return true;
 
@@ -1129,6 +1146,8 @@ export class CanonicalFileGraph {
     const GENERIC_STEMS = new Set([
       "index", "types", "styles", "api", "app", "main", "utils",
       "constants", "helpers", "routes", "schema", "config", "client",
+      "header", "sidebar", "navbar", "footer", "layout", "modal",
+      "dashboard", "dashboardpage", "students", "studentspage", "card", "button",
     ]);
 
     const proposedStem = normalized

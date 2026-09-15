@@ -1,5 +1,5 @@
 /**
- * Refactoring Subsystem — Aegis V2.3 Project 2 Phase 3 & Phase 4
+ * Refactoring Subsystem — Aegis V2.3 Project 2 Phase 3, Phase 4, Phase 5 & Phase 6
  */
 
 export * from "./symbol-rename-contract.js";
@@ -12,7 +12,23 @@ export * from "./rename-preview-engine.js";
 export * from "./rename-preview.js";
 export * from "./symbol-rename-executor.js";
 
-// Phase 4: Advanced AST Refactoring
+// Phase 4 & Phase 5: Structural Refactoring & Transformations
+export * from "./structural-refactoring-contract.js";
+export * from "./structural-refactoring-planner.js";
+export * from "./structural-refactoring-transformer.js";
+export * from "./structural-refactoring-preview-engine.js";
+export * from "./final-execution-gate.js";
+export { StructuralFinalSuccessGate } from "./final-success-gate.js";
+export * from "./structural-refactoring-executor.js";
+export * from "./structural-transformation-engine.js";
+
+// Phase 6: Semantic Verification & Validation Gates
+export * from "./semantic-verification-contract.js";
+export * from "./public-api-compatibility-verifier.js";
+export * from "./refactoring-validation-runner.js";
+export * from "./semantic-refactoring-verifier.js";
+
+// Advanced AST Refactoring Planners
 export * from "./advanced-refactoring-contract.js";
 export * from "./signature-change-planner.js";
 export * from "./parameter-change-analyzer.js";

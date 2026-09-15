@@ -269,6 +269,48 @@ export class ArchitectureResolver {
     };
     const architectureHash = createHash("sha256").update(JSON.stringify(archPayload)).digest("hex").slice(0, 12);
 
+    // ── Route & Entity Extraction from User Prompt ──────────────────────────
+    const explicitRoutes: string[] = [];
+    const routeBlockMatch = userPrompt.match(/(?:Canonical routes|Required pages\/routes|Required routes|Pages\/routes|Canonical pages|Routes|Pages):\s*([\s\S]*?)(?:\n\n|\n[A-Z\s]{3,}:|$)/i);
+    if (routeBlockMatch && routeBlockMatch[1]) {
+      const tokens = routeBlockMatch[1].split(/[\s,\t\r\n]+/).map(t => t.trim().replace(/^[-*•\d.]+\s*/, "")).filter(Boolean);
+      for (const token of tokens) {
+        if (token.startsWith("/") && token.length > 1 && !token.includes(":") && !token.includes(".")) {
+          const clean = token.toLowerCase();
+          if (!explicitRoutes.includes(clean)) explicitRoutes.push(clean);
+        } else if (/^[a-z0-9_-]+$/i.test(token) && !["none", "n/a", "etc", "core", "entities", "functional", "requirements"].includes(token.toLowerCase())) {
+          const clean = `/${token.toLowerCase()}`;
+          if (!explicitRoutes.includes(clean)) explicitRoutes.push(clean);
+        }
+      }
+    }
+
+    const explicitModels: string[] = [];
+    const modelBlockMatch = userPrompt.match(/(?:Core entities|Required entities|Entities|Models|Required models|Core models):\s*([\s\S]*?)(?:\n\n|\n[A-Z\s]{3,}:|$)/i);
+    if (modelBlockMatch && modelBlockMatch[1]) {
+      const items = modelBlockMatch[1].split(/[,\n]/).map(m => m.trim().replace(/^[-*•\d.]+\s*/, "")).filter(Boolean);
+      for (const item of items) {
+        const nameOnly = item.split(/[(\s:]/)[0].trim().replace(/[^a-zA-Z0-9]/g, "");
+        if (nameOnly && nameOnly.length > 1 && !["none", "na", "user", "etc", "functional", "requirements"].includes(nameOnly.toLowerCase()) && !explicitModels.includes(nameOnly)) {
+          explicitModels.push(nameOnly);
+        }
+      }
+    }
+
+    let resolvedRoutes = explicitRoutes.length > 0
+      ? explicitRoutes
+      : (canonical.userFlows && canonical.userFlows.length > 0
+        ? ["/", ...canonical.userFlows.map(f => f.startsWith("/") ? f : `/${f.replace(/^(manage|browse|track|view|handle|create|fulfill)-?/i, "").toLowerCase()}`)]
+        : (raw.userFlows && raw.userFlows.length > 0
+          ? ["/", ...raw.userFlows.map(f => f.startsWith("/") ? f : `/${f.replace(/^(manage|browse|track|view|handle|create|fulfill)-?/i, "").toLowerCase()}`)]
+          : (isStaticRequest ? ["/"] : ["/", "/dashboard"])));
+    resolvedRoutes = Array.from(new Set(resolvedRoutes));
+
+    let resolvedModels = explicitModels.length > 0
+      ? ["User", ...explicitModels]
+      : (dbProvider === "None" ? [] : (canonical.dataModels || raw.dataModels || ["User"]));
+    resolvedModels = Array.from(new Set(resolvedModels));
+
     const contract: ArchitectureContractV1 = Object.freeze({
       version: 1,
       status: "locked",
@@ -317,8 +359,8 @@ export class ArchitectureResolver {
       ],
       requiredLibraries: canonical.inferredLibraries || raw.inferredLibraries || [],
       requiredFeatures: canonical.features || raw.features || [],
-      requiredRoutes: canonical.userFlows || raw.userFlows || (isStaticRequest ? ["/"] : ["/", "/dashboard"]),
-      requiredModels: dbProvider === "None" ? [] : (canonical.dataModels || raw.dataModels || ["User"]),
+      requiredRoutes: resolvedRoutes,
+      requiredModels: resolvedModels,
       projectStructure: Object.freeze({
         src: "Frontend presentation layer",
         server: "Backend API and database services",

@@ -53,7 +53,9 @@ export class AppServerRunner {
     if (process.platform === "win32") {
       try {
         const { execSync } = await import("child_process");
-        execSync(`wmic process where "ExecutablePath like '%node.exe%' and CommandLine like '%generated%project%'" call terminate`, { stdio: "ignore" });
+        const myPid = process.pid;
+        const myPpid = process.ppid;
+        execSync(`powershell -Command "Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessId -ne ${myPid} -and $_.ProcessId -ne ${myPpid} -and ($_.CommandLine -like '*vite*${port}*' -or $_.CommandLine -like '*--port ${port}*') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`, { stdio: "ignore" });
       } catch {}
     }
 

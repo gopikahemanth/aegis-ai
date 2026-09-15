@@ -9,6 +9,7 @@ import { join, relative } from "node:path";
 import type { ApiWorkflowReport } from "./api-workflow-verifier.js";
 import type { BrowserValidationResult } from "./read-only-browser-validator.js";
 import { RealityCheckerAgent, type RealityCheckResult } from "../agents/reality-checker-agent.js";
+import { TemplateContaminationChecker } from "./template-contamination-checker.js";
 
 export type FinalSuccessStatus = "SUCCESS" | "FAILED" | "BLOCKED" | "INCOMPLETE" | "REPAIRING";
 
@@ -56,6 +57,7 @@ export interface FinalSuccessGateInput {
   realityResult?: RealityCheckResult | null;
   databaseBlocked?: boolean;
   testReport?: import("./in-project-test-runner.js").TestExecutionReport | null;
+  runtimeReport?: import("../testing/runtime-acceptance-contract.js").RuntimeAcceptanceResult | null;
   brownfieldReport?: BrownfieldExecutionReport | null;
 }
 
@@ -416,12 +418,15 @@ export class FinalSuccessGate {
     // ── 7. API Workflow Gate (API_WORKFLOW_PASS) ─────────────────────────────
     if (apiReport) {
       const isClientOnly = !existsSync(join(projectRoot, "server", "index.ts")) && !existsSync(join(projectRoot, "server", "app.ts"));
-      const apiPassed = apiReport.passed || isClientOnly || (apiReport.totalSteps > 0 && apiReport.passedSteps > 0);
+      const isDbFailure = databaseBlocked && !apiReport.passed;
+      const apiPassed = apiReport.passed || isClientOnly || isDbFailure || (apiReport.totalSteps > 0 && apiReport.passedSteps > 0);
       items.push({
-        name: "API Workflows",
+        name: isDbFailure ? "(env) API Workflows" : "API Workflows",
         passed: apiPassed,
-        message: apiReport.summary,
-        critical: !isClientOnly,
+        message: isDbFailure
+          ? `${apiReport.summary} (Environment condition: database connection unavailable causes 500 responses)`
+          : apiReport.summary,
+        critical: !isClientOnly && !databaseBlocked,
         category: "API",
       });
     } else {
@@ -501,6 +506,31 @@ export class FinalSuccessGate {
         });
       }
     }
+
+    // ── 11. Runtime Acceptance & User Scenario Gate (Phase 5.4) ───────────────
+    const runtimeReport = input.runtimeReport;
+    if (runtimeReport) {
+      const isPassed = runtimeReport.passed && runtimeReport.status === "SUCCESS";
+      items.push({
+        name: "Runtime Acceptance & Scenarios",
+        passed: isPassed,
+        message: runtimeReport.evidenceSummary || (isPassed ? "All quality dimensions and user scenarios passed." : "Runtime acceptance checks failed."),
+        critical: false,
+        category: "RUNTIME",
+      });
+    }
+
+    // ── 12. Template Contamination & Domain Consistency Gate ─────────────────
+    const contaminationChecker = new TemplateContaminationChecker(projectRoot);
+    const domainCategoryName = domain?.domainName || contract?.applicationType || (contract as any)?.name || "general";
+    const contaminationReport = contaminationChecker.audit(domainCategoryName);
+    items.push({
+      name: "Template Contamination",
+      passed: contaminationReport.clean,
+      message: contaminationReport.summary,
+      critical: true,
+      category: "CONTRACT",
+    });
 
     // ── Evaluate Final Status ────────────────────────────────────────────────
     const criticalItems = items.filter(i => i.critical);

@@ -51,6 +51,16 @@ export class DomainContaminationDetector {
       terms: ["workout", "membership", "trainer", "attendance", "exercise", "routine"],
       forbiddenInOtherDomains: ["workoutplan", "active streak", "gym membership"],
     },
+    artGallery: {
+      name: "Art Gallery / Exhibition",
+      terms: ["artwork", "artist", "exhibition", "painting", "gallery overview"],
+      forbiddenInOtherDomains: ["artworkstats", "artworkdashboard", "curated exhibition", "artworkcard", "starry horizon", "vincent van gogh"],
+    },
+    studentManagement: {
+      name: "Student Management System",
+      terms: ["student", "department", "semester", "enrollment", "academic"],
+      forbiddenInOtherDomains: [],
+    },
   };
 
   /**
@@ -60,30 +70,36 @@ export class DomainContaminationDetector {
     if (!contract) return "generic";
     if (typeof contract === "string") {
       const p = contract.toLowerCase();
+      if (p.includes("student") || p.includes("department") || p.includes("semester") || p.includes("enrollment")) return "studentManagement";
       if (p.includes("resume") || p.includes("ats") || p.includes("cv") || p.includes("job description")) return "resume";
       if (p.includes("security") || p.includes("vulnerability") || p.includes("cve")) return "security";
       if (p.includes("telemedicine") || p.includes("patient") || p.includes("doctor") || p.includes("health")) return "telemedicine";
       if (p.includes("gym") || p.includes("fitness") || p.includes("workout")) return "gym";
+      if (p.includes("art") || p.includes("gallery") || p.includes("artwork")) return "artGallery";
       if (p.includes("task") || p.includes("kanban") || p.includes("todo")) return "task-manager";
       if (p.includes("ecommerce") || p.includes("shop") || p.includes("store") || p.includes("product")) return "ecommerce";
       return "generic";
     }
 
     const domainCat = (contract as any).domainCategory?.toLowerCase?.() || "";
+    if (domainCat.includes("student")) return "studentManagement";
     if (domainCat === "resume-scanner" || domainCat.includes("resume")) return "resume";
     if (domainCat === "code-reviewer" || domainCat.includes("security")) return "security";
     if (domainCat === "workout-fitness" || domainCat.includes("gym")) return "gym";
+    if (domainCat === "art-gallery" || domainCat.includes("art")) return "artGallery";
     if (domainCat === "task-manager" || domainCat.includes("task")) return "task-manager";
     if (domainCat === "ecommerce") return "ecommerce";
 
     const reqModels = (contract.requiredModels || []).map(m => m.toLowerCase());
+    if (reqModels.includes("student") || reqModels.includes("department")) return "studentManagement";
     if (reqModels.includes("resume") || reqModels.includes("jobdescription") || reqModels.includes("matchanalysis")) return "resume";
     if (reqModels.includes("vulnerability") || reqModels.includes("cve")) return "security";
 
     const prompt = (contract.prompt || "").toLowerCase();
     const appType = (contract.applicationType || "").toLowerCase();
+    if (prompt.includes("student") || appType.includes("student")) return "studentManagement";
     for (const [key, sig] of Object.entries(this.DOMAIN_SIGNATURES)) {
-      if (prompt.includes(key) || appType.includes(key)) {
+      if (prompt.includes(key.toLowerCase()) || appType.includes(key.toLowerCase())) {
         return key;
       }
     }
@@ -125,6 +141,14 @@ export class DomainContaminationDetector {
           relFileLower.includes("scan.service") ||
           relFileLower.includes("keyword.service") ||
           relFileLower.includes("matchdashboard")
+        )) {
+          matchedTerms.push(relFile);
+        }
+
+        if (domainKey === "artGallery" && (
+          relFileLower.includes("artwork") ||
+          relFileLower.includes("gallery") ||
+          relFileLower.includes("artstats")
         )) {
           matchedTerms.push(relFile);
         }
@@ -190,6 +214,30 @@ export class DomainContaminationDetector {
             unlinkSync(full);
             cleaned.push(`Removed foreign ATS file: ${rel}`);
             console.log(`[DomainContamination] 🧹 Removed foreign ATS artifact: ${rel}`);
+          } catch (e: any) {
+            console.warn(`[DomainContamination] Failed to remove ${rel}: ${e.message}`);
+          }
+        }
+      }
+    }
+
+    // If active domain is NOT Art Gallery, remove foreign gallery files
+    if (activeDomainKey !== "artGallery") {
+      const foreignGalleryFiles = [
+        "src/features/gallery/components/ArtworkCard.tsx",
+        "src/features/dashboard/components/ArtworkDashboard.tsx",
+        "src/features/dashboard/components/ArtworkStats.tsx",
+        "src/components/ArtworkStats.tsx",
+        "src/components/ArtworkCard.tsx",
+      ];
+
+      for (const rel of foreignGalleryFiles) {
+        const full = join(projectRoot, rel);
+        if (existsSync(full)) {
+          try {
+            unlinkSync(full);
+            cleaned.push(`Removed foreign gallery file: ${rel}`);
+            console.log(`[DomainContamination] 🧹 Removed foreign gallery artifact: ${rel}`);
           } catch (e: any) {
             console.warn(`[DomainContamination] Failed to remove ${rel}: ${e.message}`);
           }

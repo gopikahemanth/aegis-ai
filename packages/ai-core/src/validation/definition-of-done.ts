@@ -86,6 +86,12 @@ export class DefinitionOfDone {
         passed: archDiff.status === "PASS",
         detail: archDiff.status === "PASS" ? "Generated architecture is consistent with contract — 0 stack drift violations" : `Architecture drift detected: ${archDiff.violations.map(v => `${v.field} expected '${v.expected}', got '${v.actual}'`).join("; ")}`,
       },
+      this.checkNoGenericPlaceholder(projectDirectory, allSource),
+      this.checkRequiredRoutes(projectDirectory, archContract),
+      this.checkFeatureImplementation(projectDirectory, archContract, allSource, sourceFiles),
+      this.checkPrismaModels(projectDirectory, archContract),
+      this.checkApiConnection(projectDirectory, archContract, allSource),
+      this.checkBackendEndpoints(projectDirectory, archContract),
       this.checkNoHardcodedData(allSource),
       this.checkFormValidation(allSource),
       this.checkPersistence(allSource),
@@ -104,7 +110,9 @@ export class DefinitionOfDone {
 
     // If we have a list of inferred features, verify each is addressed
     for (const feature of inferredFeatures) {
-      criteria.push(this.checkFeaturePresent(feature, allSource));
+      if (!archContract?.requiredFeatures?.includes(feature)) {
+        criteria.push(this.checkFeaturePresent(feature, allSource));
+      }
     }
 
     const blockers = criteria.filter(c => !c.passed && this.isRequired(c.id));
@@ -141,13 +149,24 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
       "non-empty-app",
       "architecture-contract",
       "architecture-consistency",
+      "no-generic-placeholder",
+      "required-routes",
+      "feature-implementation",
+      "prisma-models",
+      "api-connection",
+      "backend-endpoints",
       "no-hardcoded-data",
+      "form-validation",
+      "persistence",
       "error-states",
       "loading-states",
+      "empty-states",
       "responsive-layouts",
       "accessibility",
       "documentation",
+      "typescript-strictness",
       "security",
+      "performance",
     ]);
     return required.has(criterionId);
   }
@@ -351,11 +370,11 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
       issues.push("Large list detected without virtualization — use react-window for 50+ items");
     }
 
-    // Inline expensive ops in JSX without memoization
-    if (/return\s*\([^)]*\.filter\(|return\s*\([^)]*\.sort\(/i.test(source)) {
+    // Inline expensive ops in JSX without memoization (flag deep/complex data transforms)
+    if (/expensiveCalculation|heavyCompute|JSON\.parse\([^)]*map\(/i.test(source)) {
       const hasMemo = /useMemo|useCallback/i.test(source);
       if (!hasMemo) {
-        issues.push("filter()/sort() called inside JSX render without useMemo — memoize the result");
+        issues.push("Heavy synchronous computation detected inside component render without useMemo — memoize the result");
       }
     }
 
@@ -381,6 +400,244 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
       detail: hasRoutes && (!hasLazyLoad || !hasSuspense)
         ? "Multi-page app detected but routes are not lazy-loaded — wrap with React.lazy() + Suspense"
         : "Route lazy loading satisfied",
+    };
+  }
+
+  private checkNoGenericPlaceholder(projectDir: string, source: string): DodCriterion {
+    const placeholderPatterns = [
+      /Welcome to the application platform/i,
+      /<h1[^>]*>Dashboard<\/h1>\s*<p[^>]*>Welcome/i,
+      /Placeholder for/i,
+      /TODO:\s*Implement/i,
+    ];
+    const violation = placeholderPatterns.find(p => p.test(source));
+
+    // Also check if src/routes.tsx has only a single inline route with dummy text
+    const routesPath = join(projectDir, "src", "routes.tsx");
+    let isDummyRoute = false;
+    if (existsSync(routesPath)) {
+      try {
+        const routesContent = readFileSync(routesPath, "utf8");
+        if (routesContent.includes("Welcome to the application platform") ||
+            (routesContent.includes("<Route path=\"/\"") && !routesContent.includes("<Route path=\"/") && routesContent.includes("<div className=\"p-8"))) {
+          isDummyRoute = true;
+        }
+      } catch {}
+    }
+
+    const failed = Boolean(violation || isDummyRoute);
+    return {
+      id: "no-generic-placeholder",
+      name: "No Generic Placeholder Dashboard",
+      passed: !failed,
+      detail: failed
+        ? "Generic placeholder dashboard detected (\"Welcome to the application platform\") — real domain UI must be rendered"
+        : "No generic placeholder dashboard detected",
+    };
+  }
+
+  private checkRequiredRoutes(projectDir: string, contract?: any): DodCriterion {
+    const rawRoutes: string[] = contract?.requiredRoutes || [];
+    const requiredRoutes = rawRoutes
+      .map(r => typeof r === "string" ? r : (r as any).path)
+      .filter(Boolean)
+      .map(r => r.startsWith("/") ? r : `/${r}`);
+
+    if (requiredRoutes.length === 0) {
+      return {
+        id: "required-routes",
+        name: "Required Routes Coverage",
+        passed: true,
+        detail: "No specific required routes configured in contract",
+      };
+    }
+
+    const routesPath = join(projectDir, "src", "routes.tsx");
+    const appPath = join(projectDir, "src", "App.tsx");
+    const routesContent = [
+      existsSync(routesPath) ? readFileSync(routesPath, "utf8") : "",
+      existsSync(appPath) ? readFileSync(appPath, "utf8") : "",
+    ].join("\n");
+
+    const hasRouteElements = /<Route\s+path=/i.test(routesContent);
+    if (!hasRouteElements) {
+      return {
+        id: "required-routes",
+        name: "Required Routes Coverage",
+        passed: false,
+        detail: "No <Route> definitions found in src/routes.tsx or src/App.tsx",
+      };
+    }
+
+    const missingRoutes: string[] = [];
+    for (const r of requiredRoutes) {
+      const escaped = r.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pathRegex = new RegExp(`path\\s*=\\s*["']${escaped}["']`, "i");
+      if (!pathRegex.test(routesContent)) {
+        missingRoutes.push(r);
+      }
+    }
+
+    const passed = missingRoutes.length === 0;
+    return {
+      id: "required-routes",
+      name: "Required Routes Coverage",
+      passed,
+      detail: passed
+        ? `All ${requiredRoutes.length} required exact route(s) registered in application router (${requiredRoutes.join(", ")})`
+        : `Missing required exact route(s) in router: [${missingRoutes.join(", ")}]`,
+    };
+  }
+
+  private checkFeatureImplementation(
+    projectDir: string,
+    contract: any,
+    allSource: string,
+    sourceFiles: string[]
+  ): DodCriterion {
+    const requiredFeatures: string[] = contract?.requiredFeatures || [];
+    if (requiredFeatures.length === 0) {
+      return {
+        id: "feature-implementation",
+        name: "Feature Implementation Verification",
+        passed: true,
+        detail: "No specific required features configured in contract",
+      };
+    }
+
+    const missingFeatures: string[] = [];
+    const lowerSource = allSource.toLowerCase();
+
+    for (const feat of requiredFeatures) {
+      const tokens = feat.toLowerCase().split(/[\s_-]+/).filter(t => t.length > 2);
+      // Check if any token appears in source files or file paths
+      const inContent = tokens.some(t => lowerSource.includes(t));
+      const inPath = sourceFiles.some(f => tokens.some(t => f.toLowerCase().includes(t)));
+      if (!inContent && !inPath) {
+        missingFeatures.push(feat);
+      }
+    }
+
+    const passed = missingFeatures.length === 0;
+    return {
+      id: "feature-implementation",
+      name: "Feature Implementation Verification",
+      passed,
+      detail: passed
+        ? `All ${requiredFeatures.length} required feature(s) implemented in application UI/code`
+        : `Missing reachable implementation for required features: [${missingFeatures.join(", ")}]`,
+    };
+  }
+
+  private checkPrismaModels(projectDir: string, contract?: any): DodCriterion {
+    const requiredModels: string[] = contract?.requiredModels || [];
+    const hasDb = contract?.database?.provider && !contract.database.provider.toLowerCase().includes("none");
+    if (!hasDb || requiredModels.length === 0) {
+      return {
+        id: "prisma-models",
+        name: "Prisma Models Verification",
+        passed: true,
+        detail: "No required database models configured",
+      };
+    }
+
+    const schemaPath = join(projectDir, "prisma", "schema.prisma");
+    if (!existsSync(schemaPath)) {
+      return {
+        id: "prisma-models",
+        name: "Prisma Models Verification",
+        passed: false,
+        detail: "prisma/schema.prisma does not exist on disk",
+      };
+    }
+
+    const schemaContent = readFileSync(schemaPath, "utf8");
+    const declaredModels = Array.from(schemaContent.matchAll(/model\s+(\w+)\s*\{/g)).map(match => match[1]);
+
+    const missingModels = requiredModels.filter(m => {
+      const cleanM = m.toLowerCase().replace(/[-_\s]+/g, "");
+      const singularM = cleanM.endsWith("ies") ? cleanM.slice(0, -3) + "y" : cleanM.replace(/s$/, "");
+
+      return !declaredModels.some(dm => {
+        const cleanDm = dm.toLowerCase().replace(/[-_\s]+/g, "");
+        const singularDm = cleanDm.endsWith("ies") ? cleanDm.slice(0, -3) + "y" : cleanDm.replace(/s$/, "");
+
+        // 1. Exact match (case insensitive)
+        if (cleanDm === cleanM || singularDm === singularM) return true;
+        // 2. Stem contains (e.g. ActivityLog matches Activity, TeamMember matches Team)
+        if (cleanDm.includes(singularM) || cleanM.includes(singularDm)) return true;
+        // 3. Known aliases
+        if ((singularM === "team" && cleanDm.includes("member")) || (singularM === "member" && cleanDm.includes("team"))) return true;
+        if ((singularM === "activity" && cleanDm.includes("log")) || (singularM === "log" && cleanDm.includes("activity"))) return true;
+        return false;
+      });
+    });
+
+    const passed = missingModels.length === 0;
+    return {
+      id: "prisma-models",
+      name: "Prisma Models Verification",
+      passed,
+      detail: passed
+        ? `All ${requiredModels.length} required Prisma models (or canonical aliases) defined in schema.prisma`
+        : `Missing required Prisma models in schema.prisma: [${missingModels.join(", ")}]`,
+    };
+  }
+
+  private checkApiConnection(projectDir: string, contract: any, source: string): DodCriterion {
+    const hasBackend = contract?.backend?.framework && !contract.backend.framework.toLowerCase().includes("none");
+    if (!hasBackend) {
+      return {
+        id: "api-connection",
+        name: "Frontend-Backend API Connection",
+        passed: true,
+        detail: "Client-only project (no backend API required)",
+      };
+    }
+
+    const apiPath = join(projectDir, "src", "services", "api.ts");
+    const hasApiService = existsSync(apiPath);
+    const hasApiCalls = /apiClient\.(get|post|put|patch|delete)|fetch\s*\(|axios\.(get|post|put|patch|delete)|useQuery|useMutation/i.test(source);
+
+    const passed = hasApiService || hasApiCalls;
+    return {
+      id: "api-connection",
+      name: "Frontend-Backend API Connection",
+      passed,
+      detail: passed
+        ? "Frontend API client service / API calls verified"
+        : "Missing frontend API client (src/services/api.ts) or API calls connecting to backend",
+    };
+  }
+
+  private checkBackendEndpoints(projectDir: string, contract?: any): DodCriterion {
+    const hasBackend = contract?.backend?.framework && !contract.backend.framework.toLowerCase().includes("none");
+    if (!hasBackend) {
+      return {
+        id: "backend-endpoints",
+        name: "Backend Endpoints Verification",
+        passed: true,
+        detail: "Client-only project (no backend required)",
+      };
+    }
+
+    const serverDir = join(projectDir, "server");
+    const serverIndex = join(serverDir, "index.ts");
+    const routesDir = join(serverDir, "routes");
+    const controllersDir = join(serverDir, "controllers");
+
+    const hasServerEntry = existsSync(serverIndex) || existsSync(join(serverDir, "app.ts"));
+    const hasRoutes = existsSync(routesDir) && readdirSync(routesDir).length > 0;
+    const hasControllers = existsSync(controllersDir) && readdirSync(controllersDir).length > 0;
+
+    const passed = hasServerEntry && (hasRoutes || hasControllers || (existsSync(serverIndex) && readFileSync(serverIndex, "utf8").includes("app.use")));
+    return {
+      id: "backend-endpoints",
+      name: "Backend Endpoints Verification",
+      passed,
+      detail: passed
+        ? "Backend Express server entry & route endpoints verified"
+        : "Missing backend server entry (server/index.ts) or API route handlers",
     };
   }
 

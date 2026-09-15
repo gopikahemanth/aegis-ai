@@ -20,6 +20,10 @@ export class TerminalRunner {
         CI: "true",
         CONTINUOUS_INTEGRATION: "true",
         FORCE_COLOR: "0",
+        npm_config_confirm_modules_purge: "false",
+        npm_config_verify_deps_before_run: "false",
+        npm_config_only_built_dependencies: "*",
+        npm_config_ignore_scripts: "false",
       };
 
       const child = spawn(command, args, {

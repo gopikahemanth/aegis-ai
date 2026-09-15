@@ -36,6 +36,7 @@ export * from "./brownfield/index.js";
 export * from "./spec/canonical-spec.js";
 export * from "./semantics/domain-fallback-generator.js";
 export * from "./semantics/domain-consistency-validator.js";
+export * from "./validation/template-contamination-checker.js";
 export * from "./governance/index.js";
 export * from "./evolution/index.js";
 export * from "./product/index.js";
@@ -98,6 +99,9 @@ export * from "./universal-product-builder/index.js";
 export * from "./ui-intelligence/index.js";
 export * from "./deep-product-builder/index.js";
 export * from "./real-product-generation/index.js";
+export * from "./testing/index.js";
+export * from "./validation/wiring-integrity-checker.js";
+export * from "./healing/self-healing-coordinator.js";
 
 
 

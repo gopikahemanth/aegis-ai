@@ -96,6 +96,13 @@ export class ReadOnlyBrowserValidator {
         }
       }
 
+      let visibleText = "";
+      let interactiveCount = 0;
+      try {
+        visibleText = await page.evaluate(() => document.body.innerText || "");
+        interactiveCount = await page.evaluate(() => document.querySelectorAll("button, input, select, table, form, a, [role='button'], [data-metric]").length);
+      } catch {}
+
       // Capture screenshot
       try {
         await page.goto(url, { waitUntil: "domcontentloaded", timeout: 5000 });
@@ -127,6 +134,8 @@ export class ReadOnlyBrowserValidator {
         classifiedError = `${classified.category}: ${fatalConsole[0]}`;
       } else if (renderedElementsCount < 5) {
         classifiedError = "UI_RENDER_FAILURE: Rendered DOM contains fewer than 5 elements (blank page)";
+      } else if (visibleText.includes("Application Ready") || visibleText.includes("AEGIS Application") || (visibleText.trim().length < 40 && interactiveCount < 2)) {
+        classifiedError = `UI_COMPLETENESS_FAILURE: Page renders placeholder/incomplete shell ("${visibleText.trim().slice(0, 50)}") instead of real domain application.`;
       }
 
       const passed = !classifiedError;

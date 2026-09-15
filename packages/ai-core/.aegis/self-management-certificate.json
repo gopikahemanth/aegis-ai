@@ -1,14 +1,14 @@
 {
-  "certificateId": "cert_self_mgmt_1789497369694",
-  "issuedAt": "2026-09-15T18:36:09.694Z",
+  "certificateId": "cert_self_mgmt_1789499771793",
+  "issuedAt": "2026-09-15T19:16:11.793Z",
   "status": "SELF_MANAGEMENT_CERTIFIED",
   "productionValidationCertificate": {
-    "certificateId": "cert_prod_val_1789497369693",
-    "issuedAt": "2026-09-15T18:36:09.693Z",
+    "certificateId": "cert_prod_val_1789499771792",
+    "issuedAt": "2026-09-15T19:16:11.792Z",
     "status": "PRODUCTION_VALIDATED",
     "platformCertificate": {
-      "certificateId": "cert_supreme_platform_1789497369692",
-      "issuedAt": "2026-09-15T18:36:09.692Z",
+      "certificateId": "cert_supreme_platform_1789499771790",
+      "issuedAt": "2026-09-15T19:16:11.790Z",
       "status": "PLATFORM_CERTIFIED",
       "governanceGatesPassed": 7,
       "totalFleetProjects": 0,
@@ -19,8 +19,8 @@
       "summary": "AEGIS SUPREME PLATFORM CERTIFICATE: ISSUED. 7/7 governance layers passed across 0 fleet projects."
     },
     "securityCertificate": {
-      "certificateId": "cert_sec_1789497369693",
-      "issuedAt": "2026-09-15T18:36:09.693Z",
+      "certificateId": "cert_sec_1789499771791",
+      "issuedAt": "2026-09-15T19:16:11.791Z",
       "status": "SECURITY_CERTIFIED",
       "dimensionsAudited": 14,
       "secretIsolationPassed": true,
@@ -35,7 +35,7 @@
   },
   "platformSelfHealth": {
     "overallStatus": "HEALTHY",
-    "timestamp": "2026-09-15T18:36:09.694Z",
+    "timestamp": "2026-09-15T19:16:11.793Z",
     "subsystems": [
       {
         "subsystem": "AI Core & Pipeline",

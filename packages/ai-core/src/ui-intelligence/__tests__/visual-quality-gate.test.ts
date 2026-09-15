@@ -154,4 +154,49 @@ describe("VisualQualityGate — Automated Visual Quality & Defect Rejection Cert
     expect(report.composition.primaryWorkspaceRendered).toBe(false);
     expect(report.defectsDetected.some(d => d.includes("Composition mismatch"))).toBe(true);
   });
+
+  it("REJECTS Adversarial V2: technically valid deterministic layout with excessive component monotony & weak focal hierarchy", () => {
+    // Adversarial V2 has valid typography, valid spacing, 0 overflow, valid cursor, valid workspace in DOM
+    // BUT has 12 identical cards with zero visual hierarchy or dominant anchor
+    const uniformCards = Array.from({ length: 12 }, (_, i) => ({
+      tagName: "DIV",
+      className: "card monotone-card",
+      boundingRect: { x: (i % 4) * 250 + 20, y: Math.floor(i / 4) * 150 + 80, width: 220, height: 120 },
+      computedStyles: {
+        fontSize: "14px",
+        lineHeight: "20px",
+        color: "rgb(250, 250, 249)",
+        backgroundColor: "rgb(30, 41, 59)",
+        fontFamily: "Inter, sans-serif",
+        paddingTop: "16px", paddingRight: "16px", paddingBottom: "16px", paddingLeft: "16px",
+        marginTop: "0px", marginRight: "0px", marginBottom: "16px", marginLeft: "0px",
+        cursor: "default",
+      },
+    }));
+
+    const adversarialV2Snapshot: BrowserDOMSnapshot = {
+      viewport: { width: 1440, height: 900 },
+      scrollWidth: 1440,
+      clientWidth: 1440,
+      bodyBackground: "rgb(14, 12, 10)",
+      bodyColor: "rgb(250, 250, 249)",
+      rawText: "Suite Availability Matrix Telemetry Grid 12 Identical Cards",
+      elements: [
+        validSnapshot.elements[0], // Valid H1 (30px)
+        validSnapshot.elements[1], // Valid H2 (20px)
+        validSnapshot.elements[2], // Valid Button with cursor pointer
+        ...uniformCards,
+      ],
+    };
+
+    const graph = CompositionGraphSynthesizer.synthesize("Build a luxury resort platform called GrandAegis with suite availability matrix.");
+    const report = VisualQualityGate.evaluate(adversarialV2Snapshot, undefined, graph);
+
+    expect(report.passed).toBe(false);
+    expect(report.isMasterCertified).toBe(false);
+    expect(report.focalHierarchy.hasDominantAnchor).toBe(false);
+    expect(report.monotony.isMonotonous).toBe(true);
+    expect(report.defectsDetected.some(d => d.includes("Weak focal hierarchy"))).toBe(true);
+    expect(report.defectsDetected.some(d => d.includes("Excessive visual monotony"))).toBe(true);
+  });
 });

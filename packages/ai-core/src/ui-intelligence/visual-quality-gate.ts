@@ -77,6 +77,19 @@ export interface CompositionAlignmentMetrics {
   matchedTopologyType: string;
 }
 
+export interface FocalHierarchyMetrics {
+  score: number;
+  hasDominantAnchor: boolean;
+  visualWeightVariance: number;
+}
+
+export interface MonotonyQualityMetrics {
+  score: number;
+  uniformCardRatio: number;
+  componentDiversityRatio: number;
+  isMonotonous: boolean;
+}
+
 export interface VisualQualityReport {
   passed: boolean;
   score: number;
@@ -89,6 +102,8 @@ export interface VisualQualityReport {
   interaction: InteractionQualityMetrics;
   contrast: ContrastQualityMetrics;
   composition: CompositionAlignmentMetrics;
+  focalHierarchy: FocalHierarchyMetrics;
+  monotony: MonotonyQualityMetrics;
   defectsDetected: string[];
   summary: string;
 }
@@ -327,6 +342,73 @@ export class VisualQualityGate {
       matchedTopologyType: graph?.topology?.type || "OPERATIONAL_COMMAND_CONSOLE",
     };
 
+    // ── 9. Visual Weighting & Focal Hierarchy Analyzer ───────────────────────
+    const cardElements = snapshot.elements.filter(
+      el => el.className.includes("card") || el.tagName === "SECTION" || el.tagName === "MAIN" || el.tagName === "ASIDE" || el.className.includes("stat-box")
+    );
+
+    let visualWeightVariance = 0.5;
+    let hasDominantAnchor = true;
+
+    if (cardElements.length >= 3) {
+      const areas = cardElements.map(el => Math.max(1, el.boundingRect.width * el.boundingRect.height));
+      const maxArea = Math.max(...areas);
+      const minArea = Math.min(...areas);
+      const avgArea = areas.reduce((a, b) => a + b, 0) / areas.length;
+
+      const variance = areas.reduce((acc, a) => acc + Math.pow((a - avgArea) / avgArea, 2), 0) / areas.length;
+      visualWeightVariance = Number(Math.min(1.0, Math.sqrt(variance)).toFixed(2));
+
+      // If all cards have nearly identical area (maxArea / minArea < 1.15) and there are >= 4 cards, there's no focal anchor
+      if (cardElements.length >= 4 && maxArea / minArea < 1.15) {
+        hasDominantAnchor = false;
+      }
+    }
+
+    const focalScore = hasDominantAnchor ? 96 : 42;
+    if (!hasDominantAnchor) {
+      defects.push("Weak focal hierarchy: All components have identical visual weight with no dominant hero or visual anchor.");
+    }
+
+    const focalHierarchy: FocalHierarchyMetrics = {
+      score: focalScore,
+      hasDominantAnchor,
+      visualWeightVariance,
+    };
+
+    // ── 10. Component Monotony & Repetition Penalty Analyzer ─────────────────
+    let isMonotonous = false;
+    let uniformCardRatio = 0;
+    const tagTypes = new Set(snapshot.elements.map(el => el.tagName));
+    const classSignatures = new Set(snapshot.elements.map(el => el.className.split(" ")[0]));
+    const componentDiversityRatio = Number(Math.min(1.0, (tagTypes.size + classSignatures.size) / 12).toFixed(2));
+
+    if (cardElements.length >= 5) {
+      const widthSample = cardElements.map(el => Math.round(el.boundingRect.width));
+      const modeWidth = widthSample.sort((a, b) =>
+        widthSample.filter(v => v === a).length - widthSample.filter(v => v === b).length
+      ).pop() || 0;
+
+      const uniformCount = widthSample.filter(w => Math.abs(w - modeWidth) <= 10).length;
+      uniformCardRatio = Number((uniformCount / cardElements.length).toFixed(2));
+
+      if (uniformCardRatio >= 0.85 && !hasDominantAnchor) {
+        isMonotonous = true;
+      }
+    }
+
+    const monotonyScore = isMonotonous ? 40 : 95;
+    if (isMonotonous) {
+      defects.push(`Excessive visual monotony: ${Math.round(uniformCardRatio * 100)}% of components are uniform repetitive cards lacking visual differentiation.`);
+    }
+
+    const monotony: MonotonyQualityMetrics = {
+      score: monotonyScore,
+      uniformCardRatio,
+      componentDiversityRatio,
+      isMonotonous,
+    };
+
     // ── Aggregate Final Scoring ──────────────────────────────────────────────
     const allScores = [
       spacing.score,
@@ -337,6 +419,8 @@ export class VisualQualityGate {
       interaction.score,
       contrast.score,
       composition.score,
+      focalHierarchy.score,
+      monotony.score,
     ];
 
     const overallScore = Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length);
@@ -355,6 +439,8 @@ export class VisualQualityGate {
       interaction,
       contrast,
       composition,
+      focalHierarchy,
+      monotony,
       defectsDetected: defects,
       summary: isMasterCertified
         ? `🏆 AEGIS MASTER CERTIFIED (${overallScore}/100): Exceptional visual quality, typographic scale, spacing rhythm, and composition alignment verified.`

@@ -49,9 +49,8 @@ export class GeminiProvider implements AIProvider {
 
       const geminiFreeModels = [
         options?.model ?? Models.gemini.default,
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-3.6-flash",
       ];
       // Deduplicate
       const uniqueModels = [...new Set(geminiFreeModels)];
@@ -106,12 +105,16 @@ export class GeminiProvider implements AIProvider {
           lastGeminiError = err;
           const msg = String(err?.message ?? err);
           const isRateLimit = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("resource_exhausted");
-          const isNotFound = msg.includes("404") || msg.toLowerCase().includes("not_found") || msg.toLowerCase().includes("no longer available");
-          if ((isRateLimit || isNotFound) && targetModel !== uniqueModels[uniqueModels.length - 1]) {
-            if (isNotFound) {
-              console.warn(`[Gemini:${this.name}] Model "${targetModel}" returned 404 NOT_FOUND (deprecated). Skipping to next model...`);
+          const isNotFound = msg.includes("404") || msg.toLowerCase().includes("not_found") || msg.toLowerCase().includes("no longer available") || msg.toLowerCase().includes("does not exist");
+          const is503 = msg.includes("503") || msg.toLowerCase().includes("high demand") || msg.toLowerCase().includes("unavailable") || msg.toLowerCase().includes("overloaded");
+
+          if ((isRateLimit || isNotFound || is503) && targetModel !== uniqueModels[uniqueModels.length - 1]) {
+            if (is503) {
+              console.warn(`[Gemini:${this.name}] Model "${targetModel}" temporarily under high demand (503). Retrying next Gemini model...`);
+            } else if (isNotFound) {
+              console.warn(`[Gemini:${this.name}] Model "${targetModel}" returned 404 NOT_FOUND. Skipping to next model...`);
             } else {
-              console.warn(`[Gemini:${this.name}] Rate limit on model "${targetModel}". Falling back to next free Gemini model...`);
+              console.warn(`[Gemini:${this.name}] Rate limit on model "${targetModel}". Falling back to next Gemini model...`);
             }
             continue;
           }

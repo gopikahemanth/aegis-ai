@@ -28,38 +28,38 @@ export const Models = {
   },
 
   gemini: {
-    default: "gemini-2.5-flash",
-    strong: "gemini-2.5-pro",
-    fast: "gemini-2.0-flash",
-    balanced: "gemini-2.5-flash",
+    default: "gemini-3.1-flash-lite",
+    strong: "gemini-3.1-flash-lite",
+    fast: "gemini-3.1-flash-lite",
+    balanced: "gemini-3.1-flash-lite",
   },
 
   "gemini-2": {
-    default: "gemini-2.5-flash",
-    strong: "gemini-2.5-pro",
-    fast: "gemini-2.0-flash",
-    balanced: "gemini-2.5-flash",
+    default: "gemini-3.1-flash-lite",
+    strong: "gemini-3.1-flash-lite",
+    fast: "gemini-3.1-flash-lite",
+    balanced: "gemini-3.1-flash-lite",
   },
 
   "gemini-3": {
-    default: "gemini-2.5-flash",
-    strong: "gemini-2.5-pro",
-    fast: "gemini-2.0-flash",
-    balanced: "gemini-2.5-flash",
+    default: "gemini-3.1-flash-lite",
+    strong: "gemini-3.1-flash-lite",
+    fast: "gemini-3.1-flash-lite",
+    balanced: "gemini-3.1-flash-lite",
   },
 
   "gemini-4": {
-    default: "gemini-2.5-flash",
-    strong: "gemini-2.5-pro",
-    fast: "gemini-2.0-flash",
-    balanced: "gemini-2.5-flash",
+    default: "gemini-3.1-flash-lite",
+    strong: "gemini-3.1-flash-lite",
+    fast: "gemini-3.1-flash-lite",
+    balanced: "gemini-3.1-flash-lite",
   },
 
   "gemini-5": {
-    default: "gemini-2.5-flash",
-    strong: "gemini-2.5-pro",
-    fast: "gemini-2.0-flash",
-    balanced: "gemini-2.5-flash",
+    default: "gemini-3.1-flash-lite",
+    strong: "gemini-3.1-flash-lite",
+    fast: "gemini-3.1-flash-lite",
+    balanced: "gemini-3.1-flash-lite",
   },
 
   ollama: {

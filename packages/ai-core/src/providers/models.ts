@@ -28,17 +28,38 @@ export const Models = {
   },
 
   gemini: {
-    default: "gemini-3.6-flash",
-    strong: "gemini-3.6-flash",
-    fast: "gemini-3.6-flash",
-    balanced: "gemini-3.6-flash",
+    default: "gemini-2.5-flash",
+    strong: "gemini-2.5-pro",
+    fast: "gemini-2.0-flash",
+    balanced: "gemini-2.5-flash",
   },
 
   "gemini-2": {
-    default: "gemini-3.6-flash",
-    strong: "gemini-3.6-flash",
-    fast: "gemini-3.6-flash",
-    balanced: "gemini-3.6-flash",
+    default: "gemini-2.5-flash",
+    strong: "gemini-2.5-pro",
+    fast: "gemini-2.0-flash",
+    balanced: "gemini-2.5-flash",
+  },
+
+  "gemini-3": {
+    default: "gemini-2.5-flash",
+    strong: "gemini-2.5-pro",
+    fast: "gemini-2.0-flash",
+    balanced: "gemini-2.5-flash",
+  },
+
+  "gemini-4": {
+    default: "gemini-2.5-flash",
+    strong: "gemini-2.5-pro",
+    fast: "gemini-2.0-flash",
+    balanced: "gemini-2.5-flash",
+  },
+
+  "gemini-5": {
+    default: "gemini-2.5-flash",
+    strong: "gemini-2.5-pro",
+    fast: "gemini-2.0-flash",
+    balanced: "gemini-2.5-flash",
   },
 
   ollama: {

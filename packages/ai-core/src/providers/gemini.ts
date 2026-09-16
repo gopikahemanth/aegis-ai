@@ -49,8 +49,9 @@ export class GeminiProvider implements AIProvider {
 
       const geminiFreeModels = [
         options?.model ?? Models.gemini.default,
-        "gemini-3.1-flash-lite",
-        "gemini-1.5-flash"
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
       ];
       // Deduplicate
       const uniqueModels = [...new Set(geminiFreeModels)];

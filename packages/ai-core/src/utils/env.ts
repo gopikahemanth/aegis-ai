@@ -27,6 +27,9 @@ const schema = z.object({
   GROQ_API_KEY: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_API_KEY_2: z.string().optional(),
+  GEMINI_API_KEY_3: z.string().optional(),
+  GEMINI_API_KEY_4: z.string().optional(),
+  GEMINI_API_KEY_5: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_MODEL: z.string().optional(),
   CEREBRAS_API_KEY: z.string().optional(),
@@ -41,5 +44,5 @@ const schema = z.object({
       "github",
     ])
     .default("gemini"),
-});
+}).passthrough();
 export const env = schema.parse(process.env);

@@ -169,22 +169,71 @@ export class FrontendApprovalCheckpoint {
       throw new Error(`FRONTEND_APPROVAL_BLOCKED: Cannot approve frontend. Approval criteria not satisfied:\n  - ${eligibility.blockers.join("\n  - ")}`);
     }
 
+    // Compute a cryptographic hash of the current frontend source files.
+    // This hash is stored in the approval record and verified at Stage 9 to detect
+    // any mutation of the frontend after human approval.
+    let frontendSourceHash = "unknown";
+    try {
+      const { createHash } = require("node:crypto");
+      const { readdirSync, statSync, readFileSync: readFS } = require("node:fs");
+      const { join: joinPath } = require("node:path");
+
+      const srcDir = joinPath(outputDirectory, "src");
+      if (existsSync(srcDir)) {
+        const hash = createHash("sha256");
+        const collectFiles = (dir: string): void => {
+          for (const entry of readdirSync(dir)) {
+            const fullPath = joinPath(dir, entry);
+            const stat = statSync(fullPath);
+            if (stat.isDirectory()) {
+              collectFiles(fullPath);
+            } else if (/\.(ts|tsx|js|jsx|css)$/.test(entry)) {
+              hash.update(entry);
+              hash.update(readFS(fullPath, "utf8"));
+            }
+          }
+        };
+        collectFiles(srcDir);
+        frontendSourceHash = hash.digest("hex").slice(0, 16);
+      }
+    } catch {
+      // Non-fatal — hash computation failure doesn't block approval
+    }
+
     const review = this.loadReview(outputDirectory);
+    const approvalTimestamp = new Date().toISOString();
+
     if (review) {
       review.status = "APPROVED";
-      review.reviewedAt = new Date().toISOString();
+      review.reviewedAt = approvalTimestamp;
       this.saveReview(outputDirectory, review);
-    } else {
-      const aegisDir = join(outputDirectory, ".aegis");
-      if (!existsSync(aegisDir)) mkdirSync(aegisDir, { recursive: true });
-      const checkpoint: StageCheckpoint = {
-        currentStage: "FRONTEND_APPROVED",
-        approvalStatus: "APPROVED",
-        lastUpdated: new Date().toISOString(),
-        changeHistory: [],
-      };
-      writeFileSync(this.getCheckpointPath(outputDirectory), JSON.stringify(checkpoint, null, 2), "utf8");
     }
+
+    // Write the extended approval record to stage-checkpoint.json
+    // This is the HUMAN_FRONTEND_APPROVED=true record that Stage 9 gates on.
+    const aegisDir = join(outputDirectory, ".aegis");
+    if (!existsSync(aegisDir)) mkdirSync(aegisDir, { recursive: true });
+
+    const existing = this.loadCheckpoint(outputDirectory);
+    const extendedCheckpoint = {
+      currentStage: "FRONTEND_APPROVED" as const,
+      approvalStatus: "APPROVED" as const,
+      lastUpdated: approvalTimestamp,
+      changeHistory: existing?.changeHistory ?? [],
+      // Human approval record — cryptographically tied to the approved frontend
+      approvedBy: "human" as const,
+      approvalTimestamp,
+      frontendSourceHash,
+      approvedRoutes: review?.routes ?? [],
+      approvedFeatures: (review?.productIdentity as any)?.featureEvidence?.map((f: any) => f.name) ?? [],
+    };
+    writeFileSync(this.getCheckpointPath(outputDirectory), JSON.stringify(extendedCheckpoint, null, 2), "utf8");
+    console.log(
+      `[FrontendApproval] ✓ HUMAN_FRONTEND_APPROVED recorded.\n` +
+      `  Approved by: human\n` +
+      `  Frontend source hash: ${frontendSourceHash}\n` +
+      `  Timestamp: ${approvalTimestamp}`
+    );
   }
 
   static requestChanges(outputDirectory: string, feedback: string): void {

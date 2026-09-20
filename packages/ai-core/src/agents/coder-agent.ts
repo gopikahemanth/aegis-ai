@@ -159,6 +159,44 @@ export class CoderAgent extends BaseAgent {
       canonicalContractContext += `\n\n${CANONICAL_MULTER_CONTRACT}`;
     }
 
+    let productExperiencePlanContext = "";
+    let experiencePattern = "custom";
+    let plan: any = null;
+    try {
+      const { ProductExperiencePlanManager } = await import("../design/product-experience-plan.js");
+      plan = ProductExperiencePlanManager.load(outputDirectory);
+      if (plan) {
+        experiencePattern = plan.experiencePattern || "custom";
+        const capabilitiesList = plan.requiredCapabilities.map((c: any) => 
+          `  • ${c.name} (id: ${c.id})
+      - Required Vocabulary (must appear visibly in headers, labels, descriptions): ${(c.evidenceVocabulary || []).join(", ")}
+      - Required Interactive Controls: ${(c.controlsRequired || []).join(", ")}
+      - Expected User Interaction: ${c.testInteraction?.controlType || "button"} ${c.testInteraction?.action || "click"}`
+        ).join("\n\n");
+
+        productExperiencePlanContext = `
+══════════════════════════════════════════════════════════════════════════════
+LOCKED PRODUCT EXPERIENCE PLAN (HIGHEST PRIORITY PRODUCT MANDATE)
+══════════════════════════════════════════════════════════════════════════════
+- Experience Pattern: ${plan.experiencePattern}
+- Primary Activity: ${plan.primaryActivity}
+- Expected Home Route: '${plan.expectedHomeRoute}'
+  * CRITICAL: Route '${plan.expectedHomeRoute}' MUST DIRECTLY render the primary interactive domain workspace!
+  * NEVER render a generic landing page, an unpopulated showcase dashboard, or a login wall at '${plan.expectedHomeRoute}'.
+  * The root view ('/') must be fully interactive with live working domain tools immediately on initial page load.
+- Required Domain Capabilities (YOU MUST IMPLEMENT FULLY WORKING INTERACTIVE UI FOR EACH):
+${capabilitiesList || "  (Defined by feature specs)"}
+- ZERO PLACEHOLDER POLICY:
+  * Strictly NO "pending Three.js integration", NO "canvas placeholder", NO "coming soon", NO "TODO", NO "No records found".
+  * Every capability must render functional, working interactive controls (sliders, color pickers, material dropdowns, dimension inputs, live recalculating formulas/meters, and interactive SVG/Canvas charts).
+- AUTHENTICATION POLICY:
+  * authWallAllowed: ${plan.authWallAllowed}
+  * ${plan.authWallAllowed ? "Authentication is expected." : "NEVER redirect to or gate the home route with a login screen. The product tools must be directly usable on initial page load."}
+══════════════════════════════════════════════════════════════════════════════
+`;
+      }
+    } catch {}
+
     let designBriefContext = "";
     const briefPath = join(outputDirectory, ".aegis", "design-brief.json");
     if (existsSync(briefPath)) {
@@ -203,6 +241,8 @@ ${principles || "  • Domain authenticity and high-contrast usability"}
 `;
       } catch {}
     }
+
+
 
     const CANONICAL_CODER_CONTEXT_HEADER = `
 ══════════════════════════════════════════════════════════════════════════════
@@ -367,11 +407,40 @@ CANONICAL DIRECTORY BOUNDARIES:
 - server/    Express backend code ONLY (routes, controllers, services, middleware). Backend tasks MUST ONLY output files inside server/.
 - prisma/    Prisma database schema (prisma/schema.prisma). Database tasks MUST ONLY output files inside prisma/ or server/lib/.
 
+${productExperiencePlanContext}
+
 CANONICAL UI & FEATURE RICHNESS (MANDATORY FOR ALL FRONTEND VIEWS):
 - MUST implement all required domain features and models with reachable, interactive UI (dedicated pages or rich embedded components/drawers/modals).
 - Every primary view/page MUST render a semantic <h1> containing the domain feature title (e.g. <h1>Glaze Chemistry Formulation</h1>) followed by a descriptive <p> explaining its purpose.
 - NEVER output generic placeholder text (e.g. "Welcome to the application platform", "Dashboard placeholder", or unmounted views).
-- All primary views MUST render:
+- For configurator workspaces, engineering studios, calculators, and design tools:
+  * Mount the primary tools directly into the workspace so the user can interact immediately on initial load.
+  * Implement active parameters with sliders, dropdowns, inputs, and real-time derived calculations/visualizations.
+  * Provide data-workspace="configurator_workspace" or "engineering_studio" on the root container.
+  ${experiencePattern === "configurator-workspace" || experiencePattern === "workspace-editor" ? `
+MANDATORY CONFIGURATOR WORKSPACE STRUCTURE:
+============================================
+Because this is a "${experiencePattern}" product, you MUST NOT build a generic dashboard or empty placeholder.
+The root route '/' MUST be a single-page interactive workspace containing working interactive panels for ALL required domain capabilities:
+
+${((plan?.requiredCapabilities && plan.requiredCapabilities.length > 0) ? plan.requiredCapabilities : [
+  { name: "Domain Studio & Configurator", evidenceVocabulary: ["configure", "parameter", "preset", "design"], controlsRequired: ["input", "button"] },
+  { name: "Domain Analysis & Metrics Calculator", evidenceVocabulary: ["calculate", "formula", "ratio", "analysis"], controlsRequired: ["button", "input"] },
+  { name: "Project & Order Manager", evidenceVocabulary: ["project", "request", "status", "quote"], controlsRequired: ["button", "input"] }
+]).map((cap: any, idx: number) => {
+  const controls = (cap.controlsRequired || ["button", "input"]).map((c: string) => `<${c}>`).join(", ");
+  const vocabSample = (cap.evidenceVocabulary || []).slice(0, 6).join(", ");
+  return `TAB / PANEL ${idx + 1} — "${cap.name}":
+  - Required vocabulary: ${vocabSample}
+  - Interactive controls: Must render working interactive ${controls}
+  - Initial State: Must render sensible default values and visible results immediately on initial load.`;
+}).join("\n\n")}
+
+All required capability panels MUST be mounted in the same workspace page component (e.g. src/features/workspace/PrimaryWorkspace.tsx or with interactive tabs) so that all capabilities are present and usable on route '/'.
+Use React useState with an activeTab variable (or multi-panel layout) so user can switch between panels or see them together.
+The workspace root element MUST have: data-workspace="configurator_workspace"
+ZERO placeholder text. ZERO "Coming soon". ZERO empty results on initial load — prepopulate with default values.
+  ` : `- For catalog, inventory, and record management views:
   1. Top app bar / navigation header with branding, navigation links, and system status indicator.
   2. Domain KPI metric cards with live counts and trend percentages.
   3. Interactive Data Table / List with 4-8 realistic domain seed records (e.g. const [records, setRecords] = useState([...])). NEVER leave tables empty or render "No records found" on initial page load.
@@ -388,7 +457,7 @@ CANONICAL UI & FEATURE RICHNESS (MANDATORY FOR ALL FRONTEND VIEWS):
      - Render multi-tab status filter buttons with onClick: <button onClick={() => setStatusFilter('all')}>All</button>, <button onClick={() => setStatusFilter('Active')}>Active</button>, etc.
      - Filter items: const filteredItems = (records || data || []).filter((r: any) => statusFilter === 'all' || (r.status || '').toLowerCase() === statusFilter.toLowerCase()); and render filteredItems.
      - NOTE: Even if data is fetched via a custom hook (e.g. const { data } = useDashboardData()), you MUST still declare [selectedItem, setSelectedItem] = useState(null), attach onClick={() => setSelectedItem(item)} to each row/card, render the detail inspector {selectedItem && ...}, declare [statusFilter, setStatusFilter] = useState('all'), and filter the records before rendering!
-  10. Include data-workspace attribute on the root/workspace container element (e.g. data-workspace="catalog_grid").
+  10. Include data-workspace attribute on the root/workspace container element (e.g. data-workspace="catalog_grid").`}
 ${designBriefContext}
 
 FORBIDDEN TECHNOLOGIES:

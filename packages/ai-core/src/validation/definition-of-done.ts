@@ -404,13 +404,18 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
   }
 
   private checkNoGenericPlaceholder(projectDir: string, source: string): DodCriterion {
+    // Strip code comments so comments like "{/* 3D Canvas Placeholder for @react-three/fiber */}" do not cause false positives
+    const nonCommentSource = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
+
     const placeholderPatterns = [
       /Welcome to the application platform/i,
       /<h1[^>]*>Dashboard<\/h1>\s*<p[^>]*>Welcome/i,
       /Placeholder for/i,
       /TODO:\s*Implement/i,
     ];
-    const violation = placeholderPatterns.find(p => p.test(source));
+    const violation = placeholderPatterns.find(p => p.test(nonCommentSource));
 
     // Also check if src/routes.tsx has only a single inline route with dummy text
     const routesPath = join(projectDir, "src", "routes.tsx");
@@ -418,21 +423,33 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
     if (existsSync(routesPath)) {
       try {
         const routesContent = readFileSync(routesPath, "utf8");
-        if (routesContent.includes("Welcome to the application platform") ||
-            (routesContent.includes("<Route path=\"/\"") && !routesContent.includes("<Route path=\"/") && routesContent.includes("<div className=\"p-8"))) {
+        // Condition 1: literal placeholder string present
+        const hasLiteralPlaceholder = routesContent.includes("Welcome to the application platform");
+        // Condition 2: truly thin single-route file with no real component
+        // (only 1 Route entry AND contains generic div-only inline content with no real component name)
+        const routeMatches = (routesContent.match(/<Route\s/g) || []).length;
+        const hasOnlyOneRoute = routeMatches <= 1;
+        const hasNoRealComponent = !/<[A-Z][A-Za-z]+\s*(\/?>|\s)/.test(routesContent.replace(/<Route[^>]*>/g, ""));
+        const isThinSingleRoute = hasOnlyOneRoute && hasNoRealComponent && routesContent.includes("<div className=\"p-8");
+        if (hasLiteralPlaceholder || isThinSingleRoute) {
           isDummyRoute = true;
         }
       } catch {}
     }
 
     const failed = Boolean(violation || isDummyRoute);
+    let detail = "No generic placeholder dashboard detected";
+    if (violation) {
+      detail = `Generic placeholder detected (${violation.toString()}) — real domain UI must be rendered`;
+    } else if (isDummyRoute) {
+      detail = "Generic dummy route detected in routes.tsx — real domain UI must be mounted";
+    }
+
     return {
       id: "no-generic-placeholder",
       name: "No Generic Placeholder Dashboard",
       passed: !failed,
-      detail: failed
-        ? "Generic placeholder dashboard detected (\"Welcome to the application platform\") — real domain UI must be rendered"
-        : "No generic placeholder dashboard detected",
+      detail,
     };
   }
 

@@ -9,13 +9,13 @@ export interface ManifestValidationResult {
 }
 
 export class ManifestCompletenessValidator {
-  public static validate(): ManifestValidationResult {
-    const requiredPaths = CanonicalFileGraph.getRequiredPaths();
-    const registeredPaths = CanonicalFileGraph.getAllPaths();
+  public static validate(projectRoot?: string): ManifestValidationResult {
+    const requiredPaths = CanonicalFileGraph.getRequiredPaths(projectRoot);
+    const registeredPaths = CanonicalFileGraph.getAllPaths(projectRoot);
     const missingRegistrations: string[] = [];
 
     for (const reqPath of requiredPaths) {
-      if (!CanonicalFileGraph.getFileByPath(reqPath)) {
+      if (!CanonicalFileGraph.getFileByPath(reqPath, projectRoot)) {
         missingRegistrations.push(reqPath);
       }
     }

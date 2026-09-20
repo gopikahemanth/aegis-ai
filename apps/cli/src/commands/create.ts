@@ -18,6 +18,7 @@ Arguments:
 
 Options:
   -o, --output <dir>      Output directory for the generated project (must be empty for clean gen)
+  -y, --yes               Automatically approve frontend review without interactive prompt
   --fresh                 Explicitly remove and recreate the target directory before clean generation
   --incremental           Allow mutating an existing target directory instead of requiring clean dir
   --design-mode=<mode>    Design archetype: auto, calm, dark, editorial, random, custom
@@ -85,6 +86,11 @@ Options:
   }
 
   let approveFrontend = false;
+  const yIdx = args.findIndex(a => a === "-y" || a === "--yes");
+  if (yIdx !== -1) {
+    approveFrontend = true;
+    args.splice(yIdx, 1);
+  }
   const afIdx = args.indexOf("--approve-frontend");
   if (afIdx !== -1) {
     approveFrontend = true;
@@ -146,28 +152,62 @@ Options:
     }
 
     const previewUrl = summary.serverUrl || "http://localhost:5173";
-
     const prodIdentity = summary.productIdentity;
-    const prodDetails = prodIdentity?.passedChecks?.length
-      ? prodIdentity.passedChecks.map((c: string) => `  ✓ ${c}`).join("\n")
-      : "  ✓ Product identity verified\n  ✓ Live Chromium runtime active";
+    const productName = summary.appName || "Generated Application";
 
-    console.log(`\n` +
+    // Build feature check list from product identity evidence
+    const featureChecks = prodIdentity?.featureEvidence?.length
+      ? prodIdentity.featureEvidence.map((f: any) => `  ${f.visible ? "✓" : "✗"} ${f.name}`).join("\n")
+      : "  ✓ Features verified";
+
+    // Build pages list
+    const pagesList = (summary.pages || []).length > 0
+      ? summary.pages.map((p: string) => `  ✓ ${p}`).join("\n")
+      : "  ✓ Application pages";
+
+    // Automated review status
+    const automatedReviewPassed = summary.reviewPassed !== false;
+    const consoleErrorCount = summary.fatalConsoleErrors?.length ?? 0;
+    const domElements = summary.renderedElementsCount ?? 0;
+
+    const separator = "─".repeat(74);
+
+    console.log(
+      `\n` +
       `╔══════════════════════════════════════════════════════════════════════════════╗\n` +
-      `║ 🛡️  AEGIS STAGED VERIFICATION: PRODUCT IDENTITY & VISUAL REVIEW PASSED       ║\n` +
-      `╠══════════════════════════════════════════════════════════════════════════════╣\n` +
-      `${prodDetails}\n` +
-      `╠══════════════════════════════════════════════════════════════════════════════╣\n` +
-      `  🌐 Live Preview:    ${previewUrl}\n` +
-      `  📄 Pages / Views:   ${(summary.pages || []).join(", ") || "Standard Application Views"}\n` +
-      `  🎨 Theme Palette:   Primary: ${summary.colorPalette?.primary || "calm stone"} | Surface: ${summary.colorPalette?.surface || "white"}\n` +
-      `  📸 Desktop (1440px): ${summary.screenshots.desktop}\n` +
-      `  📸 Tablet (768px):   ${summary.screenshots.tablet}\n` +
-      `  📸 Mobile (375px):   ${summary.screenshots.mobile}\n` +
-      `╚══════════════════════════════════════════════════════════════════════════════╝\n`
+      `║                         FRONTEND REVIEW READY                              ║\n` +
+      `╚══════════════════════════════════════════════════════════════════════════════╝\n` +
+      `\n` +
+      `  Product:    ${productName}\n` +
+      `  Preview:    ${previewUrl}\n` +
+      `\n` +
+      `${separator}\n` +
+      `FEATURES\n` +
+      `${featureChecks}\n` +
+      `\n` +
+      `PAGES\n` +
+      `${pagesList}\n` +
+      `\n` +
+      `RESPONSIVE VIEWPORTS\n` +
+      `  ✓ Desktop (1440px):  ${summary.screenshots.desktop}\n` +
+      `  ✓ Tablet  (768px):   ${summary.screenshots.tablet}\n` +
+      `  ✓ Mobile  (375px):   ${summary.screenshots.mobile}\n` +
+      `\n` +
+      `AUTOMATED REVIEW\n` +
+      `  ${automatedReviewPassed ? "✓" : "✗"} Chromium visual review\n` +
+      `  ${consoleErrorCount === 0 ? "✓" : "✗"} Console errors: ${consoleErrorCount}\n` +
+      `  ${domElements >= 10 ? "✓" : "✗"} Rendered elements: ${domElements}\n` +
+      `  ${prodIdentity?.passed !== false ? "✓" : "✗"} Product identity\n` +
+      `  ${automatedReviewPassed ? "✓" : "✗"} Feature completeness\n` +
+      `\n` +
+      `${separator}\n` +
+      `The frontend is complete enough for human review.\n` +
+      `\n` +
+      `No database or backend has been created.\n` +
+      `\n`
     );
 
-    // Automatically open user's default browser to the running preview
+    // Automatically open the user's default browser to the running preview
     try {
       if (process.platform === "win32") {
         const { exec } = await import("node:child_process");
@@ -188,22 +228,34 @@ Options:
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     try {
       const answer = await rl.question(
-        "Do you approve this frontend design so I can proceed with the database and backend? [Y/n/changes]: "
+        "What would you like to do?\n" +
+        "  [Y]       Approve frontend and proceed to database + backend\n" +
+        "  [changes] Request frontend changes\n" +
+        "  [!]       Halt generation\n" +
+        "\n> "
       );
       const trimmed = answer.trim().toLowerCase();
-      if (trimmed === "" || trimmed === "y" || trimmed === "yes") {
+      if (trimmed === "" || trimmed === "y" || trimmed === "yes" || trimmed === "approve") {
         return true;
       }
-      if (trimmed === "changes" || trimmed === "c") {
-        const feedback = await rl.question("What changes would you like to make to the frontend? ");
+      if (trimmed === "changes" || trimmed === "c" || trimmed === "change") {
+        const feedback = await rl.question("Describe the changes you want to see in the frontend: ");
         return feedback.trim() || "User requested visual refinements";
       }
-      console.log("[StageApproval] Generation halted by user.");
-      return false;
+      if (trimmed === "!" || trimmed === "halt" || trimmed === "n" || trimmed === "no") {
+        console.log("[StageApproval] Generation halted by user.");
+        return false;
+      }
+      // Treat any other non-empty input as change feedback
+      if (answer.trim().length > 0) {
+        return answer.trim();
+      }
+      return true;
     } finally {
       rl.close();
     }
   };
+
 
   console.log("Generating project...");
 

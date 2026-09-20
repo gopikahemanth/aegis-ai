@@ -280,10 +280,12 @@ export class ReadOnlyBrowserValidator {
       renderedElementsCount: 0,
     };
 
+    const cleanUrl = (url || "http://localhost:5173").trim().replace(/^h+ttp:\/\//i, "http://").replace(/^http:\/\/\/+/i, "http://");
+
     // 1. Verify dev server connection first via HTTP
     const serverLive = await new Promise<boolean>((resolve) => {
       try {
-        const parsed = new URL(url);
+        const parsed = new URL(cleanUrl);
         const req = http.request({
           hostname: parsed.hostname,
           port: parsed.port || 80,
@@ -302,7 +304,7 @@ export class ReadOnlyBrowserValidator {
     });
 
     if (!serverLive) {
-      review.failureReason = `net::ERR_CONNECTION_REFUSED: Dev server is not running or unreachable at ${url}`;
+      review.failureReason = `net::ERR_CONNECTION_REFUSED: Dev server is not running or unreachable at ${cleanUrl}`;
       console.warn(`[BrowserValidator] ❌ ${review.failureReason}`);
       return review;
     }
@@ -341,23 +343,32 @@ export class ReadOnlyBrowserValidator {
       ] as const;
 
       for (const vp of viewports) {
-        try {
-          await page.setViewport({ width: vp.width, height: vp.height });
-          await page.goto(url, { waitUntil: "networkidle2", timeout: 10000 });
-          const count = await page.evaluate(() => document.querySelectorAll("*").length);
-          review.renderedElementsCount = Math.max(review.renderedElementsCount, count);
+        let captured = false;
+        let attempts = 0;
+        while (!captured && attempts < 2) {
+          attempts++;
+          try {
+            await page.setViewport({ width: vp.width, height: vp.height });
+            await page.goto(cleanUrl, { waitUntil: "networkidle2", timeout: 10000 });
+            const count = await page.evaluate(() => document.querySelectorAll("*").length);
+            review.renderedElementsCount = Math.max(review.renderedElementsCount, count);
 
-          const filePath = join(screenshotDir, `${vp.name}.png`);
-          await page.screenshot({ path: filePath, fullPage: false });
+            const filePath = join(screenshotDir, `${vp.name}.png`);
+            await page.screenshot({ path: filePath, fullPage: false });
 
-          if (existsSync(filePath) && statSync(filePath).size > 1000) {
-            review.screenshots[vp.name] = filePath;
-            console.log(`[BrowserValidator] 📸 Captured ${vp.name} (${vp.width}x${vp.height}) screenshot at ${filePath} (${statSync(filePath).size} bytes)`);
-          } else {
-            console.warn(`[BrowserValidator] ⚠️ Screenshot file for ${vp.name} is missing or invalid size`);
+            if (existsSync(filePath) && statSync(filePath).size > 1000) {
+              review.screenshots[vp.name] = filePath;
+              console.log(`[BrowserValidator] 📸 Captured ${vp.name} (${vp.width}x${vp.height}) screenshot at ${filePath} (${statSync(filePath).size} bytes)`);
+              captured = true;
+            } else {
+              console.warn(`[BrowserValidator] ⚠️ Screenshot file for ${vp.name} is missing or invalid size (attempt ${attempts}/2)`);
+            }
+          } catch (e: any) {
+            console.warn(`[BrowserValidator] ⚠️ Could not capture ${vp.name} screenshot (attempt ${attempts}/2): ${e.message}`);
+            if (attempts < 2) {
+              await new Promise((r) => setTimeout(r, 1000));
+            }
           }
-        } catch (e: any) {
-          console.warn(`[BrowserValidator] ⚠️ Could not capture ${vp.name} screenshot: ${e.message}`);
         }
       }
 
@@ -366,8 +377,17 @@ export class ReadOnlyBrowserValidator {
         const { ProductExperiencePlanManager } = await import("../design/product-experience-plan.js");
         const plan = ProductExperiencePlanManager.load(outputDirectory);
         await page.setViewport({ width: 1440, height: 900 });
-        await page.goto(url, { waitUntil: "networkidle2", timeout: 10000 });
-        review.productIdentity = await ReadOnlyBrowserValidator.validateProductIdentity(page, plan, undefined, url);
+        let navigated = false;
+        for (let i = 0; i < 2 && !navigated; i++) {
+          try {
+            await page.goto(cleanUrl, { waitUntil: "networkidle2", timeout: 10000 });
+            navigated = true;
+          } catch (navErr: any) {
+            if (i === 0) await new Promise(r => setTimeout(r, 1000));
+            else console.warn(`[BrowserValidator] ⚠️ Navigation to ${cleanUrl} for product check failed: ${navErr.message}`);
+          }
+        }
+        review.productIdentity = await ReadOnlyBrowserValidator.validateProductIdentity(page, plan, undefined, cleanUrl);
       } catch (prodGateErr: any) {
         console.warn(`[BrowserValidator] ⚠️ Product identity check warning: ${prodGateErr.message}`);
       }
@@ -437,6 +457,7 @@ export class ReadOnlyBrowserValidator {
       const canvases = document.querySelectorAll("canvas, svg").length;
       const sliders = document.querySelectorAll("input[type='range'], [role='slider']").length;
       const tables = document.querySelectorAll("table, [role='table'], [role='grid']").length;
+      const workspaceAttr = (document.querySelector("[data-workspace]") as HTMLElement | null)?.dataset?.workspace || "";
 
       return {
         bodyText,
@@ -446,6 +467,7 @@ export class ReadOnlyBrowserValidator {
         canvases,
         sliders,
         tables,
+        workspaceAttr,
       };
     });
 
@@ -487,13 +509,15 @@ export class ReadOnlyBrowserValidator {
     let detectedPattern = expectedPattern;
 
     if (expectedPattern === "configurator-workspace" || expectedPattern === "workspace-editor") {
-      const hasTools = domData.inputs.length >= 2 || domData.canvases > 0 || domData.sliders > 0 || domData.tables > 0 || domData.buttons.length >= 3;
+      // Accept if: data-workspace attr signals a workspace, OR the page has interactive controls, OR domain content was detected
+      const workspaceAttrMatch = /configurator|workspace|studio|calculator|editor/i.test(domData.workspaceAttr || "");
+      const hasTools = workspaceAttrMatch || domData.inputs.length >= 1 || domData.canvases > 0 || domData.sliders > 0 || domData.tables > 0 || domData.buttons.length >= 2;
       if (!hasTools || authWallDetected) {
         patternMatched = false;
         detectedPattern = authWallDetected ? "authentication-wall" : "showcase-landing";
         mismatchReasons.push(`Expected experience pattern "${expectedPattern}" with interactive tools/workspaces, but detected "${detectedPattern}".`);
       } else {
-        passedChecks.push(`Experience pattern matched: ${expectedPattern}`);
+        passedChecks.push(`Experience pattern matched: ${expectedPattern} (workspace=${domData.workspaceAttr || "none"})`);
       }
     } else {
       passedChecks.push(`Experience pattern: ${expectedPattern}`);

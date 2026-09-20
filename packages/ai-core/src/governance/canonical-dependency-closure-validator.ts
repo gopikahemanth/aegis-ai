@@ -69,13 +69,13 @@ export function validateLocalDependency(
 
 export class CanonicalDependencyClosureValidator {
   public static validate(projectRoot: string): DependencyClosureReport {
-    const canonicalPaths = CanonicalFileGraph.getAllPaths();
+    const canonicalPaths = CanonicalFileGraph.getAllPaths(projectRoot);
     const missingDependencies: string[] = [];
     const externalPackageFailures: string[] = [];
     const missingFiles: string[] = [];
 
     for (const relPath of canonicalPaths) {
-      const entry = CanonicalFileGraph.getFileByPath(relPath);
+      const entry = CanonicalFileGraph.getFileByPath(relPath, projectRoot);
       if (!entry) continue;
 
       const absPath = join(projectRoot, relPath);
@@ -85,6 +85,10 @@ export class CanonicalDependencyClosureValidator {
 
       for (const allowedImp of entry.allowedImports) {
         if (allowedImp.startsWith("node:")) continue;
+        // Directory-glob patterns (e.g. "server/routes/", "server/middleware/") are namespace
+        // declarations, not specific file imports. Skip them — they cannot be resolved to a
+        // single canonical path and are validated structurally at a higher level.
+        if (allowedImp.endsWith("/")) continue;
 
         if (isExternalPackage(allowedImp)) {
           const extRes = validateExternalDependency(relPath, allowedImp, projectRoot);

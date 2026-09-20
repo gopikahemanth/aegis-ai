@@ -60,7 +60,7 @@ export class ProjectStartupAgent {
 
     // Ensure .npmrc overrides pnpm minimum-release-age policy and approves build scripts
     const npmrcPath = join(outputDirectory, ".npmrc");
-    const npmrcContent = "confirm-modules-purge=false\nverify-deps-before-run=false\nignore-scripts=false\nonly-built-dependencies[]=@prisma/client\nonly-built-dependencies[]=@prisma/engines\nonly-built-dependencies[]=prisma\nonly-built-dependencies[]=esbuild\nonly-built-dependencies[]=core-js\nonly-built-dependencies[]=bcryptjs\n";
+    const npmrcContent = "confirm-modules-purge=false\nconfirmModulesPurge=false\nminimum-release-age=0\nminimumReleaseAge=0\nverify-deps-before-run=false\nignore-scripts=false\nonly-built-dependencies[]=@prisma/client\nonly-built-dependencies[]=@prisma/engines\nonly-built-dependencies[]=prisma\nonly-built-dependencies[]=esbuild\nonly-built-dependencies[]=core-js\nonly-built-dependencies[]=bcryptjs\n";
     writeFileSync(npmrcPath, npmrcContent, "utf8");
 
     // ── 2. Patch or Create package.json ──────────────────────────────────────
@@ -135,7 +135,7 @@ export class ProjectStartupAgent {
         console.log(`[Startup] Synchronizing dependencies (${syncResult.reason})...`);
         let installed = false;
         try {
-          execSync("pnpm install --ignore-workspace --config.minimum-release-age=0 --prefer-offline --no-frozen-lockfile", {
+          execSync("pnpm install --ignore-workspace --config.confirmModulesPurge=false --config.minimumReleaseAge=0 --config.minimum-release-age=0 --prefer-offline --no-frozen-lockfile", {
             cwd: outputDirectory,
             stdio: "pipe",
             timeout: 120_000,
@@ -517,6 +517,7 @@ export default uploadMiddleware;
     // 2. src/shared/components/Layout.tsx
     const layoutPath = join(dir, "src/shared/components/Layout.tsx");
     if (!existsSync(layoutPath)) {
+      const appTitle = (contract as any)?.name || "Application Platform";
       mkdirSync(join(dir, "src/shared/components"), { recursive: true });
       writeFileSync(layoutPath, `import React from "react";
 
@@ -529,7 +530,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-          AEGIS System Platform
+          ${appTitle}
         </h1>
       </header>
       <main className="flex-1 max-w-7xl w-full mx-auto p-6">{children}</main>
@@ -540,9 +541,20 @@ export default function Layout({ children }: LayoutProps) {
       patches.push("Created canonical src/shared/components/Layout.tsx");
     }
 
+    const altLayoutPath = join(dir, "src/components/Layout.tsx");
+    if (!existsSync(altLayoutPath)) {
+      mkdirSync(join(dir, "src/components"), { recursive: true });
+      writeFileSync(altLayoutPath, `export { default, Layout } from "../shared/components/Layout";\nexport * from "../shared/components/Layout";\n`, "utf8");
+      patches.push("Created src/components/Layout.tsx re-export bridge");
+    }
+
     // 2b. src/features/auth/LoginPage.tsx
+    // ONLY generate fallback LoginPage if auth wall is explicitly allowed or requested
     const loginPagePath = join(dir, "src/features/auth/LoginPage.tsx");
-    if (!existsSync(loginPagePath)) {
+    const lowerPrompt = ((contract as any)?.prompt || "").toLowerCase();
+    const wantsAuth = lowerPrompt.includes("auth") || lowerPrompt.includes("login") || lowerPrompt.includes("sso") ||
+                      (contract?.requiredRoutes || []).some((r: any) => typeof r === "string" ? r.includes("login") : r?.path?.includes("login"));
+    if (wantsAuth && !existsSync(loginPagePath)) {
       mkdirSync(join(dir, "src/features/auth"), { recursive: true });
       writeFileSync(loginPagePath, `import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -630,6 +642,79 @@ export const GlassCard = Card;
 export default Card;
 `, "utf8");
       patches.push("Created canonical src/shared/components/Card.tsx");
+    }
+
+    // 3b. src/shared/components/Button.tsx
+    const buttonPath = join(dir, "src/shared/components/Button.tsx");
+    if (!existsSync(buttonPath)) {
+      mkdirSync(join(dir, "src/shared/components"), { recursive: true });
+      writeFileSync(buttonPath, `import React from "react";
+
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "outline" | "ghost" | string;
+  size?: "sm" | "md" | "lg" | string;
+}
+
+export function Button({ children, className = "", variant = "primary", size = "md", ...props }: ButtonProps) {
+  const base = "font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2";
+  const sizeClasses: Record<string, string> = {
+    sm: "px-3 py-1.5 text-xs",
+    md: "px-4 py-2 text-sm",
+    lg: "px-6 py-3 text-base",
+  };
+  const variantClasses: Record<string, string> = {
+    primary: "bg-amber-700 hover:bg-amber-800 text-white shadow-sm",
+    secondary: "bg-stone-200 hover:bg-stone-300 text-stone-800",
+    outline: "border border-stone-300 hover:bg-stone-100 text-stone-700",
+    ghost: "hover:bg-stone-100 text-stone-600",
+  };
+  const sClass = sizeClasses[size] || sizeClasses.md;
+  const vClass = variantClasses[variant] || variantClasses.primary;
+  return (
+    <button className={\`\${base} \${sClass} \${vClass} \${className}\`} {...props}>
+      {children}
+    </button>
+  );
+}
+
+export default Button;
+`, "utf8");
+      patches.push("Created canonical src/shared/components/Button.tsx");
+    }
+
+    // 3c. src/shared/components/Badge.tsx & StatusBadge.tsx
+    const badgePath = join(dir, "src/shared/components/Badge.tsx");
+    if (!existsSync(badgePath)) {
+      mkdirSync(join(dir, "src/shared/components"), { recursive: true });
+      writeFileSync(badgePath, `import React from "react";
+
+export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  status?: string;
+  variant?: string;
+}
+
+export function Badge({ children, status, variant = "default", className = "", ...props }: BadgeProps) {
+  const label = children || status || "Active";
+  return (
+    <span className={\`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-800 border border-stone-200 \${className}\`} {...props}>
+      {label}
+    </span>
+  );
+}
+
+export const StatusBadge = Badge;
+export default Badge;
+`, "utf8");
+      patches.push("Created canonical src/shared/components/Badge.tsx");
+    }
+
+    const statusBadgePath = join(dir, "src/shared/components/StatusBadge.tsx");
+    if (!existsSync(statusBadgePath)) {
+      // Safe alias: import Badge then re-export it as StatusBadge locally.
+      // Never re-export 'StatusBadge' as a named member from './Badge' because Badge.tsx
+      // does not declare a StatusBadge export (TS2614 guard).
+      writeFileSync(statusBadgePath, `import Badge from "./Badge";\nexport const StatusBadge = Badge;\nexport { Badge };\nexport default Badge;\n`, "utf8");
+      patches.push("Created canonical src/shared/components/StatusBadge.tsx");
     }
 
     // 4. ATS-specific routes and services (ATS ONLY)
@@ -898,11 +983,11 @@ if (!existsSync(".env")) {
 }
 
 // Start Vite immediately so the sandbox health check can connect within 10s
-const vite = spawn("npx", ["vite", "--host", "0.0.0.0", "--port", "5173"], { stdio: "inherit", shell: true });
+const vite = spawn("npx vite --host 0.0.0.0 --port 5173", { stdio: "inherit", shell: true });
 
 // Start Express backend (non-fatal — Vite will still serve the frontend if server fails)
 try {
-  const server = spawn("npx", ["tsx", "${serverPath}"], { stdio: "ignore", shell: true });
+  const server = spawn("npx tsx ${serverPath}", { stdio: "ignore", shell: true });
   server.on("error", () => {});
 } catch (e) {}
 
@@ -1082,7 +1167,7 @@ process.on("SIGTERM", () => { vite.kill(); process.exit(); });
       if (depsChanged) {
         try {
           console.log("[Startup] Installing newly added dependencies via pnpm...");
-          execSync("pnpm install --ignore-workspace --config.minimum-release-age=0 --prefer-offline --no-frozen-lockfile", {
+          execSync("pnpm install --ignore-workspace --config.confirmModulesPurge=false --config.minimumReleaseAge=0 --config.minimum-release-age=0 --prefer-offline --no-frozen-lockfile", {
             cwd: dir,
             stdio: "pipe",
             timeout: 30_000,
@@ -1146,7 +1231,10 @@ export default defineConfig({
 
     // Ensure this generated project is isolated from any parent pnpm workspace
     const pnpmWorkspacePath = join(dir, "pnpm-workspace.yaml");
-    const workspaceContent = `packages: []
+    const workspaceContent = `packages:
+  - '.'
+confirmModulesPurge: false
+minimumReleaseAge: 0
 onlyBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'
@@ -1167,7 +1255,7 @@ allowBuilds:
 
     // Allow Prisma and esbuild build scripts in pnpm and bypass release age policies
     const npmrcPath = join(dir, ".npmrc");
-    const npmrcContent = "confirm-modules-purge=false\nverify-deps-before-run=false\nignore-scripts=false\nonly-built-dependencies[]=@prisma/client\nonly-built-dependencies[]=@prisma/engines\nonly-built-dependencies[]=prisma\nonly-built-dependencies[]=esbuild\nonly-built-dependencies[]=core-js\nonly-built-dependencies[]=bcryptjs\n";
+    const npmrcContent = "confirm-modules-purge=false\nconfirmModulesPurge=false\nminimum-release-age=0\nminimumReleaseAge=0\nverify-deps-before-run=false\nignore-scripts=false\nonly-built-dependencies[]=@prisma/client\nonly-built-dependencies[]=@prisma/engines\nonly-built-dependencies[]=prisma\nonly-built-dependencies[]=esbuild\nonly-built-dependencies[]=core-js\nonly-built-dependencies[]=bcryptjs\n";
     writeFileSync(npmrcPath, npmrcContent, "utf8");
     patches.push("Created .npmrc (allow build scripts & bypass release age policies)");
 
@@ -1365,13 +1453,22 @@ interface ImportMeta {
   private walkFiles(dir: string, maxDepth: number, depth = 0): string[] {
     if (depth > maxDepth) return [];
     const results: string[] = [];
-    for (const entry of readdirSync(dir)) {
-      const full = join(dir, entry);
-      if (statSync(full).isDirectory()) {
-        results.push(...this.walkFiles(full, maxDepth, depth + 1));
-      } else {
-        results.push(full);
+    try {
+      for (const entry of readdirSync(dir)) {
+        if (entry === "node_modules" || entry === ".git" || entry === "dist" || entry === "build" || entry === ".aegis" || entry === ".turbo") continue;
+        const full = join(dir, entry);
+        try {
+          if (statSync(full).isDirectory()) {
+            results.push(...this.walkFiles(full, maxDepth, depth + 1));
+          } else {
+            results.push(full);
+          }
+        } catch {
+          // ignore file access errors on Windows symlinks/junctions
+        }
       }
+    } catch {
+      // ignore dir access errors
     }
     return results;
   }
@@ -1577,6 +1674,14 @@ interface ImportMeta {
         let changed = false;
         const rel = relative(dir, absPath).replace(/\\/g, "/");
 
+        // SCOPE GUARD: Skip files owned by DesignSystemGenerator or shared canonical components.
+        // These files have precise export contracts that the broad regex transforms below would corrupt.
+        // They are managed exclusively by DesignSystemGenerator and FastDeterministicSanitizer.
+        const isDesignSystemOwned =
+          rel.startsWith("src/design-system/") ||
+          rel.startsWith("src/shared/components/");
+        if (isDesignSystemOwned) continue;
+
         // Fix 0: Sub-file demuxing if === FILE: was embedded in content
         if (/===\s*FILE:/i.test(content)) {
           const blocks = content.split(/===\s*FILE:\s*/i).filter(Boolean);
@@ -1601,11 +1706,16 @@ interface ImportMeta {
 
         // Fix 37: Ensure vite.config.ts configures path alias "@" -> path.resolve(__dirname, "./src")
         if (rel === "vite.config.ts" || rel.endsWith("/vite.config.ts")) {
-          if (!content.includes("resolve:") || !content.includes("@")) {
-            if (!content.includes("import path from 'path';") && !content.includes('import path from "path";')) {
-              content = `import path from "path";\n` + content;
+          const hasAlias = content.includes('"@":') || content.includes("'@':") || content.includes("@/*");
+          if (!hasAlias) {
+            if (!content.includes("import path from 'path';") && !content.includes('import path from "path";') && !content.includes("node:path")) {
+              content = `import path from "node:path";\n` + content;
             }
-            content = content.replace(/(defineConfig\(\{)/, `$1\n  resolve: {\n    alias: {\n      "@": path.resolve(__dirname, "./src"),\n    },\n  },`);
+            if (content.includes("resolve:")) {
+              content = content.replace(/(resolve\s*:\s*\{)/, `$1\n    alias: {\n      "@": path.resolve(__dirname, "./src"),\n    },`);
+            } else {
+              content = content.replace(/(defineConfig\(\{)/, `$1\n  resolve: {\n    alias: {\n      "@": path.resolve(__dirname, "./src"),\n    },\n  },`);
+            }
             changed = true;
           }
         }
@@ -2404,7 +2514,7 @@ export default DataTable;\n`;
     for (const diskFile of allDiskFiles) {
       if (diskFile.fullPath.endsWith(".d.ts")) continue;
       const fileDir = dirname(diskFile.fullPath);
-      const importMatches = diskFile.content.matchAll(/(?:import\s+(?:[\s\S]*?\s+from\s+)?|import\s*\(\s*)['\"]((?:\.|@\/)[^'"]+)['"]/g);
+      const importMatches = diskFile.content.matchAll(/(?:(?:import|export)\s+(?:[\s\S]*?\s+from\s+)?|import\s*\(\s*)['\"]((?:\.|@\/)[^'"]+)['"]/g);
       for (const m of importMatches) {
         const rawImportPath = m[1];
         let targetPath = rawImportPath.startsWith("@/")
@@ -2600,6 +2710,7 @@ export const ui = { Card, Select, Spinner, LoadingSpinner, Alert, Button, Input,
 export default ui;
 `, "utf8");
                 console.log(`[Startup] Auto-created comprehensive UI primitives barrel: ${relUnresolved}`);
+              } else {
                 writeFileSync(fullStubPath, `/* ROUTE_STUB_ONLY: CAPABILITY_IMPLEMENTATION_REQUIRED */
 import React from 'react';
 

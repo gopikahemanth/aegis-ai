@@ -51,3 +51,8 @@ export { DomainContaminationDetector, type DomainContaminationReport } from "./d
 export * from "./hardcoded-value-detector.js";
 export * from "./artifact-provenance-validator.js";
 
+
+// -- Human-First Frontend Architecture ----------------------------------------
+export * from "./frontend-file-policy.js";
+export * from "./frontend-experience-contract.js";
+

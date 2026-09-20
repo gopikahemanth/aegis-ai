@@ -1,6 +1,6 @@
 import { spawn, ChildProcess } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import http from "node:http";
 
 export interface AppServerInfo {
@@ -16,7 +16,8 @@ export class AppServerRunner {
   private static activePort: number = 5173;
 
   public static async startServer(outputDirectory: string): Promise<AppServerInfo> {
-    const pkgPath = join(outputDirectory, "package.json");
+    const absDir = resolve(outputDirectory);
+    const pkgPath = join(absDir, "package.json");
     let startCommand = "pnpm run dev";
     let port = 5173;
 
@@ -33,7 +34,7 @@ export class AppServerRunner {
       } catch {}
     }
 
-    const viteConfigPath = join(outputDirectory, "vite.config.ts");
+    const viteConfigPath = join(absDir, "vite.config.ts");
     if (existsSync(viteConfigPath)) {
       try {
         const content = readFileSync(viteConfigPath, "utf8");
@@ -59,18 +60,19 @@ export class AppServerRunner {
       } catch {}
     }
 
-    const localViteBin = join(outputDirectory, "node_modules", "vite", "bin", "vite.js");
+    const localViteBin = join(absDir, "node_modules", "vite", "bin", "vite.js");
     if (existsSync(localViteBin)) {
-      this.process = spawn("node", [localViteBin, "--port", String(port)], {
-        cwd: outputDirectory,
-        shell: true,
+      this.process = spawn(process.execPath, [localViteBin, "--port", String(port)], {
+        cwd: absDir,
+        shell: false,
         stdio: "pipe",
         env: { ...process.env, PORT: String(port) },
       });
     } else {
-      this.process = spawn("npx", ["vite", "--port", String(port)], {
-        cwd: outputDirectory,
-        shell: true,
+      const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
+      this.process = spawn(npxCmd, ["vite", "--port", String(port)], {
+        cwd: absDir,
+        shell: false,
         stdio: "pipe",
         env: { ...process.env, PORT: String(port) },
       });

@@ -194,7 +194,6 @@ const CONTENT_CREATION_SIGNALS = [
   "cms", "content management", "blog platform", "notes app", "document editor",
   "design tool", "canvas", "diagram", "whiteboard", "rich text",
   "configurator", "calculator", "formulator", "estimator", "simulator", "workbench",
-  "photometric", "glaze", "kiln", "lux", "fixture", "studio platform", "studio workspace",
 ];
 
 const DATA_ANALYSIS_SIGNALS = [
@@ -207,7 +206,7 @@ const BOOKING_ORDERING_SIGNALS = [
   "booking", "reservation", "appointment", "schedule", "order", "checkout",
   "cart", "ecommerce", "e-commerce", "shop", "store", "marketplace",
   "hotel", "restaurant", "salon", "clinic appointment", "ticket booking",
-  "event booking", "rental", "hire", "buy",
+  "event booking", "rental", "hire", "buy", "commission", "bespoke commission",
 ];
 
 const PORTFOLIO_SHOWCASE_SIGNALS = [

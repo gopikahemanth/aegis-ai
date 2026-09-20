@@ -16,6 +16,11 @@
  *   src/**                ← React frontend (ZERO Prisma access)
  */
 
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { ProjectRootSingleton } from "../utils/path-resolver.js";
+import { DynamicFileGraphManager } from "./dynamic-file-graph.js";
+
 export type FileCategory =
   | "frontend-page"
   | "frontend-component"
@@ -1086,8 +1091,19 @@ export class CanonicalFileGraph {
   );
 
   /** Get a canonical entry by its exact path */
-  public static getFileByPath(path: string): CanonicalFileEntry | null {
-    return CanonicalFileGraph.byPath.get(path.replace(/\\/g, "/")) ?? null;
+  public static getFileByPath(path: string, projectRoot?: string): CanonicalFileEntry | null {
+    const norm = path.replace(/\\/g, "/");
+    const root = projectRoot || ProjectRootSingleton.getRoot();
+    if (root) {
+      try {
+        const dyn = DynamicFileGraphManager.load(root);
+        if (dyn && dyn.entries.length > 0) {
+          const found = dyn.entries.find(e => e.canonicalPath === norm);
+          if (found) return found;
+        }
+      } catch {}
+    }
+    return CanonicalFileGraph.byPath.get(norm) ?? null;
   }
 
   /** Get a canonical entry by semantic role */
@@ -1096,12 +1112,30 @@ export class CanonicalFileGraph {
   }
 
   /** All canonical file paths */
-  public static getAllPaths(): string[] {
+  public static getAllPaths(projectRoot?: string): string[] {
+    const root = projectRoot || ProjectRootSingleton.getRoot();
+    if (root) {
+      try {
+        const dyn = DynamicFileGraphManager.load(root);
+        if (dyn && dyn.entries.length > 0) {
+          return dyn.entries.map(f => f.canonicalPath);
+        }
+      } catch {}
+    }
     return CANONICAL_FILES.map(f => f.canonicalPath);
   }
 
   /** All required file paths */
-  public static getRequiredPaths(): string[] {
+  public static getRequiredPaths(projectRoot?: string): string[] {
+    const root = projectRoot || ProjectRootSingleton.getRoot();
+    if (root) {
+      try {
+        const dyn = DynamicFileGraphManager.load(root);
+        if (dyn && dyn.entries.length > 0) {
+          return dyn.entries.filter(f => f.required).map(f => f.canonicalPath);
+        }
+      } catch {}
+    }
     return CANONICAL_FILES.filter(f => f.required).map(f => f.canonicalPath);
   }
 
@@ -1175,8 +1209,31 @@ export class CanonicalFileGraph {
 
     const isGenericStem = GENERIC_STEMS.has(proposedStem);
 
-    // 1. Check ScoreRadar / ScoreVisualizer duplicate stems
-    if (proposedStem.includes("scoreradar") || proposedStem.includes("scorevisualizer") || proposedStem.includes("scorechart")) {
+    const root = ProjectRootSingleton.getRoot();
+    let aliasCheckSet = CANONICAL_FILES;
+    let isAts = true;
+    if (root) {
+      try {
+        const dyn = DynamicFileGraphManager.load(root);
+        if (dyn && dyn.entries.length > 0) {
+          aliasCheckSet = dyn.entries;
+        } else {
+          const contractPath = join(root, ".aegis", "architecture-contract.json");
+          if (existsSync(contractPath)) {
+            const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+            const promptLower = (contract.prompt || "").toLowerCase();
+            isAts = promptLower.includes("resume") || promptLower.includes("ats");
+            if (!isAts) {
+              const ATS_STEMS = ["scan", "resume", "keyword", "matchdashboard", "scoregauge", "analyzepage", "uploadform"];
+              aliasCheckSet = aliasCheckSet.filter(e => !ATS_STEMS.some(stem => e.canonicalPath.toLowerCase().includes(stem)));
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // 1. Check ScoreRadar / ScoreVisualizer duplicate stems (ATS only)
+    if (isAts && (proposedStem.includes("scoreradar") || proposedStem.includes("scorevisualizer") || proposedStem.includes("scorechart"))) {
       return {
         isDuplicate: true,
         canonicalFile: {
@@ -1193,7 +1250,7 @@ export class CanonicalFileGraph {
     }
 
     // Check all aliases
-    for (const entry of CANONICAL_FILES) {
+    for (const entry of aliasCheckSet) {
       // Check if proposedPath is a known alias
       for (const alias of entry.semanticAliases) {
         const aliasNorm = alias.replace(/\\/g, "/");
@@ -1391,8 +1448,30 @@ export class CanonicalModuleRegistry {
     const normImporter = importerPath.replace(/\\/g, "/");
     const normImport = requestedImport.replace(/\\/g, "/");
 
+    const root = ProjectRootSingleton.getRoot();
+    let searchSet: CanonicalFileEntry[] = CANONICAL_FILES;
+    if (root) {
+      try {
+        const dyn = DynamicFileGraphManager.load(root);
+        if (dyn && dyn.entries.length > 0) {
+          searchSet = dyn.entries;
+        } else {
+          const contractPath = join(root, ".aegis", "architecture-contract.json");
+          if (existsSync(contractPath)) {
+            const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+            const promptLower = (contract.prompt || "").toLowerCase();
+            const isAts = promptLower.includes("resume") || promptLower.includes("ats");
+            if (!isAts) {
+              const ATS_STEMS = ["scan", "resume", "keyword", "matchdashboard", "scoregauge", "analyzepage", "uploadform"];
+              searchSet = searchSet.filter(e => !ATS_STEMS.some(stem => e.canonicalPath.toLowerCase().includes(stem)));
+            }
+          }
+        }
+      } catch {}
+    }
+
     // 1. Exact match with canonical path
-    for (const entry of CANONICAL_FILES) {
+    for (const entry of searchSet) {
       if (entry.canonicalPath === normImport || entry.canonicalPath.endsWith(normImport)) {
         return { resolvedPath: entry.canonicalPath, canonicalEntry: CanonicalModuleRegistry.getModule(entry.canonicalPath) };
       }
@@ -1417,7 +1496,7 @@ export class CanonicalModuleRegistry {
     const exts = ["", ".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.tsx"];
     for (const ext of exts) {
       const fullCand = candidatePath + ext;
-      for (const entry of CANONICAL_FILES) {
+      for (const entry of searchSet) {
         if (entry.canonicalPath === fullCand) {
           console.log(`[CANONICAL-IMPORT-RESOLUTION] importer=${normImporter} requested=${requestedImport} resolved=${entry.canonicalPath}`);
           return { resolvedPath: entry.canonicalPath, canonicalEntry: CanonicalModuleRegistry.getModule(entry.canonicalPath) };
@@ -1426,7 +1505,7 @@ export class CanonicalModuleRegistry {
     }
 
     // 3. Registered semantic alias match
-    for (const entry of CANONICAL_FILES) {
+    for (const entry of searchSet) {
       for (const alias of entry.semanticAliases) {
         const normAlias = alias.replace(/\\/g, "/");
         if (normAlias === normImport || normAlias === requestedImport || normAlias.endsWith(normImport) || candidatePath.endsWith(normAlias)) {
@@ -1438,7 +1517,7 @@ export class CanonicalModuleRegistry {
 
     // 4. General Types fallback resolution
     if (normImport.includes("types") || normImport.endsWith("types")) {
-      for (const entry of CANONICAL_FILES) {
+      for (const entry of searchSet) {
         if (entry.canonicalPath.includes("types")) {
           return { resolvedPath: entry.canonicalPath, canonicalEntry: CanonicalModuleRegistry.getModule(entry.canonicalPath) };
         }

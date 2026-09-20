@@ -98,49 +98,111 @@ Do not explain anything.`;
   public getPlannerPrompt(spec?: ProjectSpecification): string {
     return `${this.getBaseSystemPrompt("Planner Agent")}
 
-STRICT ARCHITECTURE LOCK (MUST CONFORM TO THESE STACK CONSTRAINTS):
-- Frontend Framework: ${spec?.frontend ?? spec?.type ?? "React / Vite"}
-- Backend Framework: ${spec?.backend ?? "Express"}
-- Database Engine: ${spec?.database ?? "PostgreSQL"}
-- ORM: Prisma
-- Authentication: ${spec?.auth ?? "JWT"}
+════════════════════════════════════════════════════════════════════════════════
+AEGIS FRONTEND-FIRST TASK PLANNER
+════════════════════════════════════════════════════════════════════════════════
 
-CRITICAL ARCHITECTURE CONSTRAINTS:
-- Do NOT plan Next.js, NextAuth, Lucia Auth, OAuth2, Server Actions, or Next.js App Router.
-- Do NOT plan Mongoose, MongoDB, or Drizzle.
-- The ONLY frontend framework permitted is: ${spec?.frontend ?? "React-Vite"}.
-- The ONLY backend framework permitted is: ${spec?.backend ?? "Express"}.
-- The ONLY ORM / Database permitted is: ${spec?.database ?? "PostgreSQL"} with Prisma.
-- The ONLY authentication permitted is: JWT with Express.
-- All task descriptions MUST strictly adhere to the above locked tech stack.
+You are planning EXCLUSIVELY the frontend experience for this product.
 
-Break the project into execution tasks. Be extremely concise. Generate a maximum of 5 high-level tasks to cover the entire implementation scope. Keep task descriptions short to prevent output truncation.
-Tasks MUST follow a logical order: DataModeling/Database/Backend/APIs MUST be planned and executed BEFORE Frontend.
+This is the INITIAL generation plan. It covers ONLY the frontend.
+Database, backend, API, and server tasks are generated SEPARATELY after the
+human approves the frontend. Do NOT plan them here.
+
+ABSOLUTE PROHIBITIONS — these will cause FRONTEND_PLAN_INVALID:
+  ✗ Do NOT generate any task involving: Prisma, database, PostgreSQL, schema, migration
+  ✗ Do NOT generate any task involving: Express, server, routes, controllers, services, backend
+  ✗ Do NOT generate any task involving: API design, REST endpoints, authentication backend, JWT
+  ✗ Do NOT set any task stage to: "Database", "DataModeling", "ApiDesign", "Backend"
+  ✗ Do NOT generate backend files: server/**, prisma/**, migrations/**, database/**
+  ✗ Do NOT use stage values other than: "Frontend", "Planning", "Requirements"
+
+WHAT YOU MUST GENERATE:
+  ✓ Frontend product shell, navigation, and routing
+  ✓ Primary workspace or hero experience (the first thing the user sees)
+  ✓ All domain feature experiences (interactive, with local state and mock/seed data)
+  ✓ Responsive states and interaction polish
+
+TECHNOLOGY STACK (FRONTEND ONLY):
+  Framework: ${spec?.frontend ?? "React-Vite"}
+  Styling: Tailwind CSS + CSS custom properties
+  State: React useState / useReducer (local only — no backend calls)
+  Data: Realistic seed data defined inline in components
+  Icons: lucide-react
+
+INTERACTION REQUIREMENT:
+  Every feature must be fully interactive without a backend.
+  Local state must drive all UI updates.
+  The frontend is NOT a static mockup.
+  A calculator must calculate. A configurator must configure.
+  A filter must filter. A form must validate and show a result.
+
+TASK LIMIT: Maximum 4 tasks.
+  The 4-task limit is a planning-GROUP limit, not a feature limit.
+  Each task may implement MULTIPLE related features.
+  Do NOT omit requested features merely to stay within 4 tasks.
+  If the product has 8 features, group them across 4 tasks.
+
+TASK ORDERING:
+  1. Product shell + navigation + routing scaffold
+  2. Primary workspace / hero experience (most important feature)
+  3. Remaining domain features (grouped)
+  4. Responsive layout + interaction polish + empty/error states
+
 Each task MUST contain:
-- id: number (unique)
-- title: string
-- description: string
-- completed: boolean
-- stage: "Requirements" | "Planning" | "Architecture" | "DataModeling" | "ApiDesign" | "Database" | "Backend" | "Frontend" | "Review" | "Validation" | "Healing"
-- priority: number
-- dependencies: number[]
-- estimatedComplexity: number
+  - id: number (unique, starting at 1)
+  - title: string (describe the frontend component/page being built)
+  - description: string (concise, frontend-only)
+  - completed: false
+  - stage: "Frontend"
+  - priority: number
+  - dependencies: number[] (task IDs this depends on)
+  - estimatedComplexity: number (1–5)
 
-Return ONLY a valid JSON array matching this schema:
+EXAMPLE OUTPUT for a lighting configurator product:
 [
   {
     "id": 1,
-    "title": "Create Prisma Schema",
-    "description": "Define database models for the application entities",
+    "title": "Studio Shell, Navigation & Routing",
+    "description": "Create the application shell with sticky nav, brand identity, route configuration (/, /configurator, /photometric, /quote), and responsive mobile menu. Use React Router. All routes must render real components.",
     "completed": false,
-    "stage": "Database",
+    "stage": "Frontend",
     "priority": 1,
     "dependencies": [],
+    "estimatedComplexity": 2
+  },
+  {
+    "id": 2,
+    "title": "Custom Fixture Configurator Workspace",
+    "description": "Build the primary configurator workspace: fixture type selector, dimension controls (width/height/depth sliders), material/finish picker, 3D-style visual preview panel, and real-time spec summary. All controls update local state. Pre-populated with 4 realistic fixture seed records.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 2,
+    "dependencies": [1],
+    "estimatedComplexity": 4
+  },
+  {
+    "id": 3,
+    "title": "Photometric Lux Calculator & Quote Estimator",
+    "description": "Implement the photometric analysis page (lux calculation from fixture count, room dimensions, mounting height) with a lux distribution heatmap visualization. Implement the quote estimator page with line-item table, quantity controls, unit price inputs, tax selector, and live total calculation. All calculations run in local state.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 3,
+    "dependencies": [1],
+    "estimatedComplexity": 4
+  },
+  {
+    "id": 4,
+    "title": "Responsive Polish, Interactions & Edge States",
+    "description": "Ensure all pages are fully responsive at 375px/768px/1440px. Add empty states with CTAs for empty fixture list. Add loading skeleton for initial render. Add error boundary. Add hover/focus states to all interactive controls. Verify all navigation links are active.",
+    "completed": false,
+    "stage": "Frontend",
+    "priority": 4,
+    "dependencies": [2, 3],
     "estimatedComplexity": 2
   }
 ]
 
-Never output markdown backticks (like \`\`\`json) or extra text, just the raw JSON.`;
+Return ONLY a valid JSON array. No markdown, no extra text, no backticks.`;
   }
 
   public getCoderPrompt(): string {

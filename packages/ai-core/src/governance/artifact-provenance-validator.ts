@@ -19,6 +19,8 @@
 import { existsSync, readFileSync, writeFileSync, readdirSync, statSync, unlinkSync, rmSync, mkdirSync } from "node:fs";
 import { join, relative, basename } from "node:path";
 import { ArchitectureResolver, type ArchitectureContractV1 } from "./architecture-resolver.js";
+import { ProjectRootSingleton } from "../utils/path-resolver.js";
+import { ProductExperiencePlanManager } from "../design/product-experience-plan.js";
 
 export interface ArtifactProvenanceRecord {
   path: string;
@@ -174,6 +176,35 @@ export class ArtifactProvenanceValidator {
       }
     }
 
+    // 7. ProductExperiencePlan capability and activity tokens
+    try {
+      const root = ProjectRootSingleton.getRoot();
+      if (root) {
+        const plan = ProductExperiencePlanManager.load(root);
+        if (plan) {
+          if (plan.experiencePattern) {
+            for (const p of plan.experiencePattern.toLowerCase().split(/[-_\s]+/)) addStemmedToken(p);
+          }
+          if (plan.primaryActivity) {
+            for (const p of plan.primaryActivity.toLowerCase().split(/[-_\s]+/)) {
+              if (p.length > 2 && !ArtifactProvenanceValidator.PROMPT_STOP_WORDS.has(p)) addStemmedToken(p);
+            }
+          }
+          for (const cap of plan.requiredCapabilities || []) {
+            for (const p of (cap.id || "").toLowerCase().split(/[-_\s]+/)) addStemmedToken(p);
+            for (const p of (cap.name || "").toLowerCase().split(/[-_\s]+/)) {
+              if (p.length > 2 && !ArtifactProvenanceValidator.PROMPT_STOP_WORDS.has(p)) addStemmedToken(p);
+            }
+            for (const v of cap.evidenceVocabulary || []) {
+              for (const p of v.toLowerCase().split(/[-_\s]+/)) {
+                if (p.length > 2 && !ArtifactProvenanceValidator.PROMPT_STOP_WORDS.has(p)) addStemmedToken(p);
+              }
+            }
+          }
+        }
+      }
+    } catch {}
+
     return tokens;
   }
 
@@ -237,7 +268,10 @@ export class ArtifactProvenanceValidator {
         for (const entry of readdirSync(featuresDir)) {
           const full = join(featuresDir, entry);
           if (statSync(full).isDirectory()) {
-            const isUniversal = entry.toLowerCase() === "auth" || entry.toLowerCase() === "dashboard";
+            const UNIVERSAL_FEATURE_DIRS = new Set([
+              "auth", "dashboard", "workspace", "studio", "editor", "viewer", "builder", "designer", "configurator"
+            ]);
+            const isUniversal = UNIVERSAL_FEATURE_DIRS.has(entry.toLowerCase());
             const hasProv = isUniversal || ArtifactProvenanceValidator.hasDomainProvenance(entry, activeContract);
             records.push({
               path: `src/features/${entry}`,
@@ -399,6 +433,28 @@ export class ArtifactProvenanceValidator {
         if (p && p !== "dashboard" && p !== "login" && p !== "register" && p !== "auth") addStemmedToken(p);
       }
     }
+    try {
+      const root = ProjectRootSingleton.getRoot();
+      if (root) {
+        const plan = ProductExperiencePlanManager.load(root);
+        if (plan) {
+          if (plan.experiencePattern) {
+            for (const p of plan.experiencePattern.toLowerCase().split(/[-_\s]+/)) addStemmedToken(p);
+          }
+          for (const cap of plan.requiredCapabilities || []) {
+            for (const p of (cap.id || "").toLowerCase().split(/[-_\s]+/)) addStemmedToken(p);
+            for (const p of (cap.name || "").toLowerCase().split(/[-_\s]+/)) {
+              if (p.length > 2 && !ArtifactProvenanceValidator.PROMPT_STOP_WORDS.has(p)) addStemmedToken(p);
+            }
+            for (const v of cap.evidenceVocabulary || []) {
+              for (const p of v.toLowerCase().split(/[-_\s]+/)) {
+                if (p.length > 2 && !ArtifactProvenanceValidator.PROMPT_STOP_WORDS.has(p)) addStemmedToken(p);
+              }
+            }
+          }
+        }
+      }
+    } catch {}
     return tokens;
   }
 

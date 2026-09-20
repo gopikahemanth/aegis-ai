@@ -47,6 +47,7 @@ AEGIS MASTER SYSTEM RULES (IMMUTABLE LEVEL 0 GOVERNANCE)
 9. MEMORY IS NON-AUTHORITATIVE: Memory records past patterns and decisions; if memory conflicts with the locked contract, the locked contract wins.
 10. FINAL PROJECT SUCCESS REQUIRES EVIDENCE: Success is evaluated independently by FinalSuccessGate based on real runtime, build, browser, API, and reality verification.
 11. DATABASE IS A FIRST-CLASS STAGE: The database schema is derived strictly from approved frontend requirements and must be verified independently across tables, relationships, constraints, and CRUD operations before backend API code is generated.
+12. FRONTEND IS THE FIRST REAL IMPLEMENTATION: The complete interactive frontend must be built, verified in real Chromium, and approved by the human BEFORE any database schema, Prisma, backend routes, API code, server directories, or migration files are generated. The TaskPlanner must produce EXCLUSIVELY frontend tasks in its initial plan. Database and backend tasks are only permitted after HUMAN_FRONTEND_APPROVED=true is recorded in .aegis/frontend-approval.json. Any database or backend task appearing in the initial frontend plan is FRONTEND_PLAN_INVALID and must be regenerated. The frontend must be fully interactive using local state — it is NOT a static mockup. Every requested feature must work without a backend.
 ═══════════════════════════════════════════════════════════════════════════════`;
 
 export const ROLE_CONTRACTS: Record<AgentRoleType, RoleContract> = {

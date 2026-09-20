@@ -136,7 +136,7 @@ export class DeterministicProjectFixer {
     if (!existsSync(devScriptPath)) {
       writeFileSync(
         devScriptPath,
-        `import { spawn } from "node:child_process";\n\nconsole.log("🚀 Starting Aegis Fullstack Application (Backend + Frontend)...");\nconst serverProc = spawn("npm", ["run", "server"], { stdio: "inherit", shell: true });\nconst viteProc = spawn("npx", ["vite", "--host"], { stdio: "inherit", shell: true });\n\nprocess.on("SIGINT", () => {\n  serverProc.kill();\n  viteProc.kill();\n  process.exit();\n});\n`,
+        `import { spawn } from "node:child_process";\n\nconsole.log("🚀 Starting Aegis Fullstack Application (Backend + Frontend)...");\nconst serverProc = spawn("npm run server", { stdio: "inherit", shell: true });\nconst viteProc = spawn("npx vite --host", { stdio: "inherit", shell: true });\n\nprocess.on("SIGINT", () => {\n  serverProc.kill();\n  viteProc.kill();\n  process.exit();\n});\n`,
         "utf8"
       );
       createdFiles.push("scripts/dev.js");
@@ -270,7 +270,7 @@ try {
     if (!existsSync(viteConfigPath)) {
       writeFileSync(
         viteConfigPath,
-        `import { defineConfig } from "vite";\nimport react from "@vitejs/plugin-react";\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 5173,\n    proxy: {\n      "/api": {\n        target: "http://localhost:3001",\n        changeOrigin: true,\n      },\n    },\n  },\n});\n`,
+        `import { defineConfig } from "vite";\nimport react from "@vitejs/plugin-react";\nimport path from "node:path";\n\nexport default defineConfig({\n  plugins: [react()],\n  resolve: {\n    alias: {\n      "@": path.resolve(__dirname, "./src"),\n    },\n  },\n  server: {\n    port: 5173,\n    proxy: {\n      "/api": {\n        target: "http://localhost:5000",\n        changeOrigin: true,\n      },\n    },\n  },\n});\n`,
         "utf8"
       );
       createdFiles.push("vite.config.ts");
@@ -715,6 +715,13 @@ export default Layout;
 `;
       writeFileSync(layoutPath, layoutContent, "utf8");
       createdFiles.push("src/shared/components/Layout.tsx");
+    }
+
+    const altLayout = join(srcDir, "components", "Layout.tsx");
+    if (!existsSync(altLayout)) {
+      mkdirSync(join(srcDir, "components"), { recursive: true });
+      writeFileSync(altLayout, `export { default, Layout } from "../shared/components/Layout";\nexport * from "../shared/components/Layout";\n`, "utf8");
+      createdFiles.push("src/components/Layout.tsx");
     }
 
     // ── 8. Product UI Validation (PROHIBITION: DeterministicProjectFixer never generates or replaces product UI) ──

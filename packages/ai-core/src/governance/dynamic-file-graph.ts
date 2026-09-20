@@ -316,7 +316,7 @@ export class DynamicCanonicalFileGraphBuilder {
 
     // Per-domain-entity routes and controllers
     for (const entity of domain.entities.filter(e => e.kind === "domain")) {
-      const entitySlug = entity.name.toLowerCase().replace(/([A-Z])/g, (m) => `-${m.toLowerCase()}`);
+      const entitySlug = entity.name.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, "");
       const entityCamel = entity.name.charAt(0).toLowerCase() + entity.name.slice(1);
 
       entries.push(
@@ -474,7 +474,7 @@ export class DynamicCanonicalFileGraphBuilder {
 
     // Per-feature pages for domain entities
     for (const entity of domain.entities.filter(e => e.kind === "domain")) {
-      const entitySlug = entity.name.replace(/([A-Z])/g, (m, i) => (i === 0 ? m : `-${m}`)).toLowerCase();
+      const entitySlug = entity.name.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, "");
       const features = domain.features.filter(f => f.entities.includes(entity.name));
       const featureId = features[0]?.featureId;
 

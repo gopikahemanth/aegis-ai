@@ -118,18 +118,79 @@ export class ProductExperiencePlanManager {
       { controlType: "button", action: "click" }
     );
 
+    addIfMatching(
+      "solar-telemetry",
+      "Solar Array Telemetry Dashboard",
+      ["telemetry", "solar", "inverter", "photovoltaic", "array telemetry", "live inverter"],
+      ["telemetry", "inverter", "solar", "kilowatt", "kwh", "yield", "voltage", "power", "grid", "efficiency", "generation", "array"],
+      ["button", "input"],
+      { controlType: "button", action: "click" }
+    );
+
+    addIfMatching(
+      "maintenance-scheduler",
+      "Maintenance Alert Scheduling",
+      ["maintenance", "alert scheduling", "service schedule", "work order"],
+      ["maintenance", "alert", "schedule", "service", "inspection", "technician", "repair", "status", "dispatch"],
+      ["button", "input"],
+      { controlType: "button", action: "click" }
+    );
+
+    addIfMatching(
+      "system-alerts",
+      "System Alert Monitor",
+      ["alerts", "alarm", "monitoring alert"],
+      ["alert", "alarm", "warning", "critical", "threshold", "notification", "resolved", "active"],
+      ["button"],
+      { controlType: "button", action: "click" }
+    );
+
+    addIfMatching(
+      "energy-analytics",
+      "Energy Yield Analytics",
+      ["yield", "analytics", "kilowatt-hour", "daily yield", "consumption"],
+      ["yield", "analytics", "kilowatt", "consumption", "daily", "trend", "generation", "peak", "metrics"],
+      ["button", "select"],
+      { controlType: "button", action: "click" }
+    );
+
+    addIfMatching(
+      "commission-manager",
+      "Bespoke Commission Request Manager",
+      ["commission", "bespoke", "custom piece", "client request"],
+      ["commission", "request", "bespoke", "client", "custom", "quote", "milestone", "deposit"],
+      ["button", "input"],
+      { controlType: "button", action: "click" }
+    );
+
+    addIfMatching(
+      "inventory-manager",
+      "Material Inventory System",
+      ["inventory", "stock", "raw material", "warehouse"],
+      ["inventory", "stock", "material", "quantity", "unit", "supplier", "batch", "reorder"],
+      ["button", "input"],
+      { controlType: "button", action: "click" }
+    );
+
     // Fallback: If no specialized capabilities matched from custom patterns, derive from brief/specification features
     if (requiredCapabilities.length === 0) {
-      const featureList = brief.featurePriority?.features || [];
+      // Strictly exclude auth / infrastructure plumbing from domain UI completeness verification
+      const featureList = (brief.featurePriority?.features || []).filter(
+        (feat: any) => !["auth", "authentication", "login", "signup", "register", "session", "user", "profile"].includes(feat.name.toLowerCase())
+      );
       for (const feat of featureList.slice(0, 4)) {
         const id = feat.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const baseName = feat.name.toLowerCase();
+        const words = feat.userIntent ? feat.userIntent.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3).slice(0, 5) : [];
+        const vocab = Array.from(new Set([
+          baseName,
+          ...baseName.split(/[\s-]+/).filter(w => w.length > 2),
+          ...words
+        ]));
         requiredCapabilities.push({
           id,
           name: feat.name,
-          evidenceVocabulary: [
-            feat.name.toLowerCase(),
-            ...(feat.userIntent ? feat.userIntent.toLowerCase().split(/\s+/).filter((w: string) => w.length > 4).slice(0, 3) : [])
-          ],
+          evidenceVocabulary: vocab,
           controlsRequired: ["button", "input"],
           testInteraction: { controlType: "button", action: "click" },
         });

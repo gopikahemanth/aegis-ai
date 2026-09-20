@@ -64,7 +64,7 @@ import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-gener
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
 import { TransactionalRepairSystem, RepairConvergenceTracker, TsSymbolRepairEngine } from "../healing/index.js";
-import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator, CanonicalArchitectureState, CanonicalManifestGenerator, CanonicalDataModelContract, CanonicalFileGraph, SemanticDuplicateDetector, ProjectFileRegistry, TaskNormalizer, PlanContractGate, ManifestCompletenessValidator, CanonicalDependencyClosureValidator, SymbolContractValidator, DynamicFileGraphManager } from "../governance/index.js";
+import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator, CanonicalArchitectureState, CanonicalManifestGenerator, CanonicalDataModelContract, CanonicalFileGraph, SemanticDuplicateDetector, ProjectFileRegistry, TaskNormalizer, PlanContractGate, ManifestCompletenessValidator, CanonicalDependencyClosureValidator, SymbolContractValidator, DynamicFileGraphManager, FrontendFilePolicyGuard, FrontendExperienceContractManager } from "../governance/index.js";
 import { DomainModelGuard } from "../governance/domain-model-guard.js";
 import { StagedValidator } from "../validation/staged-validator.js";
 import { FinalSuccessGate } from "../validation/final-success-gate.js";
@@ -710,31 +710,11 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       canonicalSpec = specification;
       (this as any)._currentCanonicalSpec = specification;
 
-      // Data Architecture Modeling
-      this.execution.enter(ExecutionPhase.DataModeling);
-      console.log("[DataArchitecture] Running Data Architecture Agent...");
-      try {
-        const activeProjectContract = resolvedContract ?? request;
-        const canonicalModelNames = CanonicalDataModelContract.getModelNames(activeProjectContract);
-        const canonicalSchemaHint = `\nCANONICAL DATA MODELS (IMMUTABLE — DO NOT INVENT NEW MODELS):\n${canonicalModelNames.join(", ")}\n`;
-        dataArch = await this.dataArchitectureAgent.execute(
-          enrichedRequest + "\n\n" + canonicalSchemaHint,
-          specification
-        );
-        if (dataArch && Array.isArray(dataArch.apis)) {
-          ApiContractRegistry.registerContract(dataArch.apis.map((a: any, idx: number) => ({
-            operationId: a.operationId || `op_${idx}_${(a.method || "get").toLowerCase()}_${(a.path || "").replace(/\//g, "_").replace(/^_/, "")}`,
-            path: a.path,
-            method: a.method,
-            description: a.description,
-            authentication: a.authentication !== false,
-            requestFields: a.requestBodySchema ? { schema: a.requestBodySchema } : undefined,
-            responseFields: a.responseBodySchema ? { schema: a.responseBodySchema } : undefined,
-          })));
-        }
-      } catch (daErr: any) {
-        console.warn(`[DataArchitecture] Warning: Data architecture agent failed: ${daErr.message}`);
-      }
+      // ── FRONTEND-FIRST: DataArchitectureAgent is DEFERRED to post-approval Stage 9 ──
+      // The CoderAgent must NOT receive API/schema context before the frontend is built.
+      // During the frontend stage, the Coder works with local state and mock data only.
+      // DataArchitectureAgent will be called after HUMAN_FRONTEND_APPROVED=true is recorded.
+      console.log("[FrontendFirst] DataArchitectureAgent deferred to post-approval Stage 9. Frontend CoderAgent will use local state and mock data.");
 
       const coordinator = new TeamCoordinator();
       const activeTeam = await coordinator.coordinate(specification);
@@ -898,7 +878,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     ProjectPathResolver.assertNoDuplicateRoot(outputDirectory);
 
     // Rule 4: Run ManifestCompletenessValidator and CanonicalDependencyClosureValidator before implementation
-    const manifestCheck = ManifestCompletenessValidator.validate();
+    const manifestCheck = ManifestCompletenessValidator.validate(outputDirectory);
     if (!manifestCheck.valid) {
       throw new Error(`MANIFEST_INCOMPLETE_FAILURE: Cannot begin implementation with incomplete manifest. Missing registrations: ${manifestCheck.missingRegistrations.join(", ")}`);
     }
@@ -1021,33 +1001,75 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     console.log(`Models:   ${(resolvedContract.requiredModels || []).join(", ")}`);
     console.log("===================================\n");
 
-    const isFrontendTask = (t: Task): boolean => {
+    // ── FRONTEND-FIRST: Validate initial plan is frontend-only ─────────────────
+    // The initial plan MUST contain only frontend tasks.
+    // If any database/backend tasks are present, this is FRONTEND_PLAN_INVALID.
+    // We do NOT defer them — we reject the plan and regenerate (up to 3 attempts).
+    const isNonFrontendTask = (t: Task): boolean => {
       const title = (t.title || "").toLowerCase();
       const desc = (t.description || "").toLowerCase();
-      const stage = (t as any).stage?.toLowerCase() || "";
-      return stage.includes("frontend") || stage.includes("ui") ||
-        title.includes("frontend") || title.includes("ui") || title.includes("component") || title.includes("page") || title.includes("view") || title.includes("design") ||
-        desc.includes("react") || desc.includes("jsx") || desc.includes("tsx") || desc.includes("style");
+      const stage = ((t as any).stage || "").toLowerCase();
+      return stage.includes("database") || stage.includes("datamodeling") ||
+        stage.includes("apidesign") || stage.includes("backend") ||
+        title.includes("prisma") || title.includes("schema") ||
+        title.includes("migration") || title.includes("postgresql") ||
+        title.includes("express") || title.includes("server") ||
+        title.includes("backend") || title.includes("api route") ||
+        desc.includes("prisma") || desc.includes("schema.prisma") ||
+        desc.includes("migration") || desc.includes("postgresql") ||
+        (desc.includes("express") && desc.includes("route")) ||
+        (desc.includes("server") && (desc.includes("controller") || desc.includes("service")));
     };
 
-    const isDatabaseTask = (t: Task): boolean => {
-      const title = (t.title || "").toLowerCase();
-      const desc = (t.description || "").toLowerCase();
-      const stage = (t as any).stage?.toLowerCase() || "";
-      return stage.includes("database") || stage.includes("schema") ||
-        title.includes("database") || title.includes("prisma") || title.includes("schema") || title.includes("model") ||
-        desc.includes("prisma") || desc.includes("database") || desc.includes("migration");
-    };
+    let validatedTasks = tasks;
+    const invalidPlanTasks = tasks.filter(isNonFrontendTask);
 
-    const isBackendTask = (t: Task): boolean => {
-      return !isFrontendTask(t) && !isDatabaseTask(t);
-    };
+    if (invalidPlanTasks.length > 0) {
+      console.warn(
+        `[FrontendFirst] ⚠️ FRONTEND_PLAN_INVALID: Initial planner returned ${invalidPlanTasks.length} non-frontend task(s):\n` +
+        invalidPlanTasks.map(t => `  - "${t.title}" (stage: ${(t as any).stage || "unset"})`).join("\n")
+      );
 
-    const frontendTasks = tasks.filter(isFrontendTask);
-    const backendTasks = tasks.filter(isBackendTask);
-    const databaseTasks = tasks.filter(isDatabaseTask);
+      // Attempt to regenerate a frontend-only plan (max 3 times)
+      let regenAttempt = 0;
+      let regenSuccess = false;
+      while (regenAttempt < 3 && !regenSuccess) {
+        regenAttempt++;
+        console.log(`[FrontendFirst] Regenerating frontend-only plan (attempt ${regenAttempt}/3)...`);
+        try {
+          const regenRaw = await this.plannerAgent.execute(
+            {
+              ...specification,
+              request: (enrichedRequest + `\n\n[REGENERATION INSTRUCTION]: Your previous plan was FRONTEND_PLAN_INVALID because it contained backend/database tasks. ` +
+              `You MUST produce ONLY frontend tasks. NO Prisma, NO database, NO Express, NO server. Frontend only.`) as any,
+            }
+          );
+          const regenInvalid = regenRaw.filter(isNonFrontendTask);
+          if (regenInvalid.length === 0 && regenRaw.length > 0) {
+            validatedTasks = regenRaw;
+            regenSuccess = true;
+            console.log(`[FrontendFirst] ✓ Frontend-only plan accepted on attempt ${regenAttempt} (${validatedTasks.length} tasks).`);
+          } else {
+            console.warn(`[FrontendFirst] Attempt ${regenAttempt}: still contains ${regenInvalid.length} non-frontend task(s). Retrying...`);
+          }
+        } catch (regenErr: any) {
+          console.warn(`[FrontendFirst] Attempt ${regenAttempt} planner error: ${regenErr.message}`);
+        }
+      }
 
-    console.log(`[StagedArchitecture] Partitioned tasks: ${frontendTasks.length} frontend, ${databaseTasks.length} database, ${backendTasks.length} backend.`);
+      if (!regenSuccess) {
+        // Last resort: strip non-frontend tasks rather than halting generation
+        validatedTasks = tasks.filter(t => !isNonFrontendTask(t));
+        console.warn(
+          `[FrontendFirst] ⚠️ Could not regenerate a clean frontend plan after 3 attempts. ` +
+          `Proceeding with ${validatedTasks.length} frontend task(s) after stripping ${invalidPlanTasks.length} non-frontend task(s).`
+        );
+      }
+    }
+
+    // All tasks passed to executeTaskBatch during the frontend stage are guaranteed frontend-only.
+    const frontendTasks = validatedTasks;
+    console.log(`[STAGE 1–7: FRONTEND-ONLY] ${frontendTasks.length} frontend task(s) — no database/backend tasks in this stage.`);
 
     const patchEngine = new PatchEngine();
 
@@ -1090,20 +1112,12 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
             console.log(`[Task: ${task.title}] Status: GENERATED`);
 
-            // ── STEP A: Strict Stage Isolation ──
+            // ── STEP A: Hard Frontend File Policy (reject at write time) ──
             if (isFrontendBatch) {
-              const before = result.files.length;
-              result.files = result.files.filter(f => {
-                const p = f.path.replace(/\\/g, "/");
-                const isBackendOrDb = p.startsWith("server/") || p.startsWith("prisma/");
-                if (isBackendOrDb) {
-                  console.log(`[Task: ${task.title}] ⚠️ Stripped premature backend/db file during frontend-only stage: ${f.path}`);
-                  return false;
-                }
-                return true;
-              });
-              if (result.files.length < before) {
-                console.log(`[Task: ${task.title}] Enforced frontend-only isolation (${before - result.files.length} non-frontend file(s) removed).`);
+              const policyResult = FrontendFilePolicyGuard.enforce(result.files, task.title);
+              if (policyResult.hadViolations) {
+                // Files are rejected — not written to disk. Already logged by the guard.
+                result.files = policyResult.allowed;
               }
             }
 
@@ -1319,6 +1333,11 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
     // 3. Authoritative Chromium Review with multi-viewport verification & fatal error trapping
     let browserReview = await ReadOnlyBrowserValidator.reviewFrontend(frontendServerInfo.url, outputDirectory);
+    if (!browserReview.passed && !browserReview.productIdentity && browserReview.failureReason?.includes("screenshot missing")) {
+      console.log(`[BrowserValidator] 🔄 Retrying browser review once for transient screenshot capture error...`);
+      await new Promise(r => setTimeout(r, 1500));
+      browserReview = await ReadOnlyBrowserValidator.reviewFrontend(frontendServerInfo.url, outputDirectory);
+    }
 
     // If review failed due to runtime errors or product mismatch, allow up to 3 targeted Coder repair attempts
     const MAX_FRONTEND_REPAIR_ATTEMPTS = 3;
@@ -1328,28 +1347,109 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       console.warn(`[BrowserValidator] ⚠️ Frontend review failed (${browserReview.failureReason}). Triggering targeted frontend repair (Attempt ${repairAttempts}/${MAX_FRONTEND_REPAIR_ATTEMPTS})...`);
 
       const isProductMismatch = browserReview.productIdentity && !browserReview.productIdentity.passed;
+
+      // Load the ProductExperiencePlan to tailor repair instructions to the exact pattern
+      let planForRepair: any = null;
+      try {
+        const { ProductExperiencePlanManager } = await import("../design/product-experience-plan.js");
+        planForRepair = ProductExperiencePlanManager.load(outputDirectory);
+      } catch {}
+
+      const isConfiguratorWorkspace = planForRepair?.experiencePattern === "configurator-workspace" || planForRepair?.experiencePattern === "workspace-editor";
+      const missingCapabilities = (browserReview.productIdentity?.featureEvidence || []).filter((f: any) => !f.visible);
+      const capList = missingCapabilities.map((f: any) => `  - ${f.name}`).join("\n");
+      const capDetails = (planForRepair?.requiredCapabilities || [])
+        .filter((cap: any) => missingCapabilities.some((mc: any) => mc.featureId === cap.id))
+        .map((cap: any) => `  • ${cap.name}: vocab=${cap.evidenceVocabulary.join(", ")}; controls=${cap.controlsRequired.join(", ")}`)
+        .join("\n");
+
+      const allCaps = planForRepair?.requiredCapabilities || [];
+      const capPanelsDesc = allCaps.map((cap: any, idx: number) => {
+        const controls = (cap.controlsRequired || ["button", "input"]).map((c: string) => `<${c}>`).join(", ");
+        const vocabSample = (cap.evidenceVocabulary || []).slice(0, 5).join(", ");
+        return `   Panel/Tab ${idx + 1} ("${cap.name}"):
+     - Heading: Must include "${cap.name}"
+     - Required vocabulary: ${vocabSample}
+     - Controls: Must render working interactive ${controls}
+     - Initial State: Must render pre-calculated/default results so values are visible immediately on load.`;
+      }).join("\n\n");
+
       const repairInstructions = isProductMismatch
-        ? `FRONTEND_PRODUCT_MISMATCH: The rendered frontend failed the authoritative Product Identity & Completeness Gate.\nIssues:\n${browserReview.productIdentity!.mismatchReasons.map(r => `  - ${r}`).join("\n")}\n\nCRITICAL IMPLEMENTATION MANDATE:\n1. Route '/' MUST directly render the interactive product workspace. NEVER redirect to or render an authentication/login screen on '/'.\n2. Implement custom interactive components in src/ for the missing domain capabilities:\n${browserReview.productIdentity!.featureEvidence.filter(f => !f.visible).map(f => `  - ${f.name}`).join("\n")}\n3. Ensure components include real interactive controls (inputs, buttons, sliders, selects, canvas) and state management.\n4. Mount these components directly in src/App.tsx or src/routes.tsx. Do NOT touch backend or database.`
-        : `FRONTEND_RUNTIME_ERROR: ${browserReview.failureReason}. Ensure all components export properly, imports resolve, and variables/hooks are properly initialized. Do NOT touch backend or database.`;
+        ? `TARGETED CODER CAPABILITY REPAIR INSTRUCTION
+TARGET FILE: src/features/workspace/PrimaryWorkspace.tsx
+
+The rendered frontend failed the authoritative Product Identity & Completeness Gate.
+ISSUES:
+${browserReview.productIdentity!.mismatchReasons.map(r => `  - ${r}`).join("\n")}
+
+MANDATORY COMPLETE WORKSPACE IMPLEMENTATION:
+Create src/features/workspace/PrimaryWorkspace.tsx — The PRIMARY interactive domain workspace containing all capability panels in one unified view (or accessible via interactive tabs).
+
+The component MUST:
+1. Have interactive tabs or a multi-panel layout for all domain capabilities:
+${allCaps.map((c: any) => `   - "${c.name}"`).join("\n")}
+2. Render a root container with attribute: data-workspace="configurator_workspace"
+3. Implement full interactive UI with real controls (inputs, buttons, sliders, selects) and pre-populated non-zero default values:
+${capPanelsDesc}
+
+MISSING CAPABILITIES DETECTED:
+${capList}
+
+REQUIRED VOCABULARY & CONTROLS PER CAPABILITY:
+${capDetails}
+
+CRITICAL FORMAT REQUIREMENT:
+Return ONLY the complete, working React component wrapped in:
+===FILE: src/features/workspace/PrimaryWorkspace.tsx===
+import React, { useState } from "react";
+// Prefer self-contained UI with standard HTML elements (button, input, select, table, label, div) styled with Tailwind CSS, and Lucide icons from "lucide-react".
+// Avoid importing non-existent custom component paths.
+
+export default function PrimaryWorkspace() {
+  // state and interactive handlers
+  return (
+    <div data-workspace="configurator_workspace" className="p-6">
+      {/* Interactive tabs and panels for each required capability */}
+    </div>
+  );
+}
+export { PrimaryWorkspace };
+===END===
+
+DO NOT touch server/, prisma/, or any backend files.`
+        : `TARGETED CODER CAPABILITY REPAIR INSTRUCTION
+FRONTEND_RUNTIME_ERROR: ${browserReview.failureReason}.
+Ensure all components export properly, imports resolve, and variables/hooks are properly initialized.
+Do NOT call raw unmocked /api fetch endpoints without fallback.
+Do NOT touch backend or database.`;
 
       const fixTask: Task = {
-        id: `frontend_repair_${repairAttempts}`,
+        id: 9900 + repairAttempts,
         title: isProductMismatch ? "Implement missing domain workspace UI" : "Repair frontend runtime errors",
         description: repairInstructions,
         dependencies: [],
         stage: "Frontend",
+        ownedFiles: ["src/features/workspace/PrimaryWorkspace.tsx"],
       } as any;
 
       const fixResult = await this.coderAgent.execute(
         fixTask,
         architecture,
         architecturePlan,
-        enrichedRequest + `\n\n${repairInstructions}`,
+        repairInstructions,
         outputDirectory,
         existingFiles,
         imagePayload,
       );
+      if (fixResult.files && fixResult.files.length > 0) {
+        new FileWriter().write(fixResult.files, outputDirectory);
+      }
       patchEngine.apply(fixResult.response, outputDirectory);
+      // Force fresh regeneration of routes.tsx so that PrimaryWorkspace is mounted at '/'
+      const routesTsxPath = join(outputDirectory, "src", "routes.tsx");
+      if (existsSync(routesTsxPath)) {
+        try { unlinkSync(routesTsxPath); } catch {}
+      }
       FastDeterministicSanitizer.sanitizeProject(outputDirectory, resolvedContract);
       browserReview = await ReadOnlyBrowserValidator.reviewFrontend(frontendServerInfo.url, outputDirectory);
     }
@@ -1461,19 +1561,89 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       AppServerRunner.stopServer();
     }
 
-    // ── STAGE 9: DATABASE DESIGN FROM APPROVED FRONTEND ───────────────────────
+    // ── STAGE 9: HUMAN APPROVAL GATE — ASSERT BEFORE DATABASE/BACKEND ─────────
     console.log("\n══════════════════════════════════════════════════════════════════════════════");
-    console.log("STAGE 9: DATABASE DESIGN FROM APPROVED FRONTEND");
+    console.log("STAGE 9: POST-APPROVAL DATABASE ARCHITECTURE (FROM APPROVED FRONTEND)");
     console.log("══════════════════════════════════════════════════════════════════════════════");
+
+    // Hard gate: HUMAN_FRONTEND_APPROVED must be true before any database/backend work.
+    // AUTOMATED_REVIEW_PASS alone is insufficient — human must have explicitly approved.
+    const humanApprovalRecord = FrontendApprovalCheckpoint.loadCheckpoint(outputDirectory);
+    const humanApproved = humanApprovalRecord?.approvalStatus === "APPROVED" &&
+      humanApprovalRecord?.currentStage === "FRONTEND_APPROVED";
+    if (!humanApproved) {
+      throw new Error(
+        "HUMAN_FRONTEND_APPROVAL_REQUIRED: Database/backend generation cannot begin. " +
+        "HUMAN_FRONTEND_APPROVED must be true before Stage 9. " +
+        `Current state: ${JSON.stringify(humanApprovalRecord ?? { status: "NO_RECORD" })}`
+      );
+    }
+    console.log("[Stage9] ✓ HUMAN_FRONTEND_APPROVED confirmed. Proceeding to post-approval database architecture.");
+
+    // Verify the approved frontend has not been mutated since approval
+    const approvedFrontendHash = (humanApprovalRecord as any)?.frontendSourceHash;
+    if (approvedFrontendHash) {
+      const currentFrontendHash = FrontendExperienceContractManager.hashFrontendSource(outputDirectory);
+      if (currentFrontendHash !== approvedFrontendHash) {
+        throw new Error(
+          `APPROVED_FRONTEND_MUTATED: Frontend source hash changed after approval. ` +
+          `Approved hash: ${approvedFrontendHash}, Current hash: ${currentFrontendHash}. ` +
+          `The approved frontend must not be modified before database/backend generation.`
+        );
+      }
+      console.log(`[Stage9] ✓ Frontend source integrity verified (hash: ${currentFrontendHash}).`);
+    }
+
+    // Load the FrontendExperienceContract to drive the post-approval architecture plan
+    const frontendContract = FrontendExperienceContractManager.load(outputDirectory);
+    const approvedFrontendSummary = frontendContract
+      ? `APPROVED FRONTEND:\n` +
+        `  Product: ${frontendContract.product.name}\n` +
+        `  Pages: ${frontendContract.pages.map(p => p.name).join(", ")}\n` +
+        `  Features: ${frontendContract.features.map(f => f.name).join(", ")}\n` +
+        `  Interactions: ${frontendContract.interactions.length} verified\n`
+      : `APPROVED FRONTEND: (no contract — using user requirement as source of truth)\n`;
+
+    // ── DataArchitectureAgent: Now runs from the APPROVED FRONTEND ────────────
+    // This is the correct position. The Coder already has its frontend. The data
+    // architecture is derived from what the frontend actually needs — not from the
+    // original generic prompt.
+    this.execution.enter(ExecutionPhase.DataModeling);
+    console.log("[Stage9] Running DataArchitectureAgent from approved frontend context...");
     const activeProjectContract = resolvedContract ?? request;
     const canonicalModelNames = CanonicalDataModelContract.getModelNames(activeProjectContract);
+    const canonicalSchemaHint = `\nCANONICAL DATA MODELS (IMMUTABLE — DO NOT INVENT NEW MODELS):\n${canonicalModelNames.join(", ")}\n`;
+    try {
+      dataArch = await this.dataArchitectureAgent.execute(
+        enrichedRequest + "\n\n" + approvedFrontendSummary + canonicalSchemaHint +
+        "\n\nDERIVE DATABASE ARCHITECTURE ONLY FROM THE FEATURES AND DATA VISIBLE IN THE APPROVED FRONTEND. " +
+        "Do NOT invent models that are not required by the approved frontend experience.",
+        specification
+      );
+      if (dataArch && Array.isArray(dataArch.apis)) {
+        ApiContractRegistry.registerContract(dataArch.apis.map((a: any, idx: number) => ({
+          operationId: a.operationId || `op_${idx}_${(a.method || "get").toLowerCase()}_${(a.path || "").replace(/\//g, "_").replace(/^_/, "")}`,
+          path: a.path,
+          method: a.method,
+          description: a.description,
+          authentication: a.authentication !== false,
+          requestFields: a.requestBodySchema ? { schema: a.requestBodySchema } : undefined,
+          responseFields: a.responseBodySchema ? { schema: a.responseBodySchema } : undefined,
+        })));
+        console.log(`[Stage9] ✓ DataArchitectureAgent: registered ${dataArch.apis.length} API contract(s) from approved frontend.`);
+      }
+    } catch (daErr: any) {
+      console.warn(`[Stage9] DataArchitectureAgent warning: ${daErr.message}. Proceeding with canonical schema.`);
+    }
+
+    // Generate database schema from approved frontend context
     const prismaDir = join(outputDirectory, "prisma");
     if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
     const schemaPath = join(prismaDir, "schema.prisma");
     const dbProvider = (typeof activeProjectContract === "object" ? activeProjectContract.database?.provider : undefined) ?? "postgresql";
     const canonicalSchemaContent = CanonicalDataModelContract.getPrismaSchema(activeProjectContract, dbProvider);
     writeFileSync(schemaPath, canonicalSchemaContent, "utf8");
-    console.log(`[DatabaseDesign] ✓ Schema generated for domain models: ${canonicalModelNames.join(", ")}`);
+    console.log(`[Stage9] ✓ Database schema generated for models: ${canonicalModelNames.join(", ")}`);
 
     // ── STAGE 10: 16-POINT DATABASE INDEPENDENT VERIFICATION ──────────────────
     console.log("\n══════════════════════════════════════════════════════════════════════════════");
@@ -1486,9 +1656,45 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     }
     console.log(`[DatabaseVerifier] ✓ PASS — 16-point verification succeeded (score: ${dbReport.score}/100). Verified models: ${dbReport.modelsVerified.join(", ")}`);
 
-    // ── STAGE 11: BACKEND GENERATION AGAINST VERIFIED DATABASE ────────────────
-    const remainingTasks = [...databaseTasks, ...backendTasks];
-    await executeTaskBatch(remainingTasks, "STAGE 11: BACKEND GENERATION AGAINST VERIFIED DATABASE", false);
+    // ── STAGE 11: NEW POST-APPROVAL BACKEND PLAN (from approved frontend) ──────
+    // This is a FRESH planning phase. It is NOT the initial frontend plan.
+    // The planner receives: user requirement + approved frontend + API contracts.
+    // It must produce database/backend tasks only — no frontend tasks.
+    console.log("\n══════════════════════════════════════════════════════════════════════════════");
+    console.log("STAGE 11: BACKEND GENERATION AGAINST VERIFIED DATABASE");
+    console.log("══════════════════════════════════════════════════════════════════════════════");
+    console.log(`[STAGE 9+: POST-APPROVAL DATABASE/BACKEND] Invoking post-approval planner from approved frontend...`);
+
+    let postApprovalTasks: Task[] = [];
+    try {
+      const apiContractSummary = dataArch?.apis
+        ? `\nAPI CONTRACTS DERIVED FROM APPROVED FRONTEND:\n` +
+          dataArch.apis.map((a: any) => `  ${a.method?.toUpperCase()} ${a.path} — ${a.description}`).join("\n")
+        : "";
+      const postApprovalPromptContext =
+        enrichedRequest +
+        "\n\n" + approvedFrontendSummary +
+        apiContractSummary +
+        "\n\nPOST-APPROVAL BACKEND PLANNING INSTRUCTION: " +
+        "The frontend has been approved by the human. Now plan ONLY the backend and database implementation. " +
+        "Tasks must cover: server setup, Prisma schema validation, API route implementation, authentication, and integration. " +
+        "Do NOT include any frontend tasks. " +
+        "Do NOT plan tasks for features that are not present in the approved frontend. " +
+        "Every API route must correspond to a frontend interaction in the approved product.";
+
+      const rawPostApprovalTasks = await this.plannerAgent.execute(
+        {
+          ...specification,
+          request: postApprovalPromptContext as any,
+        }
+      );
+      postApprovalTasks = TaskNormalizer.normalizeTasks(rawPostApprovalTasks, resolvedContract);
+      console.log(`[Stage11] ✓ Post-approval planner produced ${postApprovalTasks.length} backend task(s).`);
+    } catch (postPlanErr: any) {
+      console.warn(`[Stage11] Post-approval planner failed: ${postPlanErr.message}. Proceeding without backend tasks.`);
+    }
+
+    await executeTaskBatch(postApprovalTasks, "STAGE 11: BACKEND GENERATION AGAINST VERIFIED DATABASE", false);
 
     // Deterministic preflight sanitation after implementation loop
     FastDeterministicSanitizer.sanitizeProject(outputDirectory);
@@ -2223,6 +2429,7 @@ FORBIDDEN STUB PATTERNS:
         ].filter(Boolean).join("\n");
 
         const convergenceTracker = new RepairConvergenceTracker(initialDiagnostics);
+        let consecutiveNoProgressAttempts = 0;
 
         while (attempts < maxRepairAttempts) {
           attempts++;
@@ -2445,11 +2652,27 @@ FORBIDDEN STUB PATTERNS:
                 console.log(`[Self-Healing] ✓ Progress accepted (${candidateEval.comparison.reason}). Baseline updated.`);
                 TransactionalRepairSystem.commit(repairCheckpoint);
                 build = nextBuild;
+                consecutiveNoProgressAttempts = 0; // reset on progress
               } else {
                 console.warn(`[Self-Healing] ⚠️ ${candidateEval.comparison.reason}. Rolling back checkpoint...`);
                 TransactionalRepairSystem.rollback(outputDirectory, repairCheckpoint, candidateEval.comparison.reason);
                 // Re-run verification to confirm working state restored
                 build = await this.runVerification(request, framework, outputDirectory);
+
+                // Stagnation detection: if the error signature is IDENTICAL to the previous state,
+                // the repair strategy is making no progress. Halt immediately instead of retrying.
+                if (candidateEval.comparison.verdict === "IDENTICAL") {
+                  consecutiveNoProgressAttempts++;
+                  if (consecutiveNoProgressAttempts >= 2) {
+                    console.error(
+                      `[Self-Healing] 🛑 REPAIR_STRATEGY_NO_PROGRESS: Error signature identical to previous state for ${consecutiveNoProgressAttempts} consecutive attempt(s). ` +
+                      `Halting repair strategy to avoid wasting remaining attempts on an ineffective fix.`
+                    );
+                    break;
+                  }
+                } else {
+                  consecutiveNoProgressAttempts = 0;
+                }
               }
 
             } else {
@@ -2893,7 +3116,7 @@ FORBIDDEN STUB PATTERNS:
       }
 
       for (const diskFile of allDiskFiles) {
-        const importMatches = diskFile.content.matchAll(/(?:import\s+(?:[\s\S]*?\s+from\s+)?|import\s*\(\s*)['"]((?:\.|\@\/)[^'"]+)['"]/g);
+        const importMatches = diskFile.content.matchAll(/(?:(?:import|export)\s+(?:[\s\S]*?\s+from\s+)?|import\s*\(\s*)['"]((?:\.|\@\/)[^'"]+)['"]/g);
         for (const m of importMatches) {
           const rawImportPath = m[1];
           // Use Extension-Aware Module Resolution (checks exact, .ts, .tsx, .js, .jsx, index files)
@@ -2990,6 +3213,18 @@ FORBIDDEN STUB PATTERNS:
             const shimContent = `import * as Mod from '${relImportToTarget}';\nexport * from '${relImportToTarget}';\nconst _default = (Mod as any).default || (Mod as any)['${componentName}'] || Mod[Object.keys(Mod)[0]] || Mod;\nexport default _default;\n`;
             mkdirSync(dirname(fullStubPath), { recursive: true });
             writeFileSync(fullStubPath, shimContent, "utf8");
+          } else {
+            mkdirSync(dirname(fullStubPath), { recursive: true });
+            const validExportName = componentName.replace(/[^a-zA-Z0-9_$]/g, "_");
+            const isUiTarget = /[\/\\](pages|components|views|ui|features)[\/\\]/i.test(targetPath) ||
+                              /(button|card|component|page|navbar|spinner|dashboard|gallery|header|footer|modal|drawer|form|input|table|metric)/i.test(targetPath);
+            if (isUiTarget) {
+              writeFileSync(fullStubPath, `import React from 'react';\nexport function ${validExportName}(props: any) { return <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg text-slate-200">{props?.children || '${validExportName}'}</div>; }\nexport default ${validExportName};\n`, "utf8");
+              console.log(`[Orchestrator] Created missing UI component stub: ${stubRelName}`);
+            } else {
+              writeFileSync(fullStubPath, `export const ${validExportName} = (...args: any[]) => (args[0] ?? {});\nexport default ${validExportName};\n`, "utf8");
+              console.log(`[Orchestrator] Created missing utility stub: ${stubRelName}`);
+            }
           }
         }
       }

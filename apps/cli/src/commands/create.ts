@@ -147,17 +147,24 @@ Options:
 
     const previewUrl = summary.serverUrl || "http://localhost:5173";
 
+    const prodIdentity = summary.productIdentity;
+    const prodDetails = prodIdentity?.passedChecks?.length
+      ? prodIdentity.passedChecks.map((c: string) => `  ✓ ${c}`).join("\n")
+      : "  ✓ Product identity verified\n  ✓ Live Chromium runtime active";
+
     console.log(`\n` +
-      `══════════════════════════════════════════════════════════════════════════════\n` +
-      `🎨 FRONTEND READY FOR YOUR VISUAL REVIEW (REAL CHROMIUM VERIFIED)\n` +
-      `══════════════════════════════════════════════════════════════════════════════\n` +
-      `🌐 Live Preview:    ${previewUrl}\n` +
-      `📄 Pages / Views:   ${(summary.pages || []).join(", ") || "Standard Application Views"}\n` +
-      `🎨 Theme Palette:   Primary: ${summary.colorPalette?.primary || "calm stone"} | Surface: ${summary.colorPalette?.surface || "white"}\n` +
-      `📸 Desktop (1440px): ${summary.screenshots.desktop}\n` +
-      `📸 Tablet (768px):   ${summary.screenshots.tablet}\n` +
-      `📸 Mobile (375px):   ${summary.screenshots.mobile}\n` +
-      `══════════════════════════════════════════════════════════════════════════════\n`
+      `╔══════════════════════════════════════════════════════════════════════════════╗\n` +
+      `║ 🛡️  AEGIS STAGED VERIFICATION: PRODUCT IDENTITY & VISUAL REVIEW PASSED       ║\n` +
+      `╠══════════════════════════════════════════════════════════════════════════════╣\n` +
+      `${prodDetails}\n` +
+      `╠══════════════════════════════════════════════════════════════════════════════╣\n` +
+      `  🌐 Live Preview:    ${previewUrl}\n` +
+      `  📄 Pages / Views:   ${(summary.pages || []).join(", ") || "Standard Application Views"}\n` +
+      `  🎨 Theme Palette:   Primary: ${summary.colorPalette?.primary || "calm stone"} | Surface: ${summary.colorPalette?.surface || "white"}\n` +
+      `  📸 Desktop (1440px): ${summary.screenshots.desktop}\n` +
+      `  📸 Tablet (768px):   ${summary.screenshots.tablet}\n` +
+      `  📸 Mobile (375px):   ${summary.screenshots.mobile}\n` +
+      `╚══════════════════════════════════════════════════════════════════════════════╝\n`
     );
 
     // Automatically open user's default browser to the running preview

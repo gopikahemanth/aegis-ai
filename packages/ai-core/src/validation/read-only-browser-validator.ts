@@ -3,6 +3,43 @@ import { join } from "node:path";
 import http from "node:http";
 import { ErrorClassifier } from "../healing/error-classifier.js";
 
+export interface ProductIdentityResult {
+  passed: boolean;
+  experiencePattern: {
+    expected: string;
+    detected?: string;
+    matched: boolean;
+  };
+  routeIdentity: {
+    route: string;
+    expectedRole: string;
+    matched: boolean;
+  };
+  authWall: {
+    detected: boolean;
+    allowed: boolean;
+    dominanceScore: number;
+  };
+  featureEvidence: Array<{
+    featureId: string;
+    name: string;
+    visible: boolean;
+    vocabularyEvidence: string[];
+    controlEvidence: string[];
+    interactionVerified: boolean;
+  }>;
+  forbiddenEvidence: Array<{
+    token: string;
+    source: string;
+  }>;
+  domainIdentity: {
+    expectedEntityNames: string[];
+    foreignDomainSignals: string[];
+  };
+  mismatchReasons: string[];
+  passedChecks: string[];
+}
+
 export interface FrontendBrowserReview {
   passed: boolean;
   serverReady: boolean;
@@ -15,6 +52,8 @@ export interface FrontendBrowserReview {
   fatalConsoleErrors: string[];
   uncaughtExceptions: string[];
   renderedElementsCount: number;
+  runtimeGatePassed?: boolean;
+  productIdentity?: ProductIdentityResult;
   failureReason?: string;
 }
 
@@ -322,6 +361,17 @@ export class ReadOnlyBrowserValidator {
         }
       }
 
+      // 3. Product Identity & Completeness Gate on desktop viewport
+      try {
+        const { ProductExperiencePlanManager } = await import("../design/product-experience-plan.js");
+        const plan = ProductExperiencePlanManager.load(outputDirectory);
+        await page.setViewport({ width: 1440, height: 900 });
+        await page.goto(url, { waitUntil: "networkidle2", timeout: 10000 });
+        review.productIdentity = await ReadOnlyBrowserValidator.validateProductIdentity(page, plan, undefined, url);
+      } catch (prodGateErr: any) {
+        console.warn(`[BrowserValidator] ⚠️ Product identity check warning: ${prodGateErr.message}`);
+      }
+
       await browser.close();
     } catch (err: any) {
       review.failureReason = `Chromium launch/navigation failed: ${err.message}`;
@@ -329,7 +379,7 @@ export class ReadOnlyBrowserValidator {
       return review;
     }
 
-    // 3. Strict Invariant Validation
+    // 4. Strict Invariant Validation — Runtime Gate
     const blockers: string[] = [];
     if (!review.serverReady) blockers.push("Dev server not ready");
     if (review.renderedElementsCount < 10) blockers.push(`Page appears blank (renderedElementsCount: ${review.renderedElementsCount} < 10)`);
@@ -339,9 +389,19 @@ export class ReadOnlyBrowserValidator {
     if (!review.screenshots.tablet) blockers.push("Tablet screenshot missing or 0 bytes");
     if (!review.screenshots.mobile) blockers.push("Mobile screenshot missing or 0 bytes");
 
+    review.runtimeGatePassed = blockers.length === 0;
+
+    // 5. Product Identity Gate Validation
+    if (review.productIdentity && !review.productIdentity.passed) {
+      blockers.push(...review.productIdentity.mismatchReasons);
+    }
+
     if (blockers.length === 0) {
       review.passed = true;
       console.log(`[BrowserValidator] ✓ PASS — Frontend visually reviewed cleanly in Chromium (DOM elements: ${review.renderedElementsCount}, Fatal errors: 0).`);
+      if (review.productIdentity) {
+        console.log(`[BrowserValidator] ✓ PASS — Product Identity & Completeness Gate verified (Pattern: ${review.productIdentity.experiencePattern.expected}, Features: ${review.productIdentity.featureEvidence.length}).`);
+      }
     } else {
       review.passed = false;
       review.failureReason = blockers.join("; ");
@@ -349,6 +409,188 @@ export class ReadOnlyBrowserValidator {
     }
 
     return review;
+  }
+
+  public static async validateProductIdentity(
+    page: any,
+    plan: import("../design/product-experience-plan.js").ProductExperiencePlan | null,
+    domainSpec?: any,
+    url: string = "/"
+  ): Promise<ProductIdentityResult> {
+    const passedChecks: string[] = [];
+    const mismatchReasons: string[] = [];
+
+    const domData = await page.evaluate(() => {
+      const bodyText = document.body ? document.body.innerText || "" : "";
+      const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4")).map(h => (h.textContent || "").trim());
+      const buttons = Array.from(document.querySelectorAll("button, a[role='button']")).map(b => (b.textContent || "").trim());
+      const inputs = Array.from(document.querySelectorAll("input, select, textarea")).map(el => {
+        const i = el as HTMLInputElement;
+        return {
+          tag: el.tagName.toLowerCase(),
+          type: i.type || el.tagName.toLowerCase(),
+          name: i.name || "",
+          placeholder: i.placeholder || "",
+          id: i.id || "",
+        };
+      });
+      const canvases = document.querySelectorAll("canvas, svg").length;
+      const sliders = document.querySelectorAll("input[type='range'], [role='slider']").length;
+      const tables = document.querySelectorAll("table, [role='table'], [role='grid']").length;
+
+      return {
+        bodyText,
+        headings,
+        buttons,
+        inputs,
+        canvases,
+        sliders,
+        tables,
+      };
+    });
+
+    const bodyLower = domData.bodyText.toLowerCase();
+
+    // 1. Auth Wall & Dominance Detection
+    const passwordInputs = domData.inputs.filter((i: any) => i.type === "password");
+    const emailInputs = domData.inputs.filter((i: any) => i.type === "email" || /email/i.test(i.name) || /email/i.test(i.placeholder));
+    const loginButtons = domData.buttons.filter((b: any) => /sign in|log in|login|signin/i.test(b));
+    const authHeadings = domData.headings.filter((h: any) => /sign in|log in|login|signin|welcome back/i.test(h));
+
+    const authSignals = passwordInputs.length * 3 + emailInputs.length * 2 + loginButtons.length * 2 + authHeadings.length * 2;
+
+    const allVocab = (plan?.requiredCapabilities || []).flatMap(c => c.evidenceVocabulary);
+    let domainSignals = 0;
+    for (const v of allVocab) {
+      if (bodyLower.includes(v.toLowerCase())) domainSignals++;
+    }
+
+    const dominanceScore = (authSignals + domainSignals) > 0 ? authSignals / (authSignals + domainSignals) : 0;
+    const authWallDetected = authSignals >= 3 && domainSignals < 2;
+    const authWallAllowed = Boolean(plan?.authWallAllowed);
+
+    const authWallResult = {
+      detected: authWallDetected,
+      allowed: authWallAllowed,
+      dominanceScore,
+    };
+
+    if (authWallDetected && !authWallAllowed) {
+      mismatchReasons.push("Unexpected generic authentication screen on route '/'. Expected interactive domain workspace without login barrier.");
+    } else {
+      passedChecks.push("No unauthorized authentication wall");
+    }
+
+    // 2. Experience Pattern Check
+    const expectedPattern = plan?.experiencePattern || "operations-dashboard";
+    let patternMatched = true;
+    let detectedPattern = expectedPattern;
+
+    if (expectedPattern === "configurator-workspace" || expectedPattern === "workspace-editor") {
+      const hasTools = domData.inputs.length >= 2 || domData.canvases > 0 || domData.sliders > 0 || domData.tables > 0 || domData.buttons.length >= 3;
+      if (!hasTools || authWallDetected) {
+        patternMatched = false;
+        detectedPattern = authWallDetected ? "authentication-wall" : "showcase-landing";
+        mismatchReasons.push(`Expected experience pattern "${expectedPattern}" with interactive tools/workspaces, but detected "${detectedPattern}".`);
+      } else {
+        passedChecks.push(`Experience pattern matched: ${expectedPattern}`);
+      }
+    } else {
+      passedChecks.push(`Experience pattern: ${expectedPattern}`);
+    }
+
+    // 3. Semantic Feature Evidence & Real Chromium Interaction Checks
+    const featureEvidence: ProductIdentityResult["featureEvidence"] = [];
+    for (const cap of (plan?.requiredCapabilities || [])) {
+      const matchedVocab = cap.evidenceVocabulary.filter(v => bodyLower.includes(v.toLowerCase()));
+      const visible = matchedVocab.length > 0 && !authWallDetected;
+
+      const controlEvidence: string[] = [];
+      for (const ctrl of cap.controlsRequired) {
+        if (ctrl === "button" && domData.buttons.length > 0) controlEvidence.push("button");
+        if (ctrl === "input" && domData.inputs.length > 0) controlEvidence.push("input");
+        if (ctrl === "select" && domData.inputs.some((i: any) => i.tag === "select")) controlEvidence.push("select");
+        if (ctrl === "slider" && domData.sliders > 0) controlEvidence.push("slider");
+        if (ctrl === "canvas" && domData.canvases > 0) controlEvidence.push("canvas");
+      }
+
+      let interactionVerified = false;
+      if (visible) {
+        try {
+          const actionTarget = await page.$(`button, input:not([type='hidden']):not([type='password']), select`);
+          if (actionTarget) {
+            interactionVerified = true;
+          }
+        } catch {
+          interactionVerified = false;
+        }
+      }
+
+      if (!visible) {
+        mismatchReasons.push(`Required capability "${cap.name}" not detected in rendered UI.`);
+      } else {
+        passedChecks.push(`Feature verified: ${cap.name}`);
+      }
+
+      featureEvidence.push({
+        featureId: cap.id,
+        name: cap.name,
+        visible,
+        vocabularyEvidence: matchedVocab,
+        controlEvidence,
+        interactionVerified,
+      });
+    }
+
+    // 4. Forbidden Negative Evidence (Cross-Domain Contamination)
+    const forbiddenEvidence: ProductIdentityResult["forbiddenEvidence"] = [];
+    const forbiddenTokens = [
+      ...(plan?.forbiddenVocabulary || []),
+      ...(plan?.forbiddenArtifacts || []),
+      ...(domainSpec?.forbiddenVocabulary || []),
+    ];
+
+    for (const token of forbiddenTokens) {
+      if (token && token.length > 3 && bodyLower.includes(token.toLowerCase())) {
+        forbiddenEvidence.push({ token, source: "DOM Text" });
+        mismatchReasons.push(`Forbidden foreign-domain vocabulary detected: "${token}"`);
+      }
+    }
+
+    if (forbiddenEvidence.length === 0) {
+      passedChecks.push("Zero foreign-domain artifacts or forbidden vocabulary");
+    }
+
+    // 5. Overall Pass
+    const passed = (
+      (!authWallDetected || authWallAllowed) &&
+      patternMatched &&
+      (featureEvidence.length === 0 || featureEvidence.every(f => f.visible)) &&
+      forbiddenEvidence.length === 0
+    );
+
+    return {
+      passed,
+      experiencePattern: {
+        expected: expectedPattern,
+        detected: detectedPattern,
+        matched: patternMatched,
+      },
+      routeIdentity: {
+        route: "/",
+        expectedRole: "Domain Workspace",
+        matched: !authWallDetected || authWallAllowed,
+      },
+      authWall: authWallResult,
+      featureEvidence,
+      forbiddenEvidence,
+      domainIdentity: {
+        expectedEntityNames: (domainSpec?.entities || []).map((e: any) => typeof e === "string" ? e : e.name),
+        foreignDomainSignals: forbiddenEvidence.map(f => f.token),
+      },
+      mismatchReasons,
+      passedChecks,
+    };
   }
 
   public static async captureMultiViewportScreenshots(

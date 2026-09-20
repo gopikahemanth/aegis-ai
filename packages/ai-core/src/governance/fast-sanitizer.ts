@@ -659,7 +659,7 @@ export default CircularProgress;
             return pageNameMatch || routeMatch;
           });
 
-          const fallbackPageName = matchedPage?.name || domainPages[0]?.name || pages[0]?.name;
+          const fallbackPageName = matchedPage?.name || domainPages[0]?.name;
           if (fallbackPageName && !extraRoutes.some(r => r.path === cleanPath)) {
             extraRoutes.push({ path: cleanPath, pageName: fallbackPageName });
           } else if (pageOnDisk) {
@@ -669,8 +669,12 @@ export default CircularProgress;
       }
     }
 
-    // Sort so dashboard or home is first
+    // Sort so domain dashboard or home is first; login/auth must NEVER be first
     pages.sort((a, b) => {
+      const aIsAuth = ["login", "register", "auth"].includes(a.name.toLowerCase().replace(/page$/, ""));
+      const bIsAuth = ["login", "register", "auth"].includes(b.name.toLowerCase().replace(/page$/, ""));
+      if (aIsAuth && !bIsAuth) return 1;
+      if (!aIsAuth && bIsAuth) return -1;
       if (a.routePath === "/") return -1;
       if (b.routePath === "/") return 1;
       return a.name.localeCompare(b.name);
@@ -680,7 +684,8 @@ export default CircularProgress;
     const routeElements = pages.map(p => `      <Route path="${p.routePath}" element={<${p.name} />} />`).join("\n");
     const extraRouteElements = extraRoutes.map(r => `      <Route path="${r.path}" element={<${r.pageName} />} />`).join("\n");
     const hasRootRoute = pages.some(p => p.routePath === "/");
-    const defaultRoute = hasRootRoute ? "" : `      <Route path="/" element={<${pages[0].name} />} />\n`;
+    const firstDomainPage = pages.find(p => !["login", "register", "auth"].includes(p.name.toLowerCase().replace(/page$/, "")));
+    const defaultRoute = hasRootRoute ? "" : (firstDomainPage ? `      <Route path="/" element={<${firstDomainPage.name} />} />\n` : "");
 
     return `import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";

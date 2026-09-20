@@ -292,6 +292,41 @@ const PAGE_TEMPLATES: Record<ProductCharacteristics["experiencePattern"], PageTe
     ],
   },
 
+  "configurator-workspace": {
+    primaryInteraction: "Configure custom models, calculate physical/engineering parameters, and generate project estimates",
+    navigationDepth: "deep",
+    pages: [
+      {
+        route: "/",
+        name: "Studio Workspace",
+        primaryFocus: "Interactive studio workspace with direct access to configurators, calculators, and estimators",
+        heroElement: "large-interaction",
+        supportingElements: ["fixture configuration canvas", "live photometric lux metrics", "project quote summary"],
+      },
+      {
+        route: "/configurator",
+        name: "Configurator",
+        primaryFocus: "Custom fixture/model configuration workspace",
+        heroElement: "large-interaction",
+        supportingElements: ["model selector", "dimension sliders", "optic and finish controls"],
+      },
+      {
+        route: "/calculator",
+        name: "Photometric Calculator",
+        primaryFocus: "Lux distribution and physical calculation engine",
+        heroElement: "metric-cluster",
+        supportingElements: ["lux heatmaps", "parameter inputs", "distribution chart"],
+      },
+      {
+        route: "/estimator",
+        name: "Quote Estimator",
+        primaryFocus: "Project quote estimation and financial breakdown",
+        heroElement: "form-flow",
+        supportingElements: ["cost breakdown table", "lead-time estimator", "quote export"],
+      },
+    ],
+  },
+
   "booking-flow": {
     primaryInteraction: "Find availability and complete a booking",
     navigationDepth: "shallow",
@@ -687,6 +722,18 @@ export class CapabilityPlanner {
         ],
         insights: [
           { name: "Version history", userIntent: "Review past versions", dataShape: "timeline", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
+        ],
+      },
+      "configurator-workspace": {
+        core: [
+          { name: "Model Configurator", userIntent: "Configure custom fixtures and components", dataShape: "form-flow", estimatedUsageFrequency: "daily", visualPriority: "primary" },
+          { name: "Engineering Calculator", userIntent: "Simulate lux distribution and physics parameters", dataShape: "comparison", estimatedUsageFrequency: "daily", visualPriority: "primary" },
+        ],
+        secondary: [
+          { name: "Quote Estimator", userIntent: "Generate pricing and project quote breakdowns", dataShape: "list", estimatedUsageFrequency: "daily", visualPriority: "secondary" },
+        ],
+        insights: [
+          { name: "Specification Breakdown", userIntent: "Export technical specification and telemetry", dataShape: "comparison", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
         ],
       },
       "booking-flow": {

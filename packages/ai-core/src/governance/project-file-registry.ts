@@ -50,7 +50,20 @@ export class ProjectFileRegistry {
 
     if (entriesToRegister.length === 0) {
       entriesToRegister = CANONICAL_FILES
-        .filter(f => isATS || (!f.canonicalPath.includes("scan") && !f.canonicalPath.includes("analyzer") && !f.canonicalPath.includes("resume") && !f.canonicalPath.includes("pdf")))
+        .filter(f => {
+          if (isATS) return true;
+          const p = f.canonicalPath.toLowerCase();
+          return !p.includes("scan") &&
+                 !p.includes("analyzer") &&
+                 !p.includes("resume") &&
+                 !p.includes("pdf") &&
+                 !p.includes("keyword") &&
+                 !p.includes("matchdashboard") &&
+                 !p.includes("scoregauge") &&
+                 !p.includes("scanhistory") &&
+                 !p.includes("uploadform") &&
+                 !p.includes("keywordcloud");
+        })
         .map(f => ({
           path: f.canonicalPath,
           description: f.semanticRole,

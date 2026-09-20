@@ -46,6 +46,7 @@ export interface FrontendReviewSummary {
   fatalConsoleErrors?: string[];
   uncaughtExceptions?: string[];
   reviewPassed?: boolean;
+  productIdentity?: import("../validation/read-only-browser-validator.js").ProductIdentityResult;
   status: ApprovalStatus;
   userFeedback?: string;
   reviewedAt?: string;
@@ -134,6 +135,9 @@ export class FrontendApprovalCheckpoint {
       if (browserReview.fatalConsoleErrors.length > 0) blockers.push(`Fatal console errors present: ${browserReview.fatalConsoleErrors.join("; ")}`);
       if (browserReview.uncaughtExceptions.length > 0) blockers.push(`Uncaught exceptions present: ${browserReview.uncaughtExceptions.join("; ")}`);
       if (!browserReview.passed) blockers.push(browserReview.failureReason || "Chromium visual review did not pass");
+      if (browserReview.productIdentity && !browserReview.productIdentity.passed) {
+        blockers.push(...browserReview.productIdentity.mismatchReasons);
+      }
     }
 
     const screenshots = browserReview?.screenshots || persisted?.screenshots || {};

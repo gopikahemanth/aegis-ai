@@ -77,7 +77,8 @@ export interface ProductCharacteristics {
     | "booking-flow"           // hospitality, scheduling, ordering, reservations
     | "showcase-landing"       // portfolio, brand, marketing site
     | "team-workspace"         // project management, team collaboration tools
-    | "realtime-console";      // trading, telemetry, ops console
+    | "realtime-console"       // trading, telemetry, ops console
+    | "configurator-workspace";// interactive studio/engineering tools, configurators, calculators, estimators
 
   /**
    * Three-tier vocabulary contract — derived from primaryActivity, NOT from domain name.
@@ -192,6 +193,8 @@ const CONTENT_CREATION_SIGNALS = [
   "editor", "authoring", "write", "compose", "draft", "publish",
   "cms", "content management", "blog platform", "notes app", "document editor",
   "design tool", "canvas", "diagram", "whiteboard", "rich text",
+  "configurator", "calculator", "formulator", "estimator", "simulator", "workbench",
+  "photometric", "glaze", "kiln", "lux", "fixture", "studio platform", "studio workspace",
 ];
 
 const DATA_ANALYSIS_SIGNALS = [
@@ -343,8 +346,22 @@ function detectExperiencePattern(
   activity: ProductCharacteristics["primaryActivity"],
   isPersonal: boolean,
   isRealTime: boolean,
-  isDataDriven: boolean
+  isDataDriven: boolean,
+  text?: string
 ): ProductCharacteristics["experiencePattern"] {
+  const lower = (text || "").toLowerCase();
+  const isConfiguratorOrTool =
+    lower.includes("configurator") ||
+    lower.includes("calculator") ||
+    lower.includes("estimator") ||
+    lower.includes("formulator") ||
+    lower.includes("simulator") ||
+    lower.includes("workbench");
+
+  if (isConfiguratorOrTool) {
+    return "configurator-workspace";
+  }
+
   switch (activity) {
     case "personal-tracking":
       return "personal-tracker";
@@ -574,7 +591,7 @@ export class ProductUnderstanding {
     const emotionalTone = detectEmotionalTone(text, toneHint, primaryActivity, audienceContext.isPersonal);
 
     // [5] Experience pattern (derived from activity + context)
-    const experiencePattern = detectExperiencePattern(primaryActivity, audienceContext.isPersonal, requiresRealTime, isDataDriven);
+    const experiencePattern = detectExperiencePattern(primaryActivity, audienceContext.isPersonal, requiresRealTime, isDataDriven, text);
 
     // [6] Information density (derived from activity + audience)
     const informationDensity: ProductCharacteristics["informationDensity"] =

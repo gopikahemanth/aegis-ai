@@ -857,6 +857,12 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       DesignBriefLock.write(brief, outputDirectory);
       console.log(`[DesignPipeline] ✓ Brief locked: ${brief.briefId}`);
 
+      // [4b] Lock authoritative ProductExperiencePlan for Frontend Product Identity Gate
+      const { ProductExperiencePlanManager } = await import("../design/product-experience-plan.js");
+      const experiencePlan = ProductExperiencePlanManager.build(brief, specification, rawPrompt, resolvedContract);
+      ProductExperiencePlanManager.save(experiencePlan, outputDirectory);
+      console.log(`[DesignPipeline] ✓ ProductExperiencePlan locked (Pattern: ${experiencePlan.experiencePattern}, Capabilities: ${experiencePlan.requiredCapabilities.length})`);
+
       // [5] Generate design tokens + components using the locked brief
       const dsFiles = this.designSystemGenerator.generate(specification, brief);
       const dsContext = this.designSystemGenerator.buildCoderContext(specification, undefined, brief);
@@ -1314,23 +1320,31 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     // 3. Authoritative Chromium Review with multi-viewport verification & fatal error trapping
     let browserReview = await ReadOnlyBrowserValidator.reviewFrontend(frontendServerInfo.url, outputDirectory);
 
-    // If review failed due to runtime errors, allow up to 2 targeted Coder repair attempts
+    // If review failed due to runtime errors or product mismatch, allow up to 3 targeted Coder repair attempts
+    const MAX_FRONTEND_REPAIR_ATTEMPTS = 3;
     let repairAttempts = 0;
-    while (!browserReview.passed && repairAttempts < 2) {
+    while (!browserReview.passed && repairAttempts < MAX_FRONTEND_REPAIR_ATTEMPTS) {
       repairAttempts++;
-      console.warn(`[BrowserValidator] ⚠️ Frontend review failed (${browserReview.failureReason}). Triggering targeted frontend repair (Attempt ${repairAttempts}/2)...`);
+      console.warn(`[BrowserValidator] ⚠️ Frontend review failed (${browserReview.failureReason}). Triggering targeted frontend repair (Attempt ${repairAttempts}/${MAX_FRONTEND_REPAIR_ATTEMPTS})...`);
+
+      const isProductMismatch = browserReview.productIdentity && !browserReview.productIdentity.passed;
+      const repairInstructions = isProductMismatch
+        ? `FRONTEND_PRODUCT_MISMATCH: The rendered frontend failed the authoritative Product Identity & Completeness Gate.\nIssues:\n${browserReview.productIdentity!.mismatchReasons.map(r => `  - ${r}`).join("\n")}\n\nCRITICAL IMPLEMENTATION MANDATE:\n1. Route '/' MUST directly render the interactive product workspace. NEVER redirect to or render an authentication/login screen on '/'.\n2. Implement custom interactive components in src/ for the missing domain capabilities:\n${browserReview.productIdentity!.featureEvidence.filter(f => !f.visible).map(f => `  - ${f.name}`).join("\n")}\n3. Ensure components include real interactive controls (inputs, buttons, sliders, selects, canvas) and state management.\n4. Mount these components directly in src/App.tsx or src/routes.tsx. Do NOT touch backend or database.`
+        : `FRONTEND_RUNTIME_ERROR: ${browserReview.failureReason}. Ensure all components export properly, imports resolve, and variables/hooks are properly initialized. Do NOT touch backend or database.`;
+
       const fixTask: Task = {
-        id: `frontend_runtime_repair_${repairAttempts}`,
-        title: "Repair frontend runtime errors",
-        description: `Fix the following frontend runtime error: ${browserReview.failureReason}. Ensure all components export properly, imports resolve, and variables/hooks are properly initialized. Do NOT touch backend or database.`,
+        id: `frontend_repair_${repairAttempts}`,
+        title: isProductMismatch ? "Implement missing domain workspace UI" : "Repair frontend runtime errors",
+        description: repairInstructions,
         dependencies: [],
         stage: "Frontend",
       } as any;
+
       const fixResult = await this.coderAgent.execute(
         fixTask,
         architecture,
         architecturePlan,
-        enrichedRequest + `\n\nFRONTEND RUNTIME ERROR IN BROWSER:\n${browserReview.failureReason}`,
+        enrichedRequest + `\n\n${repairInstructions}`,
         outputDirectory,
         existingFiles,
         imagePayload,
@@ -1342,7 +1356,10 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
     if (!browserReview.passed) {
       AppServerRunner.stopServer();
-      throw new Error(`FRONTEND_REVIEW_BLOCKED: Frontend failed browser visual verification: ${browserReview.failureReason}. Halting pipeline before approval.`);
+      const reasons = browserReview.productIdentity?.mismatchReasons?.length
+        ? browserReview.productIdentity.mismatchReasons.join("; ")
+        : browserReview.failureReason;
+      throw new Error(`FRONTEND_GENERATION_FAILED: Frontend failed browser visual and product identity verification after ${MAX_FRONTEND_REPAIR_ATTEMPTS} repair attempts: ${reasons}. Pipeline halted. No approval requested.`);
     }
 
     const pageFiles = existsSync(join(outputDirectory, "src", "pages"))
@@ -1375,6 +1392,7 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       fatalConsoleErrors: browserReview.fatalConsoleErrors,
       uncaughtExceptions: browserReview.uncaughtExceptions,
       reviewPassed: true,
+      productIdentity: browserReview.productIdentity,
       status: "PENDING",
     };
     FrontendApprovalCheckpoint.saveReview(outputDirectory, reviewSummary);

@@ -1,6 +1,22 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import http from "node:http";
 import { ErrorClassifier } from "../healing/error-classifier.js";
+
+export interface FrontendBrowserReview {
+  passed: boolean;
+  serverReady: boolean;
+  url: string;
+  screenshots: {
+    desktop?: string;
+    tablet?: string;
+    mobile?: string;
+  };
+  fatalConsoleErrors: string[];
+  uncaughtExceptions: string[];
+  renderedElementsCount: number;
+  failureReason?: string;
+}
 
 export interface BrowserValidationResult {
   passed: boolean;
@@ -208,21 +224,52 @@ export class ReadOnlyBrowserValidator {
     });
   }
 
-  public static async captureMultiViewportScreenshots(
+  public static async reviewFrontend(
     url: string,
     outputDirectory: string
-  ): Promise<{ desktop?: string; tablet?: string; mobile?: string }> {
+  ): Promise<FrontendBrowserReview> {
     const screenshotDir = join(outputDirectory, ".aegis", "screenshots");
     if (!existsSync(screenshotDir)) mkdirSync(screenshotDir, { recursive: true });
 
-    const viewports = [
-      { name: "desktop", width: 1440, height: 900 },
-      { name: "tablet", width: 768, height: 1024 },
-      { name: "mobile", width: 375, height: 812 },
-    ];
+    const review: FrontendBrowserReview = {
+      passed: false,
+      serverReady: false,
+      url,
+      screenshots: {},
+      fatalConsoleErrors: [],
+      uncaughtExceptions: [],
+      renderedElementsCount: 0,
+    };
 
-    const results: { desktop?: string; tablet?: string; mobile?: string } = {};
+    // 1. Verify dev server connection first via HTTP
+    const serverLive = await new Promise<boolean>((resolve) => {
+      try {
+        const parsed = new URL(url);
+        const req = http.request({
+          hostname: parsed.hostname,
+          port: parsed.port || 80,
+          path: parsed.pathname || "/",
+          method: "GET",
+          timeout: 4000,
+        }, (res) => {
+          resolve(Boolean(res.statusCode && res.statusCode < 500));
+        });
+        req.on("error", () => resolve(false));
+        req.on("timeout", () => { req.destroy(); resolve(false); });
+        req.end();
+      } catch {
+        resolve(false);
+      }
+    });
 
+    if (!serverLive) {
+      review.failureReason = `net::ERR_CONNECTION_REFUSED: Dev server is not running or unreachable at ${url}`;
+      console.warn(`[BrowserValidator] ❌ ${review.failureReason}`);
+      return review;
+    }
+    review.serverReady = true;
+
+    // 2. Launch Puppeteer to inspect runtime and viewports
     try {
       const puppeteer = await import("puppeteer");
       const browser = await puppeteer.launch({
@@ -231,14 +278,45 @@ export class ReadOnlyBrowserValidator {
       });
       const page = await browser.newPage();
 
+      page.on("console", (msg) => {
+        if (msg.type() === "error") {
+          const text = msg.text();
+          const isFatal = /Cannot read propert|is not a function|Uncaught|SyntaxError|ReferenceError|Failed to resolve import/i.test(text);
+          if (isFatal && !review.fatalConsoleErrors.includes(text)) {
+            review.fatalConsoleErrors.push(text);
+          }
+        }
+      });
+
+      page.on("pageerror", (err: any) => {
+        const text = err?.message || String(err);
+        if (!review.uncaughtExceptions.includes(text)) {
+          review.uncaughtExceptions.push(text);
+        }
+      });
+
+      const viewports = [
+        { name: "desktop", width: 1440, height: 900 },
+        { name: "tablet", width: 768, height: 1024 },
+        { name: "mobile", width: 375, height: 812 },
+      ] as const;
+
       for (const vp of viewports) {
         try {
           await page.setViewport({ width: vp.width, height: vp.height });
-          await page.goto(url, { waitUntil: "domcontentloaded", timeout: 8000 });
+          await page.goto(url, { waitUntil: "networkidle2", timeout: 10000 });
+          const count = await page.evaluate(() => document.querySelectorAll("*").length);
+          review.renderedElementsCount = Math.max(review.renderedElementsCount, count);
+
           const filePath = join(screenshotDir, `${vp.name}.png`);
           await page.screenshot({ path: filePath, fullPage: false });
-          (results as any)[vp.name] = filePath;
-          console.log(`[BrowserValidator] 📸 Captured ${vp.name} (${vp.width}x${vp.height}) screenshot at ${filePath}`);
+
+          if (existsSync(filePath) && statSync(filePath).size > 1000) {
+            review.screenshots[vp.name] = filePath;
+            console.log(`[BrowserValidator] 📸 Captured ${vp.name} (${vp.width}x${vp.height}) screenshot at ${filePath} (${statSync(filePath).size} bytes)`);
+          } else {
+            console.warn(`[BrowserValidator] ⚠️ Screenshot file for ${vp.name} is missing or invalid size`);
+          }
         } catch (e: any) {
           console.warn(`[BrowserValidator] ⚠️ Could not capture ${vp.name} screenshot: ${e.message}`);
         }
@@ -246,10 +324,39 @@ export class ReadOnlyBrowserValidator {
 
       await browser.close();
     } catch (err: any) {
-      console.warn(`[BrowserValidator] ⚠️ Multi-viewport screenshot capture unavailable: ${err.message}`);
+      review.failureReason = `Chromium launch/navigation failed: ${err.message}`;
+      console.warn(`[BrowserValidator] ❌ ${review.failureReason}`);
+      return review;
     }
 
-    return results;
+    // 3. Strict Invariant Validation
+    const blockers: string[] = [];
+    if (!review.serverReady) blockers.push("Dev server not ready");
+    if (review.renderedElementsCount < 10) blockers.push(`Page appears blank (renderedElementsCount: ${review.renderedElementsCount} < 10)`);
+    if (review.fatalConsoleErrors.length > 0) blockers.push(`Fatal console error(s): ${review.fatalConsoleErrors.join("; ")}`);
+    if (review.uncaughtExceptions.length > 0) blockers.push(`Uncaught runtime exception(s): ${review.uncaughtExceptions.join("; ")}`);
+    if (!review.screenshots.desktop) blockers.push("Desktop screenshot missing or 0 bytes");
+    if (!review.screenshots.tablet) blockers.push("Tablet screenshot missing or 0 bytes");
+    if (!review.screenshots.mobile) blockers.push("Mobile screenshot missing or 0 bytes");
+
+    if (blockers.length === 0) {
+      review.passed = true;
+      console.log(`[BrowserValidator] ✓ PASS — Frontend visually reviewed cleanly in Chromium (DOM elements: ${review.renderedElementsCount}, Fatal errors: 0).`);
+    } else {
+      review.passed = false;
+      review.failureReason = blockers.join("; ");
+      console.warn(`[BrowserValidator] ❌ Frontend visual review FAILED: ${review.failureReason}`);
+    }
+
+    return review;
+  }
+
+  public static async captureMultiViewportScreenshots(
+    url: string,
+    outputDirectory: string
+  ): Promise<{ desktop?: string; tablet?: string; mobile?: string }> {
+    const res = await this.reviewFrontend(url, outputDirectory);
+    return res.screenshots;
   }
 }
 

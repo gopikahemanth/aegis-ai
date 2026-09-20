@@ -1256,14 +1256,103 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     console.log("\n══════════════════════════════════════════════════════════════════════════════");
     console.log("STAGE 4–7: FRONTEND FUNCTIONAL & CHROMIUM MULTI-VIEWPORT REVIEW");
     console.log("══════════════════════════════════════════════════════════════════════════════");
+
+    // 1. Ensure frontend package.json & dependencies are prepared for execution
+    const frontendPkgPath = join(outputDirectory, "package.json");
+    if (!existsSync(frontendPkgPath)) {
+      writeFileSync(frontendPkgPath, JSON.stringify({
+        name: outputDirectory.split(/[\\/]/).at(-1) ?? "aegis-app",
+        private: true,
+        version: "0.0.1",
+        type: "module",
+        scripts: {
+          "dev": "vite",
+          "build": "tsc && vite build",
+          "preview": "vite preview"
+        },
+        dependencies: {
+          "react": "^18.3.1",
+          "react-dom": "^18.3.1",
+          "react-router-dom": "^6.26.0",
+          "clsx": "^2.1.1",
+          "tailwind-merge": "^2.5.2",
+          "lucide-react": "^0.441.0"
+        },
+        devDependencies: {
+          "@types/react": "^18.3.3",
+          "@types/react-dom": "^18.3.0",
+          "@vitejs/plugin-react": "^4.3.1",
+          "typescript": "^5.5.3",
+          "vite": "^5.4.1",
+          "tailwindcss": "^3.4.1",
+          "postcss": "^8.4.47",
+          "autoprefixer": "^10.4.20"
+        }
+      }, null, 2), "utf8");
+    }
+
+    try {
+      await this.projectStartupAgent.prepare(outputDirectory);
+    } catch (startupPrepErr: any) {
+      console.warn(`[Startup] Pre-review startup preparation warning: ${startupPrepErr.message}`);
+    }
+
+    // 2. Start frontend dev server
+    console.log("[StageReview] 🚀 Starting frontend dev server for live Chromium visual review...");
+    let frontendServerInfo = await AppServerRunner.startServer(outputDirectory);
+    if (!frontendServerInfo.ready) {
+      console.warn(`[AppServerRunner] ⚠️ First attempt timed out. Retrying dev server startup on port ${frontendServerInfo.port}...`);
+      AppServerRunner.stopServer();
+      await new Promise(r => setTimeout(r, 1000));
+      frontendServerInfo = await AppServerRunner.startServer(outputDirectory);
+    }
+
+    if (!frontendServerInfo.ready) {
+      throw new Error(`FRONTEND_REVIEW_BLOCKED: Frontend dev server failed to start at ${frontendServerInfo.url}. Server must be ready before visual review and approval.`);
+    }
+
+    // 3. Authoritative Chromium Review with multi-viewport verification & fatal error trapping
+    let browserReview = await ReadOnlyBrowserValidator.reviewFrontend(frontendServerInfo.url, outputDirectory);
+
+    // If review failed due to runtime errors, allow up to 2 targeted Coder repair attempts
+    let repairAttempts = 0;
+    while (!browserReview.passed && repairAttempts < 2) {
+      repairAttempts++;
+      console.warn(`[BrowserValidator] ⚠️ Frontend review failed (${browserReview.failureReason}). Triggering targeted frontend repair (Attempt ${repairAttempts}/2)...`);
+      const fixTask: Task = {
+        id: `frontend_runtime_repair_${repairAttempts}`,
+        title: "Repair frontend runtime errors",
+        description: `Fix the following frontend runtime error: ${browserReview.failureReason}. Ensure all components export properly, imports resolve, and variables/hooks are properly initialized. Do NOT touch backend or database.`,
+        dependencies: [],
+        stage: "Frontend",
+      } as any;
+      const fixResult = await this.coderAgent.execute(
+        fixTask,
+        architecture,
+        architecturePlan,
+        enrichedRequest + `\n\nFRONTEND RUNTIME ERROR IN BROWSER:\n${browserReview.failureReason}`,
+        outputDirectory,
+        existingFiles,
+        imagePayload,
+      );
+      patchEngine.apply(fixResult.response, outputDirectory);
+      FastDeterministicSanitizer.sanitizeProject(outputDirectory, resolvedContract);
+      browserReview = await ReadOnlyBrowserValidator.reviewFrontend(frontendServerInfo.url, outputDirectory);
+    }
+
+    if (!browserReview.passed) {
+      AppServerRunner.stopServer();
+      throw new Error(`FRONTEND_REVIEW_BLOCKED: Frontend failed browser visual verification: ${browserReview.failureReason}. Halting pipeline before approval.`);
+    }
+
     const pageFiles = existsSync(join(outputDirectory, "src", "pages"))
       ? readdirSync(join(outputDirectory, "src", "pages")).filter(f => /\.(tsx|jsx)$/.test(f))
       : [];
     const extractedPages = pageFiles.map(f => f.replace(/\.(tsx|jsx)$/, ""));
-    const screenshots = await ReadOnlyBrowserValidator.captureMultiViewportScreenshots("http://localhost:5173", outputDirectory);
 
     const reviewSummary: FrontendReviewSummary = {
       appName: (specification as any)?.name || "Generated Application",
+      serverUrl: frontendServerInfo.url,
       pages: extractedPages.length > 0 ? extractedPages : ["Home", "Application Showcase"],
       routes: ["/", ...extractedPages.map(p => `/${p.toLowerCase()}`)],
       colorPalette: {
@@ -1281,20 +1370,32 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
         "Multi-tab filter selections",
         "Detail inspector panel triggers",
       ],
-      screenshots,
+      screenshots: browserReview.screenshots,
+      renderedElementsCount: browserReview.renderedElementsCount,
+      fatalConsoleErrors: browserReview.fatalConsoleErrors,
+      uncaughtExceptions: browserReview.uncaughtExceptions,
+      reviewPassed: true,
       status: "PENDING",
     };
     FrontendApprovalCheckpoint.saveReview(outputDirectory, reviewSummary);
 
     // ── STAGE 8: USER APPROVAL / REQUESTS CHANGES (INTERACTIVE LOOP) ──────────
+    // Invariant: Verify strict approval eligibility before prompting
+    const eligibility = FrontendApprovalCheckpoint.checkEligibility(outputDirectory, browserReview);
+    if (!eligibility.eligible) {
+      AppServerRunner.stopServer();
+      throw new Error(`FRONTEND_APPROVAL_BLOCKED: Cannot request approval. Criteria failed: ${eligibility.blockers.join("; ")}`);
+    }
+
     let approved = options?.approveFrontend || options?.skipApproval || false;
     if (!approved && options?.onFrontendReview) {
       while (!approved) {
         const userDecision = await options.onFrontendReview(reviewSummary);
         if (userDecision === true) {
           approved = true;
-          FrontendApprovalCheckpoint.approve(outputDirectory);
-          console.log("[StageApproval] ✓ Frontend approved! Proceeding to Database Design & Verification...");
+          FrontendApprovalCheckpoint.approve(outputDirectory, browserReview);
+          console.log("[StageApproval] ✓ Frontend approved! Stopping preview server and proceeding to Database Design & Verification...");
+          AppServerRunner.stopServer();
           break;
         } else if (typeof userDecision === "string") {
           console.log(`[StageApproval] 🔄 User requested changes: "${userDecision}". Modifying FRONTEND ONLY...`);
@@ -1318,16 +1419,28 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
           patchEngine.apply(refineResult.response, outputDirectory);
           FastDeterministicSanitizer.sanitizeProject(outputDirectory, resolvedContract);
           reviewSummary.userFeedback = userDecision;
-          reviewSummary.screenshots = await ReadOnlyBrowserValidator.captureMultiViewportScreenshots("http://localhost:5173", outputDirectory);
+
+          // Re-verify refined frontend in Chromium
+          browserReview = await ReadOnlyBrowserValidator.reviewFrontend(frontendServerInfo.url, outputDirectory);
+          if (!browserReview.passed) {
+            console.warn(`[StageApproval] ⚠️ Refined frontend failed browser review: ${browserReview.failureReason}. Retrying review...`);
+          }
+          reviewSummary.screenshots = browserReview.screenshots;
+          reviewSummary.renderedElementsCount = browserReview.renderedElementsCount;
+          reviewSummary.fatalConsoleErrors = browserReview.fatalConsoleErrors;
+          reviewSummary.uncaughtExceptions = browserReview.uncaughtExceptions;
+          reviewSummary.reviewPassed = browserReview.passed;
           FrontendApprovalCheckpoint.saveReview(outputDirectory, reviewSummary);
         } else {
           console.log("[StageApproval] Generation halted by user.");
+          AppServerRunner.stopServer();
           throw new Error("FRONTEND_APPROVAL_REJECTED: User declined frontend approval. Generation halted.");
         }
       }
     } else {
-      FrontendApprovalCheckpoint.approve(outputDirectory);
-      console.log("[StageApproval] ✓ Frontend approved. Proceeding to Database Design & Verification...");
+      FrontendApprovalCheckpoint.approve(outputDirectory, browserReview);
+      console.log("[StageApproval] ✓ Frontend approved. Stopping preview server and proceeding to Database Design & Verification...");
+      AppServerRunner.stopServer();
     }
 
     // ── STAGE 9: DATABASE DESIGN FROM APPROVED FRONTEND ───────────────────────

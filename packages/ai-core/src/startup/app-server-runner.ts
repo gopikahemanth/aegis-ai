@@ -104,6 +104,12 @@ export class AppServerRunner {
   public static stopServer(): void {
     if (this.process) {
       try {
+        if (process.platform === "win32" && this.process.pid) {
+          try {
+            const { execSync } = require("child_process");
+            execSync(`taskkill /pid ${this.process.pid} /T /F`, { stdio: "ignore" });
+          } catch {}
+        }
         this.process.kill();
         console.log(`[AppServerRunner] 🛑 Stopped dev server process.`);
       } catch {}

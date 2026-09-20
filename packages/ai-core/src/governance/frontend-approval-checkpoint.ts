@@ -9,13 +9,20 @@
  * - `.aegis/stage-checkpoint.json` (stage transition state and approval status)
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import type { FrontendBrowserReview } from "../validation/read-only-browser-validator.js";
 
 export type ApprovalStatus = "PENDING" | "APPROVED" | "CHANGES_REQUESTED";
 
+export interface ApprovalEligibility {
+  eligible: boolean;
+  blockers: string[];
+}
+
 export interface FrontendReviewSummary {
   appName: string;
+  serverUrl?: string;
   pages: string[];
   routes: string[];
   colorPalette: {
@@ -35,6 +42,10 @@ export interface FrontendReviewSummary {
     tablet?: string;
     mobile?: string;
   };
+  renderedElementsCount?: number;
+  fatalConsoleErrors?: string[];
+  uncaughtExceptions?: string[];
+  reviewPassed?: boolean;
   status: ApprovalStatus;
   userFeedback?: string;
   reviewedAt?: string;
@@ -110,7 +121,50 @@ export class FrontendApprovalCheckpoint {
     }
   }
 
-  static approve(outputDirectory: string): void {
+  static checkEligibility(
+    outputDirectory: string,
+    browserReview?: FrontendBrowserReview | null
+  ): ApprovalEligibility {
+    const blockers: string[] = [];
+    const persisted = this.loadReview(outputDirectory);
+
+    if (browserReview) {
+      if (!browserReview.serverReady) blockers.push("Frontend dev server is not ready or unreachable");
+      if (browserReview.renderedElementsCount < 10) blockers.push(`Page appears blank (DOM elements: ${browserReview.renderedElementsCount} < 10)`);
+      if (browserReview.fatalConsoleErrors.length > 0) blockers.push(`Fatal console errors present: ${browserReview.fatalConsoleErrors.join("; ")}`);
+      if (browserReview.uncaughtExceptions.length > 0) blockers.push(`Uncaught exceptions present: ${browserReview.uncaughtExceptions.join("; ")}`);
+      if (!browserReview.passed) blockers.push(browserReview.failureReason || "Chromium visual review did not pass");
+    }
+
+    const screenshots = browserReview?.screenshots || persisted?.screenshots || {};
+    const viewports = ["desktop", "tablet", "mobile"] as const;
+    for (const vp of viewports) {
+      const filePath = screenshots[vp];
+      if (!filePath || !existsSync(filePath)) {
+        blockers.push(`Required screenshot for ${vp} is missing on disk`);
+      } else {
+        try {
+          if (statSync(filePath).size < 1000) {
+            blockers.push(`Screenshot for ${vp} is invalid (file size < 1KB)`);
+          }
+        } catch {
+          blockers.push(`Could not verify screenshot for ${vp}`);
+        }
+      }
+    }
+
+    return {
+      eligible: blockers.length === 0,
+      blockers,
+    };
+  }
+
+  static approve(outputDirectory: string, browserReview?: FrontendBrowserReview | null): void {
+    const eligibility = this.checkEligibility(outputDirectory, browserReview);
+    if (!eligibility.eligible) {
+      throw new Error(`FRONTEND_APPROVAL_BLOCKED: Cannot approve frontend. Approval criteria not satisfied:\n  - ${eligibility.blockers.join("\n  - ")}`);
+    }
+
     const review = this.loadReview(outputDirectory);
     if (review) {
       review.status = "APPROVED";

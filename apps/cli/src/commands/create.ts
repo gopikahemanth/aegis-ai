@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { ExecutionEngine } from "@aegis/agent-runtime";
 import { ProviderError } from "@aegis/ai-core";
 
@@ -135,17 +136,46 @@ Options:
       return true;
     }
 
+    const hasDesktop = summary.screenshots?.desktop && existsSync(summary.screenshots.desktop);
+    const hasTablet = summary.screenshots?.tablet && existsSync(summary.screenshots.tablet);
+    const hasMobile = summary.screenshots?.mobile && existsSync(summary.screenshots.mobile);
+
+    if (!hasDesktop || !hasTablet || !hasMobile) {
+      console.error("[StageApproval] ❌ Fatal: Frontend visual review incomplete. Viewport screenshots missing on disk.");
+      return false;
+    }
+
+    const previewUrl = summary.serverUrl || "http://localhost:5173";
+
     console.log(`\n` +
       `══════════════════════════════════════════════════════════════════════════════\n` +
-      `🎨 FRONTEND GENERATION COMPLETE & VISUALLY REVIEWED\n` +
+      `🎨 FRONTEND READY FOR YOUR VISUAL REVIEW (REAL CHROMIUM VERIFIED)\n` +
       `══════════════════════════════════════════════════════════════════════════════\n` +
-      `Pages / Views: ${(summary.pages || []).join(", ") || "Standard Application Views"}\n` +
-      `Theme Palette: Primary: ${summary.colorPalette?.primary || "calm stone"} | Surface: ${summary.colorPalette?.surface || "white"}\n` +
-      `Screenshots:   Desktop (1440px): ${summary.screenshots?.desktop || ".aegis/screenshots/desktop.png"}\n` +
-      `               Tablet (768px):   ${summary.screenshots?.tablet || ".aegis/screenshots/tablet.png"}\n` +
-      `               Mobile (375px):   ${summary.screenshots?.mobile || ".aegis/screenshots/mobile.png"}\n` +
+      `🌐 Live Preview:    ${previewUrl}\n` +
+      `📄 Pages / Views:   ${(summary.pages || []).join(", ") || "Standard Application Views"}\n` +
+      `🎨 Theme Palette:   Primary: ${summary.colorPalette?.primary || "calm stone"} | Surface: ${summary.colorPalette?.surface || "white"}\n` +
+      `📸 Desktop (1440px): ${summary.screenshots.desktop}\n` +
+      `📸 Tablet (768px):   ${summary.screenshots.tablet}\n` +
+      `📸 Mobile (375px):   ${summary.screenshots.mobile}\n` +
       `══════════════════════════════════════════════════════════════════════════════\n`
     );
+
+    // Automatically open user's default browser to the running preview
+    try {
+      if (process.platform === "win32") {
+        const { exec } = await import("node:child_process");
+        exec(`start ${previewUrl}`);
+      } else if (process.platform === "darwin") {
+        const { exec } = await import("node:child_process");
+        exec(`open ${previewUrl}`);
+      } else {
+        const { exec } = await import("node:child_process");
+        exec(`xdg-open ${previewUrl}`);
+      }
+      console.log(`[StageApproval] 🌐 Opened live interactive preview in your default browser: ${previewUrl}\n`);
+    } catch {
+      console.log(`[StageApproval] 🌐 Open live preview in your browser: ${previewUrl}\n`);
+    }
 
     const readline = await import("node:readline/promises");
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });

@@ -1,13 +1,18 @@
 import type { ProjectSpecification } from "../architect/specification.js";
 import type { ArchitectureContractV1 } from "../governance/architecture-resolver.js";
 import { CompositionGraph, CompositionGraphSynthesizer } from "./composition-graph.js";
+import {
+  deriveArtDirection,
+  type VisualArtDirectionContract,
+} from "./visual-art-direction.js";
 
-export { CompositionGraph, CompositionGraphSynthesizer };
+export { CompositionGraph, CompositionGraphSynthesizer, deriveArtDirection, type VisualArtDirectionContract };
 
 export interface DomainVisualDesignContract {
   productType: string;
   domain: string;
   compositionGraph?: CompositionGraph;
+  artDirection?: VisualArtDirectionContract;
 
   visualPersonality: {
     mood: string;
@@ -47,7 +52,15 @@ export interface DomainVisualDesignContract {
     | "CALENDAR_SCHEDULE"
     | "MEDIA_SHOWCASE"
     | "HOSPITALITY_PORTAL"
-    | "ANALYTICS_CONSOLE";
+    | "ANALYTICS_CONSOLE"
+    | "EDITORIAL_LANDING"
+    | "ASYMMETRIC_PRODUCT_DASHBOARD"
+    | "SPLIT_SCREEN_WORKSPACE"
+    | "VISUAL_ANALYTICS"
+    | "VISUAL_ANALYTICS_CANVAS"
+    | "PLAYFUL_WORKSPACE"
+    | "MINIMAL_SAAS"
+    | "MINIMAL_SAAS_CONSOLE";
 
   navigation: {
     strategy:
@@ -80,7 +93,7 @@ export interface DomainVisualDesignContract {
       icon: string;
     };
     alerts: string[];
-    primaryWidget: "TIMELINE" | "KANBAN" | "TELEMETRY" | "CALENDAR" | "SHOWCASE" | "WORKSPACE" | "ANALYTICS";
+    primaryWidget: "TIMELINE" | "KANBAN" | "TELEMETRY" | "CALENDAR" | "SHOWCASE" | "WORKSPACE" | "ANALYTICS" | "EDITORIAL_STORY" | "PLAYFUL_PROGRESS" | "ASYMMETRIC_DESK";
   };
 
   composition?: {
@@ -92,20 +105,21 @@ export interface DomainVisualDesignContract {
       cta: { label: string; targetRoute: string; icon?: string };
     };
     primaryWorkspace: {
-      type: "availability_matrix" | "master_detail" | "live_stage_matrix" | "telemetry_grid" | "kanban_board" | "timeline_pipeline" | "document_workspace" | "catalog_grid";
+      type: "availability_matrix" | "master_detail" | "live_stage_matrix" | "telemetry_grid" | "kanban_board" | "timeline_pipeline" | "document_workspace" | "catalog_grid" | "session_schedule" | "workflow_board";
       title: string;
       description: string;
       density?: "compact" | "balanced" | "spacious";
+      capabilities?: string[];
     };
     secondaryWorkspace: {
-      type: "arrival_queue" | "chronological_timeline" | "dispatch_board" | "activity_stream" | "status_pipeline" | "financial_summary";
+      type: "arrival_queue" | "chronological_timeline" | "dispatch_board" | "activity_stream" | "status_pipeline" | "financial_summary" | "sky_object_catalogue";
       title: string;
     };
     supportingWidgets: Array<{
-      type: "metric_cluster" | "gauge_dial" | "venue_capacity" | "document_locker" | "telemetry_monitor" | "sector_heatmap";
+      type: "metric_cluster" | "gauge_dial" | "venue_capacity" | "document_locker" | "telemetry_monitor" | "sector_heatmap" | "telescope_equipment" | "astronomer_roster";
       title: string;
     }>;
-    interactionModel: "reservation_flow" | "case_dossier" | "live_dispatch" | "telemetry_command" | "general_operations";
+    interactionModel: "reservation_flow" | "case_dossier" | "live_dispatch" | "telemetry_command" | "general_operations" | "session_reservation_flow" | "state_machine_execution";
   };
 
   antiPatterns: string[];
@@ -197,65 +211,103 @@ export class DomainVisualContractGenerator {
   }
 
   /**
+   * Helper to convert a hex or color string to rgba with specified alpha.
+   */
+  public static hexToRgba(color: string, alpha: number): string {
+    const rgb = DomainVisualContractGenerator.parseColor(color);
+    if (!rgb) return color;
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+  }
+
+  /**
    * Translates domain color names and theme parameters into concrete, guaranteed CSS hex/rgba tokens.
    * Enforces WCAG contrast safeguards to guarantee text visibility across all palettes.
    */
   public static resolveCssTokens(contract: DomainVisualDesignContract): ResolvedCssTokens {
-    const isLight = contract.colorSystem.mode.includes("light");
-    const primary = (contract.colorSystem.primary || "teal").toLowerCase();
+    const ad = contract.artDirection || deriveArtDirection(contract.domain);
+    const isLight = contract.colorSystem?.mode
+      ? contract.colorSystem.mode.includes("light")
+      : ad.colorSystem.mode === "light";
+    const primary = (contract.colorSystem.primary || ad.colorSystem.primary || "teal").toLowerCase();
     
-    // Primary palette map
+    // Primary palette map with fallback to artDirection
     const primaryMap: Record<string, { hex: string; hover: string; subtle: string }> = {
-      teal:     { hex: "#0d9488", hover: "#0f766e", subtle: "rgba(13, 148, 136, 0.18)" },
-      amber:    { hex: "#d97706", hover: "#b45309", subtle: "rgba(217, 119, 6, 0.18)" },
-      emerald:  { hex: "#059669", hover: "#047857", subtle: "rgba(5, 150, 105, 0.18)" },
-      violet:   { hex: "#7c3aed", hover: "#6d28d9", subtle: "rgba(124, 58, 237, 0.18)" },
-      cyan:     { hex: "#0891b2", hover: "#0e7490", subtle: "rgba(8, 145, 178, 0.18)" },
-      rose:     { hex: "#e11d48", hover: "#be123c", subtle: "rgba(225, 29, 72, 0.18)" },
-      sky:      { hex: "#0284c7", hover: "#0369a1", subtle: "rgba(2, 132, 199, 0.18)" },
-      indigo:   { hex: "#4f46e5", hover: "#4338ca", subtle: "rgba(79, 70, 229, 0.18)" },
-      blue:     { hex: "#2563eb", hover: "#1d4ed8", subtle: "rgba(37, 99, 235, 0.18)" },
-      fuchsia:  { hex: "#c026d3", hover: "#a21caf", subtle: "rgba(192, 38, 211, 0.18)" },
+      teal:       { hex: "#0d9488", hover: "#0f766e", subtle: "rgba(13, 148, 136, 0.18)" },
+      amber:      { hex: "#d97706", hover: "#b45309", subtle: "rgba(217, 119, 6, 0.18)" },
+      emerald:    { hex: "#059669", hover: "#047857", subtle: "rgba(5, 150, 105, 0.18)" },
+      violet:     { hex: "#7c3aed", hover: "#6d28d9", subtle: "rgba(124, 58, 237, 0.18)" },
+      cyan:       { hex: "#0891b2", hover: "#0e7490", subtle: "rgba(8, 145, 178, 0.18)" },
+      rose:       { hex: "#e11d48", hover: "#be123c", subtle: "rgba(225, 29, 72, 0.18)" },
+      sky:        { hex: "#0284c7", hover: "#0369a1", subtle: "rgba(2, 132, 199, 0.18)" },
+      indigo:     { hex: "#4f46e5", hover: "#4338ca", subtle: "rgba(79, 70, 229, 0.18)" },
+      blue:       { hex: "#2563eb", hover: "#1d4ed8", subtle: "rgba(37, 99, 235, 0.18)" },
+      fuchsia:    { hex: "#c026d3", hover: "#a21caf", subtle: "rgba(192, 38, 211, 0.18)" },
+      orange:     { hex: "#f97316", hover: "#ea580c", subtle: "rgba(249, 115, 22, 0.18)" },
+      terracotta: { hex: "#c2410c", hover: "#9a3412", subtle: "rgba(194, 65, 12, 0.18)" },
+      yellow:     { hex: "#eab308", hover: "#ca8a04", subtle: "rgba(234, 179, 8, 0.18)" },
     };
 
-    const pTokens = primaryMap[primary] || { hex: "#0d9488", hover: "#0f766e", subtle: "rgba(13, 148, 136, 0.18)" };
+    const pTokens = contract.artDirection ? {
+      hex: contract.artDirection.colorSystem.primaryHex,
+      hover: contract.artDirection.colorSystem.primaryHoverHex,
+      subtle: contract.artDirection.colorSystem.primarySubtle,
+    } : (primaryMap[primary] || {
+      hex: ad.colorSystem.primaryHex,
+      hover: ad.colorSystem.primaryHoverHex,
+      subtle: ad.colorSystem.primarySubtle,
+    });
 
-    // Background & surface resolution
-    let bg = "#020617";
-    let surface = "rgba(15, 23, 42, 0.85)";
-    let surfaceElevated = "rgba(30, 41, 59, 0.95)";
-    let border = "rgba(255, 255, 255, 0.1)";
-    let borderSubtle = "rgba(255, 255, 255, 0.05)";
-    let textPrimary = "#f8fafc";
-    let textSecondary = "#94a3b8";
-    let textMuted = "#64748b";
+    // Background & surface resolution: derived dynamically from art direction
+    let bg = ad.colorSystem.background;
+    let surface = ad.colorSystem.surface;
+    let surfaceElevated = ad.colorSystem.surfaceElevated;
+    let border = ad.colorSystem.border;
+    let borderSubtle = ad.colorSystem.borderSubtle;
+    let textPrimary = ad.colorSystem.textPrimary;
+    let textSecondary = ad.colorSystem.textSecondary;
+    let textMuted = ad.colorSystem.textMuted;
 
     if (contract.colorSystem.background && contract.colorSystem.background.includes("#")) {
       const hexMatch = contract.colorSystem.background.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/);
       if (hexMatch) bg = hexMatch[0];
+    }
+
+    if (contract.colorSystem.surface && contract.colorSystem.surface.includes("#")) {
+      const hexMatch = contract.colorSystem.surface.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/);
+      if (hexMatch) {
+        const opacityMatch = contract.colorSystem.surface.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\/(\d+)/);
+        if (opacityMatch) {
+          const alpha = parseInt(opacityMatch[2], 10) / 100;
+          surface = DomainVisualContractGenerator.hexToRgba(hexMatch[0], alpha);
+          surfaceElevated = DomainVisualContractGenerator.hexToRgba(hexMatch[0], Math.min(1, alpha + 0.1));
+        } else {
+          surface = hexMatch[0];
+          surfaceElevated = hexMatch[0];
+        }
+      }
     } else if (contract.colorSystem.mode === "warm_dark") {
-      bg = "#0c0a09";
-      surface = "rgba(28, 25, 23, 0.85)";
-      surfaceElevated = "rgba(41, 37, 36, 0.95)";
+      bg = "#0e0c0b";
+      surface = "rgba(26, 22, 20, 0.94)";
+      surfaceElevated = "rgba(38, 32, 28, 0.98)";
       textPrimary = "#fafaf9";
-      textSecondary = "#a8a29e";
-      textMuted = "#78716c";
-      border = "rgba(214, 211, 209, 0.12)";
+      textSecondary = "#d6d3d1";
+      textMuted = "#a8a29e";
+      border = "rgba(214, 211, 209, 0.14)";
     } else if (contract.colorSystem.mode === "deep_obsidian") {
-      bg = "#030712";
-      surface = "rgba(17, 24, 39, 0.85)";
-      surfaceElevated = "rgba(31, 41, 55, 0.95)";
-      textPrimary = "#f9fafb";
-      textSecondary = "#9ca3af";
-      textMuted = "#6b7280";
+      bg = "#08080a";
+      surface = "rgba(18, 18, 22, 0.94)";
+      surfaceElevated = "rgba(28, 28, 36, 0.98)";
+      textPrimary = "#f4f4f5";
+      textSecondary = "#a1a1aa";
+      textMuted = "#52525b";
     } else if (contract.colorSystem.mode === "neon_dark") {
       bg = "#07060d";
-      surface = "rgba(17, 13, 31, 0.85)";
-      surfaceElevated = "rgba(32, 24, 58, 0.95)";
+      surface = "rgba(17, 13, 31, 0.90)";
+      surfaceElevated = "rgba(32, 24, 58, 0.96)";
       textPrimary = "#fdf4ff";
       textSecondary = "#d8b4fe";
       textMuted = "#a855f7";
-      border = "rgba(168, 85, 247, 0.2)";
+      border = "rgba(139, 92, 246, 0.25)";
     } else if (isLight) {
       bg = "#f8fafc";
       surface = "#ffffff";
@@ -263,39 +315,50 @@ export class DomainVisualContractGenerator {
       textPrimary = "#0f172a";
       textSecondary = "#475569";
       textMuted = "#94a3b8";
-      border = "rgba(0, 0, 0, 0.08)";
-      borderSubtle = "rgba(0, 0, 0, 0.04)";
+      border = "rgba(15, 23, 42, 0.1)";
+      borderSubtle = "rgba(15, 23, 42, 0.05)";
     }
 
-    // WCAG Contrast Safeguard: Ensure textPrimary has minimum 4.5:1 contrast against background
+    // Absolute safeguard: if dark mode or dark background, surface MUST NEVER be light (#ffffff)
     const bgLuminance = DomainVisualContractGenerator.getLuminance(bg);
-    const contrast = DomainVisualContractGenerator.getContrastRatio(textPrimary, bg);
-    if (contrast < 4.5) {
-      if (bgLuminance < 0.5) {
-        textPrimary = "#f8fafc";
-        textSecondary = "#94a3b8";
-        textMuted = "#64748b";
-      } else {
-        textPrimary = "#0f172a";
-        textSecondary = "#475569";
-        textMuted = "#94a3b8";
+    const isDarkTheme = !isLight || bgLuminance < 0.5;
+    if (isDarkTheme) {
+      const surfaceLuminance = DomainVisualContractGenerator.getLuminance(surface);
+      if (surfaceLuminance > 0.4 || surface.toLowerCase() === "#ffffff" || surface.toLowerCase() === "#fff") {
+        surface = "rgba(12, 18, 24, 0.94)";
+        surfaceElevated = "rgba(18, 26, 35, 0.98)";
       }
     }
 
-    // Radius density
-    let radiusSm = "4px";
-    let radiusMd = "8px";
-    let radiusLg = "12px";
-    let radiusXl = "16px";
+    // WCAG Contrast Safeguard: Ensure textPrimary has minimum 4.5:1 contrast against both background and surface
+    const bgContrast = DomainVisualContractGenerator.getContrastRatio(textPrimary, bg);
+    const surfaceContrast = DomainVisualContractGenerator.getContrastRatio(textPrimary, surface);
+    if (bgContrast < 4.5 || surfaceContrast < 4.5) {
+      if (bgLuminance < 0.5 || isDarkTheme) {
+        textPrimary = "#f8fafc";
+        textSecondary = "#cbd5e1";
+        textMuted = "#94a3b8";
+      } else {
+        textPrimary = "#0f172a";
+        textSecondary = "#334155";
+        textMuted = "#64748b";
+      }
+    }
+
+    // Radius density from art direction geometry
+    let radiusSm = ad.geometry.radiusSm;
+    let radiusMd = ad.geometry.radiusMd;
+    let radiusLg = ad.geometry.radiusLg;
+    let radiusXl = ad.geometry.radiusXl;
     if (contract.visualPersonality.density === "compact") {
-      radiusSm = "2px";
-      radiusMd = "4px";
-      radiusLg = "6px";
-      radiusXl = "8px";
+      radiusSm = "1px";
+      radiusMd = "2px";
+      radiusLg = "4px";
+      radiusXl = "6px";
     } else if (contract.visualPersonality.density === "spacious") {
-      radiusSm = "6px";
-      radiusMd = "12px";
-      radiusLg = "18px";
+      radiusSm = "4px";
+      radiusMd = "8px";
+      radiusLg = "16px";
       radiusXl = "24px";
     }
 
@@ -306,8 +369,8 @@ export class DomainVisualContractGenerator {
       primaryColor: pTokens.hex,
       primaryHoverColor: pTokens.hover,
       primarySubtleColor: pTokens.subtle,
-      secondaryColor: isLight ? "#64748b" : "#475569",
-      accentGradient: contract.colorSystem.accent,
+      secondaryColor: ad.colorSystem.secondaryHex || (isLight ? "#64748b" : "#71717a"),
+      accentGradient: contract.colorSystem.accent || ad.colorSystem.accentGradient,
       textPrimaryColor: textPrimary,
       textSecondaryColor: textSecondary,
       textMutedColor: textMuted,
@@ -322,10 +385,10 @@ export class DomainVisualContractGenerator {
       radiusXl,
       radiusFull: "9999px",
       shadowSm: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-      shadowMd: "0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -2px rgba(0, 0, 0, 0.2)",
+      shadowMd: ad.surfaceTreatment.cardShadow || "0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -2px rgba(0, 0, 0, 0.2)",
       shadowLg: "0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3)",
-      fontDisplay: contract.typography.fontFamily || "Plus Jakarta Sans, Inter, sans-serif",
-      fontBody: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      fontDisplay: contract.typography.fontFamily || ad.typography.fontDisplay || "Plus Jakarta Sans, Inter, sans-serif",
+      fontBody: ad.typography.fontBody || "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     };
   }
 
@@ -341,31 +404,34 @@ export class DomainVisualContractGenerator {
   ): DomainVisualDesignContract {
     const rawText = `${prompt} ${spec?.name || ""} ${(spec?.dataModels || []).join(" ")} ${(archContract?.requiredModels || []).join(" ")}`.toLowerCase();
 
+    // Derive deterministic art direction based on prompt semantics and stable hash
+    const artDirection = deriveArtDirection(prompt, spec?.name || (spec?.dataModels || []).join(" "));
+
     // ── 1. Semantic Domain Classification ────────────────────────────────────
     let domain = "General Enterprise";
     let productType = "Operations Platform";
-    let layoutFamily: DomainVisualDesignContract["layoutFamily"] = "COMMAND_CENTER";
-    let navStrategy: DomainVisualDesignContract["navigation"]["strategy"] = "MODERN_SIDEBAR";
-    let density: DomainVisualDesignContract["visualPersonality"]["density"] = "balanced";
+    let layoutFamily: DomainVisualDesignContract["layoutFamily"] = artDirection.layoutPersonality.family;
+    let navStrategy: DomainVisualDesignContract["navigation"]["strategy"] = artDirection.navigation.style;
+    let density: DomainVisualDesignContract["visualPersonality"]["density"] = artDirection.spacing.density;
     let formality: DomainVisualDesignContract["visualPersonality"]["formality"] = "professional";
-    let mood = "Modern, functional, and organized";
+    let mood = artDirection.layoutPersonality.mood;
 
-    // Palette Defaults
-    let mode: DomainVisualDesignContract["colorSystem"]["mode"] = "dark";
-    let bgClass = "bg-slate-950";
-    let surfaceClass = "bg-slate-900/70 border-slate-800";
-    let cardClass = "bg-slate-900/90 border border-slate-800/80 shadow-lg shadow-black/30";
-    let primary = "emerald";
-    let secondary = "slate";
-    let accent = "from-emerald-500 to-teal-600";
-    let textPrimary = "text-slate-100";
-    let textMuted = "text-slate-400";
-    let badgeStyle = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-    let activeNavStyle = "bg-emerald-500/15 text-emerald-300 border-l-2 border-emerald-500";
-    let fontFamily = "Inter, system-ui, sans-serif";
-    let headingStyle = "tracking-tight font-semibold text-slate-100";
-    let bodyStyle = "text-sm text-slate-300";
-    let emphasis = "font-medium text-emerald-400";
+    // Palette Defaults derived from Art Direction (eliminating hardcoded Slate-900 bias)
+    let mode: DomainVisualDesignContract["colorSystem"]["mode"] = artDirection.colorSystem.mode;
+    let bgClass = artDirection.colorSystem.tailwindBgClass;
+    let surfaceClass = artDirection.colorSystem.tailwindSurfaceClass;
+    let cardClass = artDirection.colorSystem.tailwindCardClass;
+    let primary = artDirection.colorSystem.primary;
+    let secondary = artDirection.colorSystem.secondary;
+    let accent = artDirection.colorSystem.accentGradient;
+    let textPrimary = artDirection.colorSystem.mode === "light" ? "text-slate-900" : "text-zinc-100";
+    let textMuted = artDirection.colorSystem.mode === "light" ? "text-slate-600" : "text-zinc-400";
+    let badgeStyle = artDirection.colorSystem.badgeStyle;
+    let activeNavStyle = artDirection.colorSystem.activeNavStyle;
+    let fontFamily = artDirection.typography.fontDisplay;
+    let headingStyle = artDirection.typography.headingStyle;
+    let bodyStyle = artDirection.typography.bodyStyle;
+    let emphasis = artDirection.typography.emphasis;
 
     // Dashboard defaults
     let headline = "Executive Operational Overview";
@@ -428,15 +494,56 @@ export class DomainVisualContractGenerator {
       antiPatterns.push("Corporate gray styling", "Boring data spreadsheets", "Subdued pastel beige", "Generic CRUD cards");
     }
 
-    // B0. Heritage Craft Atelier / Artisan Studio / Kerala Decor & Textiles
-    else if (rawText.includes("handicraft") || rawText.includes("craft") || rawText.includes("brass") || rawText.includes("textile") || rawText.includes("decor") || rawText.includes("atelier") || rawText.includes("artisan") || (rawText.includes("kerala") && rawText.includes("brand"))) {
-      domain = "Heritage Craft Atelier & Contemporary Decor";
+    // B0-A. Artisanal Analog Synthesizers, Modular Acoustics & Sound Labs
+    else if (rawText.includes("synthesizer") || rawText.includes("synth") || rawText.includes("oscillator") || rawText.includes("waveform") || rawText.includes("sound lab") || (rawText.includes("analog") && rawText.includes("audio")) || (rawText.includes("volt") && rawText.includes("velvet"))) {
+      domain = "Artisanal Analog Synthesizers & Sound Lab";
+      productType = "Instrument Monograph & Audition Studio";
+      layoutFamily = "EDITORIAL_CATALOG";
+      navStrategy = "TOPBAR_PILL";
+      density = "spacious";
+      formality = "luxury";
+      mood = "Warm vintage velvet dark, brushed copper, rich walnut enclosures, glowing analog VU meters, and acoustic precision";
+
+      mode = "warm_dark";
+      bgClass = "bg-[#0A0A0C]";
+      surfaceClass = "bg-[#141418]/80 border-[#2A2A34]";
+      cardClass = "bg-[#181820]/90 border border-[#2A2A34]/80 shadow-xl shadow-black/60 backdrop-blur-md";
+      primary = "amber";
+      secondary = "zinc";
+      accent = "from-amber-500 via-orange-500 to-rose-600";
+      textPrimary = "text-amber-50";
+      textMuted = "text-zinc-400";
+      badgeStyle = "bg-amber-500/15 text-amber-300 border border-amber-500/30";
+      activeNavStyle = "bg-amber-500/20 text-amber-200 border-b-2 border-amber-400";
+      fontFamily = "Cinzel, Plus Jakarta Sans, monospace";
+      headingStyle = "font-serif tracking-tight font-medium text-amber-50";
+      bodyStyle = "text-sm text-zinc-300 font-light";
+      emphasis = "font-medium text-amber-400";
+
+      const brand = rawText.includes("volt & velvet") || rawText.includes("volt and velvet") ? "Volt & Velvet" : "Artisanal Synthesizer Lab";
+      headline = `${brand} Analog Synthesizers & Acoustic Monograph`;
+      primaryMetric = { label: "Custom Oscillators", value: "12 Modules", trend: "Discrete Transistor Core", icon: "Radio" };
+      secondaryMetrics = [
+        { label: "Harmonic Auditions", value: "36 Waveforms", trend: "Pure Analog Signal Path", icon: "Activity" },
+        { label: "Wood Enclosures", value: "6 Finishes", trend: "Walnut, Teak, Cherry, Oak", icon: "Layers" },
+        { label: "Master Artisans", value: "4 Luthiers", trend: "Hand-Calibrated in Workshop", icon: "Users" },
+      ];
+      heroAction = { label: "+ Audition Sound Oscillators", targetRoute: "/audition", icon: "Play" };
+      alerts = ["Voltage-controlled filter batch calibration complete for discrete analog production line."];
+      primaryWidget = "SHOWCASE";
+      components = ["ShowcaseGrid", "AvailabilityGrid", "DocumentWorkspace"];
+      antiPatterns.push("Generic SaaS blue", "Boring data spreadsheets", "Flashy neon cyberpunk styling", "Raw unstyled tables");
+    }
+
+    // B0-B. Heritage Craft Atelier / Artisan Studio & Contemporary Decor
+    else if (rawText.includes("ceramic") || rawText.includes("lighting") || rawText.includes("pendant") || rawText.includes("pottery") || rawText.includes("stoneware") || rawText.includes("porcelain") || rawText.includes("handicraft") || rawText.includes("craft") || rawText.includes("brass") || rawText.includes("textile") || rawText.includes("decor") || rawText.includes("atelier") || rawText.includes("artisan") || (rawText.includes("kerala") && rawText.includes("brand"))) {
+      domain = rawText.includes("ceramic") || rawText.includes("lighting") ? "Artisanal Ceramic Lighting Studio & Atelier" : rawText.includes("kerala") ? "Kerala Heritage Craft Atelier & Decor" : "Artisanal Craft Atelier & Contemporary Decor";
       productType = "Atelier Collection & Provenance Portal";
       layoutFamily = "EDITORIAL_CATALOG";
       navStrategy = "TOPBAR_PILL";
       density = "spacious";
       formality = "luxury";
-      mood = "Rooted, refined, tactile, and editorial with Kerala teak, warm dark bronze, and handloom linen textures";
+      mood = "Rooted, refined, tactile, and editorial with warm dark bronze, hand-finished materials, and linen textures";
 
       mode = "warm_dark";
       bgClass = "bg-[#0D0B09]";
@@ -454,17 +561,18 @@ export class DomainVisualContractGenerator {
       bodyStyle = "text-sm text-stone-300 font-light";
       emphasis = "font-medium text-amber-300";
 
-      headline = "Kerala Heritage Craft Atelier & Guild Provenance";
-      primaryMetric = { label: "Guild Masterworks", value: "48 Artifacts", trend: "100% GI Tag Certified", icon: "Sparkles" };
+      const regionPrefix = rawText.includes("kerala") ? "Kerala Heritage " : "Artisanal ";
+      headline = `${regionPrefix}Craft Atelier & Guild Provenance`;
+      primaryMetric = { label: "Guild Masterworks", value: "48 Artifacts", trend: "100% Provenance Certified", icon: "Sparkles" };
       secondaryMetrics = [
-        { label: "Active Village Guilds", value: "8 Guilds", trend: "Aranmula, Mannar, Balaramapuram", icon: "Users" },
-        { label: "Handloom & Metal Castings", value: "14 Collections", trend: "Fair Trade Direct Dispatch", icon: "Package" },
+        { label: "Active Guilds", value: "8 Guilds", trend: "Master Artisan Provenance", icon: "Users" },
+        { label: "Handcrafted Works", value: "14 Collections", trend: "Fair Trade Direct Dispatch", icon: "Package" },
         { label: "Bespoke Commissions", value: "6 Inquiries", trend: "Studio response < 24h", icon: "Mail" },
       ];
       heroAction = { label: "+ Discover Craft Collections", targetRoute: "/collections", icon: "Compass" };
-      alerts = ["Mannar Lost-Wax Bell Metal casting monograph updated with 4th generation artisan lineage."];
+      alerts = ["Artisan monograph updated with master craftsman lineage and provenance record."];
       primaryWidget = "SHOWCASE";
-      components = ["ShowcaseGrid", "AvailabilityGrid", "DocumentWorkspace", "Timeline"];
+      components = ["ShowcaseGrid", "AvailabilityGrid", "DocumentWorkspace"];
       antiPatterns.push("Generic SaaS blue", "Boring data spreadsheets", "Flashy neon cyberpunk styling", "Raw unstyled tables");
     }
 
@@ -544,7 +652,7 @@ export class DomainVisualContractGenerator {
       heroAction = { label: "+ Initiate Legal Case Matter", targetRoute: "/cases", icon: "FilePlus" };
       alerts = ["Brief deadline approaching: Motion to Dismiss due tomorrow at 17:00 EST."];
       primaryWidget = "WORKSPACE";
-      components = ["DocumentWorkspace", "Timeline", "StatusPipeline", "KanbanBoard"];
+      components = ["DocumentWorkspace", "Timeline", "StatusPipeline"];
       antiPatterns.push("Playful bright colors", "Rounded bubbly cards", "Casual terminology", "Generic CRUD cards");
     }
 
@@ -588,31 +696,93 @@ export class DomainVisualContractGenerator {
       antiPatterns.push("Corporate gray styling", "Boring data spreadsheets", "Subdued pastel beige", "Generic CRUD cards");
     }
 
-    // D. Logistics / Warehouse / Supply Chain / Fleet / Freight
+    // D0. Workflow / State-Machine / Lifecycle Pipeline (job / ticket / task / work order + lifecycle semantics)
+    else if (
+      (rawText.includes("job") || rawText.includes("ticket") || rawText.includes("work order") || rawText.includes("work-order") || rawText.includes("incident") || rawText.includes("dispatch")) &&
+      (rawText.includes("status") || rawText.includes("service history") || rawText.includes("technician") || rawText.includes("part") || rawText.includes("close") || rawText.includes("sign-off") || rawText.includes("lifecycle") || rawText.includes("transition"))
+    ) {
+      domain = rawText.includes("emergency")
+        ? "Emergency Operations & Equipment Readiness"
+        : rawText.includes("incident")
+        ? "Incident Response & Lifecycle Management"
+        : "Operational Workflow & Service Pipeline";
+      productType = "Stateful Workflow & Lifecycle Command Center";
+      layoutFamily = "COMMAND_CENTER";
+      navStrategy = "COMMAND_CONSOLE";
+      density = "compact";
+      formality = "technical";
+      mood = "High-urgency operational dark terminal with safety amber warnings, tactical emerald readiness, and precision telemetry";
+
+      mode = "dark";
+      bgClass = "bg-[#0A0D12]";
+      surfaceClass = "bg-[#10151E]/80 border-[#1B2330]";
+      cardClass = "bg-[#0D1219]/90 border border-[#1E2636]/80 shadow-xl shadow-black/50";
+      primary = "amber";
+      secondary = "slate";
+      accent = "from-amber-500 via-orange-600 to-red-600";
+      textPrimary = "text-slate-100";
+      textMuted = "text-slate-400";
+      badgeStyle = "bg-amber-500/15 text-amber-300 border border-amber-500/30";
+      activeNavStyle = "bg-amber-500/20 text-amber-200 border-l-2 border-amber-400";
+      fontFamily = "JetBrains Mono, Plus Jakarta Sans, monospace";
+      headingStyle = "font-mono tracking-tight font-bold text-slate-100";
+      bodyStyle = "text-sm text-slate-300 font-mono";
+      emphasis = "font-mono font-bold text-amber-400";
+
+      headline = "Emergency Service Dispatch & Maintenance Operations";
+      primaryMetric = { label: "Active Service Jobs", value: "6 In Queue", trend: "2 Critical priority", icon: "Activity" };
+      secondaryMetrics = [
+        { label: "Technician Utilization", value: "87.5%", trend: "4 Technicians on-duty", icon: "Users" },
+        { label: "Parts In-Stock Index", value: "94.2%", trend: "1 Backorder requisitioned", icon: "Package" },
+        { label: "First-Time Fix Rate", value: "91.8%", trend: "+3.2% vs SLA baseline", icon: "CheckCircle" },
+      ];
+      heroAction = { label: "+ Dispatch Maintenance Job", targetRoute: "/jobs", icon: "PlusCircle" };
+      alerts = ["High Priority: Generator Unit E-42 pending technician sign-off."];
+      primaryWidget = "KANBAN";
+      components = ["WorkflowBoard", "StatusPipeline", "ActivityStream", "TelemetryGrid"];
+      antiPatterns.push("Airy whitespace", "Generic SaaS blue", "Casual fonts", "Generic CRUD cards", "Inert modal buttons");
+    }
+
+    // D. Solar / Clean Energy / Power Grid / Inverter Telemetry
+    else if (
+      rawText.includes("solar") ||
+      rawText.includes("inverter") ||
+      rawText.includes("photovoltaic") ||
+      rawText.includes("power output") ||
+      rawText.includes("setpoint") ||
+      (rawText.includes("telemetry") && (rawText.includes("energy") || rawText.includes("power") || rawText.includes("kw")))
+    ) {
+      domain = "Solar Array Telemetry & Power Analytics";
+      productType = "Industrial Solar Telemetry & Grid Analytics Console";
+      layoutFamily = "ANALYTICS_CONSOLE";
+      navStrategy = artDirection.navigation.style;
+      density = "compact";
+      formality = "technical";
+      mood = artDirection.layoutPersonality.mood;
+
+      headline = "Solar Array Telemetry & Power Analytics Console";
+      primaryMetric = { label: "Fleet Power Output", value: "3,840 kW", trend: "+2.4% vs diurnal forecast", icon: "Zap" };
+      secondaryMetrics = [
+        { label: "Total Target Demand", value: "3,900 kW", trend: "Tracking variance -60 kW", icon: "Target" },
+        { label: "Array Avg Efficiency", value: "96.1%", trend: "Optimal MPPT tracking", icon: "Activity" },
+        { label: "Peak Inverter Temp", value: "74.2°C", trend: "INV-03 thermal alert", icon: "Flame" },
+      ];
+      heroAction = { label: "+ Mutate Remote Setpoint", targetRoute: "/execute-remote-setpoint-mutation", icon: "Sliders" };
+      alerts = ["Telemetry Alert: Inverter INV-03 thermal throttling active (74.2°C). Target setpoint adjustment recommended."];
+      primaryWidget = "TELEMETRY";
+      components = ["TelemetryGrid", "StatusPipeline", "ActivityStream"];
+      antiPatterns.push("Airy whitespace", "Generic SaaS blue", "Casual fonts", "Generic CRUD cards");
+    }
+
+    // E. Logistics / Warehouse / Supply Chain / Fleet / Freight
     else if (rawText.includes("logistics") || rawText.includes("warehouse") || rawText.includes("fleet") || rawText.includes("supply") || rawText.includes("inventory") || rawText.includes("freight") || rawText.includes("truck") || rawText.includes("shipment")) {
       domain = "Logistics & Supply Chain Fulfillment";
       productType = "Industrial Telemetry & Fulfillment Hub";
       layoutFamily = "COMMAND_CENTER";
-      navStrategy = "DUAL_SIDEBAR";
+      navStrategy = artDirection.navigation.style;
       density = "compact";
       formality = "technical";
-      mood = "High-density, operational, telemetry-driven with steel graphite & safety amber accents";
-
-      mode = "dark";
-      bgClass = "bg-[#090C10]";
-      surfaceClass = "bg-[#111620]/80 border-[#1C2433]";
-      cardClass = "bg-[#0F141E]/90 border border-[#1E2738]/80 shadow-lg shadow-black/40";
-      primary = "amber";
-      secondary = "slate";
-      accent = "from-amber-500 via-orange-600 to-amber-700";
-      textPrimary = "text-slate-100";
-      textMuted = "text-slate-400";
-      badgeStyle = "bg-amber-500/10 text-amber-400 border border-amber-500/25";
-      activeNavStyle = "bg-amber-500/15 text-amber-300 border-l-2 border-amber-500";
-      fontFamily = "JetBrains Mono, Inter, monospace";
-      headingStyle = "font-mono tracking-tight font-bold text-slate-100";
-      bodyStyle = "text-sm text-slate-300 font-mono";
-      emphasis = "font-mono font-bold text-amber-400";
+      mood = artDirection.layoutPersonality.mood;
 
       headline = "Warehouse Fulfillment Matrix & Telemetry Hub";
       primaryMetric = { label: "Fulfillment Velocity", value: "99.4%", trend: "+1.8% vs SLA target", icon: "TrendingUp" };
@@ -624,15 +794,15 @@ export class DomainVisualContractGenerator {
       heroAction = { label: "+ Record Stock Inflow / Outflow", targetRoute: "/inventory", icon: "PlusSquare" };
       alerts = ["Fulfillment Gate 4: Fast-track pallet inbound complete. 150 units routed to Bin A-12."];
       primaryWidget = "TELEMETRY";
-      components = ["TelemetryGrid", "StatusPipeline", "KanbanBoard", "ActivityStream"];
+      components = ["TelemetryGrid", "StatusPipeline", "ActivityStream"];
       antiPatterns.push("Airy whitespace", "Generic SaaS blue", "Casual fonts", "Generic CRUD cards");
     }
 
-    // E. Astrophotography / Quantum Lab / Space / Astronomy
-    else if (rawText.includes("astro") || rawText.includes("space") || rawText.includes("quantum") || rawText.includes("telescope") || rawText.includes("celestial") || rawText.includes("planet") || rawText.includes("observatory")) {
+    // E. Astrophotography / Quantum Lab / Space / Astronomy / Observatory
+    else if (rawText.includes("astro") || rawText.includes("space") || rawText.includes("quantum") || rawText.includes("telescope") || rawText.includes("celestial") || rawText.includes("planet") || rawText.includes("observatory") || rawText.includes("observation session")) {
       domain = "Astrophotography & Deep Space Research";
       productType = "Celestial Observatory Console";
-      layoutFamily = "COMMAND_CENTER";
+      layoutFamily = "CALENDAR_SCHEDULE";
       navStrategy = "COMMAND_CONSOLE";
       density = "compact";
       formality = "technical";
@@ -744,11 +914,54 @@ export class DomainVisualContractGenerator {
       heroAction = { label: "+ Register Patient Intake", targetRoute: "/patients", icon: "UserPlus" };
       alerts = ["Diagnostic report ready: Pathology screening for Bed 04 uploaded."];
       primaryWidget = "TIMELINE";
-      components = ["Timeline", "StatusPipeline", "DocumentWorkspace", "KanbanBoard"];
+      components = ["Timeline", "StatusPipeline", "DocumentWorkspace"];
       antiPatterns.push("Generic CRUD card grids", "Unstyled forms", "Playful bright neon");
     }
 
-    // H. Fintech / Trading / Asset Management / Banking
+    // H. Analytical Telemetry / Sensor Grid / Power Generation / IoT
+    else if (
+      (rawText.includes("telemetry") || rawText.includes("sensor") || rawText.includes("inverter") || rawText.includes("solar") || rawText.includes("grid") || rawText.includes("iot")) &&
+      (rawText.includes("analytic") || rawText.includes("metric") || rawText.includes("aggregate") || rawText.includes("trend") || rawText.includes("timeseries") || rawText.includes("drill-down") || rawText.includes("drilldown") || rawText.includes("power") || rawText.includes("time window") || rawText.includes("setpoint"))
+    ) {
+      domain = "Industrial Telemetry & Sensor Analytics";
+      productType = "High-Density Sensor Telemetry & Power Analytics Console";
+      layoutFamily = "ANALYTICS_CONSOLE";
+      navStrategy = "COMMAND_CONSOLE";
+      density = "compact";
+      formality = "technical";
+      mood = "High-density industrial telemetry console with obsidian glass, emerald telemetry signals, and solar amber accents";
+
+      mode = "dark";
+      bgClass = "bg-[#070b0e]";
+      surfaceClass = "bg-[#0c141a]/85 border-[#162733]";
+      cardClass = "bg-[#091117]/90 border border-[#1b303f]/80 shadow-xl shadow-black/70";
+      primary = "amber";
+      secondary = "slate";
+      accent = "from-amber-400 via-emerald-500 to-cyan-500";
+      textPrimary = "text-amber-50";
+      textMuted = "text-slate-400";
+      badgeStyle = "bg-amber-500/10 text-amber-300 border border-amber-500/30";
+      activeNavStyle = "bg-amber-500/20 text-amber-200 border-l-2 border-amber-400";
+      fontFamily = "JetBrains Mono, Inter, monospace";
+      headingStyle = "font-mono tracking-tight font-semibold text-amber-100";
+      bodyStyle = "text-sm text-slate-300 font-mono";
+      emphasis = "font-mono font-bold text-amber-400";
+
+      headline = "Solar Array Telemetry & High-Density Inverter Analytics";
+      primaryMetric = { label: "Total Measured Output", value: "3,840 kW", trend: "+3.8% above baseline", icon: "Zap" };
+      secondaryMetrics = [
+        { label: "Target Demand Setpoint", value: "3,900 kW", trend: "98.5% compliance", icon: "Target" },
+        { label: "Array Fleet Efficiency", value: "96.4%", trend: "Optimal thermal envelope", icon: "TrendingUp" },
+        { label: "Active Sensor Alerts", value: "1 Inverter", trend: "Thermal threshold alert", icon: "AlertTriangle" },
+      ];
+      heroAction = { label: "+ Calibrate Inverter Array", targetRoute: "/inverters", icon: "Sliders" };
+      alerts = ["Sensor notice: Inverter INV-03 operating at 74°C (degraded thermal envelope)."];
+      primaryWidget = "TELEMETRY";
+      components = ["TelemetryGrid", "Timeline", "StatusPipeline", "MetricCluster"];
+      antiPatterns.push("Generic CRUD card grids", "Unstyled forms", "Casual playful styling");
+    }
+
+    // I. Fintech / Trading / Asset Management / Banking
     else if (rawText.includes("fintech") || rawText.includes("trading") || rawText.includes("bank") || rawText.includes("crypto") || rawText.includes("portfolio") || rawText.includes("ledger") || rawText.includes("wallet") || rawText.includes("invest")) {
       domain = "Financial Markets & Asset Management";
       productType = "High-Frequency Portfolio & Settlement Console";
@@ -784,13 +997,14 @@ export class DomainVisualContractGenerator {
       heroAction = { label: "+ Execute Trade Order", targetRoute: "/trades", icon: "ArrowRightLeft" };
       alerts = ["Settlement executed: $2.4M treasury hedge locked at 0.04% spread."];
       primaryWidget = "ANALYTICS";
-      components = ["TelemetryGrid", "Timeline", "StatusPipeline", "KanbanBoard"];
+      components = ["TelemetryGrid", "Timeline", "StatusPipeline"];
       antiPatterns.push("Casual playful styling", "Unrounded borders", "Generic CRUD cards");
     }
 
     return {
       productType,
       domain,
+      artDirection,
       visualPersonality: {
         mood,
         density,
@@ -878,6 +1092,35 @@ export class DomainVisualContractGenerator {
           { type: "gauge_dial", title: "Billable Velocity Realization" },
         ],
         interactionModel: "case_dossier",
+      } : (layoutFamily === "EDITORIAL_CATALOG") ? {
+        hero: {
+          type: "sanctuary_showcase",
+          title: headline,
+          subtitle: rawText.includes("synth") || rawText.includes("sound") || rawText.includes("oscillator")
+            ? "Artisanal analog synthesizer laboratory & bespoke acoustic monograph"
+            : `${domain} bespoke collection & provenance monograph`,
+          badge: rawText.includes("synth") || rawText.includes("sound") ? "Analog Sound Lab" : "Atelier Collection",
+          cta: heroAction,
+        },
+        primaryWorkspace: {
+          type: "catalog_grid",
+          title: rawText.includes("synth") || rawText.includes("sound") || rawText.includes("oscillator")
+            ? "Modular Oscillator & Enclosure Collection"
+            : "Masterworks Collection & Finish Matrix",
+          description: rawText.includes("synth") || rawText.includes("sound") || rawText.includes("oscillator")
+            ? "Discrete analog oscillator topologies, handcrafted wood finishes, and custom voice architectures."
+            : `Handcrafted ${domain.toLowerCase()} collection, material finishes, and bespoke architectural specifications.`,
+          density: "spacious",
+        },
+        secondaryWorkspace: {
+          type: "financial_summary",
+          title: "Bespoke Commissions & Atelier Intake",
+        },
+        supportingWidgets: [
+          { type: "metric_cluster", title: rawText.includes("synth") || rawText.includes("sound") ? "Harmonic Waveform Spectrum" : "Material & Finish Integrity" },
+          { type: "gauge_dial", title: "Craft Purity Index" },
+        ],
+        interactionModel: "general_operations",
       } : (layoutFamily === "MEDIA_SHOWCASE") ? {
         hero: {
           type: "live_stage_header",
@@ -901,6 +1144,123 @@ export class DomainVisualContractGenerator {
           { type: "sector_heatmap", title: "Stage Capacity Heatmap" },
         ],
         interactionModel: "live_dispatch",
+      } : (layoutFamily === "CALENDAR_SCHEDULE") ? {
+        hero: {
+          type: "standard",
+          title: headline,
+          subtitle: "Celestial observation scheduling, sky-object catalogue & telescope reservation",
+          badge: "Observatory Live Tonight",
+          cta: heroAction,
+        },
+        primaryWorkspace: {
+          type: "session_schedule",
+          title: "Observation Session Schedule & Reservation",
+          description: "Browse upcoming sessions, filter by date and celestial target, inspect telescopes, and reserve your observation slot.",
+          density: "compact",
+        },
+        secondaryWorkspace: {
+          type: "sky_object_catalogue",
+          title: "Sky Object Catalogue & Target Browser",
+        },
+        supportingWidgets: [
+          { type: "telescope_equipment", title: "Telescope & Equipment Registry" },
+          { type: "astronomer_roster", title: "Resident Astronomer Profiles" },
+        ],
+        interactionModel: "session_reservation_flow",
+      } : (primaryWidget === "KANBAN" || (layoutFamily === "COMMAND_CENTER" && (rawText.includes("job") || rawText.includes("ticket") || rawText.includes("work order") || rawText.includes("work-order") || rawText.includes("incident") || rawText.includes("dispatch")))) ? {
+        hero: {
+          type: "telemetry_banner",
+          title: headline,
+          subtitle: "State-machine lifecycle, technician dispatch & service operations",
+          badge: "Command Center Active",
+          cta: heroAction,
+        },
+        primaryWorkspace: {
+          type: "workflow_board",
+          title: "Active Jobs & State-Machine Pipeline",
+          description: "Inspect active jobs, view service histories, mutate status, assign technicians, review required parts, and close completed jobs.",
+          density: "compact",
+          capabilities: [
+            "inspect_record",
+            "view_history",
+            "mutate_status",
+            "assign_resource",
+            "verify_requirements",
+            "complete_workflow"
+          ]
+        },
+        secondaryWorkspace: {
+          type: "status_pipeline",
+          title: "Service History & Sign-off Ledger",
+        },
+        supportingWidgets: [
+          { type: "telemetry_monitor", title: "Resource Assignment Pool" },
+          { type: "metric_cluster", title: "Readiness Index" },
+        ],
+        interactionModel: "state_machine_execution",
+      } : (layoutFamily === "ANALYTICS_CONSOLE" || primaryWidget === "TELEMETRY" || primaryWidget === "ANALYTICS") ? {
+        hero: {
+          type: "telemetry_banner",
+          title: headline,
+          subtitle: rawText.includes("solar") || rawText.includes("inverter") || rawText.includes("photovoltaic")
+            ? "Real-time high-density sensor telemetry, multi-dimensional power aggregation & operational setpoint control"
+            : (rawText.includes("trading") || rawText.includes("fintech") || rawText.includes("portfolio") || rawText.includes("market")
+                ? "Algorithmic execution monitoring, order book depth telemetry, and real-time VaR risk controls"
+                : "Real-time high-density operational telemetry, multi-dimensional metrics & control console"),
+          badge: rawText.includes("trading") || rawText.includes("fintech") || rawText.includes("portfolio")
+            ? "Execution Desk Active"
+            : (rawText.includes("solar") || rawText.includes("inverter") || rawText.includes("photovoltaic")
+                ? "Array Telemetry Active"
+                : `${domain} Operations Active`),
+          cta: heroAction,
+        },
+        primaryWorkspace: {
+          type: (rawText.includes("telemetry") || rawText.includes("sensor") || rawText.includes("solar") || rawText.includes("inverter") || rawText.includes("photovoltaic")) ? "telemetry_grid" : "master_detail",
+          title: rawText.includes("solar") || rawText.includes("inverter") || rawText.includes("photovoltaic")
+            ? "Solar Inverter Telemetry & Power Analytics Grid"
+            : (rawText.includes("telemetry") || rawText.includes("sensor"))
+                ? `${domain} Telemetry & Analytics Grid`
+                : `${domain} Analytics & Portfolio Monitor`,
+          description: rawText.includes("solar") || rawText.includes("inverter") || rawText.includes("photovoltaic") || rawText.includes("telemetry") || rawText.includes("sensor")
+            ? "Real-time sensor telemetry records, multi-dimensional power aggregation, time-window filtering, and unit drill-down."
+            : "Real-time performance metrics, strategy execution tracking, and risk controls.",
+          density: "compact",
+          capabilities: [
+            "ingest_records",
+            "aggregate_metrics",
+            "filter_time_window",
+            "visualize_trends",
+            "drilldown_timeseries",
+            "recalculate_aggregations"
+          ]
+        },
+        secondaryWorkspace: {
+          type: "status_pipeline",
+          title: rawText.includes("trading") || rawText.includes("fintech")
+            ? "Strategy Execution & Order Fill Ledger"
+            : (rawText.includes("solar") || rawText.includes("inverter") || rawText.includes("photovoltaic")
+                ? "Grid Power Dispatch & Event Ledger"
+                : `${domain} Event & Activity Ledger`),
+        },
+        supportingWidgets: [
+          {
+            type: "telemetry_monitor",
+            title: rawText.includes("trading") || rawText.includes("fintech")
+              ? "Real-Time Execution Stream"
+              : (rawText.includes("solar") || rawText.includes("inverter") || rawText.includes("photovoltaic")
+                  ? "Inverter Telemetry Stream"
+                  : `${domain} Activity Stream`),
+          },
+          {
+            type: "metric_cluster",
+            title: rawText.includes("trading") || rawText.includes("fintech")
+              ? "Alpha & Sharpe Performance Index"
+              : (rawText.includes("solar") || rawText.includes("inverter") || rawText.includes("photovoltaic")
+                  ? "Power Performance Index"
+                  : `${domain} Performance Index`),
+          },
+        ],
+        interactionModel: "telemetry_command",
       } : {
         hero: {
           type: "telemetry_banner",
@@ -928,4 +1288,22 @@ export class DomainVisualContractGenerator {
       compositionGraph: CompositionGraphSynthesizer.synthesize(prompt, domain, layoutFamily),
     };
   }
+
+  public static generate(
+    prompt: string,
+    spec?: Partial<ProjectSpecification>,
+    archContract?: Partial<ArchitectureContractV1>
+  ): DomainVisualDesignContract {
+    return DomainVisualContractGenerator.deriveContract(prompt, spec, archContract);
+  }
 }
+
+export const DomainVisualDesignContractDeriver = {
+  derive: (
+    prompt: string,
+    spec?: ProjectSpecification,
+    architecture?: ArchitectureContractV1
+  ): DomainVisualDesignContract => DomainVisualContractGenerator.deriveContract(prompt, spec, architecture),
+};
+
+

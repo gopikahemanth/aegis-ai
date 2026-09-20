@@ -49,3 +49,5 @@ export * from "./feature-completeness-tracker.js";
 export * from "./ast-safe-transformer.js";
 export { DomainContaminationDetector, type DomainContaminationReport } from "./domain-contamination-detector.js";
 export * from "./hardcoded-value-detector.js";
+export * from "./artifact-provenance-validator.js";
+

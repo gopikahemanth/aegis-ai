@@ -98,21 +98,84 @@ export class FeatureRealityValidator {
       },
     ];
 
+    const MULTILINE_FAKE_PATTERNS = [
+      {
+        pattern: /setTimeout\s*\(\s*(?:\(\s*\)\s*=>|function\s*\(\s*\))\s*\{[\s\S]*?set(?:Loading|Score|Data|Tasks|Items)\([^)]*\)[\s\S]*?\}\s*,\s*\d{2,5}\s*\)/g,
+        desc: "Fake setTimeout simulation pretending to process data",
+        severity: "error" as const,
+      },
+      {
+        pattern: /onClick\s*=\s*\{\s*(?:\(\s*\)\s*=>|function\s*\(\s*\))\s*\{\s*\}\s*\}/g,
+        desc: "Empty onClick handler without business logic",
+        severity: "error" as const,
+      },
+      {
+        pattern: /onSubmit\s*=\s*\{\s*(?:\(\s*e?\s*\)\s*=>|function\s*\([^)]*\))\s*\{\s*\}\s*\}/g,
+        desc: "Empty onSubmit handler without business logic",
+        severity: "error" as const,
+      },
+      {
+        pattern: /onClick\s*=\s*\{\s*(?:\(\s*\)\s*=>|function\s*\(\s*\))\s*console\.log\([^)]*\)\s*\}/g,
+        desc: "Console.log-only onClick handler",
+        severity: "error" as const,
+      },
+    ];
+
     for (const f of fileEntries) {
+      // 1a. Multiline patterns
+      for (const mp of MULTILINE_FAKE_PATTERNS) {
+        if (mp.pattern.test(f.content)) {
+          violations.push({
+            feature: "Feature Reality",
+            file: f.rel,
+            line: 1,
+            violation: mp.desc,
+            severity: mp.severity,
+          });
+        }
+      }
+
+      // 1b. Single-line patterns
       for (let i = 0; i < f.lines.length; i++) {
         const line = f.lines[i];
         if (line.trim().startsWith("//") || line.trim().startsWith("*")) continue;
 
         for (const p of FAKE_PATTERNS) {
           if (p.pattern.test(line)) {
-            violations.push({
-              feature: "Feature Reality",
-              file: f.rel,
-              line: i + 1,
-              violation: p.desc,
-              severity: p.severity,
-            });
+            // Avoid duplicate violations if already added by multiline check
+            if (!violations.some(v => v.file === f.rel && v.violation === p.desc)) {
+              violations.push({
+                feature: "Feature Reality",
+                file: f.rel,
+                line: i + 1,
+                violation: p.desc,
+                severity: p.severity,
+              });
+            }
             break;
+          }
+        }
+      }
+
+      // Check for inert <button> tags without onClick, type="submit", or parent form/link
+      if (f.rel.startsWith("src/") && (f.rel.endsWith(".tsx") || f.rel.endsWith(".jsx"))) {
+        const buttonMatches = f.content.match(/<button\b([^>]*)>/g) || [];
+        for (const btn of buttonMatches) {
+          const hasOnClick = /onClick\s*=/i.test(btn);
+          const isSubmit = /type\s*=\s*["']submit["']/i.test(btn);
+          const isDisabled = /disabled/i.test(btn);
+          const isAriaDisabled = /aria-disabled\s*=\s*["']true["']/i.test(btn);
+          const isDecorative = /aria-hidden\s*=\s*["']true["']/i.test(btn);
+          const hasSpread = /\{\s*\.\.\./.test(btn);
+
+          if (!hasOnClick && !isSubmit && !isDisabled && !isAriaDisabled && !isDecorative && !hasSpread) {
+            violations.push({
+              feature: "Interactive Integrity",
+              file: f.rel,
+              line: 1,
+              violation: `Inert <button> element detected without onClick handler, submit action, or link wrapper: ${btn.slice(0, 80)}`,
+              severity: "error",
+            });
           }
         }
       }

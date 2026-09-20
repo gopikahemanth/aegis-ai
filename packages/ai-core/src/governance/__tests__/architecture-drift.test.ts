@@ -406,4 +406,40 @@ describe("Architecture Drift Governance Suite", () => {
     expect(parsed.named.has("getScanHistory")).toBe(true);
     expect(parsed.hasDefault).toBe(true);
   });
+
+  it("TEST 33: TaskNormalizer normalizes tasks containing Next.js route handlers and pages against locked contract", async () => {
+    const { TaskNormalizer } = await import("../task-normalizer.js");
+    const contract = ArchitectureResolver.resolve(
+      "Build React-Vite app with Express, PostgreSQL and Prisma",
+      { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" },
+      {} as any
+    );
+
+    const rawTasks = [
+      {
+        id: 1,
+        title: "Implement Next.js API route handlers for catalog",
+        description: "Develop Next.js API route handlers with NextAuth authentication",
+        dependencies: [],
+      },
+      {
+        id: 2,
+        title: "Develop Next.js pages for studio gallery",
+        description: "Create Next.js pages and components using App Router",
+        dependencies: [1],
+      },
+    ];
+
+    const normalized = TaskNormalizer.normalizeTasks(rawTasks as any, contract);
+
+    expect(normalized[0].title).toContain("Express REST API Route Handlers");
+    expect(normalized[0].description).toContain("Express JWT Authentication");
+    expect(normalized[0].title).not.toContain("Next.js");
+    expect(normalized[0].description).not.toContain("Next.js");
+
+    expect(normalized[1].title).toContain("React-Vite Pages & Views");
+    expect(normalized[1].title).not.toContain("Next.js");
+    expect(normalized[1].description).not.toContain("Next.js");
+  });
 });
+

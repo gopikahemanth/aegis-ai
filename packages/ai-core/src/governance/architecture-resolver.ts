@@ -6,6 +6,7 @@ import { ProjectSpecification } from "../architect/specification.js";
 import { TechnologyContractBuilder, TechnologyContract } from "./technology-contract.js";
 import { DependencyContractManager, DependencyContract } from "./dependency-contract.js";
 import { ArchitectureDecisionManager } from "./architecture-decision-record.js";
+import { SemanticNaming } from "../semantics/semantic-naming.js";
 
 export type ProvenanceSource = "user" | "default" | "inferred" | "existing_project";
 
@@ -85,18 +86,22 @@ export class ArchitectureResolver {
     // ── Priority 2: Existing Project Architecture Preservation ────────────────
     // If outputDirectory contains an existing project or locked contract, PRESERVE IT
     if (outputDirectory) {
-      const existing = ArchitectureResolver.loadContract(outputDirectory);
-      if (existing && existing.status === "locked") {
-        const contractPrompt = (existing as any).prompt || "";
-        const isIncrementalFeature = promptLower.includes("add ") || promptLower.includes("update ") || promptLower.includes("integrate ") || promptLower.includes("feature");
+      const contractPath = join(outputDirectory, ".aegis", "architecture-contract.json");
+      if (existsSync(contractPath)) {
+        try {
+          const existing: ArchitectureContractV1 = JSON.parse(readFileSync(contractPath, "utf8"));
+          const contractPrompt = existing.prompt || "";
+          const isExactMatch = Boolean(contractPrompt && contractPrompt.trim().toLowerCase() === userPrompt.trim().toLowerCase());
+          const isIncrementalFeature = promptLower.startsWith("add ") || promptLower.startsWith("update ") || promptLower.startsWith("fix ");
 
-        // Preserve existing stack if prompts match OR if user is requesting a feature addition to existing project
-        if (!contractPrompt || contractPrompt.trim().toLowerCase() === userPrompt.trim().toLowerCase() || isIncrementalFeature) {
-          console.log(`[ArchitectureResolver] 🔒 Preserving existing project architecture (DB: ${existing.database.provider}, Frontend: ${existing.frontend.framework}, Backend: ${existing.backend.framework})`);
-          return existing;
-        } else {
-          console.log(`[ArchitectureResolver] ⚠️ New prompt detected — invalidating stale Architecture Contract from previous run.`);
-        }
+          // Preserve existing stack ONLY if prompts match exactly OR if user is requesting an incremental feature addition
+          if (isExactMatch || (isIncrementalFeature && contractPrompt)) {
+            console.log(`[ArchitectureResolver] 🔒 Preserving existing project architecture (DB: ${existing.database.provider}, Frontend: ${existing.frontend.framework}, Backend: ${existing.backend.framework})`);
+            return existing;
+          } else {
+            console.log(`[ArchitectureResolver] ⚠️ New prompt detected — invalidating stale Architecture Contract from previous run.`);
+          }
+        } catch { /* ignore corrupted contract */ }
       }
 
       // Check existing package.json on disk to avoid breaking existing stacks
@@ -297,17 +302,19 @@ export class ArchitectureResolver {
       }
     }
 
-    // Natural Language Entity Extraction from prose prompts (e.g. "manage vessels, expeditions, scientists, ...")
+    // Natural Language Entity Extraction from prose prompts (e.g. "explore handcrafted pendant lights, compare ceramic finishes, view maker profiles, ...")
     if (explicitModels.length === 0) {
-      const manageMatch = userPrompt.match(/(?:manage|manages|track|tracking|monitor|handling|coordinates|supporting)\s+([a-zA-Z0-9_,\s]+?)(?:\.|\n|The dashboard|Create appropriate|with persistent|Do not)/i);
+      const manageMatch = userPrompt.match(/(?:manage|manages|track|tracking|monitor|monitoring|explore|exploring|browse|browsing|compare|comparing|inspect|inspecting|view|viewing|discover|discovering|purchase|purchasing|order|ordering|book|booking|reserve|reserving|submit|submitting|handling|coordinates|supporting|adjust|adjusting)\s+([a-zA-Z0-9_,\s]+?)(?:\.|\n|The dashboard|Create appropriate|with persistent|Do not|Make the)/i);
       if (manageMatch && manageMatch[1]) {
         const words = manageMatch[1].split(/,| and |\s+and\s+/).map(w => w.trim()).filter(Boolean);
         for (const w of words) {
-          const clean = w.replace(/^(research|oceanographic|scientific|active|live|stage|court|trial|guest)\s+/i, "").trim();
-          const singular = clean.endsWith("ies") ? clean.slice(0, -3) + "y" : clean.replace(/s$/, "");
-          const pascal = singular.split(/[\s_-]+/).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join("");
-          if (pascal && pascal.length > 2 && !["User", "Record", "Item", "None", "System", "Operation", "Platform"].includes(pascal) && !explicitModels.includes(pascal)) {
-            explicitModels.push(pascal);
+          const naming = SemanticNaming.deriveCapabilityNaming(w);
+          if (naming.modelName && naming.modelName.length > 2 && !["User", "Record", "Item", "None", "System", "Operation", "Platform"].includes(naming.modelName) && !explicitModels.includes(naming.modelName)) {
+            explicitModels.push(naming.modelName);
+          }
+          if (naming.routeSlug && naming.routeSlug.length > 1 && !explicitRoutes.includes(naming.routeSlug)) {
+            if (explicitRoutes.length === 0) explicitRoutes.push("/");
+            explicitRoutes.push(naming.routeSlug);
           }
         }
       }
@@ -448,7 +455,7 @@ export function toModelPlural(name: string): string {
   const lower = name.toLowerCase();
   const uncountables = ["equipment", "information", "analytics", "telemetry", "research", "feedback", "software", "hardware", "inventory", "staff", "personnel"];
   if (uncountables.includes(lower)) return name;
-  if (name.endsWith("y") && !name.endsWith("ey")) return `${name.slice(0, -1)}ies`;
+  if (/[^aeiou]y$/i.test(name)) return `${name.slice(0, -1)}ies`;
   if (name.endsWith("s") || name.endsWith("sh") || name.endsWith("ch") || name.endsWith("x") || name.endsWith("z")) return `${name}es`;
   return `${name}s`;
 }

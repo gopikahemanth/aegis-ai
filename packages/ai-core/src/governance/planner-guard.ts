@@ -192,8 +192,8 @@ export class PlannerArchitectureGuard {
       throw new Error(`ARCHITECTURE_CONTRACT_MISSING: PlannerArchitectureGuard received undefined contract.`);
     }
 
-    // Compute architecture hash for task metadata injection
-    const archHash = createHash("sha256").update(JSON.stringify({
+    // Compute or reuse architecture hash for task metadata injection
+    const archHash = contract.architectureHash || createHash("sha256").update(JSON.stringify({
       frontend: contract.frontend?.framework,
       backend: contract.backend?.framework,
       database: contract.database?.provider,

@@ -23,7 +23,7 @@ import { ProjectMemoryEngine } from "../memory/memory-engine.js";
 import { FileWriter } from "../writer/writer.js";
 import { Parser } from "../generator/parser.js";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, statSync, readdirSync } from "node:fs";
-import { join, dirname, resolve, relative } from "node:path";
+import { join, dirname, resolve, relative, basename } from "node:path";
 import { DependencyResolver, DependencyInstaller } from "@aegis/project-builder";
 import { PatchEngine } from "../healing/patch-engine.js";
 import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
@@ -53,6 +53,10 @@ import { DependencyScheduler } from "../execution/dependency-scheduler.js";
 import type { Task } from "../planner/task.js";
 import { PromptInferenceEngine } from "../prompts/prompt-inference-engine.js";
 import { DesignSystemGenerator } from "../design/design-system-generator.js";
+import { ProductUnderstanding } from "../design/product-understanding.js";
+import { CapabilityPlanner } from "../design/capability-planner.js";
+import { DesignDirector, DesignBriefLock, type DesignSelectionMode } from "../design/design-director.js";
+import { DesignIntentGate } from "../validation/design-intent-gate.js";
 import { DefinitionOfDone } from "../validation/definition-of-done.js";
 import { ProjectStartupAgent } from "../startup/project-startup-agent.js";
 import { SpecificationNormalizer } from "../spec/canonical-spec.js";
@@ -60,7 +64,7 @@ import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-gener
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
 import { TransactionalRepairSystem, RepairConvergenceTracker, TsSymbolRepairEngine } from "../healing/index.js";
-import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator, CanonicalArchitectureState, CanonicalManifestGenerator, CanonicalDataModelContract, CanonicalFileGraph, SemanticDuplicateDetector, ProjectFileRegistry, TaskNormalizer, PlanContractGate, ManifestCompletenessValidator, CanonicalDependencyClosureValidator, SymbolContractValidator } from "../governance/index.js";
+import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator, CanonicalArchitectureState, CanonicalManifestGenerator, CanonicalDataModelContract, CanonicalFileGraph, SemanticDuplicateDetector, ProjectFileRegistry, TaskNormalizer, PlanContractGate, ManifestCompletenessValidator, CanonicalDependencyClosureValidator, SymbolContractValidator, DynamicFileGraphManager } from "../governance/index.js";
 import { DomainModelGuard } from "../governance/domain-model-guard.js";
 import { StagedValidator } from "../validation/staged-validator.js";
 import { FinalSuccessGate } from "../validation/final-success-gate.js";
@@ -73,6 +77,8 @@ import { ApiWorkflowVerifier } from "../validation/api-workflow-verifier.js";
 import { ProjectPathResolver, ProjectRootSingleton } from "../utils/path-resolver.js";
 import { CanonicalPlanManager, type LockedGenerationPlan } from "../planning/canonical-generation-plan.js";
 import { DomainContractManager } from "../governance/domain-contract.js";
+import { ArtifactProvenanceValidator } from "../governance/artifact-provenance-validator.js";
+import { CapabilityCompletenessInvariant } from "../validation/capability-completeness-invariant.js";
 
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
@@ -161,6 +167,10 @@ export class Orchestrator {
 
   private readonly designSystemGenerator = new DesignSystemGenerator();
 
+  /** Design selection mode — set before calling generateProject. */
+  designMode: DesignSelectionMode = "AUTO";
+  designModeHint?: string;
+
   private readonly projectStartupAgent = new ProjectStartupAgent();
 
   private readonly definitionOfDone = new DefinitionOfDone();
@@ -242,6 +252,18 @@ export class Orchestrator {
     imagePath?: string,
   ) {
     this.memory.add(request);
+
+    // ── Enforce pre-generation state and singleton sanitization ─────────────
+    ValidationStateManager.getInstance().reset();
+    MetricsTracker.getInstance().reset();
+    ProjectFileRegistry.getInstance().reset();
+    const memEngine = new ProjectMemoryEngine(outputDirectory);
+    const existingMem = memEngine.loadMemory();
+    if (!existingMem || (existingMem.lastRequest && existingMem.lastRequest.trim() !== request.trim())) {
+      console.log("[Orchestrator] 🧹 Purging stale .aegis and memory artifacts for fresh prompt...");
+      ProjectMemoryEngine.wipeAllStaleState(outputDirectory);
+      memEngine.resetMemory("project", request);
+    }
 
     const auditTrail = new AuditTrailEngine(outputDirectory);
     auditTrail.logEvent({
@@ -597,7 +619,8 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       const architecture = this.architect.plan(specification);
       architecturePlan = { architecture, specification };
       ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
-      DomainContractManager.lock(resolvedContract, resolvedContract.architectureHash || "arch_hash", outputDirectory);
+      const domainContract = DomainContractManager.lock(resolvedContract, resolvedContract.architectureHash || "arch_hash", outputDirectory);
+      DynamicFileGraphManager.lock(resolvedContract, domainContract, resolvedContract.architectureHash || "arch_hash", outputDirectory);
 
       if (dataArch && Array.isArray(dataArch.apis)) {
         ApiContractRegistry.registerContract(dataArch.apis.map((a: any, idx: number) => ({
@@ -672,7 +695,13 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       resolvedContract = ArchitectureResolver.resolve(request, rawSpecification, canonicalSpec, outputDirectory);
       ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
       ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
-      DomainContractManager.lock(resolvedContract, resolvedContract.architectureHash || "arch_hash", outputDirectory);
+      const domainContract = DomainContractManager.lock(resolvedContract, resolvedContract.architectureHash || "arch_hash", outputDirectory);
+      DynamicFileGraphManager.lock(resolvedContract, domainContract, resolvedContract.architectureHash || "arch_hash", outputDirectory);
+
+      // ── Canonical Architecture Normalization — Lock spec BEFORE planning ─────────
+      specification = ArchitectureContractNormalizer.normalizeSpecification(specification, resolvedContract);
+      canonicalSpec = specification;
+      (this as any)._currentCanonicalSpec = specification;
 
       // Data Architecture Modeling
       this.execution.enter(ExecutionPhase.DataModeling);
@@ -702,7 +731,8 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
 
       const coordinator = new TeamCoordinator();
       const activeTeam = await coordinator.coordinate(specification);
-      tasks = await this.plannerAgent.execute(specification);
+      const rawTasks = await this.plannerAgent.execute(specification);
+      tasks = TaskNormalizer.normalizeTasks(rawTasks, resolvedContract);
 
       const standalonePlan = CanonicalPlanManager.create({
         request,
@@ -788,20 +818,60 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       status: "SUCCESS"
     });
 
-    // ─── Design System ───────────────────────────────────────────────────────
-    console.log("[DesignSystem] Generating design tokens and base components...");
+    // ─── Design Pipeline (ProductUnderstanding → CapabilityPlanner → DesignDirector) ──────────────
+    console.log("[DesignPipeline] Analyzing product characteristics...");
+    let designBrief: import("../design/design-director.js").ProductDesignBrief | undefined;
     try {
-      const dsFiles = this.designSystemGenerator.generate(specification);
-      const dsContext = this.designSystemGenerator.buildCoderContext(specification);
+      // [1] Analyze prompt → ProductCharacteristics (deterministic, no LLM)
+      const rawPrompt = (specification as any).userPrompt || request;
+      const characteristics = ProductUnderstanding.analyze(rawPrompt, {
+        selectionMode: this.designMode,
+        toneHint: this.designModeHint,
+      });
+      console.log(`[DesignPipeline] Pattern: ${characteristics.experiencePattern} | Tone: ${characteristics.emotionalTone.primary}`);
+
+      // [2] Plan feature priority and page IA (deterministic)
+      const featurePriority = CapabilityPlanner.plan(characteristics, specification);
+      console.log(`[DesignPipeline] Primary interaction: ${featurePriority.informationArchitecture.primaryInteraction}`);
+
+      // [3] Select art direction and assemble locked brief
+      const brief = DesignDirector.direct(
+        characteristics,
+        featurePriority,
+        specification,          // canonicalSpec for provenance hash
+        rawPrompt,
+        this.designMode,
+        this.designModeHint,
+      );
+      designBrief = brief;
+      console.log(`[DesignPipeline] Art direction: ${brief.artDirectionName} (${brief.artDirectionRationale})`);
+
+      // [4] Write locked brief to disk for DesignIntentGate and future runs
+      DesignBriefLock.write(brief, outputDirectory);
+      console.log(`[DesignPipeline] ✓ Brief locked: ${brief.briefId}`);
+
+      // [5] Generate design tokens + components using the locked brief
+      const dsFiles = this.designSystemGenerator.generate(specification, brief);
+      const dsContext = this.designSystemGenerator.buildCoderContext(specification, undefined, brief);
       const dsFramework = specification.frontend?.toLowerCase().includes("react") ? "react-vite" : "html";
       this.write(
         this.validator.validate(dsFramework, dsFiles),
         outputDirectory,
       );
       enrichedRequest = enrichedRequest + "\n\n" + dsContext;
-      console.log(`[DesignSystem] ✓ Wrote ${dsFiles.length} design system files.`);
+      console.log(`[DesignPipeline] ✓ Wrote ${dsFiles.length} design system files.`);
+
+      // [6] Run DesignIntentGate (source-level check — after code generation in the build phase)
+      //     We schedule this for post-generation; store the brief so the build loop can call it.
+      (this as any)._pendingDesignBrief = brief;
     } catch (dsErr: any) {
-      console.warn(`[DesignSystem] Warning: Design system generation failed: ${dsErr.message}`);
+      // Design failures are hard errors — no silent fallback.
+      // A fallback would produce an "AI-looking" generic result, defeating the purpose.
+      throw new Error(
+        `DESIGN_PIPELINE_FAILURE: The design pipeline failed before code generation could begin. ` +
+        `This is a hard error — fix the pipeline before continuing. \n` +
+        `Cause: ${dsErr.message}\n${dsErr.stack || ""}`
+      );
     }
 
     // ─── Prisma Schema Persistence ───────────────────────────────────────────
@@ -1214,7 +1284,7 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
     );
 
     // Deterministic preflight sanitation AFTER files are written to disk
-    FastDeterministicSanitizer.sanitizeProject(outputDirectory);
+    FastDeterministicSanitizer.sanitizeProject(outputDirectory, resolvedContract);
 
     // ── CANONICAL PROJECT GRAPH & ORPHAN CLEANUP ────────────────────────────────
     const orphanCleaned = SemanticDuplicateDetector.removeOrphans(
@@ -1225,6 +1295,15 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
       console.log(`[SemanticDuplicate] Cleaned up ${orphanCleaned.length} orphan/duplicate file(s) before build.`);
     }
 
+    // ── 1. PROVENANCE GATE (HARD FAIL CLOSED) ──────────────────────────────────
+    console.log("[ProvenanceGate] 🛡️ Scanning project for unauthorized foreign artifacts...");
+    const provReport = ArtifactProvenanceValidator.purgeUnjustifiedArtifacts(outputDirectory, resolvedContract);
+    if (provReport.foreignArtifactsRemaining > 0) {
+      throw new Error(`GENERATION_REJECTED_FOREIGN_ARTIFACTS: Foreign artifacts remaining: ${provReport.unprovenancedArtifacts.map(a => a.path).join(", ")}`);
+    }
+    console.log(`[ProvenanceGate] ✓ PASS — Foreign artifacts remaining: 0 (Purged: ${provReport.purgedCount})`);
+
+    // ── 2. CANONICAL PROJECT GRAPH (DISCOVERY & GRAPH CLOSURE ONLY) ─────────────
     const graphEngine = new ProjectGraphEngine();
     const graphValidation = graphEngine.validateGraph(outputDirectory);
     if (!graphValidation.valid) {
@@ -1234,9 +1313,336 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
         .join("; ");
       console.error(`[ProjectGraphEngine] ❌ Project Graph Validation Failed:\n${errorMessages}`);
       throw new Error(`PROJECT_GRAPH_FAILURE: Project graph has critical errors before build: ${errorMessages}`);
-    } else {
-      console.log(`[ProjectGraphEngine] ✓ PASS — Project graph is clean and valid.`);
     }
+
+    if (graphEngine.createdProductImplementations > 0) {
+      throw new Error(`GRAPH_ENGINE_INVARIANT_VIOLATED: ProjectGraphEngine created ${graphEngine.createdProductImplementations} product implementations. Graph engine is strictly prohibited from creating product meaning.`);
+    }
+    console.log(`[ProjectGraphEngine] ✓ PASS — Project graph closed (createdProductImplementations: 0, createdRouteStubs: ${graphEngine.createdRouteStubs}).`);
+
+    // ── 3. CAPABILITY COMPLETENESS GATE & TARGETED CODER REPAIR ─────────────────
+    const isPrimaryPageComponent = (filePath: string): boolean => {
+      const norm = filePath.replace(/\\/g, "/");
+      const fileName = basename(norm);
+      if (!/\.(tsx|jsx)$/.test(fileName)) return false;
+      const excludedDirs = [
+        "/components/",
+        "/services/",
+        "/hooks/",
+        "/utils/",
+        "/stores/",
+        "/types/",
+        "/entities/",
+        "/design-system/",
+        "/shared/",
+        "/context/",
+        "/api/",
+        "/lib/",
+      ];
+      if (excludedDirs.some(d => norm.includes(d))) return false;
+      const nonPagePatterns = [
+        /Header\.(tsx|jsx)$/i,
+        /Footer\.(tsx|jsx)$/i,
+        /Nav(bar)?\.(tsx|jsx)$/i,
+        /Sidebar\.(tsx|jsx)$/i,
+        /Modal\.(tsx|jsx)$/i,
+        /Dialog\.(tsx|jsx)$/i,
+        /Drawer\.(tsx|jsx)$/i,
+        /Card\.(tsx|jsx)$/i,
+        /Button\.(tsx|jsx)$/i,
+        /Form\.(tsx|jsx)$/i,
+        /Item\.(tsx|jsx)$/i,
+        /Row\.(tsx|jsx)$/i,
+        /List\.(tsx|jsx)$/i,
+        /Badge\.(tsx|jsx)$/i,
+        /Input\.(tsx|jsx)$/i,
+        /Select\.(tsx|jsx)$/i,
+        /Table\.(tsx|jsx)$/i,
+      ];
+      if (nonPagePatterns.some(p => p.test(fileName))) return false;
+      if (norm.includes("/pages/") || norm.includes("/views/")) return true;
+      if (/(Page|View|Dashboard)\.(tsx|jsx)$/i.test(fileName)) return true;
+      return false;
+    };
+
+    const evaluateCapabilities = () => {
+      const srcDir = join(outputDirectory, "src");
+      const failures: Array<{ file: string; reasons: string[]; earlyRejection?: string }> = [];
+
+      const scanAllFiles = (dir: string): string[] => {
+        if (!existsSync(dir)) return [];
+        const results: string[] = [];
+        for (const e of readdirSync(dir)) {
+          const f = join(dir, e);
+          if (statSync(f).isDirectory()) results.push(...scanAllFiles(f));
+          else if (/\.(tsx|jsx|ts|js)$/.test(e)) results.push(f);
+        }
+        return results;
+      };
+
+      const allFiles = scanAllFiles(srcDir);
+
+      // Invariant: ANY route stub anywhere in src/ is a hard capability failure requiring Coder implementation
+      for (const f of allFiles) {
+        try {
+          const content = readFileSync(f, "utf8");
+          if (content.includes("ROUTE_STUB_ONLY") || content.includes("CAPABILITY_IMPLEMENTATION_REQUIRED") || content.includes('data-testid="route-stub"')) {
+            failures.push({
+              file: f,
+              reasons: ["File is a non-generative route stub (ROUTE_STUB_ONLY). Genuine product capability implementation required from Coder."],
+              earlyRejection: "ROUTE_STUB_ONLY",
+            });
+          }
+        } catch {}
+      }
+
+      // Evaluate primary page components
+      const pageFiles = allFiles.filter(f => isPrimaryPageComponent(f));
+      for (const p of pageFiles) {
+        if (failures.some(fail => fail.file === p)) continue;
+        try {
+          const content = readFileSync(p, "utf8");
+          const isMainDashboard = /(features[\\\/]dashboard[\\\/]|pages[\\\/]dashboard|src[\\\/]DashboardPage|src[\\\/]HomePage)/i.test(p) ||
+            ["dashboardpage.tsx", "homepage.tsx", "dashboard.tsx"].includes(basename(p).toLowerCase());
+          const expectedWorkspace = isMainDashboard
+            ? (specification.visualContract?.composition?.primaryWorkspace?.type || "catalog_grid")
+            : undefined;
+          const expectedCaps = isMainDashboard
+            ? specification.visualContract?.composition?.primaryWorkspace?.capabilities
+            : undefined;
+
+          const res = CapabilityCompletenessInvariant.evaluatePage(content, {
+            expectedWorkspaceType: expectedWorkspace,
+            capabilities: expectedCaps,
+            domainModels: resolvedContract.requiredModels,
+            requiredFeatures: resolvedContract.requiredFeatures,
+            filePath: p,
+            projectRoot: outputDirectory,
+          });
+          if (!res.complete) {
+            failures.push({ file: p, reasons: res.reasons, earlyRejection: res.earlyRejection });
+          }
+        } catch {}
+      }
+      return failures;
+    };
+
+    let capFailures = evaluateCapabilities();
+    let capabilityRepairAttempts = 0;
+    const MAX_CAPABILITY_REPAIRS = 3;
+
+    while (capFailures.length > 0 && capabilityRepairAttempts < MAX_CAPABILITY_REPAIRS) {
+      capabilityRepairAttempts++;
+      console.warn(`[CapabilityGate] ⚠️ Capability completeness failure (Attempt ${capabilityRepairAttempts}/${MAX_CAPABILITY_REPAIRS}): ${capFailures.length} incomplete page(s):`);
+      for (const fail of capFailures) {
+        console.warn(`  - ${relative(outputDirectory, fail.file)}: ${fail.reasons.join("; ")}`);
+      }
+
+      // Record locked DesignBrief hash before repair
+      const briefHashFile = join(outputDirectory, ".aegis", "design-brief.hash");
+      const lockedBriefHashBefore = existsSync(briefHashFile) ? readFileSync(briefHashFile, "utf8").trim() : null;
+
+      // Targeted Coder repair for each failing page
+      for (const fail of capFailures) {
+        const relPagePath = relative(outputDirectory, fail.file).replace(/\\/g, "/");
+        const pageName = basename(relPagePath).replace(/\.(tsx|jsx)$/, "");
+
+        let reqVocab = "";
+        let prefVocab = "";
+        let forbVocab = "";
+        let briefStr = "";
+        const briefPath = join(outputDirectory, ".aegis", "design-brief.json");
+        if (existsSync(briefPath)) {
+          try {
+            const b = JSON.parse(readFileSync(briefPath, "utf8"));
+            reqVocab = (b.vocabularyContract?.required || []).join(", ");
+            prefVocab = (b.vocabularyContract?.preferred || []).join(", ");
+            forbVocab = (b.vocabularyContract?.forbidden || []).join(", ");
+            briefStr = `ArtDirection: ${b.artDirectionName}, Pattern: ${b.productCharacteristics?.experiencePattern}`;
+          } catch {}
+        }
+
+        const activeEntities = (resolvedContract.requiredModels || []).join(", ");
+        const activeRoutes = (resolvedContract.requiredRoutes || []).map((r: any) => typeof r === "string" ? r : r.path).join(", ");
+        const expectedWorkspace = specification.visualContract?.composition?.primaryWorkspace?.type || "catalog_grid";
+
+        const hasMissingSelection = fail.reasons.some(r => r.includes("Entity Selection") || r.includes("inspect_record"));
+        const hasMissingFilter = fail.reasons.some(r => r.includes("Status Category Filtering") || r.includes("filter_status"));
+        const hasMissingWorkspace = fail.reasons.some(r => r.includes("Primary workspace contract"));
+
+        const capabilityRequirements: string[] = [
+          `- Primary workspace container MUST include attribute: data-workspace="${expectedWorkspace || 'catalog_grid'}"`
+        ];
+        if (hasMissingSelection) {
+          capabilityRequirements.push(
+            `- MANDATORY ITEM SELECTION & DETAIL INSPECTOR (YOU MUST INCLUDE THIS EXACT CODE PATTERN DIRECTLY IN THE COMPONENT):\n` +
+            `  1. State: const [selectedItem, setSelectedItem] = useState<any>(null);\n` +
+            `  2. On each table row or card item: <tr key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors">\n` +
+            `  3. Detail inspector view when item is selected: {selectedItem && (<div className="p-4 bg-stone-900/60 border border-stone-700 rounded-lg mt-4"><div className="flex justify-between"><h3>{selectedItem.name || selectedItem.title || selectedItem.kilnName || selectedItem.id} Details</h3><button onClick={() => setSelectedItem(null)} className="px-2 py-1 bg-stone-700 text-xs rounded">Close</button></div><p>Status: {selectedItem.status}</p></div>)}`
+          );
+        }
+        if (hasMissingFilter) {
+          capabilityRequirements.push(
+            `- MANDATORY STATUS CATEGORY FILTERING (YOU MUST INCLUDE THIS EXACT CODE PATTERN DIRECTLY IN THE COMPONENT):\n` +
+            `  1. State: const [statusFilter, setStatusFilter] = useState('all');\n` +
+            `  2. Status buttons: <div className="flex gap-2 mb-4"><button onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'font-bold' : ''}>All</button><button onClick={() => setStatusFilter('active')} className={statusFilter === 'active' ? 'font-bold' : ''}>Active</button><button onClick={() => setStatusFilter('completed')} className={statusFilter === 'completed' ? 'font-bold' : ''}>Completed</button></div>\n` +
+            `  3. Filtered record set calculation: const filteredItems = (data || pieces || records || []).filter((r: any) => statusFilter === 'all' || (r.status || '').toLowerCase() === statusFilter.toLowerCase());\n` +
+            `  4. Map and render filteredItems in table/list: {filteredItems.map(item => (...))}`
+          );
+        }
+
+        let currentContent = "";
+        try {
+          if (existsSync(fail.file)) {
+            currentContent = readFileSync(fail.file, "utf8");
+          }
+        } catch {}
+
+        const targetedRepairPrompt = `
+══════════════════════════════════════════════════════════════════════════════
+TARGETED CODER CAPABILITY REPAIR INSTRUCTION
+══════════════════════════════════════════════════════════════════════════════
+TARGET FILE: ${relPagePath}
+MISSING CAPABILITIES: ${fail.reasons.join("; ")}
+ACTIVE DOMAIN ENTITIES: ${activeEntities || "(derive from domain prompt)"}
+ACTIVE ROUTES: ${activeRoutes || "(derive from domain specification)"}
+REQUIRED VOCABULARY: ${reqVocab || "(none)"}
+PREFERRED VOCABULARY: ${prefVocab || "(none)"}
+FORBIDDEN VOCABULARY: ${forbVocab || "(none)"}
+LOCKED ARCHITECTURE: React-Vite + Express + PostgreSQL + Prisma + JWT
+LOCKED DESIGN BRIEF: ${briefStr}
+EXISTING DESIGN TO PRESERVE: Keep existing design tokens, components, and layout intact.
+
+CURRENT CODE OF ${relPagePath} TO UPDATE:
+\`\`\`tsx
+${currentContent}
+\`\`\`
+
+EXPLICIT REPAIR MANDATE:
+"Update the component code above to implement the missing capabilities for ${relPagePath}.
+Preserve the existing visual language and styling classes.
+Do not redesign unrelated areas.
+Do not create a new architecture.
+Do not add dependencies unless explicitly authorized.
+Do not change the Design Brief.
+Do not create unrelated components.
+Do not introduce another domain."
+
+MANDATORY CAPABILITY IMPLEMENTATION REQUIREMENTS:
+${capabilityRequirements.join("\n\n")}
+
+CRITICAL: Return the fully implemented target file:
+===FILE: ${relPagePath}===
+[complete implementation code]
+===END===
+Every primary page component MUST contain exactly one semantic <h1> matching the feature name, followed by an explanatory <p> description.
+
+FORBIDDEN STUB PATTERNS:
+- NEVER return ellipses or comments like "// ... (previous imports)", "// ... rest of code", "// ... existing code".
+- Return the ENTIRE COMPLETE file from the first line of imports to the last line of export.
+══════════════════════════════════════════════════════════════════════════════
+`.trim();
+
+        const repairTask: Task = {
+          id: 9900 + capabilityRepairAttempts,
+          title: `Implement missing product capability for ${pageName}`,
+          description: `The view ${relPagePath} is an incomplete stub or missing genuine capability implementation (${fail.reasons.join("; ")}).\n\n${targetedRepairPrompt}`,
+          completed: false,
+          estimatedComplexity: 6,
+          priority: 1,
+          dependencies: [],
+          status: "pending" as any,
+        };
+
+        console.log(`[CapabilityGate] 🛠️ Triggering targeted Coder repair for ${relPagePath}...`);
+        const repairResult = await this.coderAgent.execute(
+          repairTask,
+          architecture,
+          architecturePlan,
+          targetedRepairPrompt,
+          outputDirectory,
+          existingFiles,
+        );
+
+        let filesToApply = repairResult.files;
+        if (filesToApply.length === 0 && repairResult.response) {
+          const codeMatches = [...repairResult.response.matchAll(/```(?:[a-zA-Z0-9_-]+)?\s*\r?\n([\s\S]*?)```/g)];
+          for (const m of codeMatches) {
+            const blockContent = m[1].trim();
+            if (blockContent.length >= 150 && /export\s+(default|function|const)/.test(blockContent)) {
+              filesToApply.push({ path: relPagePath, content: blockContent });
+              break;
+            }
+          }
+          if (filesToApply.length === 0) {
+            const fileBlockMatch = repairResult.response.match(/(?:^|\r?\n)={3,}\s*(?:FILE:\s*)?[a-zA-Z0-9_.\-\/\\]+\.[a-zA-Z0-9]+\s*={0,3}\r?\n([\s\S]*?)(?=(?:\r?\n={3,}\s*(?:FILE:\s*)?[a-zA-Z0-9_.\-\/\\]+\.[a-zA-Z0-9]+\s*={0,3}\r?\n)|(?:\r?\n={3,}\s*END\s*={0,3})|$)/i);
+            if (fileBlockMatch && fileBlockMatch[1].trim().length >= 150 && /export\s+(default|function|const)/.test(fileBlockMatch[1])) {
+              filesToApply.push({ path: relPagePath, content: fileBlockMatch[1].trim() });
+            }
+          }
+        }
+
+        // Filter out any truncated files (< 150 characters)
+        filesToApply = filesToApply.filter(f => f.content && f.content.trim().length >= 150);
+
+        console.log(`[CapabilityGate] Repair returned ${filesToApply.length} file(s) to apply.`);
+
+        for (const file of filesToApply) {
+          const normTarget = file.path.replace(/\\/g, "/");
+          const normRel = relPagePath.replace(/\\/g, "/");
+          const isTarget =
+            normTarget === normRel ||
+            normTarget.endsWith("/" + basename(normRel)) ||
+            normTarget === basename(normRel);
+
+          if (isTarget) {
+            const absTarget = join(outputDirectory, relPagePath);
+            mkdirSync(dirname(absTarget), { recursive: true });
+            writeFileSync(absTarget, file.content, "utf8");
+            console.log(`[CapabilityGate] ✓ Re-generated ${relPagePath}`);
+          } else if (file.path.startsWith("src/")) {
+            const absTarget = join(outputDirectory, file.path);
+            mkdirSync(dirname(absTarget), { recursive: true });
+            writeFileSync(absTarget, file.content, "utf8");
+            console.log(`[CapabilityGate] ✓ Re-generated helper ${file.path}`);
+          }
+        }
+      }
+
+      // Invariant: Verify locked DesignBrief has NOT been mutated by Coder repair
+      if (lockedBriefHashBefore) {
+        const briefContent = readFileSync(join(outputDirectory, ".aegis", "design-brief.json"), "utf8");
+        const { createHash } = await import("node:crypto");
+        const actualHash = createHash("sha256").update(briefContent).digest("hex");
+        if (actualHash !== lockedBriefHashBefore) {
+          throw new Error(
+            `DESIGN_BRIEF_MUTATED_DURING_REPAIR: Coder repair loop modified the locked Design Brief! Expected hash: ${lockedBriefHashBefore}, Actual: ${actualHash}. Every repair must preserve the locked Design Brief.`
+          );
+        }
+        console.log(`[CapabilityGate] ✓ Design Brief hash verified unchanged after Coder repair.`);
+      }
+
+      // Provenance Recheck after repair
+      const recheckProv = ArtifactProvenanceValidator.purgeUnjustifiedArtifacts(outputDirectory, resolvedContract);
+      if (recheckProv.foreignArtifactsRemaining > 0) {
+        throw new Error(`GENERATION_REJECTED_FOREIGN_ARTIFACTS: Foreign artifacts introduced during repair: ${recheckProv.unprovenancedArtifacts.map(a => a.path).join(", ")}`);
+      }
+
+      // Project graph recheck
+      const repairGraphValidation = graphEngine.validateGraph(outputDirectory);
+      if (!repairGraphValidation.valid) {
+        console.warn(`[CapabilityGate] Graph validation warning after repair: ${repairGraphValidation.issues.length} issue(s)`);
+      }
+
+      // Re-evaluate capability completeness
+      capFailures = evaluateCapabilities();
+    }
+
+    if (capFailures.length > 0) {
+      const failureList = capFailures.map(f => `${relative(outputDirectory, f.file)}: ${f.reasons.join("; ")}`).join("\n");
+      throw new Error(`CAPABILITY_COMPLETENESS_FAILURE: Project failed capability completeness after ${MAX_CAPABILITY_REPAIRS} repair attempts:\n${failureList}`);
+    }
+    console.log(`[CapabilityGate] ✓ PASS — All views satisfied capability completeness contract.`);
 
     // Merge specification inferred libraries into package.json (ensuring they aren't overwritten by reviewer files write)
     const finalPkgPath = join(outputDirectory, "package.json");
@@ -1478,13 +1884,6 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
 
       this.resolveMissingLocalImports(outputDirectory);
 
-      const projectContract = ArchitectureResolver.loadContract(outputDirectory) || (specification as any);
-      // Deterministic Project Fixer: Create real implementation modules (routes.tsx, prisma.ts, MatchScoreDial, Layout, api.ts, pdf-parse fix)
-      const buildFixReport = DeterministicProjectFixer.fixProject(outputDirectory, projectContract);
-      if (buildFixReport.createdFiles.length > 0 || buildFixReport.modifiedFiles.length > 0) {
-        console.log(`[DeterministicFixer] ✓ Created ${buildFixReport.createdFiles.length} missing module(s), repaired ${buildFixReport.modifiedFiles.length} file(s).`);
-      }
-
       // Project Graph Engine: Build & Validate Cross-File Dependency Graph
       const projectGraphEngine = new ProjectGraphEngine();
       const graphValidation = projectGraphEngine.validateGraph(outputDirectory);
@@ -1495,6 +1894,7 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
       }
 
       // Fast Deterministic Sanitation (Dependency Closure, Casing, Export contracts, DB URL)
+      const projectContract = resolvedContract || ArchitectureResolver.loadContract(outputDirectory);
       const sanitizeReport = FastDeterministicSanitizer.sanitizeProject(outputDirectory, projectContract);
       console.log(`[FastSanitizer] ✓ Pre-build sanitation complete (Collisions resolved: ${sanitizeReport.casingCollisionsResolved}, Imports added: ${sanitizeReport.missingDependenciesAdded.length}, Exports fixed: ${sanitizeReport.exportFixesApplied}, DB URL valid: ${sanitizeReport.databaseUrlValid})`);
 
@@ -1506,6 +1906,40 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
       }
     } catch (scanErr: any) {
       console.warn(`[Orchestrator] Pre-build import scan non-fatal warning: ${scanErr.message}`);
+    }
+
+    // ─── DesignIntentGate (source-level design verification) ─────────────────
+    // Runs AFTER all source files are written, BEFORE the build loop.
+    // This catches design violations early (forbidden vocabulary, wrong hero
+    // elements, nav overflow) without burning a full Chromium render cycle.
+    if ((this as any)._pendingDesignBrief) {
+      const pendingBrief = (this as any)._pendingDesignBrief;
+      try {
+        console.log("[DesignIntentGate] Running source-level design intent verification...");
+        const intentReport = await DesignIntentGate.verify(pendingBrief, outputDirectory);
+        console.log(`[DesignIntentGate] ${intentReport.passed ? "✓ PASS" : "✗ FAIL"} — score=${intentReport.score}/100 | critical=${intentReport.criticalCount} | warnings=${intentReport.warningCount}`);
+
+        if (!intentReport.passed && intentReport.score < 60) {
+          // Hard fail — inject violations into enrichedRequest so repair loop has context
+          throw new Error(
+            `DESIGN_INTENT_GATE_FAILED: score=${intentReport.score}/100. ` +
+            `${intentReport.criticalCount} critical violation(s) detected. ` +
+            `Fix these before the build can proceed:\n\n${intentReport.summaryText}`
+          );
+        }
+
+        if (!intentReport.passed && intentReport.score < 80) {
+          // Soft fail — pass but inject violation context into enrichedRequest for repair loop awareness
+          console.warn(`[DesignIntentGate] ⚠ ${intentReport.warningCount} design warning(s) — injecting into healing context.`);
+          enrichedRequest = enrichedRequest + "\n\n[DESIGN_INTENT_WARNINGS]\n" + intentReport.summaryText;
+        }
+      } catch (gateErr: any) {
+        if (gateErr.message?.startsWith("DESIGN_INTENT_GATE_FAILED")) {
+          throw gateErr; // re-throw hard failures
+        }
+        // Non-fatal gate errors (e.g. filesystem issue) — log and continue
+        console.warn(`[DesignIntentGate] Gate encountered a non-fatal error: ${gateErr.message}. Continuing build.`);
+      }
     }
 
     let build =
@@ -1992,7 +2426,31 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
       serverInfo = { ready: server.ready, port: server.port, url: server.url };
 
       if (server.ready) {
-        browserValResult = await ReadOnlyBrowserValidator.validate(server.url, outputDirectory);
+        // Collect actual application routes defined in routes.tsx and design brief
+        const dynamicRoutes: string[] = ["/"];
+        const routesFile = join(outputDirectory, "src", "routes.tsx");
+        if (existsSync(routesFile)) {
+          try {
+            const content = readFileSync(routesFile, "utf8");
+            const matches = content.matchAll(/path=["']([^"'*:]+)["']/g);
+            for (const m of matches) {
+              const r = m[1];
+              if (r && !r.includes(":") && !r.includes("*") && !dynamicRoutes.includes(r)) {
+                dynamicRoutes.push(r);
+              }
+            }
+          } catch {}
+        }
+        const lockedBrief = DesignBriefLock.read(outputDirectory);
+        if (lockedBrief?.pageCompositions) {
+          for (const comp of lockedBrief.pageCompositions) {
+            const r = comp.route;
+            if (r && !r.includes(":") && !dynamicRoutes.includes(r)) {
+              dynamicRoutes.push(r);
+            }
+          }
+        }
+        browserValResult = await ReadOnlyBrowserValidator.validate(server.url, outputDirectory, { routes: dynamicRoutes });
         apiWorkflowReport = await ApiWorkflowVerifier.executeWorkflows(server.url);
       }
     } catch (runtimeErr: any) {
@@ -2224,6 +2682,32 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
           const stubRelName = relative(outputDirectory, fullStubPath).replace(/\\/g, "/");
           const isStubFrontend = stubRelName.startsWith("src/");
 
+          // CANONICAL PATH OWNERSHIP: Check if stubRelName is an unauthorized alias or semantic duplicate
+          const dupCheck = CanonicalFileGraph.detectSemanticDuplicate(stubRelName);
+          if (dupCheck.isDuplicate && dupCheck.canonicalFile) {
+            const canonicalFullPath = join(outputDirectory, dupCheck.canonicalFile.canonicalPath);
+            let correctRelImport = relative(dirname(diskFile.fullPath), canonicalFullPath).replace(/\\/g, "/");
+            if (!correctRelImport.startsWith(".")) correctRelImport = "./" + correctRelImport;
+            correctRelImport = correctRelImport.replace(/\.(ts|tsx|js|jsx)$/, "");
+
+            const updatedContent = diskFile.content.replace(
+              new RegExp(`(['"])${rawImportPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(['"])`, 'g'),
+              `$1${correctRelImport}$2`
+            );
+            if (updatedContent !== diskFile.content) {
+              diskFile.content = updatedContent;
+              writeFileSync(diskFile.fullPath, updatedContent, "utf8");
+              console.log(`[Orchestrator] Redirected alias import in "${diskFile.relPath}": "${rawImportPath}" -> "${correctRelImport}" (canonical: ${dupCheck.canonicalFile.canonicalPath})`);
+            }
+            try {
+              if (existsSync(fullStubPath)) {
+                unlinkSync(fullStubPath);
+                console.log(`[Orchestrator] Purged unauthorized alias file: ${stubRelName}`);
+              }
+            } catch {}
+            continue;
+          }
+
           // Fuzzy resolution: check if a file with the same component/module name exists elsewhere in diskFiles
           const componentName = stubRelName.split(/[\/\\]/).pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") || "Component";
           const lowerComp = componentName.toLowerCase();
@@ -2243,6 +2727,29 @@ Do not include any explanation, prose, or markdown outside the file blocks.`;
           });
 
           if (matchingDiskFile) {
+            if (!CanonicalFileGraph.isAuthorized(stubRelName)) {
+              let relImportToTarget = relative(dirname(diskFile.fullPath), matchingDiskFile.fullPath).replace(/\\/g, "/");
+              if (!relImportToTarget.startsWith(".")) relImportToTarget = "./" + relImportToTarget;
+              relImportToTarget = relImportToTarget.replace(/\.(ts|tsx|js|jsx)$/, "");
+
+              const updatedContent = diskFile.content.replace(
+                new RegExp(`(['"])${rawImportPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(['"])`, 'g'),
+                `$1${relImportToTarget}$2`
+              );
+              if (updatedContent !== diskFile.content) {
+                diskFile.content = updatedContent;
+                writeFileSync(diskFile.fullPath, updatedContent, "utf8");
+                console.log(`[Orchestrator] Redirected unauthorized stub import in "${diskFile.relPath}": "${rawImportPath}" -> "${relImportToTarget}"`);
+              }
+              try {
+                if (existsSync(fullStubPath)) {
+                  unlinkSync(fullStubPath);
+                  console.log(`[Orchestrator] Purged unauthorized stub file: ${stubRelName}`);
+                }
+              } catch {}
+              continue;
+            }
+
             console.log(`[Orchestrator] Pre-build missing local import scanner: Found matching file "${matchingDiskFile.relPath}" for "${stubRelName}". Creating re-export shim...`);
             let relImportToTarget = relative(dirname(fullStubPath), matchingDiskFile.fullPath).replace(/\\/g, "/");
             if (!relImportToTarget.startsWith(".")) relImportToTarget = "./" + relImportToTarget;

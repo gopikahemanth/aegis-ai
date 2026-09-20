@@ -33,7 +33,7 @@ export class CanonicalArchitectureState {
   }
 
   public initialize(contract: ArchitectureContractV1, outputDirectory?: string): CanonicalArchitecture {
-    const hash = createHash("sha256").update(JSON.stringify({
+    const hash = contract.architectureHash || createHash("sha256").update(JSON.stringify({
       frontend: contract.frontend.framework,
       backend: contract.backend.framework,
       database: contract.database.provider,
@@ -41,6 +41,10 @@ export class CanonicalArchitectureState {
       auth: contract.authentication,
       lang: contract.language
     })).digest("hex").slice(0, 12);
+
+    if (!contract.architectureHash && !Object.isFrozen(contract)) {
+      try { (contract as any).architectureHash = hash; } catch {}
+    }
 
     const forbidden: string[] = [];
     if (!contract.frontend.framework.toLowerCase().includes("next")) {

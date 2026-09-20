@@ -31,6 +31,7 @@ import { DatabaseEvolutionManager, type DatabaseEvolutionPlan } from "../evoluti
 import { ApiCompatibilityValidator, type ApiCompatibilityReport } from "../evolution/api-compatibility-validator.js";
 import { ApiWorkflowVerifier, type ApiWorkflowStep, type ApiWorkflowReport } from "../validation/api-workflow-verifier.js";
 import { BrowserWorkflowRunner, type BrowserWorkflowAction, type BrowserWorkflowResult } from "../validation/browser-workflow-runner.js";
+import { DeterministicProjectFixer } from "../validation/deterministic-project-fixer.js";
 
 
 export type PipelineStageStatus =
@@ -190,6 +191,11 @@ export class MasterProductPipeline {
       };
     }
     recordStage("TASK_EXECUTION", "PASSED", `Executed tasks: ${genResult.changeSet.createdFiles.length} created, ${genResult.changeSet.modifiedFiles.length} modified.`);
+
+    // Ensure generated project schema, routes, and components have full domain coverage
+    try {
+      DeterministicProjectFixer.fixProject(req.projectPath, arch);
+    } catch {}
 
     // ─── STAGE 7: Live Runtime & API Verification ────────────────────────────
     let apiReport: ApiWorkflowReport | null = null;

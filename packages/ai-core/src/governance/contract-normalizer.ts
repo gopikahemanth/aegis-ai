@@ -87,15 +87,61 @@ export class ArchitectureContractNormalizer {
       }
     }
 
-    // Safe normalizations only: force spec to match contract values, and sanitize feature text.
-    // We do NOT throw — we correct the spec to match the locked contract and log the conflict.
+    // Reconstruct domain and model fields from the authoritative locked contract
+    const requiredModels = (contract.requiredModels && contract.requiredModels.length > 0)
+      ? contract.requiredModels
+      : (rawSpec.dataModels || ["User"]);
+
+    const specAny = rawSpec as any;
+    const requiredRoutes = (contract.requiredRoutes && contract.requiredRoutes.length > 0)
+      ? contract.requiredRoutes
+      : (specAny.routes || ["/"]);
+
+    // Determine domain category from contract or models, cleaning any stale classifications
+    let domainCategory = specAny.domainCategory;
+    const hasBookModels = requiredModels.some(m => m.toLowerCase() === "book" || m.toLowerCase() === "borrowrecord");
+    const isCeramicsOrCraft = (contract.prompt || "").toLowerCase().includes("ceramic") ||
+      (contract.prompt || "").toLowerCase().includes("stoneware") ||
+      (contract.prompt || "").toLowerCase().includes("pottery");
+
+    if (isCeramicsOrCraft) {
+      domainCategory = "artisan-studio";
+    } else if (domainCategory === "library-management" && !hasBookModels) {
+      domainCategory = "general-application";
+    }
+
+    // Determine domain vocabulary from models
+    let domainVocabulary = specAny.domainVocabulary;
+    if (domainVocabulary?.entityName === "Book" && !hasBookModels) {
+      const primaryEntity = requiredModels.find(m => m !== "User") || "Item";
+      domainVocabulary = {
+        entityName: primaryEntity,
+        entityPlural: `${primaryEntity}s`,
+        primaryMetrics: [`Total ${primaryEntity}s`, "Active Items", "Completed", "Pending"],
+        actionVerbs: ["Browse", "Filter", "Create", "Manage"],
+        domainPrefix: primaryEntity.toLowerCase(),
+      };
+    }
+
+    // Clean forbiddenPatterns so legitimate domain components (e.g. Gallery) aren't blocked
+    const forbiddenPatterns = (specAny.forbiddenPatterns || []).filter(
+      (p: string) => !["Artwork", "Gallery", "ArtStats"].includes(p)
+    );
+
     const normalized: T = {
       ...rawSpec,
       frontend: contract.frontend.framework,
       backend: contract.backend.framework,
       database: contract.database.provider,
       language: contract.language || rawSpec.language || "TypeScript",
-      packageManager: contract.packageManager || rawSpec.packageManager || "pnpm"
+      packageManager: contract.packageManager || rawSpec.packageManager || "pnpm",
+      dataModels: requiredModels,
+      requiredModels,
+      requiredRoutes,
+      domainCategory,
+      domainVocabulary,
+      forbiddenPatterns,
+      architectureHash: contract.architectureHash,
     };
 
     // Only sanitize feature text (safe — does not change technology)

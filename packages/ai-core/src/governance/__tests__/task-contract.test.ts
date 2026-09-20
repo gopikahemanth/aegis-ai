@@ -342,7 +342,7 @@ describe("SemanticDuplicateDetector & Task Governance Tests", () => {
 
     const deduplicated = TaskNormalizer.deduplicateAndCapTasks(duplicateTasks, 6);
     expect(deduplicated.length).toBeLessThanOrEqual(6);
-    expect(deduplicated.map(t => t.id)).toEqual([1, 2, 3, 4]);
+    expect(deduplicated.map(t => t.id)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 });
 

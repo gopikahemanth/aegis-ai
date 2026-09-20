@@ -41,6 +41,8 @@ export interface RealBrowserExecutionResult {
   domSnapshot?: BrowserDOMSnapshot;
   interactionTestPassed?: boolean;
   pageText?: string;
+  consoleErrors?: string[];
+  uncaughtExceptions?: string[];
   checks: Array<{ name: string; passed: boolean; details: string }>;
   failureReason?: string;
 }
@@ -78,6 +80,7 @@ export class RealBrowserAdapter {
       compositionGraph?: CompositionGraph;
       timeoutMs?: number;
       executablePath?: string;
+      expectedGenerationId?: string;
     }
   ): Promise<RealBrowserExecutionResult> {
     const startTime = Date.now();
@@ -108,6 +111,16 @@ export class RealBrowserAdapter {
         viewport: { width: 1440, height: 900 },
       });
 
+      const consoleErrors: string[] = [];
+      const uncaughtExceptions: string[] = [];
+
+      page.on("console", (msg) => {
+        if (msg.type() === "error") consoleErrors.push(msg.text());
+      });
+      page.on("pageerror", (err) => {
+        uncaughtExceptions.push(err.message || String(err));
+      });
+
       // Navigate to target application
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: options?.timeoutMs || 10000 });
 
@@ -122,6 +135,33 @@ export class RealBrowserAdapter {
       } catch {}
 
       const renderState = await page.evaluate(() => (window as any).__AEGIS_RENDER_STATE__ || null);
+
+      // ── Runtime Generation Identity Check ─────────────────────────────────
+      if (options?.expectedGenerationId) {
+        const actualGenId = renderState?.generationId;
+        const matches = actualGenId === options.expectedGenerationId;
+        checks.push({
+          name: "Runtime Generation Identity Invariant",
+          passed: matches,
+          details: matches
+            ? `Active runtime generationId "${actualGenId}" matches expected generation "${options.expectedGenerationId}".`
+            : `RUNTIME_GENERATION_ID_MISMATCH: Server running generationId "${actualGenId || 'none'}" but expected "${options.expectedGenerationId}". Stale dev server on port or port collision detected.`,
+        });
+
+        if (!matches) {
+          if (browser) await browser.close();
+          return {
+            executed: true,
+            passed: false,
+            browserEngine: "Chromium",
+            executablePath: executable,
+            durationMs: Date.now() - startTime,
+            renderState,
+            checks,
+            failureReason: `RUNTIME_GENERATION_ID_MISMATCH: Server running generationId "${actualGenId || 'none'}" but expected "${options.expectedGenerationId}". Stale server detected.`,
+          };
+        }
+      }
 
       checks.push({
         name: "Real Browser React Hydration (__AEGIS_BOOTED__)",
@@ -281,6 +321,8 @@ export class RealBrowserAdapter {
         },
         computedStyles,
         interactionTestPassed,
+        consoleErrors,
+        uncaughtExceptions,
         checks,
       };
     } catch (err: any) {
@@ -290,6 +332,8 @@ export class RealBrowserAdapter {
         browserEngine: "Chromium",
         executablePath: executable,
         durationMs: Date.now() - startTime,
+        consoleErrors: [],
+        uncaughtExceptions: [err?.message || String(err)],
         checks,
         failureReason: err?.message || String(err),
       };

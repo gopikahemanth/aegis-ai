@@ -1,7 +1,9 @@
 import { existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { ArchitectureContractV1 } from "./architecture-resolver.js";
-import { CANONICAL_FILES, CanonicalFileGraph } from "./canonical-file-graph.js";
+import { CANONICAL_FILES } from "./canonical-file-graph.js";
+import { DynamicCanonicalFileGraphBuilder } from "./dynamic-file-graph.js";
+import { DomainContractManager, DomainContractDeriver } from "./domain-contract.js";
 
 export interface ProjectManifestEntry {
   path: string;
@@ -27,16 +29,37 @@ export interface CanonicalManifest {
 
 export class CanonicalManifestGenerator {
   public static generate(contract: ArchitectureContractV1, outputDirectory: string): CanonicalManifest {
-    const files: ProjectManifestEntry[] = CANONICAL_FILES.map(f => ({
-      path: f.canonicalPath,
-      category: f.required ? "required" : "optional",
-      description: f.semanticRole,
-      expectedExports: f.requiredExports,
-      expectedImports: f.allowedImports,
-    }));
-
     const isATS = (contract.requiredModels || []).some(m => ["Resume", "JobDescription", "AnalysisResult", "Scan"].includes(m)) ||
                   (contract.requiredRoutes || []).some(r => r.includes("scan") || r.includes("resume"));
+
+    let files: ProjectManifestEntry[];
+
+    if (isATS) {
+      files = CANONICAL_FILES.map(f => ({
+        path: f.canonicalPath,
+        category: f.required ? "required" : "optional",
+        description: f.semanticRole,
+        expectedExports: f.requiredExports,
+        expectedImports: f.allowedImports,
+      }));
+    } else {
+      const domainContract = DomainContractManager.load(outputDirectory) ||
+        DomainContractDeriver.derive(contract, contract.architectureHash || "canonical");
+
+      const dynamicGraph = DynamicCanonicalFileGraphBuilder.build(
+        contract,
+        domainContract,
+        contract.architectureHash || "canonical"
+      );
+
+      files = dynamicGraph.entries.map(f => ({
+        path: f.canonicalPath,
+        category: f.status === "required" ? "required" : "optional",
+        description: f.semanticRole,
+        expectedExports: f.requiredExports,
+        expectedImports: f.allowedImports,
+      }));
+    }
 
     const defaultAuthEndpoints = contract.authentication && contract.authentication !== "None"
       ? ["POST /api/auth/login", "POST /api/auth/register"]

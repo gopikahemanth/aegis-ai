@@ -294,4 +294,121 @@ export default function BoardPage() {
     expect(result.passed).toBe(true);
     expect(result.violationCount).toBe(0);
   });
+
+  it("Test 9 — Inert Button Rejection: Plain <button> without onClick or type='submit' is rejected as error", () => {
+    writeFileSync(
+      join(testDir, "src/InertComponent.tsx"),
+      `import React from "react";
+
+export function InertComponent() {
+  return (
+    <div>
+      <h3>Unconfigured Feature</h3>
+      <button className="primary-btn">Perform Action</button>
+    </div>
+  );
+}`,
+      "utf8"
+    );
+
+    const report = FeatureRealityValidator.validate(testDir);
+    expect(report.passed).toBe(false);
+    const inertViolations = report.violations.filter(
+      v => v.severity === "error" && v.violation.includes("Inert <button> element detected")
+    );
+    expect(inertViolations.length).toBeGreaterThan(0);
+  });
+
+  it("Test 10 — Dead Form Rejection: Empty onSubmit handler is rejected as error", () => {
+    writeFileSync(
+      join(testDir, "src/DeadForm.tsx"),
+      `import React from "react";
+
+export function DeadForm() {
+  return (
+    <form onSubmit={() => {}}>
+      <input type="text" placeholder="Name" />
+      <button type="submit">Submit</button>
+    </form>
+  );
+}`,
+      "utf8"
+    );
+
+    const report = FeatureRealityValidator.validate(testDir);
+    expect(report.passed).toBe(false);
+    const emptyFormViolations = report.violations.filter(
+      v => v.severity === "error" && v.violation.includes("Empty onSubmit handler")
+    );
+    expect(emptyFormViolations.length).toBeGreaterThan(0);
+  });
+
+  it("Test 11 — Fake Processing Rejection: setTimeout simulation pretending to process data is rejected as error", () => {
+    writeFileSync(
+      join(testDir, "src/FakeLoading.tsx"),
+      `import React, { useState } from "react";
+
+export function FakeLoading() {
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any>(null);
+
+  const handleSimulatedFetch = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      setData({ status: "done" });
+    }, 2000);
+  };
+
+  return (
+    <div>
+      <button onClick={handleSimulatedFetch}>Simulate</button>
+      {loading ? <p>Loading...</p> : <p>{JSON.stringify(data)}</p>}
+    </div>
+  );
+}`,
+      "utf8"
+    );
+
+    const report = FeatureRealityValidator.validate(testDir);
+    expect(report.passed).toBe(false);
+    const timeoutViolations = report.violations.filter(
+      v => v.severity === "error" && v.violation.includes("Fake setTimeout simulation")
+    );
+    expect(timeoutViolations.length).toBeGreaterThan(0);
+  });
+
+  it("Test 12 — Authentic Interactive Element: Button with meaningful state mutation or handler is accepted", () => {
+    writeFileSync(
+      join(testDir, "src/ActiveComponent.tsx"),
+      `import React, { useState } from "react";
+
+export function ActiveComponent() {
+  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [items, setItems] = useState<string[]>([]);
+
+  const handleAdd = () => {
+    setItems(prev => [...prev, \`Item \${prev.length + 1}\`]);
+  };
+
+  return (
+    <div>
+      <div className="tabs">
+        <button onClick={() => setActiveTab("overview")}>Overview</button>
+        <button onClick={() => setActiveTab("details")}>Details</button>
+      </div>
+      <button onClick={handleAdd}>Add Item</button>
+      <p>Current Tab: {activeTab}</p>
+      <ul>{items.map((it, idx) => <li key={idx}>{it}</li>)}</ul>
+    </div>
+  );
+}`,
+      "utf8"
+    );
+
+    const report = FeatureRealityValidator.validate(testDir);
+    expect(report.passed).toBe(true);
+    expect(report.violations.filter(v => v.severity === "error").length).toBe(0);
+  });
 });
+

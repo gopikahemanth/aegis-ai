@@ -223,6 +223,16 @@ PRODUCTION CODE STANDARDS:
         4. Live Search & Multi-Tab Filter Bar: Status tabs (All, In Progress, Pending, Completed, etc.) and search bar filtering records in real-time.
         5. Interactive Intake / Create Modal: "+ New [Entity]" button opening a fully-interactive modal dialog with input fields, select dropdowns, validation, and a form submit handler that appends new records to the live table and updates metric counts.
         6. Operational Breakdown & Quick Action Panels: Staff/resource workload widget, parts/inventory status widget, and quick action buttons (e.g. Notify, Export CSV, Sync).
+        7. Interactive Selection & Drill-Down Inspection (MANDATORY FOR ALL VIEWS WITH DATA/RECORDS):
+           - Declare item selection state: const [selectedItem, setSelectedItem] = useState<any>(null);
+           - Every table row or card item MUST attach: onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-stone-50..."
+           - When selectedItem !== null, render a detail inspector panel displaying its properties with an explicit close button: <button onClick={() => setSelectedItem(null)}>Close</button>.
+        8. Reactive Status Category Filtering (MANDATORY FOR ALL VIEWS WITH DATA/RECORDS):
+           - Declare filter state: const [statusFilter, setStatusFilter] = useState('all');
+           - Render status filter buttons with onClick: <button onClick={() => setStatusFilter('all')}>All</button>, <button onClick={() => setStatusFilter('active')}>Active</button>, etc.
+           - Computed filtered record set: const filteredItems = (records || data || []).filter((r: any) => statusFilter === 'all' || (r.status || '').toLowerCase() === statusFilter.toLowerCase());
+           - The view MUST map and render filteredItems.map(...), NOT the unfiltered array.
+        9. Container workspace attribute: Root container element MUST include data-workspace="catalog_grid".
     - FULL FEATURE & ROUTING COMPLETENESS:
         - Every route, navigation link, tab, and view (e.g. /orders, /inventory, /portfolio, /checkout, /upload, /settings) MUST be fully mapped in App.tsx or routes.tsx to a real, rendered React component view.
         - NEVER leave dead links, unmapped routes, or empty placeholder 404 pages.
@@ -230,6 +240,11 @@ PRODUCTION CODE STANDARDS:
         - NO dummy console.log() handlers or broken buttons.
         - Slide-over drawers, multi-step checkout modals, and detail preview modals MUST have working toggle state and complete form submission flows.
         - Provide a robust local state/store fallback initialized with domain-specific data so all tabs and features are 100% interactive and functional out-of-the-box both online and offline.
+    - MANDATORY PAGE SEMANTIC HIERARCHY (STRICTLY REQUIRED FOR ALL PRIMARY PAGES):
+        - Every primary page component MUST render exactly one semantic <h1> element containing the domain feature title (e.g. <h1>Glaze Chemistry Formulation</h1> or <h1>Kiln Firing Temperature Schedule</h1>), followed by a descriptive <p> explaining its purpose.
+        - NEVER generate a page component without an <h1> heading.
+        - NEVER generate multiple <h1> headings on the same page.
+        - Derive the <h1> title directly from the active feature, never generic boilerplate (e.g. not generic "Dashboard" or "Component").
   ✓ Real Data Flows: If the application needs data (e.g., studies, plans, chat logs, scores, history):
     - Connect the frontend to the backend or local database schema using real api endpoints.
     - Implement React Query (useQuery/useMutation) or native fetch hooks that call backend controllers.

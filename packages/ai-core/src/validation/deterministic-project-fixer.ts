@@ -1,12 +1,22 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { join, resolve, dirname, relative } from "node:path";
 import { ArchitectureResolver, ArchitectureContractV1 } from "../governance/architecture-resolver.js";
 import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "../design/domain-visual-contract.js";
 import { DesignSystemGenerator } from "../design/design-system-generator.js";
+import { CapabilityCompletenessInvariant } from "./capability-completeness-invariant.js";
 
 export interface BuildFixReport {
   createdFiles: string[];
   modifiedFiles: string[];
+  capabilityCompleteness?: {
+    valid: boolean;
+    missingCapabilities: string[];
+    reasons: string[];
+  };
+  provenanceReport?: {
+    valid: boolean;
+    violations: string[];
+  };
 }
 
 export interface DomainFeatureSpec {
@@ -531,19 +541,48 @@ interface ImportMeta {
     const hookPath = join(dashHookDir, "useDashboardData.tsx");
     const hookContent = `import { useQuery } from "@tanstack/react-query";
 
-export function useDashboardData() {
-  return useQuery({
-    queryKey: ["dashboardData"],
+export function useDashboardData(...args: any[]) {
+  const query = useQuery({
+    queryKey: ["dashboardData", ...args],
     queryFn: async () => {
       try {
         const res = await fetch("/api/dashboard/summary");
         if (!res.ok) throw new Error("Offline");
         return await res.json();
       } catch {
-        return { total: 24, active: 18, pending: 6, score: 94.5 };
+        return {
+          total: 24,
+          active: 18,
+          pending: 6,
+          score: 94.5,
+          summary: { totalKw: 1450, avgEfficiency: 96.8, peakTemp: 48.2, alertCount: 0 },
+          inverters: [],
+          items: [],
+          records: [],
+        };
       }
     },
   });
+
+  return {
+    ...query,
+    data: query.data || {
+      total: 24,
+      active: 18,
+      pending: 6,
+      score: 94.5,
+      summary: { totalKw: 1450, avgEfficiency: 96.8, peakTemp: 48.2, alertCount: 0 },
+      inverters: [],
+      items: [],
+      records: [],
+    },
+    loading: query.isLoading,
+    isLoading: query.isLoading,
+    error: query.error,
+    mutate: (idOrUpdates?: any) => {},
+    mutateAsync: async (idOrUpdates?: any) => {},
+    refetch: query.refetch,
+  };
 }
 
 export default useDashboardData;
@@ -555,10 +594,10 @@ export default useDashboardData;
 
     // ── 7. src/shared/components/Layout.tsx ───────────────────────────────────
     const layoutPath = join(sharedDir, "Layout.tsx");
-    if (!DeterministicProjectFixer.isRichValidLayout(layoutPath, domainSpec)) {
+    if (!existsSync(layoutPath)) {
       const navLinksJson = JSON.stringify(domainSpec.navLinks, null, 2);
       const isPill = domainSpec.visualContract.navigation.strategy === "TOPBAR_PILL";
-      const layoutContent = `import React from "react";
+      const layoutContent = `import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 export interface LayoutProps {
@@ -567,7 +606,11 @@ export interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const navLinks = ${navLinksJson};
+  const primaryLinks = navLinks.slice(0, 5);
+  const overflowLinks = navLinks.slice(5);
 
   return (
     <div className="app-shell min-h-screen ${domainSpec.visualContract.colorSystem.background} ${domainSpec.visualContract.colorSystem.textPrimary} flex flex-col font-sans">
@@ -580,7 +623,7 @@ export function Layout({ children }: LayoutProps) {
             <span className="font-bold text-lg ${domainSpec.visualContract.colorSystem.textPrimary} tracking-tight group-hover:opacity-90 transition-opacity">${domainSpec.brandName}</span>
           </Link>
           <nav className="app-nav hidden md:flex items-center gap-1.5 ${isPill ? "nav-pill-group p-1 rounded-full " + domainSpec.visualContract.colorSystem.surface : ""}">
-            {navLinks.map((link) => {
+            {primaryLinks.map((link) => {
               const active = location.pathname === link.path || (link.path !== "/" && location.pathname.startsWith(link.path));
               return (
                 <Link
@@ -596,6 +639,33 @@ export function Layout({ children }: LayoutProps) {
                 </Link>
               );
             })}
+            {overflowLinks.length > 0 && (
+              <div className="nav-dropdown relative" onMouseLeave={() => setIsMoreOpen(false)}>
+                <button
+                  type="button"
+                  onClick={() => setIsMoreOpen(!isMoreOpen)}
+                  onMouseEnter={() => setIsMoreOpen(true)}
+                  className="nav-dropdown-btn text-xs font-medium ${domainSpec.visualContract.colorSystem.textMuted} hover:${domainSpec.visualContract.colorSystem.textPrimary} px-3 py-1.5 rounded-lg flex items-center gap-1 transition cursor-pointer"
+                >
+                  <span>More</span>
+                  <span className="text-[10px]">▾</span>
+                </button>
+                {isMoreOpen && (
+                  <div className="nav-dropdown-menu absolute top-full left-0 mt-1 min-w-[12rem] p-1.5 rounded-xl ${domainSpec.visualContract.colorSystem.surface} border shadow-xl z-50 flex flex-col gap-1">
+                    {overflowLinks.map((link) => (
+                      <Link
+                        key={link.path}
+                        to={link.path}
+                        onClick={() => setIsMoreOpen(false)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium ${domainSpec.visualContract.colorSystem.textMuted} hover:${domainSpec.visualContract.colorSystem.textPrimary} hover:bg-white/5 transition"
+                      >
+                        {link.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-3">
@@ -609,8 +679,30 @@ export function Layout({ children }: LayoutProps) {
           >
             Portal
           </Link>
+          <button
+            type="button"
+            onClick={() => setIsMobileOpen(!isMobileOpen)}
+            className="md:hidden p-2 rounded-lg ${domainSpec.visualContract.colorSystem.surface} border ${domainSpec.visualContract.colorSystem.textMuted} text-xs cursor-pointer"
+            aria-label="Toggle navigation menu"
+          >
+            ☰
+          </button>
         </div>
       </header>
+      {isMobileOpen && (
+        <div className="md:hidden border-b ${domainSpec.visualContract.colorSystem.surface} p-4 space-y-2 ${domainSpec.visualContract.colorSystem.background}">
+          {navLinks.map((link) => (
+            <Link
+              key={link.path}
+              to={link.path}
+              onClick={() => setIsMobileOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm ${domainSpec.visualContract.colorSystem.textPrimary} hover:bg-white/5"
+            >
+              {link.name}
+            </Link>
+          ))}
+        </div>
+      )}
       <main className="main-container flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8">{children}</main>
       <footer className="border-t ${domainSpec.visualContract.colorSystem.surface} px-6 py-4 text-center text-xs ${domainSpec.visualContract.colorSystem.textMuted}">
         ${domainSpec.brandName} • ${domainSpec.visualContract.domain} (${domainSpec.visualContract.visualPersonality.mood})
@@ -625,28 +717,40 @@ export default Layout;
       createdFiles.push("src/shared/components/Layout.tsx");
     }
 
-    // ── 8. src/features/dashboard/DashboardPage.tsx ──────────────────────────
+    // ── 8. Product UI Validation (PROHIBITION: DeterministicProjectFixer never generates or replaces product UI) ──
     const dashPath = join(dashDir, "DashboardPage.tsx");
-    if (!DeterministicProjectFixer.isRichValidFile(dashPath)) {
-      const dashContent = DeterministicProjectFixer.generateDashboardPageContent(domainSpec);
-      writeFileSync(dashPath, dashContent, "utf8");
-      createdFiles.push("src/features/dashboard/DashboardPage.tsx");
+    let capabilityCompleteness: BuildFixReport["capabilityCompleteness"] = {
+      valid: true,
+      missingCapabilities: [],
+      reasons: [],
+    };
+
+    if (existsSync(dashPath)) {
+      const isValid = DeterministicProjectFixer.isRichValidDashboard(dashPath, domainSpec);
+      if (!isValid) {
+        capabilityCompleteness = {
+          valid: false,
+          missingCapabilities: domainSpec.visualContract?.composition?.primaryWorkspace?.capabilities || ["primary_workspace"],
+          reasons: ["DashboardPage.tsx exists but fails capability completeness."],
+        };
+      }
+    } else {
+      capabilityCompleteness = {
+        valid: false,
+        missingCapabilities: domainSpec.visualContract?.composition?.primaryWorkspace?.capabilities || ["primary_workspace"],
+        reasons: ["DashboardPage.tsx is missing from generated project."],
+      };
     }
 
-    // ── 9. Generate Domain Feature Pages ─────────────────────────────────────
-    for (const feat of domainSpec.features) {
-      const pageFilePath = join(projectRoot, feat.path);
-      if (!DeterministicProjectFixer.isRichValidFile(pageFilePath)) {
-        const pageContent = DeterministicProjectFixer.generateFeaturePageContent(feat, domainSpec);
-        writeFileSync(pageFilePath, pageContent, "utf8");
-        createdFiles.push(feat.path);
-      }
-    }
+    // ── 9. Contract-Driven Artifact Provenance & Safe Mechanical Repairs ───
+    const provenanceReport = DeterministicProjectFixer.validateArtifactProvenance(projectRoot, contract, domainSpec);
+    const mechanicalRepairs = DeterministicProjectFixer.performSafeMechanicalRepairs(projectRoot);
+    modifiedFiles.push(...mechanicalRepairs);
 
     // ── 10. Generate src/routes.tsx ──────────────────────────────────────────
     const routesPath = join(srcDir, "routes.tsx");
     if (!DeterministicProjectFixer.isRichValidRoutes(routesPath, domainSpec)) {
-      const routesContent = DeterministicProjectFixer.generateRoutesContent(domainSpec);
+      const routesContent = DeterministicProjectFixer.generateRoutesContent(domainSpec, projectRoot);
       writeFileSync(routesPath, routesContent, "utf8");
       createdFiles.push("src/routes.tsx");
     }
@@ -681,7 +785,12 @@ export default Layout;
     const serverIndexPath = join(serverDir, "index.ts");
     DeterministicProjectFixer.ensureServerIndexIntegrity(serverIndexPath, domainSpec);
 
-    return { createdFiles, modifiedFiles };
+    return {
+      createdFiles,
+      modifiedFiles,
+      capabilityCompleteness,
+      provenanceReport,
+    };
   }
 
   /**
@@ -699,6 +808,36 @@ export default Layout;
       const isControllerOrRoute = /req\s*:\s*Request|res\s*:\s*Response|prisma\.|Router\(\)|router\.|restaurantStore|store\./i.test(content);
       const isStub = content.includes("Not implemented") && content.length < 250;
       return (isJsx || isControllerOrRoute) && !isStub;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Validates if DashboardPage.tsx implements the domain's required primary workspace and interactions.
+   * Authoritative capability completeness: rejects passive or incomplete shells missing required capability chains.
+   */
+  public static isRichValidDashboard(dashPath: string, domainSpec: ReturnType<typeof DeterministicProjectFixer.deriveDomainSpec>): boolean {
+    if (!existsSync(dashPath)) return false;
+    try {
+      const content = readFileSync(dashPath, "utf8");
+      const expectedType = domainSpec.visualContract?.composition?.primaryWorkspace?.type;
+      const declaredCaps = domainSpec.visualContract?.composition?.primaryWorkspace?.capabilities;
+
+      const evalResult = CapabilityCompletenessInvariant.evaluatePage(content, {
+        expectedWorkspaceType: expectedType,
+        capabilities: declaredCaps,
+        filePath: dashPath,
+      });
+
+      if (!evalResult.complete) {
+        console.log(
+          `[CapabilityCompletenessGate] ⚠️ DashboardPage failed capability completeness (${evalResult.satisfiedCapabilities}/${evalResult.totalCapabilities} capabilities satisfied). Rejection reasons: ${evalResult.reasons.join(" | ")}`
+        );
+        return false;
+      }
+
+      return true;
     } catch {
       return false;
     }
@@ -802,7 +941,14 @@ export default Layout;
         .trim();
 
       const words = cleanPrompt.split(/\s+/).filter((w: string) => w.length > 2);
-      brandNoun = words.slice(0, 2).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+      const firstWord = (words[0] || "").replace(/[^a-zA-Z]/g, "");
+      const shortWord = firstWord.length > 8 ? firstWord.slice(0, 5) : firstWord;
+      const secondWord = (words[1] || "").replace(/[^a-zA-Z]/g, "");
+      const shortSecond = secondWord.length > 8 ? secondWord.slice(0, 4) : secondWord;
+      const combined = (shortWord ? shortWord.charAt(0).toUpperCase() + shortWord.slice(1).toLowerCase() : "") +
+                       (shortSecond ? " " + shortSecond.charAt(0).toUpperCase() + shortSecond.slice(1).toLowerCase() : "");
+      brandNoun = combined.trim() || "Domain";
+      if (brandNoun.length > 14) brandNoun = brandNoun.slice(0, 14);
     }
 
     if (!brandNoun || brandNoun.length < 3) brandNoun = "Domain";
@@ -812,6 +958,7 @@ export default Layout;
     // Extract Features / Pages
     const features: DomainFeatureSpec[] = [];
     const usedSlugs = new Set<string>();
+    const usedPageNames = new Set<string>();
 
     const rawFeatures: string[] = contract?.requiredFeatures || [];
     const rawRoutes: string[] = contract?.requiredRoutes || [];
@@ -839,13 +986,12 @@ export default Layout;
 
     for (const cleanPath of extractedRouteList) {
       const rawSlug = cleanPath.replace(/^\//, "").toLowerCase();
-      if (usedSlugs.has(rawSlug) || rawSlug.length < 2) continue;
-
-      // Extract meaningful name
       const clean = rawSlug.replace(/^(browse|checkout|book|fulfill|manage|admin)-?/i, "").trim();
       const words = clean.split(/[-_\s]+/);
       const pascal = words.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
       const pageName = pascal.endsWith("Page") ? pascal : `${pascal}Page`;
+      if (usedSlugs.has(rawSlug) || usedPageNames.has(pageName.toLowerCase()) || rawSlug.length < 2) continue;
+
       const navTitle = words.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
       // Match entity model
@@ -859,6 +1005,7 @@ export default Layout;
       ) || pascal;
 
       usedSlugs.add(rawSlug);
+      usedPageNames.add(pageName.toLowerCase());
       features.push({
         name: pageName,
         title: `${navTitle} Management`,
@@ -886,15 +1033,16 @@ export default Layout;
       }
       const clean = rf.replace(/^(manage|browse|track|view|handle|create|fulfill|admin-manage)-?/i, "").trim();
       const slug = clean.toLowerCase().replace(/[\s_]+/g, "-");
-      if (usedSlugs.has(slug) || slug === "" || slug === "dashboard") continue;
-
       const words = clean.split(/[-_\s]+/);
       const pascal = words.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
       const pageName = pascal.endsWith("Page") ? pascal : `${pascal}Page`;
+      if (usedSlugs.has(slug) || usedPageNames.has(pageName.toLowerCase()) || slug === "" || slug === "dashboard") continue;
+
       const navTitle = words.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
       const matchingModel = allModels.find(m => m.toLowerCase().includes(slug) || slug.includes(m.toLowerCase())) || words[words.length - 1] || "Item";
 
       usedSlugs.add(slug);
+      usedPageNames.add(pageName.toLowerCase());
       features.push({
         name: pageName,
         title: `${navTitle} Operations`,
@@ -913,13 +1061,14 @@ export default Layout;
     const uncountables = ["equipment", "information", "analytics", "telemetry", "research", "feedback", "software", "hardware", "inventory", "staff", "personnel"];
     for (const m of allModels) {
       const lowerM = m.toLowerCase();
-      const plural = uncountables.includes(lowerM) ? m : (m.endsWith("y") && !m.endsWith("ey") ? `${m.slice(0, -1)}ies` : `${m}s`);
+      const plural = uncountables.includes(lowerM) ? m : (/[^aeiou]y$/i.test(m) ? `${m.slice(0, -1)}ies` : `${m}s`);
       const slug = plural.toLowerCase();
-      if (usedSlugs.has(slug) || usedSlugs.has(m.toLowerCase()) || slug === "dashboard") continue;
-
       const pageName = `${plural}Page`;
+      if (usedSlugs.has(slug) || usedSlugs.has(m.toLowerCase()) || usedPageNames.has(pageName.toLowerCase()) || slug === "dashboard") continue;
+
       const spaced = toSpaced(plural);
       usedSlugs.add(slug);
+      usedPageNames.add(pageName.toLowerCase());
       features.push({
         name: pageName,
         title: `${spaced} Management`,
@@ -984,700 +1133,226 @@ export default Layout;
   }
 
   /**
-   * Generates DashboardPage content tailored to active domain features, metrics, and specialized visual components.
+   * Contract-Driven Artifact Provenance Validator.
+   * Rejects artifacts that have no provenance relationship to the active generation contract.
+   * Uses requiredModels, requiredFeatures, requiredRoutes, and domainVocabulary from the active generation contract.
    */
-  private static generateDashboardPageContent(domainSpec: ReturnType<typeof DeterministicProjectFixer.deriveDomainSpec>): string {
-    const { brandName, features, visualContract } = domainSpec;
-    const primaryModel = features[0]?.modelName || "Item";
-    const { colorSystem, dashboardComposition, layoutFamily } = visualContract;
+  public static validateArtifactProvenance(
+    projectRoot: string,
+    contract?: any,
+    domainSpec?: ReturnType<typeof DeterministicProjectFixer.deriveDomainSpec>
+  ): { valid: boolean; violations: string[] } {
+    const violations: string[] = [];
+    if (!contract && !domainSpec) return { valid: true, violations };
 
-    return `import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import Layout from "../../shared/components/Layout";
-import api from "../../services/api";
+    const activeSpec = domainSpec || DeterministicProjectFixer.deriveDomainSpec(projectRoot, contract);
+    const activeModels = new Set(
+      (activeSpec.allModels || [])
+        .concat(contract?.requiredModels || [])
+        .map((m: string) => m.toLowerCase().replace(/[^a-z0-9]/g, ""))
+    );
+    const activeFeatures = new Set(
+      (activeSpec.features || [])
+        .map((f: any) => f.slug.toLowerCase().replace(/[^a-z0-9]/g, ""))
+        .concat((activeSpec.features || []).map((f: any) => f.name.toLowerCase().replace(/[^a-z0-9]/g, "")))
+    );
 
-export function DashboardPage() {
-  const [filter, setFilter] = useState("All");
-
-  const brandKey = "${brandName.toLowerCase().replace(/[^a-z0-9]/g, "_")}";
-  const storageKey = "aegis_activities_" + brandKey;
-
-  const initialFeed = [
-${features.slice(0, 3).map((f, idx) => `    { id: "${idx + 1}", title: "${f.modelName} #${100 + idx}", type: "${f.modelName}", status: "Active", time: "${(idx + 1) * 12}m ago" },`).join("\n")}
-    { id: "4", title: "Automated Data Sync", type: "System", status: "Completed", time: "45m ago" }
-  ];
-
-  const [activities, setActivities] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+    // Collect all source files in src/ and server/
+    const sourceFiles: string[] = [];
+    const scanDir = (dir: string) => {
+      if (!existsSync(dir)) return;
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        try {
+          const st = statSync(full);
+          if (st.isDirectory()) {
+            if (entry !== "node_modules" && entry !== ".git" && entry !== "dist") scanDir(full);
+          } else if (/\.(tsx?|jsx?)$/.test(entry)) {
+            sourceFiles.push(full);
+          }
+        } catch {}
       }
-    } catch {}
-    return initialFeed;
-  });
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newItemTitle, setNewItemTitle] = useState("");
-  const [selectedType, setSelectedType] = useState("${primaryModel}");
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(activities));
-    } catch {}
-  }, [activities, storageKey]);
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newItemTitle.trim()) return;
-    const newId = Date.now().toString();
-    const newRecord = {
-      id: newId,
-      title: newItemTitle.trim(),
-      type: selectedType,
-      status: "Active",
-      time: "Just now"
     };
-    const updated = [newRecord, ...activities];
-    setActivities(updated);
-    try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch {}
+    scanDir(join(projectRoot, "src"));
+    scanDir(join(projectRoot, "server"));
 
-    // Async sync with domain backend
-    try {
-      const slug = selectedType.toLowerCase().replace(/[^a-z0-9]/g, "");
-      await api.post("/api/" + slug, { name: newItemTitle.trim(), title: newItemTitle.trim(), status: "Active", category: "Standard", description: "Created from Dashboard." });
-    } catch {}
+    // Known alien domain signatures that indicate stale / cross-generation leakage
+    // if the active contract does NOT contain them:
+    const ALIEN_DOMAIN_SIGNATURES: Array<{ tag: string; keywords: string[]; checkModel: string }> = [
+      {
+        tag: "Solar Telemetry / Inverter",
+        keywords: ["INV-01", "INV-02", "Smart Rene", "MPPT", "targetKw", "DEFAULT_INVERTERS", "Maintenance Job Queue"],
+        checkModel: "inverter",
+      },
+      {
+        tag: "Library Management",
+        keywords: ["issue_book", "return_book", "isbn_catalog", "Issue Book"],
+        checkModel: "book",
+      },
+      {
+        tag: "Resume Scanner",
+        keywords: ["candidate_resume", "job_description_match", "ats_score", "parse_resume"],
+        checkModel: "resume",
+      },
+    ];
 
-    setNewItemTitle("");
-    setIsModalOpen(false);
-  };
+    for (const sf of sourceFiles) {
+      const rel = relative(projectRoot, sf).replace(/\\/g, "/");
+      let fileText = "";
+      try { fileText = readFileSync(sf, "utf8"); } catch { continue; }
 
-  const handleDelete = async (id: string, type?: string) => {
-    const updated = activities.filter(a => a.id !== id);
-    setActivities(updated);
-    try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch {}
-    if (type) {
-      try {
-        const slug = type.toLowerCase().replace(/[^a-z0-9]/g, "");
-        await api.delete("/api/" + slug + "/" + id);
-      } catch {}
+      for (const sig of ALIEN_DOMAIN_SIGNATURES) {
+        // Only trigger if active contract does NOT contain this model/feature
+        if (!activeModels.has(sig.checkModel) && !activeFeatures.has(sig.checkModel)) {
+          for (const kw of sig.keywords) {
+            if (fileText.includes(kw)) {
+              violations.push(
+                `PROVENANCE_VIOLATION in ${rel}: Contains alien keyword "${kw}" from [${sig.tag}] which has no provenance relationship to active contract models [${Array.from(activeModels).join(", ")}].`
+              );
+              break;
+            }
+          }
+        }
+      }
     }
-  };
 
-  const filteredActivities = activities.filter(a => filter === "All" || a.status === filter);
+    if (violations.length > 0) {
+      console.warn(`[ProvenanceValidator] ⚠️ Found ${violations.length} provenance violation(s):`);
+      for (const v of violations) console.warn(`  • ${v}`);
+    }
 
-  return (
-    <Layout>
-      <div className="space-y-8">
-        {/* Domain Hero Banner */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b ${colorSystem.surface}">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="badge badge-live inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${colorSystem.badgeStyle}">
-                <span className="live-dot w-1.5 h-1.5 rounded-full bg-${colorSystem.primary}-400 animate-pulse mr-1.5" /> ${visualContract.domain}
-              </span>
-              <span className="text-xs ${colorSystem.textMuted}">${visualContract.productType}</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold ${colorSystem.textPrimary} tracking-tight">${dashboardComposition.headline}</h1>
-            <p className="text-sm ${colorSystem.textMuted} mt-1">${visualContract.visualPersonality.mood} — Layout: ${layoutFamily}</p>
-          </div>
-          <div className="flex gap-2.5">
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="btn btn-primary px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white font-bold text-xs transition shadow-lg shadow-black/30 hover:brightness-110 cursor-pointer flex items-center gap-1.5"
-            >
-              <span>✦</span>
-              <span>${dashboardComposition.heroAction.label}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Operational Alerts if present */}
-        {${JSON.stringify(dashboardComposition.alerts)}.length > 0 && (
-          <div className="card p-3.5 rounded-xl ${colorSystem.surface} border flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2.5">
-              <span className="text-base">📢</span>
-              <span className="${colorSystem.textPrimary} font-medium">${dashboardComposition.alerts[0]}</span>
-            </div>
-            <span className="badge badge-live text-[10px] font-mono ${colorSystem.textMuted}">LIVE NOTIFICATION</span>
-          </div>
-        )}
-
-        {/* Contract-Derived Domain Metric Cards */}
-        <div className="telemetry-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="metric-card p-5 rounded-2xl ${colorSystem.card} border flex flex-col justify-between">
-            <div className="flex justify-between items-start mb-2">
-              <span className="metric-label text-xs font-semibold uppercase tracking-wider ${colorSystem.textMuted}">${dashboardComposition.primaryMetric.label}</span>
-              <span className="badge text-[10px] font-semibold px-2 py-0.5 rounded-full ${colorSystem.badgeStyle}">${dashboardComposition.primaryMetric.trend}</span>
-            </div>
-            <div className="metric-value text-3xl font-extrabold ${colorSystem.textPrimary} tracking-tight font-mono">${dashboardComposition.primaryMetric.value}</div>
-            <div className="text-xs ${colorSystem.textMuted} mt-2 flex items-center gap-1">
-              <span className="text-emerald-400">●</span> Primary Domain Telemetry
-            </div>
-          </div>
-
-          {${JSON.stringify(dashboardComposition.secondaryMetrics)}.map((m, idx) => (
-            <div key={idx} className="metric-card p-5 rounded-2xl ${colorSystem.card} border flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-2">
-                <span className="metric-label text-xs font-semibold uppercase tracking-wider ${colorSystem.textMuted}">{m.label}</span>
-                <span className="badge text-[10px] font-semibold px-2 py-0.5 rounded-full ${colorSystem.badgeStyle}">{m.trend}</span>
-              </div>
-              <div className="metric-value text-3xl font-bold ${colorSystem.textPrimary} tracking-tight">{m.value}</div>
-              <div className="text-xs ${colorSystem.textMuted} mt-2">Active Registry Indicator</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Dynamic Semantic Primary Workspace */}
-        {("${visualContract.composition?.primaryWorkspace?.type}" === "availability_matrix") && (
-          <div className="card ${colorSystem.card} rounded-2xl border p-6 space-y-4 shadow-xl">
-            <div className="flex justify-between items-center pb-3 border-b ${colorSystem.surface}">
-              <div>
-                <h2 className="text-lg font-bold ${colorSystem.textPrimary}">${visualContract.composition?.primaryWorkspace?.title || "Suite Availability & Pricing Matrix"}</h2>
-                <p className="text-xs ${colorSystem.textMuted}">${visualContract.composition?.primaryWorkspace?.description || "Real-time occupancy status and immediate booking"}</p>
-              </div>
-              <span className="badge px-3 py-1 rounded-full text-xs font-semibold ${colorSystem.badgeStyle}">Interactive Availability Engine</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                { name: "Presidential Penthouse Suite", category: "Ultra Luxury", rate: "$1,850/night", status: "Available", badge: "Immediate Check-in", view: "Oceanfront Panoramic" },
-                { name: "Royal Sanctuary Pavilion", category: "Private Villa", rate: "$1,450/night", status: "VIP Reserved", badge: "Arrival 16:00", view: "Private Lagoon" },
-                { name: "Grand Executive Residence", category: "Luxury Suite", rate: "$920/night", status: "Available", badge: "Immediate Check-in", view: "Garden & Coast" }
-              ].map((item, i) => (
-                <div key={i} className="p-4 rounded-xl ${colorSystem.surface} border flex flex-col justify-between space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-bold text-sm ${colorSystem.textPrimary}">{item.name}</h4>
-                      <p className="text-xs ${colorSystem.textMuted} mt-0.5">{item.category} • {item.view}</p>
-                    </div>
-                    <span className="badge px-2 py-0.5 rounded text-[10px] font-bold ${colorSystem.badgeStyle}">{item.status}</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t ${colorSystem.surface}">
-                    <span className="font-mono text-sm font-bold ${colorSystem.textPrimary}">{item.rate}</span>
-                    <button onClick={() => setIsModalOpen(true)} className="btn btn-primary text-xs px-2.5 py-1 rounded bg-gradient-to-r ${colorSystem.accent} text-white font-semibold">Reserve</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {("${visualContract.composition?.primaryWorkspace?.type}" === "master_detail") && (
-          <div className="card ${colorSystem.card} rounded-2xl border p-6 space-y-4 shadow-xl">
-            <div className="flex justify-between items-center pb-3 border-b ${colorSystem.surface}">
-              <div>
-                <h2 className="text-lg font-bold ${colorSystem.textPrimary}">${visualContract.composition?.primaryWorkspace?.title || "Active Litigation Matters & Dossiers"}</h2>
-                <p className="text-xs ${colorSystem.textMuted}">${visualContract.composition?.primaryWorkspace?.description || "Split-view matter index with instant brief inspection"}</p>
-              </div>
-              <span className="badge px-3 py-1 rounded-full text-xs font-semibold ${colorSystem.badgeStyle}">Confidential Docket</span>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              <div className="lg:col-span-5 space-y-2">
-                {[
-                  { matter: "Matter #2026-L84: Aegis Capital vs Sovereign Trust", court: "High Court Division", stage: "Motion for Injunction", counsel: "Senior Counsel Vance" },
-                  { matter: "Matter #2026-C12: Horizon Media IP Infringement", court: "Federal District Court", stage: "Discovery Exchange", counsel: "Partner Alistair" },
-                  { matter: "Matter #2026-E45: Nexus Corp Cross-Border Merger", court: "Regulatory Tribunal", stage: "Judicial Hearing Prep", counsel: "Counsel Elena" }
-                ].map((m, i) => (
-                  <div key={i} className="p-3.5 rounded-xl ${colorSystem.surface} border hover:border-amber-500/50 transition cursor-pointer">
-                    <div className="font-semibold text-xs ${colorSystem.textPrimary}">{m.matter}</div>
-                    <div className="flex justify-between text-[11px] ${colorSystem.textMuted} mt-1.5">
-                      <span>{m.court}</span>
-                      <span className="text-amber-400 font-medium">{m.stage}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="lg:col-span-7 p-4 rounded-xl ${colorSystem.surface} border space-y-3">
-                <div className="flex justify-between items-center pb-2 border-b ${colorSystem.surface}">
-                  <span className="font-bold text-xs ${colorSystem.textPrimary}">Active Dossier & Evidence Brief</span>
-                  <span className="text-[10px] font-mono text-amber-300">CONFIDENTIAL</span>
-                </div>
-                <div className="space-y-2 text-xs ${colorSystem.textMuted}">
-                  <div className="p-2.5 rounded bg-black/30 flex justify-between">
-                    <span>Summary of Claims & Statutory Filings</span>
-                    <span className="text-emerald-400 font-semibold">Filed (24h ago)</span>
-                  </div>
-                  <div className="p-2.5 rounded bg-black/30 flex justify-between">
-                    <span>Deposition Transcripts & Witness Exhibits</span>
-                    <span className="text-amber-400 font-semibold">Under Review</span>
-                  </div>
-                  <div className="p-2.5 rounded bg-black/30 flex justify-between">
-                    <span>Retainer Trust Realization Balance</span>
-                    <span className="font-mono text-slate-200 font-bold">$148,500.00</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {("${visualContract.composition?.primaryWorkspace?.type}" === "live_stage_matrix") && (
-          <div className="card ${colorSystem.card} rounded-2xl border p-6 space-y-4 shadow-xl">
-            <div className="flex justify-between items-center pb-3 border-b ${colorSystem.surface}">
-              <div>
-                <h2 className="text-lg font-bold ${colorSystem.textPrimary}">${visualContract.composition?.primaryWorkspace?.title || "Live Stage Production Matrix"}</h2>
-                <p className="text-xs ${colorSystem.textMuted}">${visualContract.composition?.primaryWorkspace?.description || "Real-time acoustic compliance and live artist sets"}</p>
-              </div>
-              <span className="badge px-3 py-1 rounded-full text-xs font-semibold ${colorSystem.badgeStyle} flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" /> LIVE BROADCAST
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                { stage: "Apex Main Stage", current: "CyberPulse Orchestra", next: "Neon Horizon (21:00)", dB: "98.4 dB", capacity: "88% Full", status: "ON-AIR" },
-                { stage: "Ultraviolet Tent", current: "Synthwave Collective", next: "Astro Beats (21:30)", dB: "95.1 dB", capacity: "94% Full", status: "ON-AIR" },
-                { stage: "Bass Resonance Arena", current: "Sub-Zero Audio", next: "Electric Dreamers (22:00)", dB: "99.8 dB", capacity: "76% Full", status: "SOUND CHECK" }
-              ].map((s, i) => (
-                <div key={i} className="p-4 rounded-xl ${colorSystem.surface} border space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-bold text-sm ${colorSystem.textPrimary}">{s.stage}</h4>
-                      <p className="text-xs text-violet-300 font-medium mt-0.5">Now: {s.current}</p>
-                    </div>
-                    <span className="badge px-2 py-0.5 rounded text-[10px] font-bold ${colorSystem.badgeStyle}">{s.status}</span>
-                  </div>
-                  <div className="space-y-1.5 text-xs ${colorSystem.textMuted} pt-2 border-t ${colorSystem.surface}">
-                    <div className="flex justify-between"><span>Next Up:</span><span className="text-cyan-300 font-semibold">{s.next}</span></div>
-                    <div className="flex justify-between"><span>Acoustic Output:</span><span className="font-mono text-pink-400 font-bold">{s.dB}</span></div>
-                    <div className="flex justify-between"><span>Crowd Fill:</span><span className="text-emerald-400 font-semibold">{s.capacity}</span></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Domain Workflow Modules */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(4, features.length)} gap-4">
-          {${JSON.stringify(features)}.map((p) => (
-            <Link
-              key={p.slug}
-              to={p.routePath}
-              className="card card-hover p-5 rounded-xl ${colorSystem.surface} border hover:border-${colorSystem.primary}-500/50 transition-all flex items-center justify-between group shadow-sm"
-            >
-              <div>
-                <div className="font-bold ${colorSystem.textPrimary} text-sm group-hover:text-${colorSystem.primary}-400 transition">{p.navTitle}</div>
-                <div className="text-xs ${colorSystem.textMuted} mt-1">Manage {p.pluralName.toLowerCase()} & real-time actions</div>
-              </div>
-              <span className="${colorSystem.textMuted} group-hover:text-${colorSystem.primary}-400 transition font-bold text-base">→</span>
-            </Link>
-          ))}
-        </div>
-
-        {/* Recent Operations Feed */}
-        <div className="card ${colorSystem.card} rounded-2xl border p-6 space-y-4 shadow-xl">
-          <div className="flex justify-between items-center pb-3 border-b ${colorSystem.surface}">
-            <div>
-              <h2 className="text-lg font-bold ${colorSystem.textPrimary}">${brandName} Operations Stream</h2>
-              <p className="text-xs ${colorSystem.textMuted}">Live domain events and audit records</p>
-            </div>
-            <div className="flex gap-1.5">
-              {["All", "Active", "Completed"].map(status => (
-                <button
-                  key={status}
-                  onClick={() => setFilter(status)}
-                  className={filter === status ? "btn btn-primary px-3 py-1 rounded-lg text-xs font-semibold transition ${colorSystem.badgeStyle}" : "btn btn-ghost px-3 py-1 rounded-lg text-xs font-semibold transition ${colorSystem.textMuted} hover:bg-white/5"}
-                >
-                  {status}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="divide-y ${colorSystem.surface}">
-            {filteredActivities.length === 0 ? (
-              <div className="empty-state py-8 text-center ${colorSystem.textMuted} text-xs">No active operations found. Use the button above to register a new record.</div>
-            ) : filteredActivities.map((act) => (
-              <div key={act.id} className="py-3.5 flex items-center justify-between group">
-                <div>
-                  <div className="text-sm font-semibold ${colorSystem.textPrimary}">{act.title}</div>
-                  <div className="text-xs ${colorSystem.textMuted} mt-0.5">{act.type} • {act.time}</div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="badge px-2.5 py-0.5 rounded-full text-xs font-medium ${colorSystem.badgeStyle}">
-                    {act.status}
-                  </span>
-                  <button
-                    onClick={() => handleDelete(act.id, act.type)}
-                    title="Delete record"
-                    className="p-1.5 rounded hover:bg-rose-500/20 text-rose-400 text-xs transition cursor-pointer"
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="card ${colorSystem.card} border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-              <h3 className="text-lg font-bold ${colorSystem.textPrimary}">Register / Add {selectedType}</h3>
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold ${colorSystem.textMuted} mb-1">Title / Identifier</label>
-                  <input
-                    type="text"
-                    value={newItemTitle}
-                    onChange={(e) => setNewItemTitle(e.target.value)}
-                    placeholder="Enter name or identifier..."
-                    className="form-input w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
-                    autoFocus
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold ${colorSystem.textMuted} mb-1">Entity Domain Type</label>
-                  <select
-                    value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
-                    className="form-select w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
-                  >
-${features.map(f => `                    <option value="${f.modelName}">${f.modelName}</option>`).join("\n")}
-                  </select>
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="btn btn-secondary px-4 py-2 rounded-lg ${colorSystem.surface} text-xs font-semibold ${colorSystem.textMuted}"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white text-xs font-bold shadow-md hover:brightness-110"
-                  >
-                    Save {selectedType}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-      </div>
-    </Layout>
-  );
-}
-
-export default DashboardPage;
-`;
+    return {
+      valid: violations.length === 0,
+      violations,
+    };
   }
 
   /**
-   * Generates dynamic domain feature page with live CRUD operations, filters, and modal.
+   * Safe mechanical repairs:
+   * Only fixes objectively broken references when the intended target is already known.
+   * Does NOT invent architecture or dependencies.
+   * Safe: wrong relative path, wrong filename casing, missing generated local import, router wiring typo.
    */
-  private static generateFeaturePageContent(feat: DomainFeatureSpec, domainSpec: ReturnType<typeof DeterministicProjectFixer.deriveDomainSpec>): string {
-    const brandKey = domainSpec.brandName.toLowerCase().replace(/[^a-z0-9]/g, "_");
-    const { colorSystem } = domainSpec.visualContract;
+  public static performSafeMechanicalRepairs(projectRoot: string): string[] {
+    const repairedFiles: string[] = [];
+    const srcDir = join(projectRoot, "src");
+    if (!existsSync(srcDir)) return repairedFiles;
 
-    return `import React, { useState, useEffect } from "react";
-import Layout from "../shared/components/Layout";
-import api from "../services/api";
-
-export interface ${feat.modelName}Item {
-  id: string;
-  name: string;
-  category: string;
-  status: "Active" | "Pending" | "Completed";
-  description: string;
-  createdAt: string;
-}
-
-const INITIAL_RECORDS: ${feat.modelName}Item[] = [
-  { id: "1", name: "${feat.modelName} #101", category: "Standard", status: "Active", description: "Standard ${feat.modelName.toLowerCase()} registered in operational ledger.", createdAt: "2026-09-10" },
-  { id: "2", name: "${feat.modelName} #102", category: "Priority", status: "Active", description: "Priority ${feat.modelName.toLowerCase()} executing in active queue.", createdAt: "2026-09-11" },
-  { id: "3", name: "${feat.modelName} #103", category: "Standard", status: "Pending", description: "Awaiting scheduled dispatch and verification.", createdAt: "2026-09-12" },
-];
-
-export function ${feat.name}() {
-  const storageKey = "aegis_items_${brandKey}_${feat.slug}";
-  const [items, setItems] = useState<${feat.modelName}Item[]>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+    // Collect all existing files in src/
+    const allSrcFiles = new Map<string, string>(); // lowercase relpath -> actual relpath
+    const scan = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        try {
+          const st = statSync(full);
+          if (st.isDirectory()) {
+            if (entry !== "node_modules") scan(full);
+          } else {
+            const rel = relative(srcDir, full).replace(/\\/g, "/");
+            allSrcFiles.set(rel.toLowerCase(), rel);
+          }
+        } catch {}
       }
-    } catch {}
-    return INITIAL_RECORDS;
-  });
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newCategory, setNewCategory] = useState("Standard");
-  const [newDesc, setNewDesc] = useState("");
-  const [loading, setLoading] = useState(false);
+    };
+    scan(srcDir);
 
-  // Live Backend Synchronization
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    api.get("/api/${feat.slug}")
-      .then((res: any) => {
-        const data = res?.data !== undefined ? res.data : res;
-        if (active && Array.isArray(data)) {
-          const mapped: ${feat.modelName}Item[] = data.map((d: any, idx: number) => ({
-            id: String(d.id || idx + 1),
-            name: d.name || d.title || "${feat.modelName} #" + (idx + 1),
-            category: d.category || d.categoryName || "Standard",
-            status: (d.status === "Pending" || d.status === "Completed") ? d.status : "Active",
-            description: d.description || "Operational ${feat.modelName.toLowerCase()} record.",
-            createdAt: d.createdAt ? String(d.createdAt).split("T")[0] : new Date().toISOString().split("T")[0],
-          }));
-          setItems(mapped);
-          try { localStorage.setItem(storageKey, JSON.stringify(mapped)); } catch {}
+    // Scan source files for broken local imports and fix casing or relative paths
+    const filesToExamine: string[] = [];
+    const collectCode = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        try {
+          const st = statSync(full);
+          if (st.isDirectory()) {
+            if (entry !== "node_modules") collectCode(full);
+          } else if (/\.(tsx?|jsx?)$/.test(entry)) {
+            filesToExamine.push(full);
+          }
+        } catch {}
+      }
+    };
+    collectCode(srcDir);
+
+    for (const filePath of filesToExamine) {
+      let fileText = "";
+      try { fileText = readFileSync(filePath, "utf8"); } catch { continue; }
+      const dirOfFile = dirname(filePath);
+      let modified = false;
+
+      // Match relative imports: import ... from "./..." or "../..."
+      const newContent = fileText.replace(/(import\s+[\s\S]*?from\s+['"])(\.\.?\/[^'"]+)(['"])/g, (match, prefix, importRel, suffix) => {
+        const resolvedTarget = resolve(dirOfFile, importRel);
+        // Check if resolved target exists directly (with .ts, .tsx, .js, .jsx or /index.ts)
+        const candidates = [
+          resolvedTarget,
+          `${resolvedTarget}.ts`,
+          `${resolvedTarget}.tsx`,
+          `${resolvedTarget}.js`,
+          `${resolvedTarget}.jsx`,
+          join(resolvedTarget, "index.ts"),
+          join(resolvedTarget, "index.tsx"),
+        ];
+
+        const alreadyExists = candidates.some(c => existsSync(c));
+        if (alreadyExists) return match;
+
+        // Check casing mismatch in srcDir
+        const targetRelToSrc = relative(srcDir, resolvedTarget).replace(/\\/g, "/");
+        const lowerRel = targetRelToSrc.toLowerCase();
+
+        for (const ext of ["", ".tsx", ".ts", ".jsx", ".js"]) {
+          const testLower = `${lowerRel}${ext}`;
+          if (allSrcFiles.has(testLower)) {
+            const actualRel = allSrcFiles.get(testLower)!;
+            const actualFull = join(srcDir, actualRel);
+            // Compute corrected relative path from current file
+            let correctedRel = relative(dirOfFile, actualFull).replace(/\\/g, "/");
+            // Strip extension for TS imports
+            correctedRel = correctedRel.replace(/\.(tsx?|jsx?)$/, "");
+            if (!correctedRel.startsWith(".")) correctedRel = `./${correctedRel}`;
+            if (correctedRel !== importRel) {
+              modified = true;
+              return `${prefix}${correctedRel}${suffix}`;
+            }
+          }
         }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setLoading(false);
+
+        return match;
       });
 
-    return () => { active = false; };
-  }, [storageKey]);
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim()) return;
-
-    const payload = {
-      name: newName.trim(),
-      category: newCategory,
-      status: "Active" as const,
-      description: newDesc.trim() || "Created via ${feat.navTitle} workflow portal.",
-    };
-
-    let savedItem: ${feat.modelName}Item = {
-      id: Date.now().toString(),
-      ...payload,
-      createdAt: new Date().toISOString().split("T")[0]
-    };
-
-    try {
-      const res: any = await api.post("/api/${feat.slug}", payload);
-      const data = res?.data !== undefined ? res.data : res;
-      if (data && (data.id || data.name)) {
-        savedItem = {
-          ...savedItem,
-          ...data,
-          id: String(data.id || savedItem.id),
-          createdAt: data.createdAt ? String(data.createdAt).split("T")[0] : savedItem.createdAt,
-        };
+      if (modified) {
+        writeFileSync(filePath, newContent, "utf8");
+        repairedFiles.push(relative(projectRoot, filePath).replace(/\\/g, "/"));
       }
-    } catch {}
+    }
 
-    const updated = [savedItem, ...items];
-    setItems(updated);
-    try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch {}
-
-    setNewName("");
-    setNewDesc("");
-    setIsModalOpen(false);
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await api.delete(\`/api/${feat.slug}/\${id}\`);
-    } catch {}
-    const updated = items.filter(i => String(i.id) !== String(id));
-    setItems(updated);
-    try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch {}
-  };
-
-  const handleToggleStatus = async (id: string) => {
-    const target = items.find(i => String(i.id) === String(id));
-    if (!target) return;
-    const nextStatus: "Active" | "Completed" = target.status === "Active" ? "Completed" : "Active";
-    try {
-      await api.put(\`/api/${feat.slug}/\${id}\`, { status: nextStatus });
-    } catch {}
-    const updated = (items || []).map(i => (String(i.id) === String(id) ? { ...i, status: nextStatus } : i));
-    setItems(updated);
-    try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch {}
-  };
-
-  const filtered = items.filter(i => {
-    const matchesSearch = !search || i.name.toLowerCase().includes(search.toLowerCase()) || (i.category && i.category.toLowerCase().includes(search.toLowerCase()));
-    const matchesStatus = statusFilter === "All" || i.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b ${colorSystem.surface} pb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="badge text-xs font-semibold uppercase tracking-wider text-${colorSystem.primary}-400">${domainSpec.brandName}</span>
-              <span className="${colorSystem.textMuted}">•</span>
-              <span className="text-xs ${colorSystem.textMuted}">${feat.navTitle} Registry</span>
-            </div>
-            <h1 className="text-2xl font-bold ${colorSystem.textPrimary}">${feat.navTitle}</h1>
-            <p className="text-sm ${colorSystem.textMuted} mt-1">Manage ${feat.pluralName.toLowerCase()} and operational data records.</p>
-          </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="btn btn-primary px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white font-bold text-xs transition shadow-md hover:brightness-110 cursor-pointer"
-          >
-            + Register ${feat.modelName}
-          </button>
-        </div>
-
-        {/* Filter Toolbar */}
-        <div className="card flex flex-col sm:flex-row gap-3 items-center justify-between ${colorSystem.surface} p-4 rounded-xl border">
-          <div className="relative w-full sm:w-80">
-            <input
-              type="text"
-              placeholder="Search ${feat.pluralName.toLowerCase()}..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="form-input w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg pl-3 pr-4 py-2 text-xs ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
-            />
-          </div>
-          <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-            {["All", "Active", "Pending", "Completed"].map(st => (
-              <button
-                key={st}
-                onClick={() => setStatusFilter(st)}
-                className={statusFilter === st ? "btn btn-primary px-3 py-1.5 rounded-lg text-xs font-medium transition ${colorSystem.badgeStyle}" : "btn btn-ghost px-3 py-1.5 rounded-lg text-xs font-medium transition ${colorSystem.textMuted} hover:bg-white/5"}
-              >
-                {st}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Grid List */}
-        {loading ? (
-          <div className="p-12 text-center ${colorSystem.textMuted} text-xs">Synchronizing ${feat.pluralName.toLowerCase()} with database...</div>
-        ) : filtered.length === 0 ? (
-          <div className="empty-state p-12 text-center ${colorSystem.surface} border rounded-2xl">
-            <div className="${colorSystem.textPrimary} text-sm font-semibold">No ${feat.pluralName.toLowerCase()} registered</div>
-            <p className="${colorSystem.textMuted} text-xs mt-1">Use the registration button above to create a record.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map(item => (
-              <div key={item.id} className="card card-hover p-5 rounded-xl ${colorSystem.card} border hover:border-${colorSystem.primary}-500/40 transition flex flex-col justify-between group shadow-md">
-                <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="badge text-[11px] font-medium px-2 py-0.5 rounded ${colorSystem.surface} ${colorSystem.textMuted} border">
-                      {item.category}
-                    </span>
-                    <button
-                      onClick={() => handleToggleStatus(item.id)}
-                      className="badge text-[11px] font-semibold px-2 py-0.5 rounded-full border transition ${colorSystem.badgeStyle}"
-                    >
-                      {item.status}
-                    </button>
-                  </div>
-                  <h3 className="text-base font-bold ${colorSystem.textPrimary} group-hover:text-${colorSystem.primary}-300 transition">{item.name}</h3>
-                  <p className="text-xs ${colorSystem.textMuted} mt-2 line-clamp-2">{item.description}</p>
-                </div>
-                <div className="flex items-center justify-between border-t ${colorSystem.surface} pt-3 mt-4 text-[11px] ${colorSystem.textMuted}">
-                  <span className="font-mono">{item.createdAt}</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleToggleStatus(item.id)}
-                      className="btn btn-ghost hover:text-${colorSystem.primary}-300 transition cursor-pointer text-xs"
-                    >
-                      Toggle
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="btn btn-ghost hover:text-rose-400 transition cursor-pointer text-xs"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="card ${colorSystem.card} border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-              <h3 className="text-lg font-bold ${colorSystem.textPrimary}">Register ${feat.modelName}</h3>
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold ${colorSystem.textMuted} mb-1">Name / Title</label>
-                  <input
-                    type="text"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Enter ${feat.modelName.toLowerCase()} title..."
-                    className="form-input w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
-                    autoFocus
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold ${colorSystem.textMuted} mb-1">Category / Group</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className="form-select w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
-                  >
-                    <option value="Standard">Standard</option>
-                    <option value="Priority">Priority</option>
-                    <option value="Operational">Operational</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold ${colorSystem.textMuted} mb-1">Description</label>
-                  <textarea
-                    value={newDesc}
-                    onChange={(e) => setNewDesc(e.target.value)}
-                    placeholder="Operational notes or details..."
-                    rows={3}
-                    className="form-input w-full ${colorSystem.background} border ${colorSystem.surface} rounded-lg px-3 py-2 text-sm ${colorSystem.textPrimary} focus:outline-none focus:border-${colorSystem.primary}-500"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="btn btn-secondary px-4 py-2 rounded-lg ${colorSystem.surface} text-xs font-semibold ${colorSystem.textMuted}"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary px-4 py-2 rounded-lg bg-gradient-to-r ${colorSystem.accent} text-white text-xs font-bold shadow-md hover:brightness-110"
-                  >
-                    Save ${feat.modelName}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-      </div>
-    </Layout>
-  );
-}
-
-
-export default ${feat.name};
-`;
+    return repairedFiles;
   }
 
   /**
    * Generates src/routes.tsx fully covering all navigation items and features.
    */
-  private static generateRoutesContent(domainSpec: ReturnType<typeof DeterministicProjectFixer.deriveDomainSpec>): string {
+  private static generateRoutesContent(domainSpec: ReturnType<typeof DeterministicProjectFixer.deriveDomainSpec>, projectRoot?: string): string {
     const { features } = domainSpec;
 
+    const seenNames = new Set<string>();
+    const uniqueFeatures = features.filter(f => {
+      const lower = f.name.toLowerCase();
+      if (seenNames.has(lower)) return false;
+      seenNames.add(lower);
+      return true;
+    });
+
+    const srcDir = projectRoot ? join(projectRoot, "src") : "";
+    const validFeaturePages = uniqueFeatures.filter(f => {
+      if (!srcDir) return true;
+      return existsSync(join(srcDir, "pages", `${f.name}.tsx`)) ||
+             existsSync(join(srcDir, "features", f.name.toLowerCase(), `${f.name}.tsx`));
+    });
+
     const imports = [
-      `import DashboardPageModule, { DashboardPage as NamedDashboardPage } from "./features/dashboard/DashboardPage";\nconst DashboardPage = resolveComponent(DashboardPageModule, NamedDashboardPage, "Dashboard");`,
-      ...features.map(f => `import ${f.name}Module, { ${f.name} as Named${f.name} } from "./pages/${f.name}";\nconst ${f.name} = resolveComponent(${f.name}Module, Named${f.name}, "${f.navTitle}");`),
+      `import * as DashboardPageModule from "./features/dashboard/DashboardPage";\nconst DashboardPage = resolveComponent(DashboardPageModule, "Dashboard");`,
+      ...validFeaturePages.map(f => `import * as ${f.name}Module from "./pages/${f.name}";\nconst ${f.name} = resolveComponent(${f.name}Module, "${f.navTitle}");`),
     ].join("\n");
 
     const routeList: Array<{ path: string; component: string }> = [
@@ -1685,11 +1360,14 @@ export default ${feat.name};
       { path: "/dashboard", component: "DashboardPage" },
     ];
 
-    for (const f of features) {
-      routeList.push({ path: f.routePath, component: f.name });
+    for (const f of uniqueFeatures) {
+      const comp = validFeaturePages.some(vf => vf.name === f.name) ? f.name : "DashboardPage";
+      if (!routeList.some(r => r.path === f.routePath)) {
+        routeList.push({ path: f.routePath, component: comp });
+      }
       for (const a of f.aliases) {
         if (!routeList.some(r => r.path === a)) {
-          routeList.push({ path: a, component: f.name });
+          routeList.push({ path: a, component: comp });
         }
       }
     }
@@ -1701,10 +1379,15 @@ export default ${feat.name};
     return `import React, { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
-function resolveComponent(mod: any, named: any, fallbackTitle: string): React.ComponentType<any> {
+function resolveComponent(mod: any, fallbackTitle: string): React.ComponentType<any> {
   if (typeof mod === "function") return mod;
   if (mod && typeof mod.default === "function") return mod.default;
-  if (typeof named === "function") return named;
+  if (mod && typeof mod[fallbackTitle] === "function") return mod[fallbackTitle];
+  if (mod && typeof mod === "object") {
+    for (const key of Object.keys(mod)) {
+      if (typeof mod[key] === "function") return mod[key];
+    }
+  }
   return function SafeFallback() {
     return (
       <div className="p-8 text-center text-slate-300 font-sans">

@@ -11,6 +11,9 @@ generated-project/
 **/generated/
 **/generated-*/
 **/generated/**
+projects/
+**/projects/
+**/projects/**
 
 # Scratch and temporary scripts
 scratch/

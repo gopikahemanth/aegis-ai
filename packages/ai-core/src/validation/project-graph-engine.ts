@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, readdirSync, statSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, unlinkSync } from "node:fs";
 import { join, extname, dirname, resolve, relative, basename } from "node:path";
 import { createHash } from "node:crypto";
 import { CanonicalFileGraph, CanonicalModuleRegistry, isFrameworkSupportFile } from "../governance/canonical-file-graph.js";
@@ -43,6 +43,9 @@ export interface ProjectGraphValidationResult {
 export class ProjectGraphEngine {
   private nodes: Map<string, ProjectGraphNode> = new Map();
   private static readonly SCAN_EXTS = new Set([".ts", ".tsx", ".js", ".jsx"]);
+
+  public createdProductImplementations: number = 0;
+  public createdRouteStubs: number = 0;
 
   public static isAtsProject(projectRoot: string): boolean {
     const contract = ArchitectureResolver.loadContract(projectRoot);
@@ -352,8 +355,12 @@ export class ProjectGraphEngine {
               ] : []),
               "src/routes.tsx",
               "src/shared/components/Card.tsx",
+              "src/shared/components/Button.tsx",
+              "src/shared/components/Navbar.tsx",
               "src/shared/components/Layout.tsx",
+              "src/design-system/components/Button.tsx",
               "src/design-system/components/GlassCard.tsx",
+              "src/components/ui.tsx",
               "src/services/api.ts",
             ].filter(relP => {
               // Domain enforcement: backend source must ONLY resolve to backend targets
@@ -443,11 +450,16 @@ export class ProjectGraphEngine {
               if (p === "..") stack.pop(); else stack.push(p);
             }
             candidateRel = stack.join("/");
-            if (!candidateRel.endsWith(".ts") && !candidateRel.endsWith(".tsx")) {
-              candidateRel = candidateRel + (relPath.startsWith("server/") ? ".ts" : ".tsx");
+            // Strip any trailing .js, .jsx, .ts, .tsx before resolving to canonical extension
+            candidateRel = candidateRel.replace(/\.(js|jsx|ts|tsx)$/, "");
+            candidateRel = candidateRel + (relPath.startsWith("server/") ? ".ts" : ".tsx");
+            const candidateAbs = join(projectRoot, candidateRel);
+            if (existsSync(candidateAbs)) {
+              foundTarget = candidateAbs;
+            } else {
+              const created = this.ensureCanonicalFileOnDisk(candidateRel, projectRoot);
+              if (created) foundTarget = created;
             }
-            const created = this.ensureCanonicalFileOnDisk(candidateRel, projectRoot);
-            if (created) foundTarget = created;
           }
         }
 
@@ -519,27 +531,89 @@ export class ProjectGraphEngine {
 
     // ── Pass 5: Unauthorized Files ───────────────────────────────────────────
     // Files that exist on disk but are not in the canonical graph are suspect
-    for (const relPath of this.nodes.keys()) {
+    for (const relPath of Array.from(this.nodes.keys())) {
       if (isFrameworkSupportFile(relPath)) continue;
       if (!CanonicalFileGraph.isAuthorized(relPath)) {
         const dupCheck = CanonicalFileGraph.detectSemanticDuplicate(relPath);
-        if (dupCheck.isDuplicate) {
-          issues.push({
-            type: "UNAUTHORIZED_FILE",
-            sourceFile: relPath,
-            message: `UNAUTHORIZED_FILE: "${relPath}" is a semantic duplicate. ${dupCheck.reason}`,
-            suggestedFix: `Use canonical path: ${dupCheck.canonicalFile?.canonicalPath}`,
-            severity: "ERROR",
-          });
-          console.error(`[ProjectGraph] ❌ UNAUTHORIZED_FILE: ${relPath} → should be ${dupCheck.canonicalFile?.canonicalPath}`);
+        if (dupCheck.isDuplicate && dupCheck.canonicalFile) {
+          // It is an unauthorized duplicate alias file (e.g. lib/prisma.ts)
+          // Authoritative Canonical Path Ownership:
+          // 1. Purge the unauthorized duplicate file from disk
+          const fullPath = join(projectRoot, relPath);
+          let purged = false;
+          try {
+            if (existsSync(fullPath)) {
+              unlinkSync(fullPath);
+              purged = true;
+              console.log(`[ProjectGraph] 🛡️ Purged unauthorized alias file: ${relPath} (canonical: ${dupCheck.canonicalFile.canonicalPath})`);
+            }
+          } catch (e: any) {
+            console.warn(`[ProjectGraph] Failed to delete unauthorized alias file "${relPath}": ${e.message}`);
+          }
+
+          // 2. Redirect any importers in the project to the canonical path
+          const canonicalFullPath = join(projectRoot, dupCheck.canonicalFile.canonicalPath);
+          const stem = relPath.replace(/\.(ts|tsx|js|jsx)$/, "");
+          for (const otherRel of this.nodes.keys()) {
+            if (otherRel === relPath) continue;
+            const otherFullPath = join(projectRoot, otherRel);
+            if (!existsSync(otherFullPath)) continue;
+            try {
+              const content = readFileSync(otherFullPath, "utf8");
+              let correctRel = relative(dirname(otherFullPath), canonicalFullPath).replace(/\\/g, "/");
+              if (!correctRel.startsWith(".")) correctRel = "./" + correctRel;
+              correctRel = correctRel.replace(/\.(ts|tsx|js|jsx)$/, "");
+
+              const aliasPatterns = [stem, `../../${stem}`, `../${stem}`, `./${stem}`, `@/${stem}`];
+              let updated = content;
+              for (const alias of aliasPatterns) {
+                updated = updated.replace(
+                  new RegExp(`(['"])${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(['"])`, 'g'),
+                  `$1${correctRel}$2`
+                );
+              }
+              if (updated !== content) {
+                writeFileSync(otherFullPath, updated, "utf8");
+                console.log(`[ProjectGraph] Redirected importer "${otherRel}" from "${relPath}" to canonical "${dupCheck.canonicalFile.canonicalPath}"`);
+              }
+            } catch {}
+          }
+
+          this.nodes.delete(relPath);
+
+          if (!purged && existsSync(fullPath)) {
+            issues.push({
+              type: "UNAUTHORIZED_FILE",
+              sourceFile: relPath,
+              message: `UNAUTHORIZED_FILE: "${relPath}" is a semantic duplicate and could not be purged. ${dupCheck.reason}`,
+              suggestedFix: `Use canonical path: ${dupCheck.canonicalFile?.canonicalPath}`,
+              severity: "ERROR",
+            });
+            console.error(`[ProjectGraph] ❌ UNAUTHORIZED_FILE: ${relPath} → should be ${dupCheck.canonicalFile?.canonicalPath}`);
+          } else {
+            issues.push({
+              type: "ORPHAN_FILE",
+              sourceFile: relPath,
+              message: `ORPHAN_FILE: Unauthorized duplicate "${relPath}" purged and redirected to canonical "${dupCheck.canonicalFile.canonicalPath}".`,
+              severity: "WARNING",
+            });
+          }
         } else {
+          // Fail-closed: remove unprovenanced/unauthorized orphan files from the project
+          const fullPath = join(projectRoot, relPath);
+          try {
+            if (existsSync(fullPath)) {
+              unlinkSync(fullPath);
+              console.log(`[ProjectGraph] 🛡️ Purged unauthorized orphan file: ${relPath}`);
+            }
+          } catch {}
+          this.nodes.delete(relPath);
           issues.push({
             type: "ORPHAN_FILE",
             sourceFile: relPath,
-            message: `ORPHAN_FILE: "${relPath}" is not in the canonical graph and not imported by any canonical file.`,
+            message: `ORPHAN_FILE: "${relPath}" is not in the canonical graph and has been purged.`,
             severity: "WARNING",
           });
-          console.warn(`[ProjectGraph] ⚠️ ORPHAN_FILE: ${relPath}`);
         }
       }
     }
@@ -563,6 +637,13 @@ export class ProjectGraphEngine {
     if (!existsSync(aegisDir)) mkdirSync(aegisDir, { recursive: true });
     writeFileSync(join(aegisDir, "project-graph.json"), graphData, "utf8");
     writeFileSync(join(aegisDir, "project-graph.hash"), hash, "utf8");
+
+    // Phase 3: ProjectGraphEngine must be discovery only. Product implementations must equal 0.
+    if (this.createdProductImplementations !== 0) {
+      throw new Error(
+        `GENERATION_REJECTED_GRAPH_PRODUCT_SYNTHESIS: ProjectGraphEngine synthesized ${this.createdProductImplementations} product implementations. Only Coder may create product UI and behavior.`
+      );
+    }
 
     return {
       valid: remainingIssues.filter(i => i.severity === "ERROR").length === 0,
@@ -588,6 +669,8 @@ export class ProjectGraphEngine {
   }
 
   private ensureCanonicalFileOnDisk(relPath: string, projectRoot: string): string | null {
+    // Strip any redundant double extensions (e.g. .js.tsx, .js.ts, .jsx.tsx)
+    relPath = relPath.replace(/\.(js|jsx|ts|tsx)(\.(ts|tsx))?$/, "") + (relPath.startsWith("server/") ? ".ts" : (relPath.endsWith(".css") ? ".css" : ".tsx"));
     const absPath = join(projectRoot, relPath);
     if (existsSync(absPath)) return absPath;
 
@@ -610,6 +693,7 @@ export class ProjectGraphEngine {
 
     mkdirSync(dirname(absPath), { recursive: true });
 
+    // 1. Prisma Client Singleton
     if (relPath === "server/lib/prisma.ts" || relPath.endsWith("server/lib/prisma.ts")) {
       writeFileSync(absPath, `import { PrismaClient } from "@prisma/client";
 export const prisma = (globalThis as any).prisma || new PrismaClient();
@@ -619,639 +703,35 @@ export default prisma;
       return absPath;
     }
 
-    if (!isAts && relPath.startsWith("server/routes/") && (relPath.endsWith(".ts") || relPath.endsWith(".js"))) {
-      writeFileSync(absPath, `import { Router } from "express";
-export const router = Router();
-router.get("/", (req, res) => res.json({ success: true, data: [] }));
-router.get("/:id", (req, res) => res.json({ success: true, data: {} }));
-router.post("/", (req, res) => res.json({ success: true, data: { id: "new" } }));
-export default router;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
+    // 1b. Server Entry
+    if (relPath === "server/index.ts" || relPath.endsWith("/server/index.ts")) {
+      writeFileSync(absPath, `import express from "express";
+import cors from "cors";
 
-    if (!isAts && relPath.startsWith("server/controllers/") && (relPath.endsWith(".ts") || relPath.endsWith(".js"))) {
-      writeFileSync(absPath, `import { Request, Response } from "express";
-export const getAll = async (req: Request, res: Response) => res.json({ success: true, data: [] });
-export const getById = async (req: Request, res: Response) => res.json({ success: true, data: {} });
-export const create = async (req: Request, res: Response) => res.json({ success: true, data: { id: "new" } });
-export const update = async (req: Request, res: Response) => res.json({ success: true, data: { id: req.params.id } });
-export const remove = async (req: Request, res: Response) => res.json({ success: true, data: { id: req.params.id } });
-export default { getAll, getById, create, update, remove };
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-    if (isAts && (relPath === "server/services/keyword.service.ts" || relPath.endsWith("keyword.service.ts"))) {
-      writeFileSync(absPath, `export interface KeywordAnalysisResult {
-  matchScore: number;
-  matchedKeywords: string[];
-  missingKeywords: string[];
-  suggestions: string[];
-}
-
-export function analyzeKeywords(resumeText: string = "", jobDescriptionText: string = ""): KeywordAnalysisResult {
-  const tokenize = (text: string) => text.toLowerCase().match(/\\b[a-z]{3,}\\b/g) || [];
-  const resumeTokens = new Set(tokenize(resumeText));
-  const jobTokens = new Set(tokenize(jobDescriptionText));
-
-  const matchedKeywords: string[] = [];
-  const missingKeywords: string[] = [];
-
-  jobTokens.forEach(token => {
-    if (resumeTokens.has(token)) matchedKeywords.push(token);
-    else missingKeywords.push(token);
-  });
-
-  const total = jobTokens.size || 1;
-  const matchScore = Math.min(100, Math.round((matchedKeywords.length / total) * 100));
-  const suggestions = missingKeywords.slice(0, 5).map(kw => \`Consider adding experience with '\${kw}' to your resume.\`);
-
-  return { matchScore, matchedKeywords, missingKeywords, suggestions };
-}
-
-export function analyzeResume(resumeText: string = "", jobDescriptionText: string = ""): KeywordAnalysisResult {
-  return analyzeKeywords(resumeText, jobDescriptionText);
-}
-
-export function extractKeywords(text: string = ""): string[] {
-  return Array.from(new Set(text.toLowerCase().match(/\\b[a-z]{4,}\\b/g) || []));
-}
-
-export default { analyzeKeywords, analyzeResume, extractKeywords };
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath === "src/routes.tsx" || relPath === "src/routes.ts") {
-      writeFileSync(absPath, `import React, { Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import DashboardPage from "./features/dashboard/DashboardPage";
-
-export function AppRoutes() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">Loading...</div>}>
-      <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
-  );
-}
-
-export const routes = AppRoutes;
-export default AppRoutes;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath === "src/services/api.ts") {
-      if (isAts) {
-        writeFileSync(absPath, `import axios from "axios";
-import { getToken } from "../lib/auth";
-import type { AnalysisResult, ScanHistoryItem } from "../types/index";
-
-export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001",
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "healthy", timestamp: new Date().toISOString() });
 });
 
-apiClient.interceptors.request.use(config => {
-  const token = getToken();
-  if (token && config.headers) config.headers.Authorization = \`Bearer \${token}\`;
-  return config;
-});
-
-export async function analyzeScan(data: any): Promise<AnalysisResult> {
-  const res = await apiClient.post<AnalysisResult>("/api/scans/analyze", data);
-  return res.data;
-}
-
-export async function getScanHistory(): Promise<ScanHistoryItem[]> {
-  const res = await apiClient.get<ScanHistoryItem[]>("/api/scans/history");
-  return res.data;
-}
-
-export async function login(email: string, password: string): Promise<{ token: string }> {
-  const res = await apiClient.post<{ token: string }>("/api/auth/login", { email, password });
-  return res.data;
-}
-
-export async function register(email: string, password: string): Promise<{ token: string }> {
-  const res = await apiClient.post<{ token: string }>("/api/auth/register", { email, password });
-  return res.data;
-}
-
-export async function uploadResume(formData: FormData): Promise<{ text: string }> {
-  const res = await apiClient.post<{ text: string }>("/api/scans/upload", formData);
-  return res.data;
-}
-
-export const api = Object.assign(apiClient, {
-  analyzeScan,
-  getScanHistory,
-  login,
-  register,
-  uploadResume,
-});
-
-export const resumeApi = api;
-export const scanApi = api;
-
-export default api;
-`, "utf8");
-      } else {
-        writeFileSync(absPath, `import axios from "axios";
-import { getToken } from "../lib/auth";
-
-export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001",
-});
-
-apiClient.interceptors.request.use(config => {
-  const token = getToken();
-  if (token && config.headers) {
-    config.headers.Authorization = \`Bearer \${token}\`;
-  }
-  return config;
-});
-
-export const api = apiClient;
-export default apiClient;
-`, "utf8");
-      }
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath.includes("auth.store") || relPath.includes("authStore") || relPath === "src/lib/auth.ts" || relPath.endsWith("auth.ts")) {
-      writeFileSync(absPath, `export function getToken(): string | null {
-  return "demo_session_token";
-}
-
-export function setToken(token: string): void {
-  if (typeof window !== "undefined") localStorage.setItem("aegis_token", token);
-}
-
-export function removeToken(): void {
-  if (typeof window !== "undefined") localStorage.removeItem("aegis_token");
-}
-
-export function isAuthenticated(): boolean {
-  return true;
-}
-
-export function useAuthStore() {
-  return {
-    user: { id: "demo-user-id", email: "demo@aegis.dev", name: "Demo User" },
-    isAuthenticated: true,
-    token: "demo_session_token",
-    login: () => {},
-    logout: () => {},
-  };
-}
-
-export const auth_store = useAuthStore;
-export const authStore = useAuthStore;
-export const useAuth = useAuthStore;
-
-export default { getToken, setToken, removeToken, isAuthenticated, useAuthStore, auth_store, authStore, useAuth };
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath.includes("constants") || relPath.endsWith("constants.ts") || relPath.endsWith("constants.tsx")) {
-      writeFileSync(absPath, `export const API_URL = "/api";
-export const BASE_URL = "/api";
-export default API_URL;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath === "src/types/index.ts" || relPath.endsWith("src/types/index.ts")) {
-      if (isAts) {
-        writeFileSync(absPath, `export interface User {
-  id: string;
-  email: string;
-  createdAt?: string;
-}
-
-export interface AnalysisResult {
-  id?: string;
-  userId?: string;
-  resumeId?: string;
-  jobDescriptionId?: string;
-  matchScore: number;
-  matchedKeywords: string[];
-  missingKeywords: string[];
-  suggestions: string[];
-  createdAt?: string;
-}
-
-export interface ScanHistoryItem {
-  id: string;
-  filename?: string;
-  matchScore: number;
-  createdAt: string;
-}
-
-export default {};
-`, "utf8");
-      } else {
-        writeFileSync(absPath, `export interface User {
-  id: string;
-  email: string;
-  createdAt?: string;
-}
-
-export default {};
-`, "utf8");
-      }
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (isAts && (relPath === "server/controllers/scan.controller.ts" || relPath.endsWith("scan.controller.ts"))) {
-      writeFileSync(absPath, `import { Request, Response } from "express";
-import prisma from "../lib/prisma";
-import { analyzeKeywords, analyzeResume as keywordAnalyzeResume } from "../services/keyword.service";
-
-export async function uploadResume(req: Request, res: Response) {
-  res.json({ success: true, text: "Extracted resume content" });
-}
-
-export async function analyzeScan(req: Request, res: Response) {
-  return analyzeResume(req, res);
-}
-
-export async function analyzeResume(req: Request, res: Response) {
-  const { resumeText = "", jobDescriptionText = "" } = req.body || {};
-  const analysis = keywordAnalyzeResume ? keywordAnalyzeResume(resumeText, jobDescriptionText) : analyzeKeywords(resumeText, jobDescriptionText);
-
-  try {
-    const analysisResult = await prisma.analysisResult.create({
-      data: {
-        userId: (req as any).user?.id || "guest-user",
-        resumeId: "resume-1",
-        jobDescriptionId: "job-1",
-        matchScore: analysis.matchScore,
-        matchedKeywords: analysis.matchedKeywords,
-        missingKeywords: analysis.missingKeywords,
-        suggestions: analysis.suggestions,
-      },
-    });
-    res.json(analysisResult);
-  } catch (err: any) {
-    res.json({
-      id: "scan-" + Date.now(),
-      ...analysis,
-      createdAt: new Date().toISOString(),
-    });
-  }
-}
-
-export async function getScanHistory(req: Request, res: Response) {
-  try {
-    const history = await prisma.analysisResult.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-    res.json(history);
-  } catch {
-    res.json([]);
-  }
-}
-
-export default { analyzeScan, uploadResume, analyzeResume, getScanHistory };
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (isAts && (relPath === "server/middleware/upload.middleware.ts" || relPath.endsWith("upload.middleware.ts"))) {
-      writeFileSync(absPath, `import multer from "multer";
-import { Request } from "express";
-
-export interface MulterRequest extends Request {
-  file?: Express.Multer.File;
-}
-
-const storage = multer.memoryStorage();
-export const uploadMiddleware = multer({ storage });
-export default uploadMiddleware;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath === "src/shared/components/Layout.tsx") {
-      try {
-        DeterministicProjectFixer.fixProject(projectRoot);
-        if (existsSync(absPath)) return absPath;
-      } catch {}
-      writeFileSync(absPath, `import React from "react";
-import { Link } from "react-router-dom";
-
-export interface LayoutProps {
-  children?: React.ReactNode;
-}
-
-export default function Layout({ children }: LayoutProps) {
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-3.5 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white">⬡</div>
-          <span className="font-bold text-lg text-white">Application Portal</span>
-        </Link>
-      </header>
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6">{children}</main>
-    </div>
-  );
-}
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath === "server/middleware/errorHandler.ts" || relPath.endsWith("errorHandler.ts")) {
-      writeFileSync(absPath, `import { Request, Response, NextFunction } from "express";
-
-export function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
-  console.error("[Express Server Error]:", err);
-  res.status(err.status || 500).json({
-    success: false,
-    error: err.message || "Internal Server Error",
+const PORT = process.env.PORT || 3001;
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(\`Server listening on port \${PORT}\`);
   });
 }
 
-export default errorHandler;
+export default app;
 `, "utf8");
       console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
       return absPath;
     }
 
-    if (relPath === "src/design-system/components/Progress.tsx" || relPath.endsWith("Progress.tsx")) {
-      writeFileSync(absPath, `import React from "react";
-
-export interface ProgressProps {
-  value?: number;
-  className?: string;
-}
-
-export function Progress({ value = 0, className = "" }: ProgressProps) {
-  return (
-    <div className={\`w-full bg-slate-800 rounded-full h-2.5 overflow-hidden \${className}\`}>
-      <div
-        className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2.5 rounded-full transition-all duration-300"
-        style={{ width: \`\${Math.min(100, Math.max(0, value))}%\` }}
-      />
-    </div>
-  );
-}
-
-export default Progress;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (isAts && (relPath === "src/services/scan.service.ts" || relPath.endsWith("scan.service.ts"))) {
-      writeFileSync(absPath, `import apiClient from "./api";
-
-export async function uploadResume(file: File) {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await apiClient.post("/api/scans/upload", formData);
-  return res.data;
-}
-
-export async function analyzeResume(resumeText: string, jobDescriptionText: string) {
-  const res = await apiClient.post("/api/scans/analyze", { resumeText, jobDescriptionText });
-  return res.data;
-}
-
-export default { uploadResume, analyzeResume };
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (isAts && (relPath === "src/features/history/services/historyService.ts" || relPath.endsWith("historyService.ts"))) {
-      writeFileSync(absPath, `import apiClient from "../../../services/api";
-
-export async function getHistory() {
-  const res = await apiClient.get("/api/scans/history");
-  return res.data;
-}
-
-export default { getHistory };
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath === "src/design-system/components/CircularProgress.tsx" || relPath.endsWith("CircularProgress.tsx")) {
-      writeFileSync(absPath, `import React from "react";
-
-export function CircularProgress({ value = 0, size = 40 }: { value?: number; size?: number }) {
-  return (
-    <div className="relative inline-flex items-center justify-center font-bold text-cyan-400" style={{ width: size, height: size }}>
-      <span>{Math.round(value)}%</span>
-    </div>
-  );
-}
-
-export default CircularProgress;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath === "src/design-system/components/LoadingSpinner.tsx" || relPath.endsWith("LoadingSpinner.tsx")) {
-      writeFileSync(absPath, `import React from "react";
-
-export function LoadingSpinner({ size = "md" }: { size?: string }) {
-  return (
-    <div className="flex items-center justify-center p-4">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400" />
-    </div>
-  );
-}
-
-export const Spinner = LoadingSpinner;
-export default LoadingSpinner;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath === "src/shared/components/Navbar.tsx" || relPath.endsWith("Navbar.tsx")) {
-      writeFileSync(absPath, `import React from "react";
-
-export function Navbar() {
-  return (
-    <nav className="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-4 flex items-center justify-between">
-      <div className="flex items-center gap-6">
-        <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-          AEGIS AI
-        </span>
-      </div>
-    </nav>
-  );
-}
-
-export default Navbar;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (isAts && (relPath === "server/services/pdf.service.ts" || relPath.endsWith("pdf.service.ts"))) {
-      writeFileSync(absPath, `export async function parsePdf(buffer: Buffer): Promise<string> {
-  try {
-    const pdfParse = require("pdf-parse");
-    const data = await pdfParse(buffer);
-    return data.text || "";
-  } catch {
-    return buffer.toString("utf8");
-  }
-}
-
-export default { parsePdf };
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath === "src/shared/components/Card.tsx" || relPath.endsWith("Card.tsx")) {
-      writeFileSync(absPath, `import React from "react";
-
-export interface CardProps {
-  children?: React.ReactNode;
-  className?: string;
-  title?: string;
-  value?: string | number;
-  [key: string]: any;
-}
-
-export function Card(props: CardProps) {
-  const { children, className = "", title, value, ...rest } = props || {};
-  return (
-    <div className={\`bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur \${className}\`} {...rest}>
-      {title && <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{title}</h3>}
-      {value && <p className="text-2xl font-bold text-slate-100 mt-1">{value}</p>}
-      {children}
-    </div>
-  );
-}
-
-export const GlassCard = Card;
-export default Card;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (isAts && (relPath === "src/features/dashboard/components/MatchDashboard.tsx" || relPath.endsWith("MatchDashboard.tsx"))) {
-      writeFileSync(absPath, `import React from "react";
-
-export interface MatchDashboardProps {
-  score?: number;
-  matchedCount?: number;
-  missingCount?: number;
-  matchedKeywords?: string[];
-  missingKeywords?: string[];
-  suggestions?: string[];
-}
-
-interface MetricCardProps {
-  label: string;
-  value: string | number;
-  color?: string;
-}
-
-function MetricCard({ label, value, color = "text-cyan-400" }: MetricCardProps) {
-  return (
-    <div className="p-6 bg-slate-900/60 border border-slate-800 rounded-xl shadow-xl backdrop-blur">
-      <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">{label}</p>
-      <h3 className={\`text-4xl font-bold mt-2 \${color}\`}>{value}</h3>
-    </div>
-  );
-}
-
-export function MatchDashboard({
-  score = 0,
-  matchedCount = 0,
-  missingCount = 0,
-  matchedKeywords = [],
-  missingKeywords = [],
-  suggestions = [],
-}: MatchDashboardProps) {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <MetricCard label="Match Score" value={\`\${score}%\`} color="text-indigo-400" />
-        <MetricCard label="Matched Keywords" value={matchedCount || matchedKeywords.length} color="text-emerald-400" />
-        <MetricCard label="Missing Skills" value={missingCount || missingKeywords.length} color="text-amber-400" />
-      </div>
-      {matchedKeywords.length > 0 && (
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">Matched Keywords</h3>
-          <div className="flex flex-wrap gap-2">
-            {matchedKeywords.map((kw) => (
-              <span key={kw} className="px-3 py-1 bg-emerald-900/40 text-emerald-300 text-xs rounded-full border border-emerald-800">{kw}</span>
-            ))}
-          </div>
-        </div>
-      )}
-      {missingKeywords.length > 0 && (
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">Missing Keywords</h3>
-          <div className="flex flex-wrap gap-2">
-            {missingKeywords.map((kw) => (
-              <span key={kw} className="px-3 py-1 bg-amber-900/40 text-amber-300 text-xs rounded-full border border-amber-800">{kw}</span>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default MatchDashboard;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (isAts && (relPath === "server/routes/scan.routes.ts" || relPath.endsWith("scan.routes.ts"))) {
-      writeFileSync(absPath, `import { Router } from "express";
-import { uploadResume, analyzeResume, getScanHistory } from "../controllers/scan.controller";
-import { authMiddleware } from "../middleware/auth.middleware";
-import multer from "multer";
-
-const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
-
-router.post("/upload", authMiddleware, upload.single("file"), uploadResume);
-router.post("/analyze", authMiddleware, analyzeResume);
-router.get("/history", authMiddleware, getScanHistory);
-
-export default router;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
+    // 2. Auth Routes
     if (relPath === "server/routes/auth.routes.ts" || relPath.endsWith("auth.routes.ts")) {
-      writeFileSync(absPath, `import { Router } from "express";
-import { Request, Response } from "express";
+      writeFileSync(absPath, `import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma";
@@ -1291,6 +771,7 @@ export default router;
       return absPath;
     }
 
+    // 3. Auth Middleware
     if (relPath === "server/middleware/auth.middleware.ts" || relPath.endsWith("auth.middleware.ts")) {
       writeFileSync(absPath, `import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
@@ -1315,542 +796,602 @@ export default authMiddleware;
       return absPath;
     }
 
-    if (relPath === "src/features/parser/hooks/useResumeUpload.ts" || relPath.endsWith("useResumeUpload.ts") || relPath.endsWith("useAnalysis.ts")) {
-      writeFileSync(absPath, `import { useState } from "react";
-import { uploadResume, analyzeScan } from "../../../services/api";
+    // 4. Error Handler Middleware
+    if (relPath === "server/middleware/errorHandler.ts" || relPath.endsWith("errorHandler.ts")) {
+      writeFileSync(absPath, `import { Request, Response, NextFunction } from "express";
 
-export function useResumeUpload() {
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleUpload = async (file: File, jobDescription: string = "") => {
-    setLoading(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await uploadResume(formData);
-      const analysis = await analyzeScan({ resumeText: res.text || "", jobDescriptionText: jobDescription });
-      setResult(analysis);
-      return analysis;
-    } catch (err: any) {
-      setError(err.message || "Upload failed");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { loading, result, error, handleUpload, uploadResume: handleUpload };
-}
-
-export const useAnalysis = useResumeUpload;
-export default useResumeUpload;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath === "src/features/dashboard/hooks/useDashboardData.ts" || relPath.endsWith("useDashboardData.ts")) {
-      writeFileSync(absPath, `import { useQuery } from "@tanstack/react-query";
-import { getScanHistory } from "../../../services/api";
-
-export function useDashboardData() {
-  return useQuery({
-    queryKey: ["dashboardData"],
-    queryFn: async () => {
-      try {
-        const scans = await getScanHistory();
-        const avgMatchScore = scans.length > 0 ? Math.round(scans.reduce((a, b) => a + (b.matchScore || 0), 0) / scans.length) : 0;
-        return { scans, avgMatchScore, totalScans: scans.length };
-      } catch {
-        return { scans: [], avgMatchScore: 0, totalScans: 0 };
-      }
-    },
+export function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
+  console.error("[Express Server Error]:", err);
+  res.status(err.status || 500).json({
+    success: false,
+    error: err.message || "Internal Server Error",
   });
 }
 
-export const useAnalysisData = useDashboardData;
-export default useDashboardData;
+export default errorHandler;
 `, "utf8");
       console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
       return absPath;
     }
 
-    if (relPath === "src/features/auth/LoginPage.tsx" || relPath.endsWith("LoginPage.tsx")) {
-      writeFileSync(absPath, `import React, { useState } from "react";
-import { loginUser } from "../../services/api";
-
-export function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await loginUser({ email, password });
-      window.location.href = "/dashboard";
-    } catch (err: any) {
-      setError(err.message || "Login failed");
+    // 5. Generic Structural Backend Routes (non-generative skeleton for graph closure)
+    if (!isAts && relPath.startsWith("server/routes/") && (relPath.endsWith(".ts") || relPath.endsWith(".js"))) {
+      writeFileSync(absPath, `import { Router } from "express";
+export const router = Router();
+router.get("/", (req, res) => res.json({ success: true, data: [] }));
+router.get("/:id", (req, res) => res.json({ success: true, data: {} }));
+router.post("/", (req, res) => res.json({ success: true, data: { id: "new" } }));
+export default router;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created structural backend route on disk: ${relPath}`);
+      return absPath;
     }
+
+    // 6. Generic Structural Backend Controllers (non-generative skeleton)
+    if (!isAts && relPath.startsWith("server/controllers/") && (relPath.endsWith(".ts") || relPath.endsWith(".js"))) {
+      writeFileSync(absPath, `import { Request, Response } from "express";
+export const getAll = async (req: Request, res: Response) => res.json({ success: true, data: [] });
+export const getById = async (req: Request, res: Response) => res.json({ success: true, data: {} });
+export const create = async (req: Request, res: Response) => res.json({ success: true, data: { id: "new" } });
+export const update = async (req: Request, res: Response) => res.json({ success: true, data: { id: req.params.id } });
+export const remove = async (req: Request, res: Response) => res.json({ success: true, data: { id: req.params.id } });
+export default { getAll, getById, create, update, remove };
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created structural backend controller on disk: ${relPath}`);
+      return absPath;
+    }
+
+    // 7. Routes Router File
+    if (relPath === "src/routes.tsx" || relPath === "src/routes.ts") {
+      writeFileSync(absPath, `import React, { Suspense } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import DashboardPage from "./features/dashboard/DashboardPage";
+
+export function AppRoutes() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">Loading...</div>}>
+      <Routes>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
+export const routes = AppRoutes;
+export default AppRoutes;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
+      return absPath;
+    }
+
+    // 8. API Client
+    if (relPath === "src/services/api.ts") {
+      writeFileSync(absPath, `import axios from "axios";
+import { getToken } from "../lib/auth";
+
+export const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001",
+});
+
+apiClient.interceptors.request.use(config => {
+  const token = getToken();
+  if (token && config.headers) {
+    config.headers.Authorization = \`Bearer \${token}\`;
+  }
+  return config;
+});
+
+export const api = apiClient;
+export default apiClient;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
+      return absPath;
+    }
+
+    // 9. Auth Library / Store
+    if (relPath.includes("auth.store") || relPath.includes("authStore") || relPath === "src/lib/auth.ts" || relPath.endsWith("auth.ts")) {
+      writeFileSync(absPath, `export function getToken(): string | null {
+  if (typeof window !== "undefined") return localStorage.getItem("aegis_token") || "demo_session_token";
+  return "demo_session_token";
+}
+
+export function setToken(token: string): void {
+  if (typeof window !== "undefined") localStorage.setItem("aegis_token", token);
+}
+
+export function removeToken(): void {
+  if (typeof window !== "undefined") localStorage.removeItem("aegis_token");
+}
+
+export function isAuthenticated(): boolean {
+  return true;
+}
+
+export function useAuthStore() {
+  return {
+    user: { id: "demo-user-id", email: "demo@aegis.dev", name: "Demo User" },
+    isAuthenticated: true,
+    token: getToken(),
+    login: () => {},
+    logout: () => {},
   };
-
-  return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-8 rounded-xl max-w-md w-full">
-        <h2 className="text-2xl font-bold text-slate-100 mb-6">Sign In</h2>
-        {error && <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded mb-4 text-sm">{error}</div>}
-        <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="w-full mb-4 px-4 py-2 bg-slate-800 border border-slate-700 text-slate-100 rounded focus:outline-none focus:border-indigo-500" />
-        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full mb-6 px-4 py-2 bg-slate-800 border border-slate-700 text-slate-100 rounded focus:outline-none focus:border-indigo-500" />
-        <button type="submit" className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded transition-colors">Sign In</button>
-      </form>
-    </div>
-  );
 }
 
-export default LoginPage;
+export const auth_store = useAuthStore;
+export const authStore = useAuthStore;
+export const useAuth = useAuthStore;
+
+export default { getToken, setToken, removeToken, isAuthenticated, useAuthStore, auth_store, authStore, useAuth };
 `, "utf8");
       console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
       return absPath;
     }
 
-    if (relPath === "src/features/auth/RegisterPage.tsx" || relPath.endsWith("RegisterPage.tsx")) {
-      writeFileSync(absPath, `import React, { useState } from "react";
-import { registerUser } from "../../services/api";
-
-export function RegisterPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await registerUser({ email, password });
-      window.location.href = "/login";
-    } catch (err: any) {
-      setError(err.message || "Registration failed");
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-8 rounded-xl max-w-md w-full">
-        <h2 className="text-2xl font-bold text-slate-100 mb-6">Create Account</h2>
-        {error && <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded mb-4 text-sm">{error}</div>}
-        <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="w-full mb-4 px-4 py-2 bg-slate-800 border border-slate-700 text-slate-100 rounded focus:outline-none focus:border-indigo-500" />
-        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full mb-6 px-4 py-2 bg-slate-800 border border-slate-700 text-slate-100 rounded focus:outline-none focus:border-indigo-500" />
-        <button type="submit" className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded transition-colors">Register</button>
-      </form>
-    </div>
-  );
-}
-
-export default RegisterPage;
+    // 10. Constants
+    if (relPath.includes("constants") || relPath.endsWith("constants.ts") || relPath.endsWith("constants.tsx")) {
+      writeFileSync(absPath, `export const API_URL = "/api";
+export const BASE_URL = "/api";
+export default API_URL;
 `, "utf8");
       console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
       return absPath;
     }
 
-    if (relPath === "src/features/dashboard/components/MatchDashboard.tsx" || relPath.endsWith("MatchDashboard.tsx")) {
-      writeFileSync(absPath, `import React from "react";
-import { ScoreGauge } from "./ScoreGauge";
-import { Badge } from "../../../shared/components/Badge";
-
-export interface MatchDashboardProps {
-  score?: number;
-  matchScore?: number;
-  matchedKeywords?: string[];
-  missingKeywords?: string[];
-  missingSkills?: string[];
-  suggestions?: string[];
-}
-
-export function MatchDashboard(props: MatchDashboardProps) {
-  const score = props.matchScore ?? props.score ?? 82;
-  const matches = props.matchedKeywords || [];
-  const missing = props.missingKeywords || props.missingSkills || [];
-
-  return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
-      <h2 className="text-xl font-bold text-slate-100 mb-6">Match Overview</h2>
-      <div className="flex flex-col md:flex-row items-center gap-8">
-        <ScoreGauge score={score} />
-        <div className="flex-1 w-full space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-emerald-400 mb-2">Matched Keywords ({matches.length})</h3>
-            <div className="flex flex-wrap gap-2">
-              {matches.map((kw, i) => <Badge key={i} variant="success">{kw}</Badge>)}
-            </div>
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-rose-400 mb-2">Missing Skills ({missing.length})</h3>
-            <div className="flex flex-wrap gap-2">
-              {missing.map((kw, i) => <Badge key={i} variant="danger">{kw}</Badge>)}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default MatchDashboard;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    if (relPath.includes("types") || relPath.endsWith("types.ts") || relPath.endsWith("types.tsx")) {
-      writeFileSync(absPath, `export interface User { id: string; email: string; name?: string; role?: string; }
-export interface Property { id: string; code?: string; title: string; address: string; city?: string; price: number; bedrooms?: number; bathrooms?: number; sqft?: number; type?: string; status?: string; agent?: string; description?: string; [key: string]: any; }
-export interface Tour { id: string; tourCode?: string; propertyTitle?: string; customerName: string; date: string; time: string; agent?: string; status?: string; [key: string]: any; }
-export interface Agent { id: string; name: string; email: string; phone?: string; activeListings?: number; closedDeals?: number; rating?: number; [key: string]: any; }
-export interface Customer { id: string; name: string; email: string; phone?: string; [key: string]: any; }
-export interface Bicycle { id: string; code?: string; model: string; type?: string; status?: string; hourlyRate?: number; [key: string]: any; }
-export interface Rental { id: string; bicycleId?: string; customerName: string; startDate: string; endDate?: string; status?: string; [key: string]: any; }
-export interface Pet { id: string; name: string; species?: string; breed?: string; age?: number; ownerName?: string; [key: string]: any; }
-export interface Appointment { id: string; date: string; time: string; status?: string; clientName?: string; petName?: string; service?: string; [key: string]: any; }
-export interface Product { id: string; name: string; sku?: string; price: number; stock?: number; category?: string; [key: string]: any; }
-export interface Order { id: string; orderNumber?: string; total: number; status?: string; customer?: string; [key: string]: any; }
-export interface Course { id: string; title: string; description?: string; instructor?: string; category?: string; [key: string]: any; }
-export interface Lesson { id: string; title: string; duration?: string; courseId?: string; [key: string]: any; }
-export interface Quiz { id: string; title: string; questionsCount?: number; [key: string]: any; }
-export interface Task { id: string; title: string; status?: string; priority?: string; [key: string]: any; }
-export interface Session { id: string; title?: string; clientName?: string; date?: string; price?: number; status?: string; [key: string]: any; }
-export interface Plot { id: string; code?: string; size?: string; gardener?: string; status?: string; [key: string]: any; }
-export interface ApiResponse<T = any> { data?: T; error?: string; status?: number; }
-export type { Property as PropertyType, Tour as TourType, Agent as AgentType };
-export default ApiResponse;
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    // Rich Feature Table / List View Synthesis
-    if (relPath.toLowerCase().includes("table") || relPath.toLowerCase().includes("list") || relPath.toLowerCase().includes("grid")) {
-      const compName = relPath.split(/[\/\\]/).pop()?.replace(/\.(tsx|ts)$/, "") || "DataTable";
-      writeFileSync(absPath, `import React, { useState } from "react";
-
-export function ${compName}(props: any) {
-  const [filter, setFilter] = useState("All");
-  const [search, setSearch] = useState("");
-  const [items, setItems] = useState([
-    { id: "1", title: "Standard Service Intake #101", customer: "Sarah Jenkins", category: "Priority", status: "Active", price: 145.00 },
-    { id: "2", title: "Full Routine Checkup #102", customer: "David Kim", category: "Standard", status: "Scheduled", price: 85.00 },
-    { id: "3", title: "Express Package Session #103", customer: "Alex Rivera", category: "Express", status: "Completed", price: 210.00 },
-    { id: "4", title: "Maintenance & Care #104", customer: "Emma Watson", category: "Priority", status: "Active", price: 120.00 },
-  ]);
-
-  const filtered = items.filter(item => {
-    const matchFilter = filter === "All" || item.status === filter;
-    const matchSearch = item.title.toLowerCase().includes(search.toLowerCase()) || item.customer.toLowerCase().includes(search.toLowerCase());
-    return matchFilter && matchSearch;
-  });
-
-  return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl text-slate-100">
-      <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-950/60">
-        <div className="flex gap-2">
-          {["All", "Active", "Scheduled", "Completed"].map(tab => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={\`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer \${filter === tab ? "bg-cyan-500 text-slate-950" : "bg-slate-800 text-slate-400 hover:text-white"}\`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-        <input
-          type="text"
-          placeholder="Search records..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="px-3 py-1.5 text-xs rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-        />
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs text-slate-300">
-          <thead className="bg-slate-950/80 uppercase font-semibold text-slate-400 border-b border-slate-800">
-            <tr>
-              <th className="py-3 px-4">Record / Customer</th>
-              <th className="py-3 px-4">Tier</th>
-              <th className="py-3 px-4">Status</th>
-              <th className="py-3 px-4">Price</th>
-              <th className="py-3 px-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/60">
-            {filtered.map(item => (
-              <tr key={item.id} className="hover:bg-slate-800/40 transition">
-                <td className="py-3 px-4">
-                  <div className="font-semibold text-white">{item.title}</div>
-                  <div className="text-[11px] text-slate-500">{item.customer}</div>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[11px]">{item.category}</span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className={\`px-2 py-0.5 rounded-full text-[11px] font-medium \${item.status === "Active" ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" : item.status === "Completed" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-amber-500/20 text-amber-400 border border-amber-500/30"}\`}>
-                    {item.status}
-                  </span>
-                </td>
-                <td className="py-3 px-4 font-bold text-white">\${item.price.toFixed(2)}</td>
-                <td className="py-3 px-4 text-right">
-                  <button className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 text-[11px] font-medium transition cursor-pointer">
-                    Manage
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-export default ${compName};
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    // Rich Feature Dashboard Synthesis
-    if (relPath.toLowerCase().includes("dashboard") || relPath.endsWith("DashboardPage.tsx")) {
-      const compName = relPath.split(/[\/\\]/).pop()?.replace(/\.(tsx|ts)$/, "") || "Dashboard";
-      writeFileSync(absPath, `import React, { useState } from "react";
-
-export function ${compName}(props: any) {
-  const [items, setItems] = useState([
-    { id: "1", title: "Primary Metric Item", value: 1250, status: "Active" },
-    { id: "2", title: "Secondary Metric Item", value: 840, status: "Completed" },
-  ]);
-
-  return (
-    <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl text-slate-100 shadow-xl space-y-4">
-      <h2 className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-        \${compName\} Overview
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {items.map(item => (
-          <div key={item.id} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex justify-between items-center">
-            <div>
-              <p className="font-semibold text-slate-100">{item.title}</p>
-              <p className="text-xs text-slate-400">Status: {item.status}</p>
-            </div>
-            <span className="text-lg font-bold text-emerald-400">\${item.value\}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export const DashboardStats = ${compName};
-export const SpendingChart = ${compName};
-export default ${compName};
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
-      return absPath;
-    }
-
-    // Universal Store / Hook Auto-Synthesis Fallback
-    if (relPath.includes("store") || relPath.includes("Store") || relPath.includes("/hooks/use") || relPath.startsWith("src/hooks/")) {
-      const storeName = relPath.split("/").pop()?.replace(/\.(tsx|ts)$/, "") || "store";
-      const formattedName = storeName.replace(/[^a-zA-Z0-9_$]/g, "_");
-      const hookName = formattedName.startsWith("use") ? formattedName : `use${formattedName.charAt(0).toUpperCase() + formattedName.slice(1)}`;
-      writeFileSync(absPath, `import { create } from "zustand";
-
-export interface GenericItem {
+    // 11. Minimal Types
+    if (relPath === "src/types/index.ts" || relPath.endsWith("src/types/index.ts")) {
+      writeFileSync(absPath, `export interface User {
   id: string;
-  name?: string;
+  email: string;
+  createdAt?: string;
+}
+
+export interface ApiResponse<T = any> {
+  data?: T;
+  error?: string;
+  status?: number;
+}
+
+export default {};
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
+      return absPath;
+    }
+
+    // 12. Design System / UI Primitives
+    if (relPath === "src/shared/components/Layout.tsx") {
+      writeFileSync(absPath, `import React from "react";
+import { Link } from "react-router-dom";
+
+export interface LayoutProps {
+  children?: React.ReactNode;
+}
+
+export default function Layout({ children }: LayoutProps) {
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-3.5 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white">⬡</div>
+          <span className="font-bold text-lg text-white">Application</span>
+        </Link>
+      </header>
+      <main className="flex-1 max-w-7xl w-full mx-auto p-6">{children}</main>
+    </div>
+  );
+}
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
+      return absPath;
+    }
+
+    if (relPath === "src/shared/components/Navbar.tsx" || relPath.endsWith("Navbar.tsx")) {
+      writeFileSync(absPath, `import React from "react";
+
+export function Navbar() {
+  return (
+    <nav className="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-4 flex items-center justify-between">
+      <div className="flex items-center gap-6">
+        <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+          Studio
+        </span>
+      </div>
+    </nav>
+  );
+}
+
+export default Navbar;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
+      return absPath;
+    }
+
+    if (relPath === "src/shared/components/Card.tsx" || relPath.endsWith("Card.tsx")) {
+      writeFileSync(absPath, `import React from "react";
+
+export interface CardProps {
+  children?: React.ReactNode;
+  className?: string;
   title?: string;
-  status?: string;
-  priority?: string;
-  category?: string;
+  value?: string | number;
   [key: string]: any;
 }
 
-export interface BoardStoreState {
-  data: any[];
-  items: any[];
-  tasks: any[];
-  orders: any[];
-  isLoading: boolean;
-  error: any | null;
-  columns: string[];
-  filterPriority: string;
-  filterStatus: string;
-  addItem: (item: any) => void;
-  updateItem: (id: string, updates: any) => void;
-  deleteItem: (id: string) => void;
-  updateStatus: (id: string, status: string) => void;
-  updateOrderStatus: (id: string, status: string) => void;
-  addTask: (task: any) => void;
-  updateTaskStatus: (id: string, status: string) => void;
-  moveTask: (id: string, status: string) => void;
-  deleteTask: (id: string) => void;
-  setFilterPriority: (priority: string) => void;
-  setFilterStatus: (status: string) => void;
-  fetchData: () => Promise<any>;
-}
-
-export const ${hookName} = create<BoardStoreState>((set) => ({
-  data: [],
-  items: [],
-  tasks: [],
-  orders: [],
-  isLoading: false,
-  error: null,
-  columns: ["Pending", "In Progress", "Completed"],
-  filterPriority: "ALL",
-  filterStatus: "ALL",
-  addItem: (item: any) => set((state: any) => ({
-    data: [...(state.data || []), { ...item, id: item.id || Date.now().toString() }],
-    items: [...(state.items || []), { ...item, id: item.id || Date.now().toString() }],
-    orders: [...(state.orders || []), { ...item, id: item.id || Date.now().toString() }]
-  })),
-  updateItem: (id: string, updates: any) => set((state: any) => ({
-    data: (state.data || []).map((i: any) => i.id === id ? { ...i, ...updates } : i),
-    items: (state.items || []).map((i: any) => i.id === id ? { ...i, ...updates } : i),
-    orders: (state.orders || []).map((i: any) => i.id === id ? { ...i, ...updates } : i)
-  })),
-  deleteItem: (id: string) => set((state: any) => ({
-    data: (state.data || []).filter((i: any) => i.id !== id),
-    items: (state.items || []).filter((i: any) => i.id !== id),
-    orders: (state.orders || []).filter((i: any) => i.id !== id)
-  })),
-  updateStatus: (id: string, status: string) => set((state: any) => ({
-    data: (state.data || []).map((i: any) => i.id === id ? { ...i, status } : i),
-    orders: (state.orders || []).map((i: any) => i.id === id ? { ...i, status } : i),
-    tasks: (state.tasks || []).map((i: any) => i.id === id ? { ...i, status } : i)
-  })),
-  updateOrderStatus: (id: string, status: string) => set((state: any) => ({
-    orders: (state.orders || []).map((i: any) => i.id === id ? { ...i, status } : i),
-    data: (state.data || []).map((i: any) => i.id === id ? { ...i, status } : i)
-  })),
-  addTask: (task: any) => set((state: any) => ({
-    tasks: [...(state.tasks || []), { ...task, id: task.id || Date.now().toString() }]
-  })),
-  updateTaskStatus: (id: string, status: string) => set((state: any) => ({
-    tasks: (state.tasks || []).map((t: any) => t.id === id ? { ...t, status } : t)
-  })),
-  moveTask: (id: string, status: string) => set((state: any) => ({
-    tasks: (state.tasks || []).map((t: any) => t.id === id ? { ...t, status } : t)
-  })),
-  deleteTask: (id: string) => set((state: any) => ({
-    tasks: (state.tasks || []).filter((t: any) => t.id !== id)
-  })),
-  setFilterPriority: (filterPriority: string) => set({ filterPriority }),
-  setFilterStatus: (filterStatus: string) => set({ filterStatus }),
-  fetchData: async () => []
-}));
-
-export const useUpdateOrderStatus = () => ({
-  mutate: (args: any) => (${hookName}.getState() as any).updateOrderStatus?.(args?.id, args?.status),
-  mutateAsync: async (args: any) => (${hookName}.getState() as any).updateOrderStatus?.(args?.id, args?.status),
-  isLoading: false,
-  isPending: false
-});
-
-export const useOrderStatus = useUpdateOrderStatus;
-export const useCreateOrder = () => ({
-  mutate: (item: any) => (${hookName}.getState() as any).addItem?.(item),
-  mutateAsync: async (item: any) => (${hookName}.getState() as any).addItem?.(item),
-  isLoading: false,
-  isPending: false
-});
-
-export const useBoardStore = ${hookName};
-export const useTaskStore = ${hookName};
-export const boardStore = ${hookName};
-export const taskStore = ${hookName};
-export default ${hookName};
-`, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Auto-created missing canonical store on disk: ${relPath}`);
-      return absPath;
-    }
-
-    // Universal Component Auto-Synthesis Fallback
-    if (relPath.startsWith("src/") && (relPath.endsWith(".tsx") || relPath.endsWith(".ts"))) {
-      if (relPath.includes("util") || relPath.includes("cn")) {
-        writeFileSync(absPath, `import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: any[]) {
-  return twMerge(clsx(inputs));
-}
-export const utils = { cn };
-export default cn;
-`, "utf8");
-        console.log(`[ProjectGraphEngine] ✓ Auto-created missing canonical utility on disk: ${relPath}`);
-        return absPath;
-      }
-
-      const compName = relPath.split("/").pop()?.replace(/\.(tsx|ts)$/, "") || "Component";
-      const formattedName = compName.replace(/[^a-zA-Z0-9_$]/g, "_");
-
-      if (relPath.toLowerCase().includes("service")) {
-        writeFileSync(absPath, `export const ${formattedName} = {
-  async getAll() { return []; },
-  async getById(id: any) { return { id }; },
-  async create(data: any) { return { id: Date.now(), ...data }; },
-  async update(id: any, data: any) { return { id, ...data }; },
-  async delete(id: any) { return true; },
-  async getDashboardStats() {
-    return {
-      totalStudents: 0,
-      activeStudents: 0,
-      inactiveStudents: 0,
-      byDepartment: {},
-      bySemester: {},
-      recentStudents: [],
-    };
-  },
-  async getStudents(filters?: any) { return []; },
-};
-export default ${formattedName};
-`, "utf8");
-        console.log(`[ProjectGraphEngine] ✓ Auto-created missing canonical service on disk: ${relPath}`);
-        return absPath;
-      }
-
-      writeFileSync(absPath, `import React from "react";
-
-export function ${formattedName}(props: any) {
+export function Card(props: CardProps) {
+  const { children, className = "", title, value, ...rest } = props || {};
   return (
-    <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg text-slate-200">
-      {props?.children || props?.title || "${formattedName}"}
+    <div className={\`bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur \${className}\`} {...rest}>
+      {title && <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{title}</h3>}
+      {value && <p className="text-2xl font-bold text-slate-100 mt-1">{value}</p>}
+      {children}
     </div>
   );
 }
 
-export default ${formattedName};
+export const GlassCard = Card;
+export default Card;
 `, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Auto-created missing canonical component on disk: ${relPath}`);
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
       return absPath;
     }
 
-    // Universal Backend Route Auto-Synthesis Fallback
+    if (relPath.includes("Progress") && relPath.endsWith(".tsx")) {
+      writeFileSync(absPath, `import React from "react";
+
+export function Progress({ value = 0, className = "" }: { value?: number; className?: string }) {
+  return (
+    <div className={\`w-full bg-slate-800 rounded-full h-2.5 overflow-hidden \${className}\`}>
+      <div className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: \`\${Math.min(100, Math.max(0, value))}%\` }} />
+    </div>
+  );
+}
+
+export default Progress;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
+      return absPath;
+    }
+
+    if (relPath.includes("LoadingSpinner") || relPath.includes("Spinner")) {
+      writeFileSync(absPath, `import React from "react";
+
+export function LoadingSpinner({ size = "md" }: { size?: string }) {
+  return (
+    <div className="flex items-center justify-center p-4">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400" />
+    </div>
+  );
+}
+
+export const Spinner = LoadingSpinner;
+export default LoadingSpinner;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
+      return absPath;
+    }
+
+    if (relPath.includes("Badge") && (relPath.endsWith(".tsx") || relPath.endsWith(".jsx"))) {
+      writeFileSync(absPath, `import React from "react";
+
+export interface BadgeProps {
+  children?: React.ReactNode;
+  variant?: "default" | "secondary" | "outline" | "success" | "warning" | "danger";
+  className?: string;
+  [key: string]: any;
+}
+
+export function Badge({ children, variant = "default", className = "", ...rest }: BadgeProps) {
+  const variantStyles = {
+    default: "bg-slate-800 text-slate-200 border-slate-700",
+    secondary: "bg-slate-700/50 text-slate-300 border-slate-600",
+    outline: "border border-slate-700 text-slate-300 bg-transparent",
+    success: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    warning: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    danger: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  }[variant] || "bg-slate-800 text-slate-200 border-slate-700";
+
+  return (
+    <span className={\`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border \${variantStyles} \${className}\`} {...rest}>
+      {children}
+    </span>
+  );
+}
+
+export default Badge;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
+      return absPath;
+    }
+
+    if (relPath.includes("Button") && (relPath.endsWith(".tsx") || relPath.endsWith(".jsx"))) {
+      writeFileSync(absPath, `import React from "react";
+
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
+  size?: "sm" | "md" | "lg";
+  children?: React.ReactNode;
+  className?: string;
+}
+
+export function Button({
+  children,
+  variant = "primary",
+  size = "md",
+  className = "",
+  type = "button",
+  ...rest
+}: ButtonProps) {
+  const baseStyles = "inline-flex items-center justify-center font-medium transition-colors focus:outline-none rounded-lg";
+  const sizeStyles = {
+    sm: "h-8 px-3 text-xs",
+    md: "h-10 px-4 text-sm",
+    lg: "h-12 px-6 text-base",
+  }[size] || "h-10 px-4 text-sm";
+  const variantStyles = {
+    primary: "bg-cyan-600 text-white hover:bg-cyan-500 shadow-sm",
+    secondary: "bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700",
+    outline: "border border-slate-700 text-slate-200 hover:bg-slate-800",
+    ghost: "text-slate-300 hover:bg-slate-800 hover:text-white",
+    danger: "bg-rose-600 text-white hover:bg-rose-500",
+  }[variant] || "bg-cyan-600 text-white hover:bg-cyan-500";
+
+  return (
+    <button type={type} className={\`\${baseStyles} \${sizeStyles} \${variantStyles} \${className}\`} {...rest}>
+      {children}
+    </button>
+  );
+}
+
+export default Button;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
+      return absPath;
+    }
+
+    if (relPath.includes("Input") && (relPath.endsWith(".tsx") || relPath.endsWith(".jsx"))) {
+      writeFileSync(absPath, `import React from "react";
+
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  error?: string;
+}
+
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(({ label, error, className = "", ...props }, ref) => {
+  return (
+    <div className="w-full">
+      {label && <label className="block text-xs font-medium text-slate-400 mb-1">{label}</label>}
+      <input
+        ref={ref}
+        className={\`w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 \${className}\`}
+        {...props}
+      />
+      {error && <p className="text-xs text-rose-400 mt-1">{error}</p>}
+    </div>
+  );
+});
+Input.displayName = "Input";
+export default Input;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical module on disk: ${relPath}`);
+      return absPath;
+    }
+
+    // 12.5 Types / Entities / Models (TypeScript interface fallback)
+    if (relPath.includes("/entities/") || relPath.includes("/types/") || relPath.includes("/models/")) {
+      const rawCompName = relPath.split(/[\/\\]/).pop()?.replace(/\.(js|jsx|ts|tsx)(\.(ts|tsx))?$/, "") || "Entity";
+      const entityName = (rawCompName.charAt(0).toUpperCase() + rawCompName.slice(1)).replace(/[^a-zA-Z0-9_$]/g, "_");
+      writeFileSync(absPath, `export interface ${entityName} {
+  id: string;
+  [key: string]: any;
+}
+export interface ${entityName}Item {
+  id: string;
+  [key: string]: any;
+}
+export default {};
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical type interface on disk: ${relPath}`);
+      return absPath;
+    }
+
+    // 12.55 Canonical UI primitives bundle: src/components/ui.tsx
+    if (relPath === "src/components/ui.tsx" || relPath.endsWith("/components/ui.tsx")) {
+      writeFileSync(absPath, `import React from "react";
+export function Card({ children, className = "", title, ...props }: any) {
+  return <div className={\`bg-slate-900 border border-slate-800 rounded-lg p-4 \${className}\`} {...props}>{title && <h3 className="text-sm font-semibold mb-2">{title}</h3>}{children}</div>;
+}
+export function Select({ value, onChange, options = [], className = "", ...props }: any) {
+  return (
+    <select value={value} onChange={onChange} className={\`bg-slate-900 border border-slate-800 rounded px-3 py-1.5 \${className}\`} {...props}>
+      {options.map((opt: any) => <option key={opt} value={opt}>{opt}</option>)}
+    </select>
+  );
+}
+export function Spinner({ className = "" }: any) {
+  return <div className={\`animate-spin rounded-full h-5 w-5 border-2 border-cyan-400 border-t-transparent \${className}\`} />;
+}
+export const LoadingSpinner = Spinner;
+export function Alert({ children, variant = "info", className = "" }: any) {
+  return <div className={\`p-3 rounded border \${variant === "danger" ? "bg-rose-950 border-rose-800 text-rose-200" : "bg-slate-900 border-slate-800"} \${className}\`}>{children}</div>;
+}
+export function Button({ children, className = "", ...props }: any) {
+  return <button className={\`px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded text-white font-medium \${className}\`} {...props}>{children}</button>;
+}
+export function Input({ className = "", ...props }: any) {
+  return <input className={\`bg-slate-900 border border-slate-800 rounded px-3 py-2 text-white \${className}\`} {...props} />;
+}
+export function Badge({ children, className = "" }: any) {
+  return <span className={\`inline-block px-2 py-0.5 text-xs rounded bg-slate-800 text-slate-300 \${className}\`}>{children}</span>;
+}
+export function Progress({ value = 0, className = "" }: any) {
+  return <div className={\`w-full bg-slate-800 rounded h-2 \${className}\`}><div className="bg-cyan-500 h-2 rounded" style={{ width: \`\${value}%\` }} /></div>;
+}
+export const ui = { Card, Select, Spinner, LoadingSpinner, Alert, Button, Input, Badge, Progress };
+export default ui;
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical UI primitives bundle on disk: ${relPath}`);
+      return absPath;
+    }
+
+    // 12.6 Shared UI Component Fallback (Generic visual primitive for graph closure)
+    if ((relPath.includes("/shared/") || relPath.includes("/components/ui/") || relPath.includes("/design-system/") || relPath.includes("/components/")) && (relPath.endsWith(".tsx") || relPath.endsWith(".jsx"))) {
+      const rawCompName = relPath.split(/[\/\\]/).pop()?.replace(/\.(js|jsx|ts|tsx)(\.(ts|tsx))?$/, "") || "Component";
+      const sanitized = (rawCompName.replace(/[^a-zA-Z0-9_$]/g, "_").replace(/^([0-9])/, "_$1")) || "Component";
+      const compName = sanitized.charAt(0).toUpperCase() + sanitized.slice(1);
+      const aliasExport = rawCompName !== compName ? `\nexport { ${compName} as ${rawCompName} };` : "";
+      writeFileSync(absPath, `import React from "react";
+
+export function ${compName}({ children, className = "", ...props }: any) {
+  return (
+    <div className={"shared-" + "${compName.toLowerCase()}" + (className ? " " + className : "")} {...props}>
+      <h3>${compName} Overview</h3>
+      {children}
+    </div>
+  );
+}${aliasExport}
+
+export default ${compName};
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created canonical shared UI component on disk: ${relPath}`);
+      return absPath;
+    }
+
+    // 12.7 Universal Hook Fallback
+    if (relPath.includes("/hooks/") && (relPath.endsWith(".ts") || relPath.endsWith(".tsx"))) {
+      const rawHookName = relPath.split(/[\/\\]/).pop()?.replace(/\.(js|jsx|ts|tsx)(\.(ts|tsx))?$/, "") || "useHook";
+      const hookName = rawHookName.startsWith("use") ? rawHookName : `use${rawHookName.charAt(0).toUpperCase() + rawHookName.slice(1)}`;
+      writeFileSync(absPath, `import { useState, useCallback } from "react";
+
+export type UniversalStoreState = {
+  data: any;
+  items: any[];
+  inverters: any[];
+  summary: Record<string, any>;
+  loading: boolean;
+  isLoading: boolean;
+  error: any | null;
+  mutate: (args?: any) => any;
+  [key: string]: any;
+};
+
+export type BoardStoreState = UniversalStoreState;
+
+const _globalStore: UniversalStoreState = {
+  data: { summary: { totalKw: 0 } },
+  items: [],
+  inverters: [],
+  summary: { totalKw: 0 },
+  loading: false,
+  isLoading: false,
+  error: null,
+  mutate: () => Promise.resolve(),
+};
+
+export function ${hookName}(...args: any[]): any {
+  const [store, setStore] = useState<UniversalStoreState>(_globalStore);
+  const mutate = useCallback(async (mutationArgs?: any) => {
+    return _globalStore.mutate(mutationArgs);
+  }, []);
+
+  const query = { isLoading: store.loading, data: store.data };
+
+  return {
+    ...store,
+    data: store.data,
+    inverters: store.inverters,
+    summary: store.summary,
+    loading: store.loading, // unified loading: query.isLoading
+    isLoading: store.loading || query.isLoading,
+    error: store.error,
+    mutate: store.mutate,
+    query,
+  };
+}
+
+${hookName}.getState = () => _globalStore;
+${hookName}.setState = (partial: Partial<UniversalStoreState>) => Object.assign(_globalStore, partial);
+
+export default ${hookName};
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created universal hook module on disk: ${relPath}`);
+      return absPath;
+    }
+
+    // 12b. API Service Resolution
+    if (relPath.includes("services/api") || relPath === "src/services/api.ts" || relPath === "src/services/api.tsx") {
+      const canonicalApiTs = join(projectRoot, "src", "services", "api.ts");
+      if (existsSync(canonicalApiTs)) {
+        writeFileSync(absPath, `export * from "./api";\nimport { api } from "./api";\nexport default api;\n`, "utf8");
+        return absPath;
+      }
+      writeFileSync(absPath, `import axios from "axios";\nexport const api = axios.create({ baseURL: "/api" });\nexport default api;\n`, "utf8");
+      return absPath;
+    }
+
+    // 13. Strictly Non-Generative Route Stub for Missing Capabilities
+    // Graph Engine CANNOT repair product meaning — only structure.
+    // Every missing page/view receives an explicit machine-detectable ROUTE_STUB_ONLY stub.
+    // createdRouteStubs is incremented; createdProductImplementations remains 0.
+    const isPageRoute = (
+      relPath.startsWith("src/pages/") ||
+      relPath.startsWith("src/views/") ||
+      relPath.startsWith("src/routes/") ||
+      /(Page|View)\.(tsx|jsx)$/i.test(relPath)
+    ) && !relPath.includes("/components/") && !relPath.includes("/services/") && !relPath.includes("/utils/") && !relPath.includes("/hooks/") && !relPath.includes("/lib/");
+
+    if (isPageRoute) {
+      const rawCompName = relPath.split(/[\/\\]/).pop()?.replace(/\.(js|jsx|ts|tsx)(\.(ts|tsx))?$/, "") || "Component";
+      const compName = (rawCompName.replace(/[^a-zA-Z0-9_$]/g, "_").replace(/^([0-9])/, "_$1")) || "Component";
+
+      writeFileSync(absPath, `/* ROUTE_STUB_ONLY: CAPABILITY_IMPLEMENTATION_REQUIRED */
+import React from "react";
+
+export function ${compName}(props: any) {
+  return (
+    <div className="p-8 text-center" data-testid="route-stub">
+      <h2 className="text-xl font-bold text-slate-400">Under Construction</h2>
+      <p className="text-sm text-slate-500">Capability implementation required for ${compName}</p>
+    </div>
+  );
+}
+
+export default ${compName};
+`, "utf8");
+      this.createdRouteStubs++;
+      console.warn(`[ProjectGraphEngine] ⚠️ Created non-generative route stub for missing capability: ${relPath} (createdRouteStubs: ${this.createdRouteStubs}, createdProductImplementations: ${this.createdProductImplementations})`);
+      return absPath;
+    }
+
+    // 13b. Generic Structural Module for Other Frontend Artifacts (helpers, utilities)
+    if (relPath.startsWith("src/") && (relPath.endsWith(".tsx") || relPath.endsWith(".ts") || relPath.endsWith(".jsx") || relPath.endsWith(".js"))) {
+      const rawCompName = relPath.split(/[\/\\]/).pop()?.replace(/\.(js|jsx|ts|tsx)(\.(ts|tsx))?$/, "") || "Module";
+      const compName = (rawCompName.replace(/[^a-zA-Z0-9_$]/g, "_").replace(/^([0-9])/, "_$1")) || "Module";
+      writeFileSync(absPath, `import React from "react";
+export function ${compName}(props: any) { return null; }
+export default ${compName};
+`, "utf8");
+      console.log(`[ProjectGraphEngine] ✓ Created structural frontend module on disk: ${relPath}`);
+      return absPath;
+    }
+
+    // 14. Universal Backend Route Stub Fallback
     if (relPath.startsWith("server/") && (relPath.endsWith(".ts") || relPath.endsWith(".tsx"))) {
-      const routeName = relPath.split("/").pop()?.replace(/\.(ts|tsx)$/, "") || "route";
-      const formattedRouteName = routeName.replace(/[^a-zA-Z0-9_$]/g, "_");
+      const rawRouteName = relPath.split(/[\/\\]/).pop()?.replace(/\.(js|jsx|ts|tsx)(\.(ts|tsx))?$/, "") || "route";
+      const formattedRouteName = (rawRouteName.replace(/[^a-zA-Z0-9_$]/g, "_").replace(/^([0-9])/, "_$1")) || "route";
       writeFileSync(absPath, `import { Router, Request, Response } from "express";
 export const router = Router();
 export const ${formattedRouteName}Router = router;
-export const handleRequest = (req: Request, res: Response) => res.json({ status: "ok", service: "${routeName}" });
+export const handleRequest = (req: Request, res: Response) => res.status(501).json({ status: "not_implemented", service: "${formattedRouteName}" });
 router.get("/", handleRequest);
 router.post("/", handleRequest);
 export default router;
 `, "utf8");
-      console.log(`[ProjectGraphEngine] ✓ Auto-created missing canonical backend module on disk: ${relPath}`);
+      console.log(`[ProjectGraphEngine] ✓ Auto-created structural backend module on disk: ${relPath}`);
       return absPath;
     }
 
     return null;
   }
 }
+

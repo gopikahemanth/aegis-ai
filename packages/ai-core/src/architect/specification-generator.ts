@@ -39,16 +39,22 @@ export class SpecificationGenerator {
     const reqLower = request.toLowerCase();
     if (reqLower.includes("sqlite")) {
       spec.database = "SQLite";
-    } else if (reqLower.includes("postgres")) {
+    } else if (reqLower.includes("postgres") || !spec.database) {
       spec.database = "PostgreSQL";
     }
 
-    if (reqLower.includes("express")) {
+    if (reqLower.includes("express") || !spec.backend || (spec.backend.toLowerCase().includes("next") && !reqLower.includes("next"))) {
       spec.backend = "Express";
     }
 
-    if (reqLower.includes("react") && !reqLower.includes("next.js")) {
+    if (!reqLower.includes("next.js") && !reqLower.includes("nextjs")) {
       spec.frontend = "React";
+    } else if (reqLower.includes("react")) {
+      spec.frontend = "React";
+    }
+
+    if (!spec.auth || (spec.auth.toLowerCase().includes("next") && !reqLower.includes("next"))) {
+      spec.auth = "JWT";
     }
 
     return spec;

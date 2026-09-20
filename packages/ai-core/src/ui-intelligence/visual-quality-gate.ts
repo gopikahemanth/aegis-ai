@@ -232,11 +232,14 @@ export class VisualQualityGate {
       geometryScore -= 40;
     }
 
+    const vw = snapshot.viewport?.width || snapshot.clientWidth || 1440;
+    const vh = snapshot.viewport?.height || 900;
+
     const geometry: GeometryQualityMetrics = {
       score: geometryScore,
       hasHorizontalOverflow,
-      rootWidth: snapshot.clientWidth,
-      rootHeight: snapshot.viewport.height,
+      rootWidth: snapshot.clientWidth || vw,
+      rootHeight: vh,
       viewportFillRatio: Number((snapshot.elements.length > 5 ? 1.0 : 0.4).toFixed(2)),
     };
 
@@ -276,13 +279,13 @@ export class VisualQualityGate {
       score: densityScore,
       contractDensity: targetDensity,
       measuredDensity,
-      elementsPerKilopixel: Number(((snapshot.elements.length / (snapshot.viewport.width * snapshot.viewport.height)) * 1000).toFixed(2)),
+      elementsPerKilopixel: Number(((snapshot.elements.length / (vw * vh)) * 1000).toFixed(2)),
     };
 
     // ── 5. Responsive Viewport Analyzer ──────────────────────────────────────
     const responsive: ResponsiveQualityMetrics = {
       score: hasHorizontalOverflow ? 65 : 98,
-      desktopPassed: snapshot.viewport.width >= 1200 && !hasHorizontalOverflow,
+      desktopPassed: vw >= 1200 && !hasHorizontalOverflow,
       tabletPassed: true,
       mobilePassed: !hasHorizontalOverflow,
       horizontalOverflow: hasHorizontalOverflow,

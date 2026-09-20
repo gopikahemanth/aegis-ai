@@ -37,7 +37,7 @@ export class SpecificationNormalizer {
       domainCategory = "real-estate";
     } else if (promptLower.includes("pet") && (promptLower.includes("groom") || promptLower.includes("spa") || promptLower.includes("package") || promptLower.includes("booking") || promptLower.includes("service"))) {
       domainCategory = "pet-grooming";
-    } else if (promptLower.includes("pet") || promptLower.includes("veterinar") || promptLower.includes("vet ") || promptLower.includes("clinic") || promptLower.includes("animal")) {
+    } else if (promptLower.includes("pet") || promptLower.includes("veterinar") || promptLower.includes("vet ") || (promptLower.includes("clinic") && !promptLower.includes("clinical")) || promptLower.includes("animal")) {
       domainCategory = "pet-clinic";
     } else if (promptLower.includes("music") || promptLower.includes("instrument") || promptLower.includes("lesson") || promptLower.includes("piano") || promptLower.includes("guitar")) {
       domainCategory = "music-school";
@@ -45,10 +45,14 @@ export class SpecificationNormalizer {
       domainCategory = "photography-studio";
     } else if (promptLower.includes("community garden") || promptLower.includes("garden") || promptLower.includes("plot allocation") || promptLower.includes("harvest")) {
       domainCategory = "community-garden";
+    } else if ((promptLower.includes("bicycle") || promptLower.includes("bike")) && (promptLower.includes("rental") || promptLower.includes("rent") || promptLower.includes("fleet") || promptLower.includes("station") || promptLower.includes("checkout") || promptLower.includes("sharing"))) {
+      domainCategory = "bicycle-rental";
     } else if ((promptLower.includes("bicycle") || promptLower.includes("bike")) && (promptLower.includes("repair") || promptLower.includes("mechanic") || promptLower.includes("fix") || promptLower.includes("tune-up") || promptLower.includes("shop") || promptLower.includes("service"))) {
       domainCategory = "bicycle-repair";
-    } else if (promptLower.includes("bicycle") || promptLower.includes("bike") || promptLower.includes("rental") || promptLower.includes("fleet")) {
-      domainCategory = "bicycle-rental";
+    } else if (promptLower.includes("solar") || promptLower.includes("photovoltaic") || promptLower.includes("inverter") || (promptLower.includes("telemetry") && (promptLower.includes("sensor") || promptLower.includes("power") || promptLower.includes("grid") || promptLower.includes("kilowatt") || promptLower.includes("megawatt") || promptLower.includes("array")))) {
+      domainCategory = "solar-telemetry";
+    } else if (promptLower.includes("museum") || (promptLower.includes("exhibition") && (promptLower.includes("curat") || promptLower.includes("artifact") || promptLower.includes("provenance") || promptLower.includes("collection")))) {
+      domainCategory = "museum-collection";
     } else if (promptLower.includes("home repair") || promptLower.includes("handyman") || promptLower.includes("work order") || promptLower.includes("repair service")) {
       domainCategory = "home-repair";
     } else if (promptLower.includes("event") || promptLower.includes("venue") || promptLower.includes("attendee") || promptLower.includes("conference")) {
@@ -59,7 +63,9 @@ export class SpecificationNormalizer {
       domainCategory = "restaurant-reservation";
     } else if (promptLower.includes("vehicle") || promptLower.includes("car") || promptLower.includes("auto") || promptLower.includes("repair") || promptLower.includes("mechanic")) {
       domainCategory = "vehicle-service";
-    } else if (promptLower.includes("library") || ((promptLower.includes("book") || promptLower.includes("books")) && !promptLower.includes("booking") && !promptLower.includes("booked")) || promptLower.includes("borrow") || promptLower.includes("catalog") || promptLower.includes("isbn") || promptLower.includes("author")) {
+    } else if (promptLower.includes("ceramic") || promptLower.includes("pottery") || promptLower.includes("stoneware") || promptLower.includes("kiln") || promptLower.includes("glaze") || (promptLower.includes("artisan") && (promptLower.includes("studio") || promptLower.includes("craft")))) {
+      domainCategory = "artisan-studio";
+    } else if (promptLower.includes("library") || promptLower.includes("borrow") || promptLower.includes("isbn") || ((promptLower.includes("book") || promptLower.includes("books")) && !promptLower.includes("booking") && !promptLower.includes("booked") && (promptLower.includes("author") || promptLower.includes("publisher") || promptLower.includes("librar")))) {
       domainCategory = "library-management";
     } else if (promptLower.includes("hospital") || promptLower.includes("patient") || promptLower.includes("doctor") || promptLower.includes("appointment") || promptLower.includes("medical")) {
       domainCategory = "hospital-management";
@@ -67,6 +73,8 @@ export class SpecificationNormalizer {
       domainCategory = "equipment-maintenance";
     } else if (promptLower.includes("inventory") || promptLower.includes("warehouse") || promptLower.includes("stock") || promptLower.includes("supplier")) {
       domainCategory = "inventory-system";
+    } else if (promptLower.includes("wellness") || promptLower.includes("self-care") || promptLower.includes("self care") || (promptLower.includes("mood") && (promptLower.includes("track") || promptLower.includes("log"))) || promptLower.includes("hydration") || promptLower.includes("mindfulness") || promptLower.includes("meditation") || (promptLower.includes("habit") && (promptLower.includes("track") || promptLower.includes("streak"))) || (promptLower.includes("sleep") && (promptLower.includes("track") || promptLower.includes("log") || promptLower.includes("quality")))) {
+      domainCategory = "wellness-tracker";
     } else if (promptLower.includes("gym") || promptLower.includes("trainer") || promptLower.includes("membership") || promptLower.includes("workout") || promptLower.includes("fitness") || promptLower.includes("exercise")) {
       domainCategory = "gym-management";
     } else if (promptLower.includes("student") || promptLower.includes("academic") || promptLower.includes("department") || promptLower.includes("semester") || promptLower.includes("enrollment") || promptLower.includes("course") || promptLower.includes("university") || promptLower.includes("school")) {
@@ -114,8 +122,8 @@ export class SpecificationNormalizer {
 
     // 3. Define Forbidden Domain Patterns (starter template contamination is strictly forbidden)
     const forbiddenPatterns: string[] = [];
-    if (domainCategory !== "art-gallery") {
-      forbiddenPatterns.push("Artwork", "Gallery", "ArtStats", "ArtworkCard", "ArtworkDashboard", "Vincent van Gogh", "Oil Painting", "Curated Exhibitions", "Starry Horizon");
+    if (domainCategory !== "art-gallery" && domainCategory !== "artisan-studio") {
+      forbiddenPatterns.push("ArtworkCard", "ArtworkDashboard", "Vincent van Gogh", "Oil Painting", "Curated Exhibitions", "Starry Horizon");
     }
     if (domainCategory !== "task-manager") {
       forbiddenPatterns.push("KanbanBoard", "BoardColumn");
@@ -165,6 +173,8 @@ export class SpecificationNormalizer {
         return ["User", "Property", "Tour", "Lead", "Interaction", "Agent", "Inquiry"];
       case "photography-studio":
         return ["User", "Client", "Photographer", "Session", "Package", "Invoice", "Equipment"];
+      case "artisan-studio":
+        return ["User", "Product", "Workshop", "Booking", "KilnFiring", "Commission", "InventoryItem"];
       case "community-garden":
         return ["User", "Garden", "Plot", "Member", "Plant", "Harvest", "Event"];
       case "home-repair":
@@ -179,6 +189,10 @@ export class SpecificationNormalizer {
         return ["User", "Bicycle", "Rental", "Customer", "MaintenanceRecord"];
       case "bicycle-repair":
         return ["User", "Customer", "Bicycle", "RepairJob", "Mechanic", "RepairService"];
+      case "solar-telemetry":
+        return ["User", "Inverter", "TelemetryPoint", "Alert", "Setpoint", "GridMetric"];
+      case "museum-collection":
+        return ["User", "Artifact", "Exhibition", "Artist", "ProvenanceRecord"];
       case "event-planning":
         return ["User", "Event", "Venue", "Attendee", "Vendor", "Budget"];
       case "restaurant-reservation":
@@ -337,6 +351,26 @@ export class SpecificationNormalizer {
         };
       }
 
+      case "solar-telemetry": {
+        return {
+          entityName: "Inverter",
+          entityPlural: "Inverters",
+          primaryMetrics: ["Total Power Output", "Average Efficiency", "Active Inverters", "Alert Count"],
+          actionVerbs: ["Configure Setpoint", "Acknowledge Alert", "Calibrate Inverter", "Filter Window"],
+          domainPrefix: "telemetry"
+        };
+      }
+
+      case "museum-collection": {
+        return {
+          entityName: "Artifact",
+          entityPlural: "Artifacts",
+          primaryMetrics: ["Total Artifacts", "Active Exhibitions", "Featured Artists", "Acquisitions"],
+          actionVerbs: ["Register Artifact", "Curate Exhibition", "Log Provenance", "Update Condition"],
+          domainPrefix: "museum"
+        };
+      }
+
       case "bicycle-repair": {
         return {
           entityName: "RepairJob",
@@ -414,6 +448,16 @@ export class SpecificationNormalizer {
           primaryMetrics: ["Total Students", "Active Students", "Departments", "Semesters"],
           actionVerbs: ["Add Student", "Edit Profile", "Filter by Department", "Delete Record"],
           domainPrefix: "student"
+        };
+      }
+
+      case "artisan-studio": {
+        return {
+          entityName: "Ceramic Piece",
+          entityPlural: "Stoneware Collection",
+          primaryMetrics: ["Total Pieces", "Workshop Bookings", "Active Firings", "Pending Commissions"],
+          actionVerbs: ["Browse Collection", "Filter Glazes", "Book Workshop", "Request Commission", "Schedule Firing"],
+          domainPrefix: "ceramics"
         };
       }
 

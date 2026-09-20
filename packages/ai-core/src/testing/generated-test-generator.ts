@@ -221,7 +221,8 @@ describe("${domainName} Button Component Interaction", () => {
     render(<Button onClick={handleClick}>Add ${primaryEntity}</Button>);
 
     const btn = screen.getByRole("button", { name: /Add ${primaryEntity}/i });
-    expect(btn).toBeInTheDocument();
+    expect(btn).toBeDefined();
+    expect(btn).toBeTruthy();
 
     fireEvent.click(btn);
     expect(handleClick).toHaveBeenCalledTimes(1);
@@ -232,7 +233,8 @@ describe("${domainName} Button Component Interaction", () => {
     render(<Button disabled onClick={handleClick}>Disabled Action</Button>);
 
     const btn = screen.getByRole("button", { name: /Disabled Action/i });
-    expect(btn).toBeDisabled();
+    expect(btn).toBeDefined();
+    expect(btn.hasAttribute("disabled") || (btn as any).disabled).toBeTruthy();
 
     fireEvent.click(btn);
     expect(handleClick).not.toHaveBeenCalled();

@@ -1,6 +1,6 @@
 import { Orchestrator } from "@aegis/ai-core";
 import { ProviderFactory } from "@aegis/ai-core";
-import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import {
@@ -37,11 +37,44 @@ export class ExecutionEngine {
   private readonly pipeline =
     new ExecutionPipeline(this.provider);
 
-  async execute(request: string, imagePath?: string, targetDir?: string) {
-    const projectPath = targetDir ? resolve(process.cwd(), targetDir) : resolve(process.cwd(), "./generated/project");
+  /**
+   * Sets the design mode before calling execute().
+   * Called by the CLI when --design-mode flag is passed.
+   *
+   * @param mode  "AUTO" | "USER_SELECTED" | "RANDOM" | "CUSTOM"
+   * @param hint  Optional tone hint for USER_SELECTED mode (e.g. "calm", "dark")
+   */
+  setDesignMode(mode: string, hint?: string): void {
+    (this.orchestrator as any).designMode = mode;
+    if (hint) (this.orchestrator as any).designModeHint = hint;
+  }
 
-    // ── Clean existing project directory ────────────────────────────────────
-    cleanDirectory(projectPath);
+  async execute(request: string, imagePath?: string, targetDir?: string, options?: { incremental?: boolean }) {
+    const basePath = process.env.INIT_CWD || process.cwd();
+    const projectPath = targetDir ? resolve(basePath, targetDir) : resolve(basePath, "./generated/project");
+
+    // ── Clean Generation Isolation Guard ──────────────────────────────────
+    if (existsSync(projectPath)) {
+      const existingEntries = readdirSync(projectPath).filter(e => e !== ".git" && e !== ".DS_Store");
+      if (existingEntries.length > 0 && !options?.incremental) {
+        throw new Error(
+          `GENERATION_TARGET_NOT_EMPTY: Target directory "${projectPath}" contains an existing project (${existingEntries.length} files/folders). ` +
+          `Clean generation requires an empty or non-existent directory to prevent cross-domain contamination. ` +
+          `Pass --incremental to explicitly evolve an existing project, or specify a clean directory via --output <dir>.`
+        );
+      }
+    }
+
+    // ── Clean existing project directory & .aegis state if safe ────────────
+    if (!options?.incremental) {
+      cleanDirectory(projectPath);
+      const initialAegis = join(projectPath, ".aegis");
+      if (existsSync(initialAegis)) {
+        try {
+          rmSync(initialAegis, { recursive: true, force: true });
+        } catch { /* non-fatal */ }
+      }
+    }
 
 
     console.log("Analyzing request...");

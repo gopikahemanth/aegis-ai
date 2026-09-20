@@ -23,8 +23,9 @@ export class RealityCheckerAgent {
     const domainContract = DomainContractManager.load(outputDirectory);
     const realityReport = FeatureRealityValidator.validate(outputDirectory, domainContract);
     const contractViolations = this.validator.validate(outputDirectory, domainContract);
+    const sourceViolations = this.auditSourceFiles(outputDirectory);
 
-    const allViolations: RealityViolation[] = [...realityReport.violations, ...contractViolations];
+    const allViolations: RealityViolation[] = [...realityReport.violations, ...contractViolations, ...sourceViolations];
     const errors = allViolations.filter(v => v.severity === "error");
     const report = this.formatReport(allViolations);
 
@@ -52,10 +53,30 @@ export class RealityCheckerAgent {
       { pattern: /const\s+mock(?:Data|Result|Score|Users|Items)\s*=/, desc: "Hardcoded mock dataset in production component", severity: "warning" as const },
     ];
 
+    const MULTILINE_FAKE_PATTERNS = [
+      { pattern: /setTimeout\s*\(\s*(?:\(\s*\)\s*=>|function\s*\(\s*\))\s*\{[\s\S]*?set(?:Loading|Score|Data|Tasks|Items)\([^)]*\)[\s\S]*?\}\s*,\s*\d{2,5}\s*\)/g, desc: "Fake setTimeout simulation pretending to process data", severity: "error" as const },
+      { pattern: /onClick\s*=\s*\{\s*(?:\(\s*\)\s*=>|function\s*\(\s*\))\s*\{\s*\}\s*\}/g, desc: "Empty onClick handler without business logic", severity: "error" as const },
+      { pattern: /onSubmit\s*=\s*\{\s*(?:\(\s*e?\s*\)\s*=>|function\s*\([^)]*\))\s*\{\s*\}\s*\}/g, desc: "Empty onSubmit handler without business logic", severity: "error" as const },
+      { pattern: /onClick\s*=\s*\{\s*(?:\(\s*\)\s*=>|function\s*\(\s*\))\s*console\.log\([^)]*\)\s*\}/g, desc: "Console.log-only onClick handler", severity: "error" as const },
+    ];
+
     for (const fullPath of sourceFiles) {
       const rel = relative(outputDirectory, fullPath).replace(/\\/g, "/");
       try {
         const content = readFileSync(fullPath, "utf8");
+
+        for (const mp of MULTILINE_FAKE_PATTERNS) {
+          if (mp.pattern.test(content)) {
+            violations.push({
+              feature: "Reality Check",
+              file: rel,
+              line: 1,
+              violation: mp.desc,
+              severity: mp.severity,
+            });
+          }
+        }
+
         const lines = content.split("\n");
 
         for (let i = 0; i < lines.length; i++) {
@@ -64,13 +85,15 @@ export class RealityCheckerAgent {
 
           for (const p of FAKE_PATTERNS) {
             if (p.pattern.test(line)) {
-              violations.push({
-                feature: "Reality Check",
-                file: rel,
-                line: i + 1,
-                violation: p.desc,
-                severity: p.severity,
-              });
+              if (!violations.some(v => v.file === rel && v.violation === p.desc)) {
+                violations.push({
+                  feature: "Reality Check",
+                  file: rel,
+                  line: i + 1,
+                  violation: p.desc,
+                  severity: p.severity,
+                });
+              }
               break;
             }
           }

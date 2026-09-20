@@ -14,6 +14,7 @@ import { ResponsiveLayoutEngine, type ViewportDevice } from "./responsive-layout
 import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "../design/domain-visual-contract.js";
 import { RealBrowserAdapter, type RealBrowserExecutionResult } from "./real-browser-adapter.js";
 import { VisualQualityGate, type VisualQualityReport } from "./visual-quality-gate.js";
+import { FunctionalPresenceGate, type FunctionalPresenceReport } from "./functional-presence-gate.js";
 import type { CompositionGraph } from "../design/composition-graph.js";
 
 export interface PageVisualInspection {
@@ -88,6 +89,7 @@ export interface MasterCertificationReport {
     compositionGraphValid: boolean;
   };
   visualQuality?: import("./visual-quality-gate.js").VisualQualityReport;
+  functionalPresence?: import("./functional-presence-gate.js").FunctionalPresenceReport;
   tiers: {
     sourceIntegrity: boolean;
     buildVerified: boolean;
@@ -493,7 +495,7 @@ export class VisualVerificationEngine {
       const hasAvailability = dash.includes("availability_matrix") || dash.includes("Suite Availability");
       const hasMasterDetail = dash.includes("master_detail") || dash.includes("Active Litigation Matters");
       const hasLiveStage = dash.includes("live_stage_matrix") || dash.includes("Live Stage Production");
-      const hasTelemetry = dash.includes("telemetry_grid") || dash.includes("telemetry") || dash.includes("metric-card");
+      const hasTelemetry = dash.includes("telemetry_grid") || dash.includes("data-workspace=\"telemetry_grid\"") || (dash.includes("inverter") && dash.includes("timeseries") && dash.includes("currentKw"));
       hasSemanticWorkspace = hasAvailability || hasMasterDetail || hasLiveStage || hasTelemetry;
       semanticWorkspaceDetails = hasSemanticWorkspace
         ? "Dynamic semantic workspace verified in DashboardPage (interactive domain-specific UI components)"
@@ -687,12 +689,28 @@ export class VisualVerificationEngine {
           options?.compositionGraph
         );
 
+        const presenceReport = FunctionalPresenceGate.evaluate(
+          domSnapshot,
+          {
+            compositionGraph: options?.compositionGraph,
+            consoleErrors: browserResult.consoleErrors,
+            uncaughtExceptions: browserResult.uncaughtExceptions,
+          }
+        );
+
         baseReport.visualQuality = qualityReport;
-        if (qualityReport.isMasterCertified) {
+        baseReport.functionalPresence = presenceReport;
+
+        if (qualityReport.isMasterCertified && presenceReport.isMasterCertified) {
+          const combinedScore = Math.round((qualityReport.score + presenceReport.score) / 2);
           baseReport.certificationLevel = "AEGIS_MASTER_CERTIFIED";
-          baseReport.summary = `🏆 AEGIS MASTER CERTIFIED (${qualityReport.score}/100): Full real browser execution, computed styles, and automated visual quality gate verified.`;
+          baseReport.overallScore = combinedScore;
+          baseReport.summary = `🏆 AEGIS MASTER CERTIFIED (${combinedScore}/100): Full real browser execution, computed styles, automated visual quality gate, and functional presence gate verified.`;
         } else {
           baseReport.certificationLevel = "BROWSER_CERTIFIED";
+          if (!presenceReport.isMasterCertified) {
+            baseReport.summary = `⚠️ BROWSER CERTIFIED (Quality: ${qualityReport.score}/100, Presence: ${presenceReport.score}/100): ${presenceReport.failureReasons.join("; ") || "Functional presence incomplete"}`;
+          }
         }
       }
     }

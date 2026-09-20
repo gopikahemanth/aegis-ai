@@ -42,8 +42,9 @@ export class Parser {
       }
     } catch { /* Fall through to regex format parsers */ }
 
-    // Format 1: === FILE: relative/path === or ===FILE: relative/path ===
-    const headerRegex = /={3,}\s*(?:FILE:\s*)?([^\n\r=]+?)\s*={0,3}\r?\n([\s\S]*?)(?=(?:={3,}\s*(?:FILE:\s*)?[^\n\r=]+?)|$)/gi;
+    // Format 1: === FILE: relative/path.ext === or ===FILE: relative/path.ext===
+    // Must be preceded by line boundary and must specify a file path with an extension to prevent JS '===' operators from truncating code
+    const headerRegex = /(?:^|\r?\n)={3,}\s*(?:FILE:\s*)?([a-zA-Z0-9_.\-\/\\]+\.[a-zA-Z0-9]+)\s*={0,3}\r?\n([\s\S]*?)(?=(?:\r?\n={3,}\s*(?:FILE:\s*)?[a-zA-Z0-9_.\-\/\\]+\.[a-zA-Z0-9]+\s*={0,3}\r?\n)|(?:\r?\n={3,}\s*END\s*={0,3})|$)/gi;
     let match: RegExpExecArray | null;
 
     const validFileExtRegex = /\.(ts|tsx|js|jsx|json|css|scss|html|prisma|md|env|yml|yaml|svg|png|jpg|jpeg|dockerfile|gitignore)$/i;
@@ -54,11 +55,11 @@ export class Parser {
       let content = match[2].trim();
 
       if (!rawPath || rawPath.length > 250 || rawPath.includes("\n")) continue;
-      if (rawPath.toUpperCase().startsWith("PATCH:")) continue;
+      if (rawPath.toUpperCase().startsWith("PATCH:") || rawPath.toUpperCase() === "END") continue;
 
       // Reject JS ternary or equality operators mistaken for headers
       if (invalidPathChars.test(rawPath) && !rawPath.includes("/")) continue;
-      if (!validFileExtRegex.test(rawPath) && !rawPath.toLowerCase().includes("file:")) continue;
+      if (!validFileExtRegex.test(rawPath)) continue;
 
       // Clean markdown code blocks from content
       content = content.replace(/^```[a-zA-Z0-9_-]*\r?\n?/, "").replace(/\r?\n?```$/, "").trim();

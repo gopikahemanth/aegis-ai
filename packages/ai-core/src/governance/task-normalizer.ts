@@ -45,6 +45,16 @@ export class TaskNormalizer {
       description = description.replace(/server actions/gi, "Express REST endpoints and controller handlers");
     }
 
+    if (/Next\.js\s+API\s+route\s+handlers/i.test(title) || /Next\.js\s+API\s+route\s+handlers/i.test(description)) {
+      title = title.replace(/Next\.js\s+API\s+route\s+handlers/gi, `${expBackend} REST API Route Handlers`);
+      description = description.replace(/Next\.js\s+API\s+route\s+handlers/gi, `${expBackend} REST API Route Handlers and Controllers`);
+    }
+
+    if (/Next\.js\s+pages/i.test(title) || /Next\.js\s+pages/i.test(description)) {
+      title = title.replace(/Next\.js\s+pages/gi, `${expFrontend} Pages & Views`);
+      description = description.replace(/Next\.js\s+pages/gi, `${expFrontend} Pages and Component Views`);
+    }
+
     if (/Next\.js\s+App\s+Router|Next\.js|Shadcn\s+UI/i.test(title) || /Next\.js\s+App\s+Router|Next\.js|Shadcn\s+UI/i.test(description)) {
       title = title.replace(/Next\.js\s+App\s+Router|Next\.js/gi, `${expFrontend}`);
       description = description.replace(/Next\.js\s+App\s+Router|Next\.js|Shadcn\s+UI/gi, `${expFrontend} with TailwindCSS`);
@@ -81,6 +91,7 @@ export class TaskNormalizer {
       ...task,
       title,
       description,
+      architectureHash: contract.architectureHash,
     };
 
     if (corrections.length > 0) {
@@ -99,27 +110,61 @@ export class TaskNormalizer {
   }
 
   /**
+   * Normalizes a collection of planned tasks against the locked architecture contract.
+   */
+  public static normalizeTasks(tasks: Task[], contract: ArchitectureContractV1): Task[] {
+    if (!tasks || !Array.isArray(tasks)) return [];
+    return tasks.map(t => TaskNormalizer.normalizeTask(t, contract).normalizedTask);
+  }
+
+  /**
    * Deduplicates tasks by semantic role/category and caps at max 6 canonical tasks.
    */
   public static deduplicateAndCapTasks(tasks: Task[], maxTasks = 6): Task[] {
     const seenRoles = new Map<string, Task>();
 
     for (const task of tasks) {
-      const titleLower = (task.title + " " + (task.description || "")).toLowerCase();
+      const titleOnly = (task.title || "").toLowerCase();
+      const descOnly = (task.description || "").toLowerCase();
       let semanticRole = "FEATURE";
 
-      if (/database|schema|prisma|model/i.test(titleLower)) {
-        semanticRole = "DB_SCHEMA";
-      } else if (/backend|server|express|infrastructure|middleware/i.test(titleLower)) {
-        semanticRole = "BACKEND_INFRASTRUCTURE";
-      } else if (/analysis|engine|parser|pdf|keyword|matcher|scorer/i.test(titleLower)) {
-        semanticRole = "ANALYSIS_ENGINE";
-      } else if (/api|route|controller|endpoint/i.test(titleLower)) {
-        semanticRole = "API_LAYER";
-      } else if (/frontend|react|vite|ui|dashboard|component|page/i.test(titleLower)) {
-        semanticRole = "FRONTEND_APPLICATION";
-      } else if (/integration|validation|e2e|testing/i.test(titleLower)) {
+      // 1. Primary classification by task title (highest semantic intent)
+      if (/integration|validation|e2e|testing/i.test(titleOnly)) {
         semanticRole = "INTEGRATION_VALIDATION";
+      } else if (/database|schema|prisma\s+model|data\s+model/i.test(titleOnly)) {
+        semanticRole = "DB_SCHEMA";
+      } else if (/backend|server|express|infrastructure/i.test(titleOnly)) {
+        semanticRole = "BACKEND_INFRASTRUCTURE";
+      } else if (/domain\s+api|feature\s+api|business\s+logic|domain\s+route|controller|logic\s+&\s+controllers/i.test(titleOnly)) {
+        semanticRole = "DOMAIN_API";
+      } else if (/analysis|engine|parser|pdf|keyword|matcher|scorer/i.test(titleOnly)) {
+        semanticRole = "ANALYSIS_ENGINE";
+      } else if (/domain\s+feature|feature\s+ui|feature\s+integration|domain\s+ui/i.test(titleOnly)) {
+        semanticRole = "DOMAIN_FEATURE_UI";
+      } else if (/frontend|react|vite|ui|dashboard|page|client/i.test(titleOnly)) {
+        semanticRole = "FRONTEND_APPLICATION";
+      } else if (/api|route|endpoint/i.test(titleOnly)) {
+        semanticRole = "API_LAYER";
+      } else {
+        // 2. Fallback to combined title + description
+        const combined = (titleOnly + " " + descOnly).toLowerCase();
+        if (/integration|validation|e2e|testing/i.test(combined)) {
+          semanticRole = "INTEGRATION_VALIDATION";
+        } else if (/database|schema|prisma|model/i.test(combined)) {
+          semanticRole = "DB_SCHEMA";
+        } else if (/domain\s+api|feature\s+api|business\s+logic|domain\s+route|glaze.*api|kiln.*api|commission.*api/i.test(combined)) {
+          semanticRole = "DOMAIN_API";
+        } else if (/backend|server|express|infrastructure|middleware/i.test(combined)) {
+          semanticRole = "BACKEND_INFRASTRUCTURE";
+        } else if (/analysis|engine|parser|pdf|keyword|matcher|scorer/i.test(combined)) {
+          semanticRole = "ANALYSIS_ENGINE";
+        } else if (/domain\s+feature|feature\s+ui|feature\s+integration|domain\s+ui|feature\s+view|glaze.*ui|kiln.*ui|commission.*ui/i.test(combined)) {
+          semanticRole = "DOMAIN_FEATURE_UI";
+        } else if (/frontend|react|vite|ui|dashboard|component|page/i.test(combined)) {
+          semanticRole = "FRONTEND_APPLICATION";
+        } else if (/api|route|controller|endpoint/i.test(combined)) {
+          semanticRole = "API_LAYER";
+        }
       }
 
       if (!seenRoles.has(semanticRole)) {

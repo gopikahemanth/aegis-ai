@@ -510,9 +510,17 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
 
     for (const feat of requiredFeatures) {
       const tokens = feat.toLowerCase().split(/[\s_-]+/).filter(t => t.length > 2);
-      // Check if any token appears in source files or file paths
-      const inContent = tokens.some(t => lowerSource.includes(t));
-      const inPath = sourceFiles.some(f => tokens.some(t => f.toLowerCase().includes(t)));
+      const searchTerms = new Set(tokens);
+      for (const t of tokens) {
+        if (t.startsWith("auth")) searchTerms.add("auth");
+        if (t === "authentication" || t === "authorisation" || t === "authorization") {
+          searchTerms.add("auth");
+          searchTerms.add("login");
+        }
+      }
+      // Check if any search term appears in source files or file paths
+      const inContent = Array.from(searchTerms).some(t => lowerSource.includes(t));
+      const inPath = sourceFiles.some(f => Array.from(searchTerms).some(t => f.toLowerCase().includes(t)));
       if (!inContent && !inPath) {
         missingFeatures.push(feat);
       }

@@ -15,7 +15,13 @@ export type LayoutTopologyType =
   | "OPERATIONAL_COMMAND_CONSOLE"
   | "ANALYTICS_METRIC_MATRIX"
   | "CHRONOLOGICAL_TIMELINE_RAIL"
-  | "COLLABORATIVE_KANBAN_BOARD";
+  | "COLLABORATIVE_KANBAN_BOARD"
+  | "EDITORIAL_LANDING"
+  | "ASYMMETRIC_PRODUCT_DASHBOARD"
+  | "SPLIT_SCREEN_WORKSPACE"
+  | "VISUAL_ANALYTICS_CANVAS"
+  | "PLAYFUL_WORKSPACE"
+  | "MINIMAL_SAAS_CONSOLE";
 
 export type UXIntentType =
   | "TRANSACT_BROWSE"
@@ -45,7 +51,8 @@ export type SecondaryFocusType =
   | "activity_stream"
   | "status_pipeline"
   | "financial_summary"
-  | "sensor_readout";
+  | "sensor_readout"
+  | "availability_matrix";
 
 export interface RegionNode {
   id: string;
@@ -75,6 +82,13 @@ export interface ResponsiveStrategy {
   mobile: "single-column-flow" | "bottom-sheet-nav" | "accordion-cards";
 }
 
+export interface UserJourneyNode {
+  id: string;
+  name: string;
+  triggerTarget: string;
+  intent: string;
+}
+
 export interface CompositionGraph {
   intent: UXIntentType;
   topology: {
@@ -95,6 +109,8 @@ export interface CompositionGraph {
   };
   widgets: WidgetNode[];
   interactions: InteractionNode[];
+  expectedCapabilities?: string[];
+  userJourneys?: UserJourneyNode[];
   responsiveStrategy: ResponsiveStrategy;
 }
 
@@ -132,6 +148,58 @@ export class CompositionGraphSynthesizer {
   ): CompositionGraph {
     const intent = CompositionGraphSynthesizer.deriveIntent(prompt);
     const text = `${prompt} ${domain || ""} ${layoutFamily || ""}`.toLowerCase();
+
+    // 0. CREATE_AUTHOR (Photography Studio, Visual Monograph Portfolio, Fine Art Exhibition)
+    if (text.includes("photo") || text.includes("photography") || text.includes("wedding") || text.includes("editorial") || text.includes("portfolio")) {
+      return {
+        intent: "CREATE_AUTHOR",
+        topology: {
+          type: "PORTAL_HERO_SHOWCASE",
+          regions: [
+            { id: "hero", role: "hero", gridSpan: { cols: 12 }, density: "spacious" },
+            { id: "primary_portfolio", role: "primary", gridSpan: { cols: 12 }, density: "spacious" },
+            { id: "secondary_availability", role: "secondary", gridSpan: { cols: 12 }, density: "balanced" },
+          ],
+        },
+        primaryFocus: {
+          type: "catalog_grid",
+          entity: "PhotoMonograph",
+          title: "Curated Visual Monographs & Photographic Exhibitions",
+          description: "Fine art photography albums across heritage weddings, tropical modernist architecture, and editorial essays.",
+          density: "spacious",
+        },
+        secondaryFocus: {
+          type: "availability_matrix",
+          entity: "StudioBooking",
+          title: "Studio Season Availability & Commission Calendar",
+        },
+        widgets: [
+          { id: "w1", type: "capacity_gauge", title: "Season Booking Allocation", regionId: "hero" },
+          { id: "w2", type: "amenity_utilization", title: "Medium Format & Lighting Arsenal", regionId: "secondary_availability" },
+        ],
+        interactions: [
+          { trigger: "click", target: "+ Request Commission Booking", action: "open_modal", description: "Opens private session booking flow" },
+          { trigger: "select", target: "filter_category", action: "filter_feed", description: "Filters portfolio by wedding, architecture, or editorial" },
+        ],
+        expectedCapabilities: [
+          "Portfolio Discovery & Monograph Gallery",
+          "Category Filtering (Weddings, Architecture, Editorial)",
+          "Project Monograph Story Inspection",
+          "Studio Season Availability Calendar",
+          "Commission Booking Inquiry Form",
+        ],
+        userJourneys: [
+          { id: "browse_portfolio", name: "Browse Portfolios", triggerTarget: "filter_category", intent: "Discover photographic monographs" },
+          { id: "inspect_monograph", name: "Inspect Project Details & Story", triggerTarget: "open_modal", intent: "View exhibition specs, medium, and artisan story" },
+          { id: "request_booking", name: "Submit Commission Booking", triggerTarget: "+ Request Commission Booking", intent: "Transmit private date reservation" },
+        ],
+        responsiveStrategy: {
+          desktop: "grid-12-col",
+          tablet: "grid-2-col",
+          mobile: "single-column-flow",
+        },
+      };
+    }
 
     // 1. TRANSACT_BROWSE (Craft Atelier, Resort, Yacht Charter, Luxury Travel, Bookings)
     if (intent === "TRANSACT_BROWSE" || text.includes("yacht") || text.includes("charter") || text.includes("resort") || text.includes("craft") || text.includes("handicraft") || text.includes("cart")) {

@@ -89,14 +89,12 @@ export class SemanticDuplicateDetector {
     if (CanonicalFileGraph.isAuthorized(norm)) return true;
     // 2. Design system files
     if (norm.startsWith("src/design-system/")) return true;
-    // 3. Feature files & component directories
-    if (norm.startsWith("src/features/")) return true;
-    // 4. Configuration & Tooling files
+    // 3. Configuration & Tooling files
     if (/(vite|tailwind|postcss|tsconfig|eslint|prettier)\.config\./i.test(norm)) return true;
     if (norm === "package.json" || norm === "index.html" || norm.endsWith(".d.ts")) return true;
-    // 5. Contract artifacts & Dotfiles
+    // 4. Contract artifacts & Dotfiles
     if (norm.startsWith(".aegis/") || norm.startsWith("prisma/") || norm.startsWith(".")) return true;
-    // 6. Assets & standard static files
+    // 5. Assets & standard static files
     if (/\.(json|md|env|css|scss|svg|png|jpg|ico|html|txt|yaml|yml)$/.test(norm)) return true;
     return false;
   }
@@ -105,7 +103,7 @@ export class SemanticDuplicateDetector {
    * Scan all TypeScript files in the project for orphans.
    * An orphan is a file that:
    *   1. Is NOT in the canonical graph, AND
-   *   2. Is NOT imported by any canonical graph file
+   *   2. Is NOT imported by any canonical or referenced file
    *
    * Returns orphan candidates with recommended action.
    */
@@ -131,18 +129,23 @@ export class SemanticDuplicateDetector {
 
       const allFiles = getAllTsFiles(projectRoot);
 
-      // Build import set — all files referenced by any canonical file on disk
+      // Build import set — all files referenced by any source file on disk (relative & @/ aliases)
       const importedPaths = new Set<string>();
-      for (const canonPath of CanonicalFileGraph.getAllPaths()) {
-        const full = join(projectRoot, canonPath);
-        if (!existsSync(full)) continue;
+      for (const filePath of allFiles) {
         try {
-          const content = readFileSync(full, "utf8");
-          const importMatches = content.matchAll(/from\s+['"](\.\.?\/[^'"]+)['"]/g);
+          const content = readFileSync(filePath, "utf8");
+          const importMatches = content.matchAll(/from\s+['"]([^'"]+)['"]/g);
           for (const m of importMatches) {
-            const resolvedPath = resolve(dirname(full), m[1]);
-            importedPaths.add(resolvedPath.replace(/\.(ts|tsx|js|jsx)$/, ""));
-            importedPaths.add(resolvedPath);
+            const spec = m[1];
+            if (spec.startsWith(".")) {
+              const resolvedPath = resolve(dirname(filePath), spec);
+              importedPaths.add(resolvedPath.replace(/\.(ts|tsx|js|jsx)$/, ""));
+              importedPaths.add(resolvedPath);
+            } else if (spec.startsWith("@/")) {
+              const resolvedPath = resolve(projectRoot, "src", spec.slice(2));
+              importedPaths.add(resolvedPath.replace(/\.(ts|tsx|js|jsx)$/, ""));
+              importedPaths.add(resolvedPath);
+            }
           }
         } catch { /* skip */ }
       }
@@ -156,11 +159,20 @@ export class SemanticDuplicateDetector {
         // Skip if canonical
         if (CanonicalFileGraph.isAuthorized(relPath)) continue;
 
+        const dupCheck = CanonicalFileGraph.detectSemanticDuplicate(relPath);
+        if (dupCheck.isDuplicate) {
+          orphans.push({
+            orphanPath: relPath,
+            canonicalAlternative: dupCheck.canonicalFile?.canonicalPath,
+            action: "DELETE",
+          });
+          continue;
+        }
+
         // Skip if imported by a canonical file
         const basePath = fullPath.replace(/\.(ts|tsx|js|jsx)$/, "");
         if (importedPaths.has(basePath) || importedPaths.has(fullPath)) continue;
 
-        const dupCheck = CanonicalFileGraph.detectSemanticDuplicate(relPath);
         orphans.push({
           orphanPath: relPath,
           canonicalAlternative: dupCheck.canonicalFile?.canonicalPath,
@@ -192,6 +204,43 @@ export class SemanticDuplicateDetector {
               ? ` (canonical alternative: ${orphan.canonicalAlternative})`
               : "";
             console.log(`[SemanticDuplicate] 🗑️ Deleted orphan: ${orphan.orphanPath}${altMsg}`);
+
+            // If this orphan was an alias with a canonical alternative, rewrite any callers in project
+            if (orphan.canonicalAlternative) {
+              const canonicalFullPath = join(projectRoot, orphan.canonicalAlternative);
+              const stem = orphan.orphanPath.replace(/\.(ts|tsx|js|jsx)$/, "");
+              const searchDir = (dir: string) => {
+                if (!existsSync(dir)) return;
+                for (const entry of readdirSync(dir)) {
+                  if (entry === "node_modules" || entry === ".git" || entry === "dist") continue;
+                  const f = join(dir, entry);
+                  try {
+                    if (statSync(f).isDirectory()) {
+                      searchDir(f);
+                    } else if (/\.(ts|tsx|js|jsx)$/.test(entry) && !entry.endsWith(".d.ts")) {
+                      const content = readFileSync(f, "utf8");
+                      let correctRel = relative(dirname(f), canonicalFullPath).replace(/\\/g, "/");
+                      if (!correctRel.startsWith(".")) correctRel = "./" + correctRel;
+                      correctRel = correctRel.replace(/\.(ts|tsx|js|jsx)$/, "");
+
+                      const aliasPatterns = [stem, `../../${stem}`, `../${stem}`, `./${stem}`, `@/${stem}`];
+                      let updated = content;
+                      for (const alias of aliasPatterns) {
+                        updated = updated.replace(
+                          new RegExp(`(['"])${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(['"])`, 'g'),
+                          `$1${correctRel}$2`
+                        );
+                      }
+                      if (updated !== content) {
+                        writeFileSync(f, updated, "utf8");
+                        console.log(`[SemanticDuplicate] Redirected import in "${relative(projectRoot, f)}" to "${orphan.canonicalAlternative}"`);
+                      }
+                    }
+                  } catch {}
+                }
+              };
+              searchDir(projectRoot);
+            }
           } catch (e: any) {
             console.warn(`[SemanticDuplicate] Could not delete orphan "${orphan.orphanPath}": ${e.message}`);
           }

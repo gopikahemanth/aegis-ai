@@ -1,6 +1,7 @@
 import type { ProjectSpecification } from "../architect/specification.js";
 import type { GeneratedFile } from "../writer/writer.js";
 import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "./domain-visual-contract.js";
+import type { ProductDesignBrief } from "./design-director.js";
 
 export interface DesignTokens {
   brand: string;
@@ -26,8 +27,37 @@ export class DesignSystemGenerator {
     return DomainVisualContractGenerator.deriveContract(p, spec);
   }
 
-  generate(spec: ProjectSpecification, visualContract?: DomainVisualDesignContract): GeneratedFile[] {
-    const contract = visualContract || this.getVisualContract(spec);
+  generate(spec: ProjectSpecification, visualContractOrBrief?: DomainVisualDesignContract | ProductDesignBrief): GeneratedFile[] {
+    // If a ProductDesignBrief is passed, derive a compatible DomainVisualDesignContract from it
+    let contract: DomainVisualDesignContract;
+    if (visualContractOrBrief && "artDirectionName" in visualContractOrBrief) {
+      // ProductDesignBrief — derive the base contract from the prompt/spec, then
+      // overlay the brief's locked tokens. We intentionally do NOT pass the brief
+      // as the third arg because deriveContract expects ArchitectureContractV1.
+      const brief = visualContractOrBrief as ProductDesignBrief;
+      const baseContract = DomainVisualContractGenerator.deriveContract(
+        (spec as any).userPrompt || spec.name || "",
+        spec,
+        // No third arg — brief tokens are overlaid below
+      );
+      // Overlay brief's palette choices onto the base contract
+      contract = {
+        ...baseContract,
+        artDirection: (brief as any).artDirection ?? baseContract.artDirection,
+        colorSystem: {
+          ...baseContract.colorSystem,
+          primary: (brief as any).primaryColor ?? baseContract.colorSystem.primary,
+          mode: (brief as any).colorMode ?? baseContract.colorSystem.mode,
+        },
+        visualPersonality: {
+          ...baseContract.visualPersonality,
+          density: (brief as any).density ?? baseContract.visualPersonality.density,
+          mood: (brief as any).mood ?? baseContract.visualPersonality.mood,
+        },
+      } as DomainVisualDesignContract;
+    } else {
+      contract = (visualContractOrBrief as DomainVisualDesignContract | undefined) || this.getVisualContract(spec);
+    }
     const resolved = DomainVisualContractGenerator.resolveCssTokens(contract);
     const files: GeneratedFile[] = [];
 
@@ -229,6 +259,11 @@ h1, h2, h3, h4, h5, h6 {
   --shadow-md: ${resolved.shadowMd};
   --shadow-lg: ${resolved.shadowLg};
 
+  --surface-blur: ${contract.artDirection?.surfaceTreatment.type === "translucent_glass" ? (contract.artDirection.surfaceTreatment.backdropBlur || "16px") : "0px"};
+  --card-shadow: ${contract.artDirection?.surfaceTreatment.cardShadow || resolved.shadowMd};
+  --card-border: ${contract.artDirection?.surfaceTreatment.cardBorder || "1px solid var(--color-border)"};
+  --nav-group-radius: ${contract.navigation.strategy === "TOPBAR_PILL" ? "var(--radius-full)" : "var(--radius-md)"};
+
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -237,6 +272,11 @@ h1, h2, h3, h4, h5, h6 {
   --space-8: 2rem;
   --space-12: 3rem;
 
+  --section-gap: ${contract.visualPersonality.density === "spacious" ? "5rem" : "3.5rem"};
+  --hero-padding: ${contract.visualPersonality.density === "spacious" ? "4.5rem 0 3.5rem 0" : "2.5rem 0 1.5rem 0"};
+  --font-display-size: clamp(2.25rem, 5vw, 3.75rem);
+  --font-lead-size: 1.125rem;
+
   --font-display: ${resolved.fontDisplay};
   --font-body: ${resolved.fontBody};
 }
@@ -244,6 +284,95 @@ h1, h2, h3, h4, h5, h6 {
 /* ═══════════════════════════════════════════════════════════════════════════
  * 3. RESILIENT DOMAIN-ADAPTIVE COMPONENT & LAYOUT CLASSES
  * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Modern Typography Scale */
+.display-title {
+  font-family: var(--font-display);
+  font-size: var(--font-display-size);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  color: var(--color-text-primary);
+}
+
+.section-heading {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: var(--color-text-primary);
+}
+
+.body-lead {
+  font-size: var(--font-lead-size);
+  line-height: 1.65;
+  color: var(--color-text-secondary);
+  max-width: 46rem;
+}
+
+/* Surface Treatment Variations */
+.surface-borderless {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.surface-soft {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.surface-floating {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.surface-floating:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px -6px rgba(0, 0, 0, 0.18);
+}
+
+.section-narrative {
+  padding: var(--section-gap) 0;
+}
+
+.divide-subtle > * + * {
+  border-color: var(--color-border-subtle);
+}
+
+.border-subtle {
+  border-color: var(--color-border-subtle);
+}
+
+.surface-flat-ruled {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.surface-solid-depth {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.surface-translucent-glass {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
 
 /* App Shell & Header */
 .app-shell {
@@ -257,8 +386,8 @@ h1, h2, h3, h4, h5, h6 {
 .app-header {
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-surface);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--surface-blur));
+  -webkit-backdrop-filter: blur(var(--surface-blur));
   position: sticky;
   top: 0;
   z-index: 40;
@@ -276,7 +405,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .nav-pill-group {
   padding: 0.25rem;
-  border-radius: var(--radius-full);
+  border-radius: var(--nav-group-radius);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   display: flex;
@@ -310,12 +439,70 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 2px 10px var(--color-primary-subtle);
 }
 
+.nav-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.nav-dropdown-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+
+.nav-dropdown-btn:hover {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nav-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 13rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 0.375rem;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+.nav-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-primary);
+}
+
 .main-container {
   flex: 1;
   max-width: 1320px;
   width: 100%;
   margin: 0 auto;
-  padding: 1.5rem 2rem;
+  padding: 2rem 2rem;
 }
 
 /* Buttons */
@@ -393,12 +580,12 @@ h1, h2, h3, h4, h5, h6 {
 /* Cards & Surfaces */
 .card, .glass-card {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: var(--card-border);
   border-radius: var(--radius-lg);
   padding: 1.5rem;
-  box-shadow: var(--shadow-md);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(var(--surface-blur));
+  -webkit-backdrop-filter: blur(var(--surface-blur));
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
@@ -865,9 +1052,29 @@ export default Timeline;
 `,
     });
 
-    files.push({
-      path: "src/design-system/components/KanbanBoard.tsx",
-      content: `import React from 'react';
+    const isKanbanExplicitlyRequested = (
+      (spec.features || []).some((f: any) => {
+        const name = (typeof f === "string" ? f : (f?.name || f?.title || "")).toLowerCase();
+        return (
+          name.includes("kanban") ||
+          name.includes("task board") ||
+          name.includes("scrum board") ||
+          name.includes("workflow board") ||
+          name.includes("task management") ||
+          name.includes("project management") ||
+          (/\bboard\b/.test(name) && !name.includes("dashboard") && !name.includes("leaderboard") && !name.includes("order book"))
+        );
+      }) ||
+      ((spec as any).userPrompt && /\b(kanban|task board|scrum board|sprint board|issue board|task management)\b/i.test((spec as any).userPrompt)) ||
+      ((spec as any).description && /\b(kanban|task board|scrum board|sprint board|issue board|task management)\b/i.test((spec as any).description))
+    );
+    const isKanbanForbidden = ((spec as any).forbiddenPatterns || []).includes("KanbanBoard");
+    const needsKanban = !isKanbanForbidden && isKanbanExplicitlyRequested;
+
+    if (needsKanban) {
+      files.push({
+        path: "src/design-system/components/KanbanBoard.tsx",
+        content: `import React from 'react';
 
 export interface KanbanItem {
   id: string;
@@ -913,7 +1120,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ columns, items, onItem
 );
 export default KanbanBoard;
 `,
-    });
+      });
+    }
 
     // ── 11. TelemetryGrid.tsx & ShowcaseGrid.tsx ──────────────────────────────
     files.push({
@@ -1014,29 +1222,141 @@ export default ShowcaseGrid;
     // ── 12. index.ts ──────────────────────────────────────────────────────────
     files.push({
       path: "src/design-system/index.ts",
-      content: `export * from './tokens.js';
-export * from './components/Button.js';
-export * from './components/GlassCard.js';
-export * from './components/Badge.js';
-export * from './components/Input.js';
-export * from './components/Select.js';
-export * from './components/MetricCard.js';
-export * from './components/PageHeader.js';
-export * from './components/Skeleton.js';
-export * from './components/EmptyState.js';
-export * from './components/Timeline.js';
-export * from './components/KanbanBoard.js';
-export * from './components/TelemetryGrid.js';
-export * from './components/ShowcaseGrid.js';
+      content: `export * from './tokens';
+export * from './components/Button';
+export * from './components/GlassCard';
+export * from './components/Badge';
+export * from './components/Input';
+export * from './components/Select';
+export * from './components/MetricCard';
+export * from './components/PageHeader';
+export * from './components/Skeleton';
+export * from './components/EmptyState';
+export * from './components/Timeline';
+${needsKanban ? "export * from './components/KanbanBoard';\n" : ""}export * from './components/TelemetryGrid';
+export * from './components/ShowcaseGrid';
 `,
     });
 
     return files;
   }
 
-  buildCoderContext(spec: ProjectSpecification, visualContract?: DomainVisualDesignContract): string {
+  buildCoderContext(spec: ProjectSpecification, visualContract?: DomainVisualDesignContract, productBrief?: ProductDesignBrief): string {
     const contract = visualContract || this.getVisualContract(spec);
-    return `
+    const isKanbanForbidden = ((spec as any).forbiddenPatterns || []).includes("KanbanBoard");
+    const isKanbanExplicitlyRequested = (
+      (spec.features || []).some((f: any) => {
+        const name = (typeof f === "string" ? f : (f?.name || f?.title || "")).toLowerCase();
+        return (
+          name.includes("kanban") ||
+          name.includes("task board") ||
+          name.includes("scrum board") ||
+          name.includes("workflow board") ||
+          name.includes("task management") ||
+          name.includes("project management") ||
+          (/\bboard\b/.test(name) && !name.includes("dashboard") && !name.includes("leaderboard") && !name.includes("order book"))
+        );
+      }) ||
+      ((spec as any).userPrompt && /\b(kanban|task board|scrum board|sprint board|issue board|task management)\b/i.test((spec as any).userPrompt)) ||
+      ((spec as any).description && /\b(kanban|task board|scrum board|sprint board|issue board|task management)\b/i.test((spec as any).description))
+    );
+    const hasKanban = !isKanbanForbidden && isKanbanExplicitlyRequested;
+
+    // ── If a ProductDesignBrief is present, prepend the full locked mandate ─────────────────────────
+    let briefMandate = "";
+    if (productBrief) {
+      const b = productBrief;
+      const pages = b.pageCompositions;
+      briefMandate = `
+══════════════════════════════════════════════════════════════
+ANTI-AI-WEBSITE PRINCIPLE — MANDATORY
+══════════════════════════════════════════════════════════════
+Every visual component, layout pattern, navigation structure,
+terminology, and color treatment must be traceable to this
+ProductDesignBrief, the user's requirements, the selected design
+direction, or a justified reusable design-system primitive.
+
+You are implementing a design that has already been decided.
+You are not designing.
+══════════════════════════════════════════════════════════════
+
+PRODUCT DESIGN MANDATE [briefId: ${b.briefId}]
+────────────────────────────────────────────────
+Experience  : ${b.productCharacteristics.experiencePattern}
+Audience    : ${b.productCharacteristics.audienceContext.isPersonal ? "personal" : b.productCharacteristics.audienceContext.isProfessional ? "professional" : "consumer"} | ${b.productCharacteristics.audienceContext.techSavviness} tech-savviness
+Direction   : ${b.artDirectionName} — ${b.artDirectionRationale}
+Primary     : ${b.featurePriority.informationArchitecture.primaryInteraction}
+Tone        : ${b.productCharacteristics.emotionalTone.primary}${b.productCharacteristics.emotionalTone.secondary ? " + " + b.productCharacteristics.emotionalTone.secondary : ""}
+
+NAVIGATION
+──────────
+Strategy         : ${b.navigation.strategy}
+Max PRIMARY items: ${b.navigation.maxPrimaryItems} — HARD CAP. DO NOT EXCEED.
+Secondary nav    : ${b.navigation.secondaryNav?.description || "none"}
+
+PRIMARY NAVIGATION CONTRACT (MANDATORY):
+Maximum: ${b.navigation.maxPrimaryItems} items.
+All other routes MUST be:
+- secondary navigation
+- More menu
+- contextual action
+- page-local navigation
+Do not render all routes in primary navigation. Layout and Navbar must have <= ${b.navigation.maxPrimaryItems} primary links.
+
+COLOR SYSTEM
+─────────────
+Background  : ${b.colorSystem.background}
+Surface     : ${b.colorSystem.surface}
+Primary     : ${b.colorSystem.primary}
+PrimaryHover: ${b.colorSystem.primaryHover}
+Text Primary: ${b.colorSystem.textPrimary}
+Text Muted  : ${b.colorSystem.textMuted}
+Chart Colors: [${b.colorSystem.chartPalette.join(", ")}]
+              — Use ALL 6 across charts. NOT 1 color with opacity variants.
+
+TYPOGRAPHY
+──────────
+Display Font: ${b.typography.displayFont}
+Body Font   : ${b.typography.bodyFont}
+Scale       : ${b.typography.displayScale}
+Headings    : ${b.typography.headingStyle}
+
+GEOMETRY
+────────
+Radius SM: ${b.geometry.radiusSm} | MD: ${b.geometry.radiusMd} | LG: ${b.geometry.radiusLg} | XL: ${b.geometry.radiusXl}
+Shadow   : ${b.geometry.shadowStyle} | Borders: ${b.geometry.borderWidth}
+
+PAGE COMPOSITIONS (each must be distinct — see rule below)
+───────────────────────────────────────────────────
+COMPOSITION RULE: No more than 2 consecutive pages may share
+the same compositionFamily AND heroElement type. Intentional
+reuse of a composition family for genuinely similar pages is
+acceptable. Mechanical repetition is not.
+
+${pages.map(p => `│ ${p.route} — ${p.name}
+│   Hero    : ${p.heroElement} — ${p.primaryFocus}
+│   Support : ${p.secondaryElements.join(", ")}
+│   Rhythm  : ${p.visualRhythm}
+│   NEVER   : ${p.forbiddenPatterns.join(", ")}`).join("\n")}
+
+VOCABULARY CONTRACT
+───────────────────
+  ✓ REQUIRED  (must appear at least once in the app): ${b.vocabularyContract.required.join(", ") || "(none defined)"}
+  ○ PREFERRED (use naturally where appropriate):       ${b.vocabularyContract.preferred.join(", ")}
+  ✗ FORBIDDEN (never in JSX text, labels, headings):  ${b.vocabularyContract.forbidden.join(", ")}
+
+DESIGN PRINCIPLES
+─────────────────
+${b.designPrinciples.map(p => "  ✓ " + p).join("\n")}
+
+ANTI-PATTERNS (WILL FAIL DESIGN INTENT GATE)
+─────────────────────────────────────────────
+${b.globalForbiddenPatterns.map(p => "  ✗ " + p).join("\n")}
+══════════════════════════════════════════════════════════════
+`;
+    }
+
+    return briefMandate + `
 DOMAIN VISUAL DESIGN CONTRACT — MANDATORY USAGE:
 Domain: ${contract.domain} (${contract.productType})
 Visual Personality: ${contract.visualPersonality.mood} [Formality: ${contract.visualPersonality.formality}, Density: ${contract.visualPersonality.density}]
@@ -1053,7 +1373,7 @@ Color Palette Tokens:
   Active Nav: ${contract.colorSystem.activeNavStyle}
 
 Pre-generated Specialized Components available in src/design-system/:
-  import { Button, GlassCard, Badge, Input, Select, PageHeader, MetricCard, Skeleton, EmptyState, Timeline, KanbanBoard, TelemetryGrid, ShowcaseGrid } from '../design-system/index.js';
+  import { Button, GlassCard, Badge, Input, Select, PageHeader, MetricCard, Skeleton, EmptyState, Timeline${hasKanban ? ', KanbanBoard' : ''}, TelemetryGrid, ShowcaseGrid } from '../design-system';
 
 ANTI-PATTERNS (STRICTLY PROHIBITED):
 ${contract.antiPatterns.map(a => `  ✗ ${a}`).join('\n')}

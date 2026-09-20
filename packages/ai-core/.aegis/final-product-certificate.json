@@ -2,9 +2,9 @@
   "gate": "FinalProductGate",
   "tier": 37,
   "status": "CERTIFIED",
-  "certificateId": "cert_final_1789501316091",
-  "product": "AegisCommercePro",
-  "domain": "ECOMMERCE",
+  "certificateId": "cert_final_1789888633778",
+  "product": "AegisAnalytics",
+  "domain": "SAAS",
   "requirementsVerified": true,
   "buildVerified": true,
   "runtimeVerified": true,
@@ -13,6 +13,6 @@
   "responsiveVerified": true,
   "accessibilityVerified": true,
   "criticalDefects": 0,
-  "cryptographicSignature": "sha256_final_prod_h7a90ajyoe",
-  "certifiedAt": "2026-09-15T19:41:56.091Z"
+  "cryptographicSignature": "sha256_final_prod_topurze81o",
+  "certifiedAt": "2026-09-20T07:17:13.778Z"
 }

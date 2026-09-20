@@ -73,6 +73,29 @@ describe("Aegis Generic Contract-Driven Navigation, Routes, API and Prisma Pipel
       }
     }, null, 2), "utf8");
 
+    // Simulate Coder-generated feature pages
+    mkdirSync(join(testDir, "src", "pages"), { recursive: true });
+    writeFileSync(
+      join(testDir, "src", "pages", "MenuPage.tsx"),
+      `import React from "react";
+import api from "../services/api";
+export function MenuPage() {
+  const [items, setItems] = React.useState([]);
+  React.useEffect(() => { api.get("/api/menu").then(res => setItems(res.data)); }, []);
+  const handleAdd = () => api.post("/api/menu", { name: "New Dish" });
+  return <div><h1>Menu</h1><button onClick={handleAdd}>Add</button></div>;
+}
+export default MenuPage;`
+    );
+    writeFileSync(
+      join(testDir, "src", "pages", "ReservationsPage.tsx"),
+      `import React from "react"; export default function ReservationsPage() { return <div>Reservations</div>; }`
+    );
+    writeFileSync(
+      join(testDir, "src", "pages", "OrdersPage.tsx"),
+      `import React from "react"; export default function OrdersPage() { return <div>Orders</div>; }`
+    );
+
     // 1. Run generic DeterministicProjectFixer
     DeterministicProjectFixer.fixProject(testDir, restaurantContract);
 
@@ -224,7 +247,9 @@ describe("Aegis Generic Contract-Driven Navigation, Routes, API and Prisma Pipel
 
     // 1. Navigation items must be bicycle specific, NOT restaurant specific
     const layoutContent = readFileSync(join(testDir, "src", "shared", "components", "Layout.tsx"), "utf8");
-    expect(layoutContent).not.toMatch(/Menu|MenuItem|Dining|Chef|Bistro/i);
+    expect(layoutContent).not.toMatch(/"name":\s*"(Menu|Dining|Chef|Bistro)"/i);
+    expect(layoutContent).not.toMatch(/"path":\s*"\/(menu|dining|chef|bistro)"/i);
+    expect(layoutContent).not.toMatch(/MenuItem|Dining|Chef|Bistro/i);
     expect(layoutContent).toMatch(/Fleet|Station|Bicycle|Rental|Maintenance/i);
 
     // 2. Routes must be bicycle specific

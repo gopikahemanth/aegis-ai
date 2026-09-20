@@ -143,10 +143,15 @@ export class PlanContractGate {
         console.log(`[TASK-CONTRACT] Task "${task.title}" (#${task.id}): PASS`);
         accepted.push(boundTask);
       } else {
+        const hasHashMismatch = violations.some(v => v.field === "architectureHash");
+        const failureReason = hasHashMismatch
+          ? `TASK_CONTRACT_ARCHITECTURE_MISMATCH — Task architectureHash "${task.architectureHash}" does not match locked contract architectureHash "${canonicalHash}"`
+          : `Forbidden technology detected`;
+
         const summary = violations.map(v => `${v.field}="${v.forbiddenTerm}"`).join(", ");
         console.warn(
           `[TASK-CONTRACT] Task "${task.title}" (#${task.id}): FAIL\n` +
-          `  Reason: Forbidden technology detected — ${summary}`
+          `  Reason: ${failureReason} — ${summary}`
         );
         errors.push(`Task "${task.title}": ${summary}`);
         rejected.push({ status: "REJECTED", task: boundTask, violations });

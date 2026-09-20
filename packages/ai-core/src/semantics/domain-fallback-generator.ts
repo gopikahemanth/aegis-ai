@@ -35,7 +35,7 @@ export function ${safeCompName}(initialData?: any) {
     setIsLoading(false);
   }, []);
 
-  return { data, isLoading, error, refetch: () => {}, mutate: () => {} };
+  return { data, loading: isLoading, isLoading, error, refetch: () => {}, mutate: () => {}, mutateAsync: async () => {} };
 }
 export default ${safeCompName};
 `;

@@ -125,8 +125,9 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
     semanticAliases: ["server/app.ts", "server/server.ts", "server/main.ts"],
     requiredExports: [],
     allowedImports: [
-      "server/routes/scan.routes",
       "server/routes/auth.routes",
+      "server/lib/prisma",
+      "server/middleware/errorHandler",
     ],
     required: true,
     category: "backend-entry",
@@ -195,7 +196,7 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
       "server/middleware/auth.middleware",
       "server/middleware/upload.middleware",
     ],
-    required: true,
+    required: false,
     category: "backend-route",
   },
   {
@@ -242,7 +243,7 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
       "server/lib/prisma",
       "server/middleware/upload.middleware",
     ],
-    required: true,
+    required: false,
     category: "backend-controller",
   },
   {
@@ -274,7 +275,7 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
     ],
     requiredExports: ["extractTextFromPdf"],
     allowedImports: [],
-    required: true,
+    required: false,
     category: "backend-service",
   },
   {
@@ -304,7 +305,7 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
     ],
     requiredExports: ["analyzeKeywords", "calculateMatchScore"],
     allowedImports: [],
-    required: true,
+    required: false,
     category: "backend-service",
   },
 
@@ -324,7 +325,7 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
     semanticAliases: ["server/middleware/multer.ts", "server/middleware/fileUpload.ts"],
     requiredExports: ["uploadMiddleware", "MulterRequest"],
     allowedImports: [],
-    required: true,
+    required: false,
     category: "backend-middleware",
   },
   {
@@ -377,7 +378,6 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
     ],
     requiredExports: ["default"],
     allowedImports: [
-      "src/features/analyzer/AnalyzePage",
       "src/features/dashboard/DashboardPage",
       "src/features/auth/LoginPage",
       "src/features/auth/RegisterPage",
@@ -411,7 +411,7 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
       "src/services/api",
       "src/shared/components/Layout",
     ],
-    required: true,
+    required: false,
     category: "frontend-page",
   },
   {
@@ -433,9 +433,9 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
     ],
     requiredExports: ["default"],
     allowedImports: [
-      "src/features/dashboard/components/MatchDashboard",
-      "src/features/dashboard/hooks/useDashboardData",
       "src/shared/components/Layout",
+      "src/shared/components/Card",
+      "src/design-system/components/Button",
     ],
     required: true,
     category: "frontend-page",
@@ -498,7 +498,7 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
       "src/shared/components/Card",
       "src/types/index",
     ],
-    required: true,
+    required: false,
     category: "frontend-component",
   },
   {
@@ -538,7 +538,7 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
     ],
     requiredExports: ["default"],
     allowedImports: [],
-    required: true,
+    required: false,
     category: "frontend-component",
   },
   {
@@ -590,7 +590,7 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
       "src/features/parser/hooks/useResumeUpload",
       "src/shared/components/Spinner",
     ],
-    required: true,
+    required: false,
     category: "frontend-component",
   },
   {
@@ -645,6 +645,23 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
     requiredExports: ["default"],
     allowedImports: [],
     required: true,
+    category: "frontend-component",
+  },
+  {
+    canonicalPath: "src/components/ui.tsx",
+    semanticRole: "Universal UI Primitives Barrel",
+    semanticAliases: [
+      "@/components/ui",
+      "src/components/ui",
+      "@/components/ui/index",
+      "src/components/ui/index.ts",
+      "src/components/ui/index.tsx",
+      "./ui",
+      "../ui",
+    ],
+    requiredExports: ["Card", "Select", "Spinner", "Alert", "Button", "Input", "Badge", "Progress", "default"],
+    allowedImports: [],
+    required: false,
     category: "frontend-component",
   },
   {

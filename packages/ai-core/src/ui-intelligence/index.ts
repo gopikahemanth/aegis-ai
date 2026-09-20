@@ -12,3 +12,5 @@ export * from "./ui-quality-score-engine.js";
 export * from "./ui-repair-engine.js";
 export * from "./ui-product-acceptance.js";
 export * from "./ui-intelligence-gate.js";
+export * from "./functional-presence-gate.js";
+export * from "./prompt-compliance-gate.js";

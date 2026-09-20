@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, statSync, rmSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
 export interface TaskCheckpoint {
@@ -245,5 +245,23 @@ export class ProjectMemoryEngine {
         },
       });
     }
+  }
+
+  public static wipeAllStaleState(projectPath: string): void {
+    const aegisDir = join(projectPath, ".aegis");
+    if (!existsSync(aegisDir)) return;
+    try {
+      const files = readdirSync(aegisDir);
+      for (const file of files) {
+        const full = join(aegisDir, file);
+        try {
+          if (statSync(full).isDirectory()) {
+            rmSync(full, { recursive: true, force: true });
+          } else {
+            unlinkSync(full);
+          }
+        } catch { /* non-fatal */ }
+      }
+    } catch { /* non-fatal */ }
   }
 }

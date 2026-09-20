@@ -104,12 +104,29 @@ export class FeatureContractValidator {
     const violations: ContractViolation[] = [];
     const domainName = (domainContract?.domainName || "").toLowerCase();
     const isAtsDomain = domainName.includes("resume") || domainName.includes("ats") || domainName.includes("applicant");
+    // File upload is only required for domains that explicitly request document/file upload workflows.
+    // This prevents false positives from template-generated upload.middleware.ts / UploadForm.tsx
+    // being present in non-upload apps (e.g. wellness trackers, analytics dashboards).
+    const isUploadDomain = isAtsDomain
+      || domainName.includes("upload")
+      || domainName.includes("document")
+      || domainName.includes("media")
+      || domainName.includes("file-manager")
+      || domainName.includes("cloud-storage");
 
     for (const contract of this.contracts) {
       // Domain-specific contracts should only apply to their domain
       if (contract.name.includes("ATS") || contract.name.includes("PDF / Document")) {
         if (!isAtsDomain) continue;
       }
+      // File Upload contract must only trigger for explicitly upload-oriented domains.
+      // Without this guard, template files like upload.middleware.ts and UploadForm.tsx
+      // written into the canonical graph would cause false-positive Reality Checker failures
+      // on unrelated apps (wellness trackers, dashboards, etc.).
+      if (contract.name === "File Upload") {
+        if (!isUploadDomain) continue;
+      }
+
 
       const triggered = contract.triggerKeywords.some(kw => kw.test(allSource));
       if (!triggered) continue;

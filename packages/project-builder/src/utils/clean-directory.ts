@@ -1,5 +1,21 @@
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, rmSync, readdirSync } from "node:fs";
 import { execSync } from "node:child_process";
+
+/**
+ * Asserts that the target directory is empty or does not exist for a fresh generation.
+ * If the target contains files and isIncremental is not true, throws GENERATION_TARGET_NOT_EMPTY.
+ */
+export function assertCleanTargetDirectory(targetPath: string, isIncremental?: boolean): void {
+  if (!existsSync(targetPath)) return;
+  const entries = readdirSync(targetPath).filter((e) => e !== ".git" && e !== ".DS_Store");
+  if (entries.length > 0 && !isIncremental) {
+    throw new Error(
+      `GENERATION_TARGET_NOT_EMPTY: Target directory "${targetPath}" contains an existing project (${entries.length} files/folders). ` +
+      `Clean generation requires an empty or non-existent directory to prevent cross-domain contamination. ` +
+      `Pass --incremental to explicitly evolve an existing project, or specify a clean directory via --output <dir>.`
+    );
+  }
+}
 
 /**
  * Safely cleans a target directory by killing any processes locking files inside it

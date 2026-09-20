@@ -206,6 +206,140 @@ ${principles || "  • Domain authenticity and high-contrast usability"}
 
     const CANONICAL_CODER_CONTEXT_HEADER = `
 ══════════════════════════════════════════════════════════════════════════════
+DO NOT REPLACE THE EXISTING GOVERNANCE PROTECTIONS.
+This is a workflow refactor. Preserve provenance, domain isolation, non-generative ProjectGraphEngine, mechanical-only FastSanitizer, capability completeness, DesignBrief locking, and architecture validation. Build the new staged frontend → approval → database → backend → integration workflow on top of them.
+
+DATABASE IS A FIRST-CLASS STAGE.
+
+After the user approves the frontend, do NOT immediately write arbitrary backend code.
+
+First perform DATABASE DESIGN.
+
+Inspect the approved frontend and locked Product/Experience Brief.
+
+Derive ONLY the data actually required by the product:
+
+USER REQUIREMENT
+→ FRONTEND FEATURE
+→ REQUIRED DATA
+→ ENTITY
+→ RELATIONSHIP
+→ DATABASE MODEL
+
+For every database entity, identify:
+
+- purpose
+- fields
+- types
+- required/optional fields
+- relationships
+- unique constraints
+- indexes where justified
+- foreign keys
+- lifecycle/status values
+- validation rules
+
+Then generate the Prisma schema and PostgreSQL migration.
+
+DATABASE MUST BE VERIFIED INDEPENDENTLY BEFORE BACKEND/API INTEGRATION.
+
+Verify:
+
+1. PostgreSQL connection
+2. Prisma schema validity
+3. migrations
+4. tables
+5. relationships
+6. foreign keys
+7. unique constraints
+8. required fields
+9. create operations
+10. read operations
+11. update operations
+12. delete operations where the product actually requires deletion
+13. persistence after application restart
+14. invalid-data rejection
+15. relationship integrity
+16. transaction behavior where required
+
+Do not create generic entities such as:
+
+Record
+Item
+Entry
+Data
+Status
+
+unless they are genuinely required by the product.
+
+Do not create database tables merely because a generic CRUD template expects them.
+
+Every database model must trace to:
+
+USER REQUIREMENT
+→ PRODUCT FEATURE
+→ FRONTEND NEED
+→ DATABASE NEED
+
+If a database model has no such provenance, reject it.
+
+After database verification passes, generate the Express backend against the VERIFIED schema.
+
+Every backend API must trace to:
+
+FRONTEND ACTION
+→ API CONTRACT
+→ EXPRESS ROUTE
+→ CONTROLLER
+→ SERVICE
+→ PRISMA
+→ POSTGRESQL
+→ RESPONSE
+
+Do not connect the frontend to the backend until BOTH:
+
+DATABASE VERIFICATION = PASS
+BACKEND VERIFICATION = PASS
+
+Only then perform frontend/backend integration.
+
+During integration, eliminate temporary frontend mock data one feature at a time and replace it with real API/database flows.
+
+Then run the complete user workflow in real Chromium.
+
+A feature is complete only when:
+
+USER ACTION
+→ FRONTEND
+→ API
+→ BACKEND
+→ DATABASE
+→ RESPONSE
+→ FRONTEND STATE
+→ VISIBLE RESULT
+
+has been verified.
+
+If any stage fails, STOP the pipeline at that stage, fix the responsible stage, re-run its verification, and only then continue.
+
+Never hide a database/backend failure by modifying the frontend.
+
+Never declare a feature complete merely because the UI looks correct.
+Never declare a feature complete merely because the API returns 200.
+Never declare a feature complete merely because the database contains tables.
+
+The final application must pass:
+
+FRONTEND
++ DATABASE
++ BACKEND
++ INTEGRATION
++ REAL BROWSER
++ VISUAL QUALITY
++ PERSISTENCE
+
+before BROWSER_CERTIFIED.
+══════════════════════════════════════════════════════════════════════════════
 CANONICAL PROJECT ARCHITECTURE CONSTRAINTS (MANDATORY & AUTHORITATIVE)
 ══════════════════════════════════════════════════════════════════════════════
 CANONICAL COMPONENTS (USE THESE — DO NOT INVENT ARBITRARY SHARED COMPONENTS):

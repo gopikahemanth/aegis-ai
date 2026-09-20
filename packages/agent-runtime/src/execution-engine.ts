@@ -49,7 +49,17 @@ export class ExecutionEngine {
     if (hint) (this.orchestrator as any).designModeHint = hint;
   }
 
-  async execute(request: string, imagePath?: string, targetDir?: string, options?: { incremental?: boolean }) {
+  async execute(
+    request: string,
+    imagePath?: string,
+    targetDir?: string,
+    options?: {
+      incremental?: boolean;
+      approveFrontend?: boolean;
+      skipApproval?: boolean;
+      onFrontendReview?: (summary: any) => Promise<boolean | string>;
+    }
+  ) {
     const basePath = process.env.INIT_CWD || process.cwd();
     const projectPath = targetDir ? resolve(basePath, targetDir) : resolve(basePath, "./generated/project");
 
@@ -126,9 +136,9 @@ export class ExecutionEngine {
       }
     }
 
-    // ── Step 5: generateApplication — full code generation pipeline ──────────
+    // ── Step 5: generateApplication — staged code generation pipeline ────────
     console.log("Generating application...");
-    const generated = await this.orchestrator.generateApplication(request, projectPath, imagePath, result.lockedPlan);
+    const generated = await this.orchestrator.generateApplication(request, projectPath, imagePath, result.lockedPlan, options);
     console.log(`[ExecutionEngine] generateApplication complete. Files: ${(generated as any)?.files?.length ?? "unknown"}`);
 
     // ── Step 6: Install, build, and self-heal ────────────────────────────────

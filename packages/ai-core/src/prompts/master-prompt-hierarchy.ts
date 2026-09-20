@@ -46,6 +46,7 @@ AEGIS MASTER SYSTEM RULES (IMMUTABLE LEVEL 0 GOVERNANCE)
 8. DETERMINISTIC VALIDATION & REPAIR: If a repair introduces regressions or fails verification, it must be rolled back immediately.
 9. MEMORY IS NON-AUTHORITATIVE: Memory records past patterns and decisions; if memory conflicts with the locked contract, the locked contract wins.
 10. FINAL PROJECT SUCCESS REQUIRES EVIDENCE: Success is evaluated independently by FinalSuccessGate based on real runtime, build, browser, API, and reality verification.
+11. DATABASE IS A FIRST-CLASS STAGE: The database schema is derived strictly from approved frontend requirements and must be verified independently across tables, relationships, constraints, and CRUD operations before backend API code is generated.
 ═══════════════════════════════════════════════════════════════════════════════`;
 
 export const ROLE_CONTRACTS: Record<AgentRoleType, RoleContract> = {

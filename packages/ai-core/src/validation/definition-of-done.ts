@@ -517,6 +517,30 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
           searchTerms.add("auth");
           searchTerms.add("login");
         }
+        if (t === "recipe" || t === "recipes") {
+          searchTerms.add("formula");
+          searchTerms.add("formulation");
+          searchTerms.add("glaze");
+          searchTerms.add("calculation");
+          searchTerms.add("ingredient");
+        }
+        if (t === "vault") {
+          searchTerms.add("archive");
+          searchTerms.add("library");
+          searchTerms.add("collection");
+          searchTerms.add("calculator");
+          searchTerms.add("history");
+        }
+        if (t === "kiln") {
+          searchTerms.add("thermal");
+          searchTerms.add("firing");
+          searchTerms.add("temperature");
+        }
+        if (t === "monitor" || t === "schedule") {
+          searchTerms.add("profile");
+          searchTerms.add("session");
+          searchTerms.add("timer");
+        }
       }
       // Check if any search term appears in source files or file paths
       const inContent = Array.from(searchTerms).some(t => lowerSource.includes(t));

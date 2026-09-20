@@ -83,6 +83,18 @@ Options:
     args.splice(incIdx, 1);
   }
 
+  let approveFrontend = false;
+  const afIdx = args.indexOf("--approve-frontend");
+  if (afIdx !== -1) {
+    approveFrontend = true;
+    args.splice(afIdx, 1);
+  }
+  const saIdx = args.indexOf("--skip-approval");
+  if (saIdx !== -1) {
+    approveFrontend = true;
+    args.splice(saIdx, 1);
+  }
+
   const prompt = args.join(" ");
 
   if (!prompt) {
@@ -116,10 +128,54 @@ Options:
     console.log(`[Mode] INCREMENTAL EVOLUTION (modifying existing target)`);
   }
 
+  // Interactive review handler
+  const onFrontendReview = async (summary: any): Promise<boolean | string> => {
+    if (approveFrontend || process.env.CI === "true" || !process.stdin.isTTY) {
+      console.log(`[StageApproval] ⏩ Auto-approving frontend (--approve-frontend / non-interactive environment).`);
+      return true;
+    }
+
+    console.log(`\n` +
+      `══════════════════════════════════════════════════════════════════════════════\n` +
+      `🎨 FRONTEND GENERATION COMPLETE & VISUALLY REVIEWED\n` +
+      `══════════════════════════════════════════════════════════════════════════════\n` +
+      `Pages / Views: ${(summary.pages || []).join(", ") || "Standard Application Views"}\n` +
+      `Theme Palette: Primary: ${summary.colorPalette?.primary || "calm stone"} | Surface: ${summary.colorPalette?.surface || "white"}\n` +
+      `Screenshots:   Desktop (1440px): ${summary.screenshots?.desktop || ".aegis/screenshots/desktop.png"}\n` +
+      `               Tablet (768px):   ${summary.screenshots?.tablet || ".aegis/screenshots/tablet.png"}\n` +
+      `               Mobile (375px):   ${summary.screenshots?.mobile || ".aegis/screenshots/mobile.png"}\n` +
+      `══════════════════════════════════════════════════════════════════════════════\n`
+    );
+
+    const readline = await import("node:readline/promises");
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      const answer = await rl.question(
+        "Do you approve this frontend design so I can proceed with the database and backend? [Y/n/changes]: "
+      );
+      const trimmed = answer.trim().toLowerCase();
+      if (trimmed === "" || trimmed === "y" || trimmed === "yes") {
+        return true;
+      }
+      if (trimmed === "changes" || trimmed === "c") {
+        const feedback = await rl.question("What changes would you like to make to the frontend? ");
+        return feedback.trim() || "User requested visual refinements";
+      }
+      console.log("[StageApproval] Generation halted by user.");
+      return false;
+    } finally {
+      rl.close();
+    }
+  };
+
   console.log("Generating project...");
 
   try {
-    const success = await engine.execute(prompt, imagePath, targetDir, { incremental });
+    const success = await engine.execute(prompt, imagePath, targetDir, {
+      incremental,
+      approveFrontend,
+      onFrontendReview,
+    });
 
     if (success) {
       console.log("🎉 Project generated successfully.");

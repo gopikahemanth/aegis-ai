@@ -91,6 +91,21 @@ export interface ProductCharacteristics {
     preferred: string[];
     forbidden: string[];
   };
+
+  /** Specific target audience description. */
+  targetAudience: string;
+
+  /** The single most critical action the user performs. */
+  primaryAction: string;
+
+  /** Key supplementary actions and workflows. */
+  secondaryActions: string[];
+
+  /** Concrete aesthetic feel, tactile materials, textures, and geometry. */
+  visualPersonality: string;
+
+  /** Priority ordering of views, focal points, and metrics. */
+  contentHierarchy: string[];
 }
 
 export type DesignToneHint =
@@ -580,6 +595,12 @@ export class ProductUnderstanding {
 
     const forbidden = Array.from(new Set([...vocab.forbidden, ...foreignForbidden]));
 
+    const targetAudience = deriveTargetAudience(text, audienceContext, primaryActivity);
+    const primaryAction = derivePrimaryAction(text, primaryActivity);
+    const secondaryActions = deriveSecondaryActions(text, primaryActivity);
+    const visualPersonality = deriveVisualPersonality(emotionalTone, experiencePattern, text);
+    const contentHierarchy = deriveContentHierarchy(primaryActivity, experiencePattern);
+
     return {
       audienceContext,
       primaryActivity,
@@ -595,6 +616,69 @@ export class ProductUnderstanding {
         preferred: vocab.preferred,
         forbidden,
       },
+      targetAudience,
+      primaryAction,
+      secondaryActions,
+      visualPersonality,
+      contentHierarchy,
     };
+  }
+}
+
+function deriveTargetAudience(text: string, audience: ProductCharacteristics["audienceContext"], activity: ProductCharacteristics["primaryActivity"]): string {
+  if (text.includes("ceramic") || text.includes("pottery") || text.includes("glaze")) {
+    return "Artisanal ceramic studio practitioners, glaze chemists, and pottery commission clients";
+  }
+  if (audience.isPersonal) return "Individual creators, collectors, and personal journey trackers";
+  if (audience.isProfessional) return "Domain specialists and technical practitioners requiring high-precision operational workflows";
+  if (audience.isEnterprise) return "Organizational teams and operational administrators";
+  return "Discerning end users seeking an intuitive, purposeful product experience";
+}
+
+function derivePrimaryAction(text: string, activity: ProductCharacteristics["primaryActivity"]): string {
+  if (text.includes("glaze") || text.includes("kiln") || text.includes("ceramic")) {
+    return "Formulate glaze chemistry recipes and monitor kiln firing temperature schedules";
+  }
+  if (activity === "booking-ordering") return "Browse curated offerings and initiate bespoke bookings/orders";
+  if (activity === "personal-tracking") return "Record daily observations and track longitudinal progress";
+  if (activity === "data-analysis") return "Inspect real-time telemetry metrics and operational trends";
+  if (activity === "content-browsing") return "Discover and explore curated catalog entries";
+  return "Manage and interact with domain records and workflows";
+}
+
+function deriveSecondaryActions(text: string, activity: ProductCharacteristics["primaryActivity"]): string[] {
+  const actions: string[] = [];
+  if (text.includes("commission")) actions.push("Manage bespoke client commission requests and approvals");
+  if (text.includes("monitor") || text.includes("schedule")) actions.push("Review live execution logs and status alerts");
+  if (text.includes("calculator") || text.includes("formulat")) actions.push("Compute precision batch ingredient ratios and oxide limits");
+  if (actions.length === 0) {
+    actions.push("Filter and inspect individual detail views", "Export and save operational summaries");
+  }
+  return actions;
+}
+
+function deriveVisualPersonality(tone: ProductCharacteristics["emotionalTone"], pattern: ProductCharacteristics["experiencePattern"], text: string): string {
+  if (text.includes("ceramic") || text.includes("pottery") || tone.primary === "calm" || tone.primary === "warm") {
+    return "Tactile, warm artisanal aesthetics with organic earth tones, generous whitespace, subtle stone borders, and clean typography";
+  }
+  if (tone.primary === "technical" || tone.primary === "serious") {
+    return "High-density technical precision with crisp monospaced telemetry, subtle data borders, and high-contrast indicators";
+  }
+  if (tone.primary === "luxurious") {
+    return "Refined couture elegance with deep contrasting tones, delicate gold/sand accents, and generous editorial typography";
+  }
+  return "Balanced modern interface with harmonious color tokens, deliberate typographic hierarchy, and responsive layout rhythms";
+}
+
+function deriveContentHierarchy(activity: ProductCharacteristics["primaryActivity"], pattern: ProductCharacteristics["experiencePattern"]): string[] {
+  switch (pattern) {
+    case "catalog-browser":
+    case "booking-flow":
+      return ["Hero Showcase & Ethos", "Interactive Catalog / Grid", "Detail & Specification View", "Intake / Reservation Flow", "Operational Dashboard"];
+    case "operations-dashboard":
+    case "realtime-console":
+      return ["Operational Overview KPIs", "Primary Telemetry / Monitoring Surface", "Detailed Formulation / Calculation Workbench", "Management & Records Queue"];
+    default:
+      return ["Primary Focus Surface", "Interactive Discovery & Filters", "Detail Inspector Drawer", "Creation & Submission Form"];
   }
 }

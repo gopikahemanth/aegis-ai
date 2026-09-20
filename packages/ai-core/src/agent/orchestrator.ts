@@ -79,6 +79,8 @@ import { CanonicalPlanManager, type LockedGenerationPlan } from "../planning/can
 import { DomainContractManager } from "../governance/domain-contract.js";
 import { ArtifactProvenanceValidator } from "../governance/artifact-provenance-validator.js";
 import { CapabilityCompletenessInvariant } from "../validation/capability-completeness-invariant.js";
+import { FrontendApprovalCheckpoint, type FrontendReviewSummary } from "../governance/frontend-approval-checkpoint.js";
+import { DatabaseVerifier } from "../database/database-verifier.js";
 
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
@@ -526,6 +528,11 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     outputDirectory: string,
     imagePath?: string,
     providedPlan?: LockedGenerationPlan,
+    options?: {
+      approveFrontend?: boolean;
+      skipApproval?: boolean;
+      onFrontendReview?: (summary: any) => Promise<boolean | string>;
+    },
   ) {
     const loadedPlan = providedPlan || CanonicalPlanManager.load(outputDirectory);
     const hasLockedPlan = !!(loadedPlan && (loadedPlan.request?.trim() === request?.trim() || !loadedPlan.request));
@@ -874,31 +881,10 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
       );
     }
 
-    // ─── Prisma Schema Persistence ───────────────────────────────────────────
-    try {
-      const activeProjectContract = resolvedContract ?? request;
-      const canonicalModelNames = CanonicalDataModelContract.getModelNames(activeProjectContract);
-      const prismaDir = join(outputDirectory, "prisma");
-      if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
-      const schemaPath = join(prismaDir, "schema.prisma");
-      const dbProvider = (typeof activeProjectContract === "object" ? activeProjectContract.database?.provider : undefined) ?? "postgresql";
-      const canonicalSchemaContent = CanonicalDataModelContract.getPrismaSchema(activeProjectContract, dbProvider);
-      writeFileSync(schemaPath, canonicalSchemaContent, "utf8");
-      console.log(
-        `[PRISMA-SCHEMA-WRITE] caller=orchestrator.ts models=${canonicalModelNames.join(",")} hash=canonical_v1`
-      );
-
-      const persistedSchema = readFileSync(schemaPath, "utf8");
-      const verification = CanonicalDataModelContract.validateSchema(persistedSchema, activeProjectContract);
-      if (!verification.valid) {
-        throw new Error(
-          `SCHEMA_PERSISTENCE_FAILURE: prisma/schema.prisma verification failed immediately after write. Missing models: ${verification.missingModels.join(", ")}`
-        );
-      }
-      console.log(`[DATA-CONTRACT] ✓ Schema persistence verified on disk. Models present: ${canonicalModelNames.join(", ")}.`);
-    } catch (prismaErr: any) {
-      console.warn(`[PRISMA-SCHEMA] Warning writing schema: ${prismaErr.message}`);
-    }
+    // ─── Staged Architecture ─────────────────────────────────────────────────
+    // In the staged workflow, Database Design & Prisma Schema Persistence is deferred
+    // to Stage 9 (after user frontend review and approval).
+    console.log("[StagedArchitecture] Database design & Prisma schema deferred to Stage 9 (post-frontend approval).");
 
     // Set canonical project root singleton to prevent duplicate path bugs
     ProjectRootSingleton.setRoot(outputDirectory);
@@ -1017,14 +1003,6 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     let response = "";
 
     let parsedFiles: GeneratedFile[] = [];
-    let parallelTiers: Task[][];
-    try {
-      parallelTiers = this.scheduler.scheduleParallelTiers(tasks) as Task[][];
-      console.log(`[Orchestrator] DAG parallel scheduling successful. Grouped ${tasks.length} tasks into ${parallelTiers.length} execution tiers.`);
-    } catch (error: any) {
-      console.warn(`[Orchestrator] Warning: Parallel scheduling failed (${error.message}). Falling back to sequential execution.`);
-      parallelTiers = tasks.map(t => [t]);
-    }
 
     // Print final resolved architecture snapshot before coding (Part 15)
     console.log("\n=== FINAL RESOLVED ARCHITECTURE ===");
@@ -1037,226 +1015,349 @@ ${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.
     console.log(`Models:   ${(resolvedContract.requiredModels || []).join(", ")}`);
     console.log("===================================\n");
 
-    console.log("Starting implementation loop...");
-    for (let i = 0; i < parallelTiers.length; i++) {
-      const tier = parallelTiers[i];
-      console.log(`\nRunning execution tier ${i + 1}/${parallelTiers.length} with ${tier.length} parallel tasks...`);
+    const isFrontendTask = (t: Task): boolean => {
+      const title = (t.title || "").toLowerCase();
+      const desc = (t.description || "").toLowerCase();
+      const stage = (t as any).stage?.toLowerCase() || "";
+      return stage.includes("frontend") || stage.includes("ui") ||
+        title.includes("frontend") || title.includes("ui") || title.includes("component") || title.includes("page") || title.includes("view") || title.includes("design") ||
+        desc.includes("react") || desc.includes("jsx") || desc.includes("tsx") || desc.includes("style");
+    };
 
-      const promises = tier.map(async (task) => {
-        console.log(`[Task: ${task.title}] Calling CoderAgent... Status: PENDING`);
-        let result: { response: string; files: GeneratedFile[] } = { response: "", files: [] };
-        try {
-          result = await this.coderAgent.execute(
-            task,
-            architecture,
-            architecturePlan,
-            enrichedRequest,
-            outputDirectory,
-            existingFiles,
-            imagePayload,
-          );
+    const isDatabaseTask = (t: Task): boolean => {
+      const title = (t.title || "").toLowerCase();
+      const desc = (t.description || "").toLowerCase();
+      const stage = (t as any).stage?.toLowerCase() || "";
+      return stage.includes("database") || stage.includes("schema") ||
+        title.includes("database") || title.includes("prisma") || title.includes("schema") || title.includes("model") ||
+        desc.includes("prisma") || desc.includes("database") || desc.includes("migration");
+    };
 
-          console.log(`[Task: ${task.title}] Status: GENERATED`);
+    const isBackendTask = (t: Task): boolean => {
+      return !isFrontendTask(t) && !isDatabaseTask(t);
+    };
 
-          // ── STEP A: Filter cross-domain files (prevent cross-task contamination) ──
-          // Frontend tasks must not include backend-only files and vice versa
-          const taskDomain = task.title?.toLowerCase() || "";
-          const isFrontendTask = taskDomain.includes("frontend") || taskDomain.includes("ui") || taskDomain.includes("interface");
-          const isBackendTask = taskDomain.includes("backend") || taskDomain.includes("api") || taskDomain.includes("nlp") || taskDomain.includes("parsing") || taskDomain.includes("core");
-          const isDatabaseTask = taskDomain.includes("database") || taskDomain.includes("schema");
+    const frontendTasks = tasks.filter(isFrontendTask);
+    const backendTasks = tasks.filter(isBackendTask);
+    const databaseTasks = tasks.filter(isDatabaseTask);
 
-          if (isFrontendTask) {
-            const before = result.files.length;
-            result.files = result.files.filter(f => {
-              const p = f.path.replace(/\\/g, "/");
-              const isBackendFile = p.startsWith("server/") && !p.startsWith("server/routes");
-              if (isBackendFile) {
-                console.log(`[Task: ${task.title}] ⚠️ Filtered cross-domain backend file: ${f.path}`);
-                return false;
+    console.log(`[StagedArchitecture] Partitioned tasks: ${frontendTasks.length} frontend, ${databaseTasks.length} database, ${backendTasks.length} backend.`);
+
+    const patchEngine = new PatchEngine();
+
+    const executeTaskBatch = async (batchTasks: Task[], stageLabel: string, isFrontendBatch = false) => {
+      if (batchTasks.length === 0) {
+        console.log(`[StagedArchitecture] No tasks assigned for ${stageLabel}.`);
+        return;
+      }
+
+      console.log(`\n══════════════════════════════════════════════════════════════════════════════`);
+      console.log(`${stageLabel.toUpperCase()} (${batchTasks.length} tasks)`);
+      console.log(`══════════════════════════════════════════════════════════════════════════════`);
+
+      let parallelTiers: Task[][];
+      try {
+        parallelTiers = this.scheduler.scheduleParallelTiers(batchTasks) as Task[][];
+        console.log(`[Orchestrator] DAG parallel scheduling successful. Grouped ${batchTasks.length} tasks into ${parallelTiers.length} execution tiers.`);
+      } catch (error: any) {
+        console.warn(`[Orchestrator] Warning: Parallel scheduling failed (${error.message}). Falling back to sequential execution.`);
+        parallelTiers = batchTasks.map(t => [t]);
+      }
+
+      for (let i = 0; i < parallelTiers.length; i++) {
+        const tier = parallelTiers[i];
+        console.log(`\nRunning execution tier ${i + 1}/${parallelTiers.length} with ${tier.length} parallel tasks...`);
+
+        const promises = tier.map(async (task) => {
+          console.log(`[Task: ${task.title}] Calling CoderAgent... Status: PENDING`);
+          let result: { response: string; files: GeneratedFile[] } = { response: "", files: [] };
+          try {
+            result = await this.coderAgent.execute(
+              task,
+              architecture,
+              architecturePlan,
+              enrichedRequest,
+              outputDirectory,
+              existingFiles,
+              imagePayload,
+            );
+
+            console.log(`[Task: ${task.title}] Status: GENERATED`);
+
+            // ── STEP A: Strict Stage Isolation ──
+            if (isFrontendBatch) {
+              const before = result.files.length;
+              result.files = result.files.filter(f => {
+                const p = f.path.replace(/\\/g, "/");
+                const isBackendOrDb = p.startsWith("server/") || p.startsWith("prisma/");
+                if (isBackendOrDb) {
+                  console.log(`[Task: ${task.title}] ⚠️ Stripped premature backend/db file during frontend-only stage: ${f.path}`);
+                  return false;
+                }
+                return true;
+              });
+              if (result.files.length < before) {
+                console.log(`[Task: ${task.title}] Enforced frontend-only isolation (${before - result.files.length} non-frontend file(s) removed).`);
               }
-              return true;
-            });
-            if (result.files.length < before) {
-              console.log(`[Task: ${task.title}] Removed ${before - result.files.length} cross-domain file(s) from frontend task result.`);
             }
-          }
 
-          // ── STEP B: Deterministic trailing-filename contamination strip ──
-          // When an LLM appends the file path at the end of the content, strip it.
-          for (const file of result.files) {
-            const filePath = file.path.replace(/\\/g, "/");
-            const trimmed = file.content.trimEnd();
-            // Check if the content ends with the file path (response contamination)
-            if (trimmed.endsWith(filePath) || trimmed.endsWith(file.path)) {
-              const pathToStrip = trimmed.endsWith(filePath) ? filePath : file.path;
-              file.content = trimmed.slice(0, trimmed.length - pathToStrip.length).trimEnd();
-              console.log(`[Task: ${task.title}] 🧹 Stripped trailing filename contamination from: ${file.path}`);
+            // ── STEP B: Trailing-filename contamination strip ──
+            for (const file of result.files) {
+              const filePath = file.path.replace(/\\/g, "/");
+              const trimmed = file.content.trimEnd();
+              if (trimmed.endsWith(filePath) || trimmed.endsWith(file.path)) {
+                const pathToStrip = trimmed.endsWith(filePath) ? filePath : file.path;
+                file.content = trimmed.slice(0, trimmed.length - pathToStrip.length).trimEnd();
+                console.log(`[Task: ${task.title}] 🧹 Stripped trailing filename contamination from: ${file.path}`);
+              }
+              file.content = file.content
+                .replace(/\n+(?:FILE|file|path|filename|filepath):\s*[\w\/\\.]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "")
+                .replace(/\n+(?:server|src|client|prisma)\/[\w\/]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "");
             }
-            // Also strip common response-contamination patterns
-            file.content = file.content
-              .replace(/\n+(?:FILE|file|path|filename|filepath):\s*[\w\/\\.]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "")
-              .replace(/\n+(?:server|src|client|prisma)\/[\w\/]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "");
-          }
 
-          // ── STEP C: Candidate file completeness validation ──
-          const invalidCandidates: string[] = [];
-          for (const file of result.files) {
-            const validation = GeneratedFileValidator.validateCompleteness(file.content, file.path);
-            if (!validation.valid) {
-              const msg = validation.issues.map(j => j.message).join("; ");
-              invalidCandidates.push(`${file.path} (${msg})`);
+            // ── STEP C: Completeness validation ──
+            const invalidCandidates: string[] = [];
+            for (const file of result.files) {
+              const validation = GeneratedFileValidator.validateCompleteness(file.content, file.path);
+              if (!validation.valid) {
+                const msg = validation.issues.map(j => j.message).join("; ");
+                invalidCandidates.push(`${file.path} (${msg})`);
+              }
             }
-          }
 
-          if (invalidCandidates.length > 0) {
-            throw new Error(`INCOMPLETE_GENERATED_FILE: Candidate files failed completeness validation: ${invalidCandidates.join(", ")}`);
-          }
-        } catch (coderError: any) {
-          console.warn(`[Orchestrator] CoderAgent validation failed for task "${task.title}": ${coderError.message}`);
-          console.log(`[Orchestrator] Launching inline Coder self-healing loop...`);
-          let repairAttempts = 0;
-          let success = false;
-          let lastError = coderError;
+            if (invalidCandidates.length > 0) {
+              throw new Error(`INCOMPLETE_GENERATED_FILE: Candidate files failed completeness validation: ${invalidCandidates.join(", ")}`);
+            }
+          } catch (coderError: any) {
+            console.warn(`[Orchestrator] CoderAgent validation failed for task "${task.title}": ${coderError.message}`);
+            console.log(`[Orchestrator] Launching inline Coder self-healing loop...`);
+            let repairAttempts = 0;
+            let success = false;
+            let lastError = coderError;
 
-          while (repairAttempts < 3 && !success) {
-            repairAttempts++;
-            console.log(`[Self-Healing] Inline Coder repair attempt ${repairAttempts}/3...`);
-            try {
-              // Build a structured repair prompt listing ONLY the failing files
-              const failingFileList = result.files
-                .filter(f => {
-                  const v = GeneratedFileValidator.validateCompleteness(f.content, f.path);
-                  return !v.valid;
-                })
-                .map(f => `- ${f.path}: ${GeneratedFileValidator.validateCompleteness(f.content, f.path).issues.map(i => i.message).join("; ")}`)
-                .join("\n");
+            while (repairAttempts < 3 && !success) {
+              repairAttempts++;
+              console.log(`[Self-Healing] Inline Coder repair attempt ${repairAttempts}/3...`);
+              try {
+                const failingFileList = result.files
+                  .filter(f => {
+                    const v = GeneratedFileValidator.validateCompleteness(f.content, f.path);
+                    return !v.valid;
+                  })
+                  .map(f => `- ${f.path}: ${GeneratedFileValidator.validateCompleteness(f.content, f.path).issues.map(i => i.message).join("; ")}`)
+                  .join("\n");
 
-              const repairContext = `Task: "${task.title}"
-Error: ${lastError.message}
-Failing files:
-${failingFileList || "(see error above)"}
+                const repairContext = `Task: "${task.title}"\nError: ${lastError.message}\nFailing files:\n${failingFileList || "(see error above)"}\n\nIMPORTANT: Return ONLY the corrected files in this exact format:\n===FILE: path/to/file.ts===\n[complete file content]\n===END===`;
 
-IMPORTANT: Return ONLY the corrected files in this exact format:
-===FILE: path/to/file.ts===
-[complete file content]
-===END===
+                const repairResponse = await this.repairCoordinator.repair(
+                  request,
+                  lastError.message,
+                  repairContext
+                );
 
-Do not include any explanation, prose, or markdown outside the file blocks.`;
-
-              const repairResponse = await this.repairCoordinator.repair(
-                request,
-                lastError.message,
-                repairContext
-              );
-
-              let repairedFiles = this.parser.parse(repairResponse);
-              if (repairedFiles.length === 0) {
-                // Fallback XML <FILE path="..."> parsing
-                const xmlRegex = /<FILE\s+path=["']([^"']+)["']>\s*([\s\S]*?)\s*<\/FILE>/gi;
-                let match: RegExpExecArray | null;
-                while ((match = xmlRegex.exec(repairResponse)) !== null) {
-                  const filePath = match[1].trim();
-                  const fileContent = match[2].trim();
-                  if (filePath && fileContent) {
-                    repairedFiles.push({ path: filePath, content: fileContent });
+                let repairedFiles = this.parser.parse(repairResponse);
+                if (repairedFiles.length === 0) {
+                  const xmlRegex = /<FILE\s+path=["']([^"']+)["']>\s*([\s\S]*?)\s*<\/FILE>/gi;
+                  let match: RegExpExecArray | null;
+                  while ((match = xmlRegex.exec(repairResponse)) !== null) {
+                    const filePath = match[1].trim();
+                    const fileContent = match[2].trim();
+                    if (filePath && fileContent) {
+                      repairedFiles.push({ path: filePath, content: fileContent });
+                    }
                   }
                 }
-              }
 
-              // Apply same trailing-filename strip to healer output
-              for (const file of repairedFiles) {
-                const filePath = file.path.replace(/\\/g, "/");
-                const trimmed = file.content.trimEnd();
-                if (trimmed.endsWith(filePath) || trimmed.endsWith(file.path)) {
-                  const pathToStrip = trimmed.endsWith(filePath) ? filePath : file.path;
-                  file.content = trimmed.slice(0, trimmed.length - pathToStrip.length).trimEnd();
+                for (const file of repairedFiles) {
+                  const filePath = file.path.replace(/\\/g, "/");
+                  const trimmed = file.content.trimEnd();
+                  if (trimmed.endsWith(filePath) || trimmed.endsWith(file.path)) {
+                    const pathToStrip = trimmed.endsWith(filePath) ? filePath : file.path;
+                    file.content = trimmed.slice(0, trimmed.length - pathToStrip.length).trimEnd();
+                  }
+                  file.content = file.content
+                    .replace(/\n+(?:FILE|file|path|filename|filepath):\s*[\w\/\\.]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "")
+                    .replace(/\n+(?:server|src|client|prisma)\/[\w\/]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "");
                 }
-                file.content = file.content
-                  .replace(/\n+(?:FILE|file|path|filename|filepath):\s*[\w\/\\.]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "")
-                  .replace(/\n+(?:server|src|client|prisma)\/[\w\/]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "");
-              }
 
-              const validRepairedFiles = repairedFiles.filter(f => {
-                const validation = GeneratedFileValidator.validateCompleteness(f.content, f.path);
-                return validation.valid;
-              });
-
-              if (validRepairedFiles.length > 0) {
-                // Merge valid repaired files back into result, preserving already-valid files
-                const repairedPaths = new Set(validRepairedFiles.map(f => f.path));
-                const keptOriginal = result.files.filter(f => {
-                  const v = GeneratedFileValidator.validateCompleteness(f.content, f.path);
-                  return v.valid && !repairedPaths.has(f.path);
+                const validRepairedFiles = repairedFiles.filter(f => {
+                  const validation = GeneratedFileValidator.validateCompleteness(f.content, f.path);
+                  return validation.valid;
                 });
-                result = {
-                  response: repairResponse,
-                  files: [...keptOriginal, ...validRepairedFiles]
-                };
-                success = true;
-                console.log(`[Self-Healing] ✓ Coder repair succeeded! Validated completeness for ${validRepairedFiles.length} file(s).`);
-              } else if (repairAttempts < 3) {
-                // On next attempt, try asking for a different strategy
-                lastError = new Error(`REPAIR_RESPONSE_INVALID: Attempt ${repairAttempts} yielded no valid files. Trying different repair strategy.`);
-                console.error(`[Self-Healing] Inline repair attempt ${repairAttempts} yielded no valid files. Retrying with stricter prompt.`);
-              } else {
-                throw new Error("REPAIR_RESPONSE_INVALID: No syntactically complete candidate files parsed from repair response.");
+
+                if (validRepairedFiles.length > 0) {
+                  result = {
+                    response: repairResponse,
+                    files: validRepairedFiles,
+                  };
+                  success = true;
+                  console.log(`[Self-Healing] ✓ Coder repair succeeded! Validated completeness for ${validRepairedFiles.length} file(s).`);
+                } else if (repairAttempts < 3) {
+                  lastError = new Error(`REPAIR_RESPONSE_INVALID: Attempt ${repairAttempts} yielded no valid files. Retrying with stricter prompt.`);
+                } else {
+                  throw new Error("REPAIR_RESPONSE_INVALID: No syntactically complete candidate files parsed from repair response.");
+                }
+              } catch (repairErr: any) {
+                lastError = repairErr;
+                console.error(`[Self-Healing] Inline repair attempt ${repairAttempts} failed:`, repairErr.message);
               }
-            } catch (repairErr: any) {
-              lastError = repairErr;
-              console.error(`[Self-Healing] Inline repair attempt ${repairAttempts} failed:`, repairErr.message);
+            }
+
+            if (!success) {
+              console.error(`[Self-Healing] ❌ Task candidate repair failed after ${repairAttempts} attempt(s). Failing task "${task.title}".`);
+              throw coderError;
             }
           }
+          console.log(`[Task: ${task.title}] Status: VALIDATED`);
+          return result;
+        });
 
-          if (!success) {
-            console.error(`[Self-Healing] ❌ Task candidate repair failed after ${repairAttempts} attempt(s). Failing task "${task.title}".`);
-            throw coderError;
-          }
-        }
-        console.log(`[Task: ${task.title}] Status: VALIDATED`);
-        return result;
-      });
+        const tierResults = await Promise.all(promises);
 
+        for (let j = 0; j < tier.length; j++) {
+          const task = tier[j];
+          const result = tierResults[j];
+          console.log(`[Task: ${task.title}] Status: SUCCESS`);
 
-      const tierResults = await Promise.all(promises);
-      const patchEngine = new PatchEngine();
+          response += result.response + "\n";
+          patchEngine.apply(result.response, outputDirectory);
 
-      for (let j = 0; j < tier.length; j++) {
-        const task = tier[j];
-        const result = tierResults[j];
-        console.log(`[Task: ${task.title}] Status: SUCCESS`);
+          const filesMatched = [
+            ...result.response.matchAll(/===FILE:\s*(.*?)===/g)
+          ].map(m => m[1].trim());
 
-        response += result.response + "\n";
-        
-        // Apply new files and search/replace patches directly to disk
-        patchEngine.apply(result.response, outputDirectory);
+          const patchesMatched = [
+            ...result.response.matchAll(/===PATCH:\s*(.*?)===/g)
+          ].map(m => m[1].trim());
 
-        // Extract all file paths matching ===FILE: or ===PATCH: in the coder response
-        const filesMatched = [
-          ...result.response.matchAll(/===FILE:\s*(.*?)===/g)
-        ].map(m => m[1].trim());
+          const allFilesTouched = [...new Set([...filesMatched, ...patchesMatched])];
 
-        const patchesMatched = [
-          ...result.response.matchAll(/===PATCH:\s*(.*?)===/g)
-        ].map(m => m[1].trim());
-
-        const allFilesTouched = [...new Set([...filesMatched, ...patchesMatched])];
-
-        // Load updated contents of all files touched in this task to compile final review files
-        for (const filePath of allFilesTouched) {
-          const fullPath = join(outputDirectory, filePath);
-          if (existsSync(fullPath)) {
-            const content = readFileSync(fullPath, "utf8");
-            // Remove existing entry if present in parsedFiles, then push the updated content
-            parsedFiles = parsedFiles.filter(f => f.path !== filePath);
-            parsedFiles.push({ path: filePath, content });
-            
-            if (!existingFiles.includes(filePath)) {
-              existingFiles.push(filePath);
+          for (const filePath of allFilesTouched) {
+            const fullPath = join(outputDirectory, filePath);
+            if (existsSync(fullPath)) {
+              const content = readFileSync(fullPath, "utf8");
+              parsedFiles = parsedFiles.filter(f => f.path !== filePath);
+              parsedFiles.push({ path: filePath, content });
+              
+              if (!existingFiles.includes(filePath)) {
+                existingFiles.push(filePath);
+              }
             }
           }
         }
       }
+    };
+
+    // ── STAGE 3: FRONTEND GENERATION (FRONTEND ONLY) ──────────────────────────
+    await executeTaskBatch(frontendTasks, "STAGE 3: FRONTEND GENERATION (FRONTEND ONLY)", true);
+    FastDeterministicSanitizer.sanitizeProject(outputDirectory);
+
+    // ── STAGES 4–7: FRONTEND VISUAL & FUNCTIONAL CHECK ────────────────────────
+    console.log("\n══════════════════════════════════════════════════════════════════════════════");
+    console.log("STAGE 4–7: FRONTEND FUNCTIONAL & CHROMIUM MULTI-VIEWPORT REVIEW");
+    console.log("══════════════════════════════════════════════════════════════════════════════");
+    const pageFiles = existsSync(join(outputDirectory, "src", "pages"))
+      ? readdirSync(join(outputDirectory, "src", "pages")).filter(f => /\.(tsx|jsx)$/.test(f))
+      : [];
+    const extractedPages = pageFiles.map(f => f.replace(/\.(tsx|jsx)$/, ""));
+    const screenshots = await ReadOnlyBrowserValidator.captureMultiViewportScreenshots("http://localhost:5173", outputDirectory);
+
+    const reviewSummary: FrontendReviewSummary = {
+      appName: (specification as any)?.name || "Generated Application",
+      pages: extractedPages.length > 0 ? extractedPages : ["Home", "Application Showcase"],
+      routes: ["/", ...extractedPages.map(p => `/${p.toLowerCase()}`)],
+      colorPalette: {
+        primary: (designBrief as any)?.palette?.primary || "#c2410c",
+        surface: (designBrief as any)?.palette?.surface || "#ffffff",
+        background: (designBrief as any)?.palette?.background || "#fafaf9",
+        text: (designBrief as any)?.palette?.text || "#1c1917",
+      },
+      typography: {
+        fontFamily: (designBrief as any)?.typography?.fontFamily || "Inter",
+        scale: ["14px", "16px", "20px", "24px", "32px"],
+      },
+      interactionsVerified: [
+        "Component state updates on user input",
+        "Multi-tab filter selections",
+        "Detail inspector panel triggers",
+      ],
+      screenshots,
+      status: "PENDING",
+    };
+    FrontendApprovalCheckpoint.saveReview(outputDirectory, reviewSummary);
+
+    // ── STAGE 8: USER APPROVAL / REQUESTS CHANGES (INTERACTIVE LOOP) ──────────
+    let approved = options?.approveFrontend || options?.skipApproval || false;
+    if (!approved && options?.onFrontendReview) {
+      while (!approved) {
+        const userDecision = await options.onFrontendReview(reviewSummary);
+        if (userDecision === true) {
+          approved = true;
+          FrontendApprovalCheckpoint.approve(outputDirectory);
+          console.log("[StageApproval] ✓ Frontend approved! Proceeding to Database Design & Verification...");
+          break;
+        } else if (typeof userDecision === "string") {
+          console.log(`[StageApproval] 🔄 User requested changes: "${userDecision}". Modifying FRONTEND ONLY...`);
+          FrontendApprovalCheckpoint.requestChanges(outputDirectory, userDecision);
+          const repairTask: Task = {
+            id: "task_frontend_refinement",
+            title: "Refine frontend design based on user review",
+            description: `Modify and refine frontend components according to user feedback: "${userDecision}". Do NOT touch backend or database.`,
+            dependencies: [],
+            stage: "Frontend",
+          } as any;
+          const refineResult = await this.coderAgent.execute(
+            repairTask,
+            architecture,
+            architecturePlan,
+            enrichedRequest + `\n\nUSER REQUESTED FRONTEND REFINEMENTS:\n${userDecision}`,
+            outputDirectory,
+            existingFiles,
+            imagePayload,
+          );
+          patchEngine.apply(refineResult.response, outputDirectory);
+          FastDeterministicSanitizer.sanitizeProject(outputDirectory, resolvedContract);
+          reviewSummary.userFeedback = userDecision;
+          reviewSummary.screenshots = await ReadOnlyBrowserValidator.captureMultiViewportScreenshots("http://localhost:5173", outputDirectory);
+          FrontendApprovalCheckpoint.saveReview(outputDirectory, reviewSummary);
+        } else {
+          console.log("[StageApproval] Generation halted by user.");
+          throw new Error("FRONTEND_APPROVAL_REJECTED: User declined frontend approval. Generation halted.");
+        }
+      }
+    } else {
+      FrontendApprovalCheckpoint.approve(outputDirectory);
+      console.log("[StageApproval] ✓ Frontend approved. Proceeding to Database Design & Verification...");
     }
+
+    // ── STAGE 9: DATABASE DESIGN FROM APPROVED FRONTEND ───────────────────────
+    console.log("\n══════════════════════════════════════════════════════════════════════════════");
+    console.log("STAGE 9: DATABASE DESIGN FROM APPROVED FRONTEND");
+    console.log("══════════════════════════════════════════════════════════════════════════════");
+    const activeProjectContract = resolvedContract ?? request;
+    const canonicalModelNames = CanonicalDataModelContract.getModelNames(activeProjectContract);
+    const prismaDir = join(outputDirectory, "prisma");
+    if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
+    const schemaPath = join(prismaDir, "schema.prisma");
+    const dbProvider = (typeof activeProjectContract === "object" ? activeProjectContract.database?.provider : undefined) ?? "postgresql";
+    const canonicalSchemaContent = CanonicalDataModelContract.getPrismaSchema(activeProjectContract, dbProvider);
+    writeFileSync(schemaPath, canonicalSchemaContent, "utf8");
+    console.log(`[DatabaseDesign] ✓ Schema generated for domain models: ${canonicalModelNames.join(", ")}`);
+
+    // ── STAGE 10: 16-POINT DATABASE INDEPENDENT VERIFICATION ──────────────────
+    console.log("\n══════════════════════════════════════════════════════════════════════════════");
+    console.log("STAGE 10: 16-POINT DATABASE INDEPENDENT VERIFICATION");
+    console.log("══════════════════════════════════════════════════════════════════════════════");
+    const dbReport = await DatabaseVerifier.verify(outputDirectory);
+    if (!dbReport.passed) {
+      const failures = dbReport.checks.filter(c => !c.passed).map(c => `${c.name}: ${c.message}`).join("; ");
+      throw new Error(`DATABASE_VERIFICATION_FAILURE: Database failed 16-point independent verification: ${failures}`);
+    }
+    console.log(`[DatabaseVerifier] ✓ PASS — 16-point verification succeeded (score: ${dbReport.score}/100). Verified models: ${dbReport.modelsVerified.join(", ")}`);
+
+    // ── STAGE 11: BACKEND GENERATION AGAINST VERIFIED DATABASE ────────────────
+    const remainingTasks = [...databaseTasks, ...backendTasks];
+    await executeTaskBatch(remainingTasks, "STAGE 11: BACKEND GENERATION AGAINST VERIFIED DATABASE", false);
 
     // Deterministic preflight sanitation after implementation loop
     FastDeterministicSanitizer.sanitizeProject(outputDirectory);

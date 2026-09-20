@@ -207,4 +207,49 @@ export class ReadOnlyBrowserValidator {
       });
     });
   }
+
+  public static async captureMultiViewportScreenshots(
+    url: string,
+    outputDirectory: string
+  ): Promise<{ desktop?: string; tablet?: string; mobile?: string }> {
+    const screenshotDir = join(outputDirectory, ".aegis", "screenshots");
+    if (!existsSync(screenshotDir)) mkdirSync(screenshotDir, { recursive: true });
+
+    const viewports = [
+      { name: "desktop", width: 1440, height: 900 },
+      { name: "tablet", width: 768, height: 1024 },
+      { name: "mobile", width: 375, height: 812 },
+    ];
+
+    const results: { desktop?: string; tablet?: string; mobile?: string } = {};
+
+    try {
+      const puppeteer = await import("puppeteer");
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
+      const page = await browser.newPage();
+
+      for (const vp of viewports) {
+        try {
+          await page.setViewport({ width: vp.width, height: vp.height });
+          await page.goto(url, { waitUntil: "domcontentloaded", timeout: 8000 });
+          const filePath = join(screenshotDir, `${vp.name}.png`);
+          await page.screenshot({ path: filePath, fullPage: false });
+          (results as any)[vp.name] = filePath;
+          console.log(`[BrowserValidator] 📸 Captured ${vp.name} (${vp.width}x${vp.height}) screenshot at ${filePath}`);
+        } catch (e: any) {
+          console.warn(`[BrowserValidator] ⚠️ Could not capture ${vp.name} screenshot: ${e.message}`);
+        }
+      }
+
+      await browser.close();
+    } catch (err: any) {
+      console.warn(`[BrowserValidator] ⚠️ Multi-viewport screenshot capture unavailable: ${err.message}`);
+    }
+
+    return results;
+  }
 }
+

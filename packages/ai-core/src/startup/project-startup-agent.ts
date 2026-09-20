@@ -1082,10 +1082,10 @@ process.on("SIGTERM", () => { vite.kill(); process.exit(); });
       if (depsChanged) {
         try {
           console.log("[Startup] Installing newly added dependencies via pnpm...");
-          execSync("pnpm install --no-frozen-lockfile", {
+          execSync("pnpm install --ignore-workspace --config.minimum-release-age=0 --prefer-offline --no-frozen-lockfile", {
             cwd: dir,
             stdio: "pipe",
-            timeout: 120_000,
+            timeout: 30_000,
             env: {
               ...process.env,
               CI: "true",

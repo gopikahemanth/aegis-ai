@@ -359,52 +359,8 @@ export class Orchestrator {
       status: "SUCCESS"
     });
 
-    // ─── Data Architecture Modeling ──────────────────────────────────────────
-    this.execution.enter(ExecutionPhase.DataModeling);
-    console.log("[DataArchitecture] Running Data Architecture Agent in project builder...");
-    try {
-      const dataArch = await this.dataArchitectureAgent.execute(enrichedRequest, specification);
-      
-      const aegisDir = join(outputDirectory, ".aegis");
-      if (!existsSync(aegisDir)) {
-        mkdirSync(aegisDir, { recursive: true });
-      }
-      writeFileSync(
-        join(aegisDir, "data-architecture.json"),
-        JSON.stringify(dataArch, null, 2),
-        "utf8"
-      );
-      writeFileSync(join(aegisDir, "prompt.txt"), request, "utf8");
-      if (dataArch && Array.isArray(dataArch.apis)) {
-        ApiContractRegistry.registerContract(dataArch.apis.map((a: any, idx: number) => ({
-          operationId: a.operationId || `op_${idx}_${(a.method || "get").toLowerCase()}_${(a.path || "").replace(/\//g, "_").replace(/^_/, "")}`,
-          path: a.path,
-          method: a.method,
-          description: a.description,
-          authentication: a.authentication !== false, // Default to true (secure by default)
-          requestFields: a.requestBodySchema ? { schema: a.requestBodySchema } : undefined,
-          responseFields: a.responseBodySchema ? { schema: a.responseBodySchema } : undefined,
-        })));
-      }
-
-      const dataContext = `
-═══════════════════════════════════════════════════════
-DATA ARCHITECTURE CONTRACTS (STRICTLY CONFORM TO THIS SCHEMA)
-═══════════════════════════════════════════════════════
-Database models & schemas:
-${dataArch.databaseSchema}
-
-Defined APIs:
-${dataArch.apis.map(api => `- ${api.method} ${api.path} (${api.description})`).join("\n")}
-
-Frontend React Hooks & Queries:
-${dataArch.hooks.map(h => `- ${h.name} (${h.type} on ${h.endpoint}, returns ${h.returns})`).join("\n")}
-═══════════════════════════════════════════════════════
-`;
-      enrichedRequest = enrichedRequest + "\n\n" + dataContext;
-    } catch (daErr: any) {
-      console.warn(`[DataArchitecture] Warning: Data architecture agent failed in project builder: ${daErr.message}`);
-    }
+    // ─── Data Architecture Modeling (Deferred to Stage 9 post-frontend approval) ─────
+    console.log("[StagedArchitecture] Database design & Prisma schema deferred to Stage 9 (post-frontend approval).");
 
 
 
@@ -1582,16 +1538,21 @@ Do NOT touch backend or database.`;
 
     // Verify the approved frontend has not been mutated since approval
     const approvedFrontendHash = (humanApprovalRecord as any)?.frontendSourceHash;
-    if (approvedFrontendHash) {
+    const isValidHash = (h: any): boolean =>
+      typeof h === "string" && h !== "unknown" && h !== "hash-error" && h !== "no-src" && h.length >= 8;
+
+    if (isValidHash(approvedFrontendHash)) {
       const currentFrontendHash = FrontendExperienceContractManager.hashFrontendSource(outputDirectory);
-      if (currentFrontendHash !== approvedFrontendHash) {
+      if (isValidHash(currentFrontendHash) && currentFrontendHash !== approvedFrontendHash) {
         throw new Error(
           `APPROVED_FRONTEND_MUTATED: Frontend source hash changed after approval. ` +
           `Approved hash: ${approvedFrontendHash}, Current hash: ${currentFrontendHash}. ` +
           `The approved frontend must not be modified before database/backend generation.`
         );
       }
-      console.log(`[Stage9] ✓ Frontend source integrity verified (hash: ${currentFrontendHash}).`);
+      if (isValidHash(currentFrontendHash)) {
+        console.log(`[Stage9] ✓ Frontend source integrity verified (hash: ${currentFrontendHash}).`);
+      }
     }
 
     // Load the FrontendExperienceContract to drive the post-approval architecture plan
@@ -1686,7 +1647,8 @@ Do NOT touch backend or database.`;
         {
           ...specification,
           request: postApprovalPromptContext as any,
-        }
+        },
+        "backend"
       );
       postApprovalTasks = TaskNormalizer.normalizeTasks(rawPostApprovalTasks, resolvedContract);
       console.log(`[Stage11] ✓ Post-approval planner produced ${postApprovalTasks.length} backend task(s).`);

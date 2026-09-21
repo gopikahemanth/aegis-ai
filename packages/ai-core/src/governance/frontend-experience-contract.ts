@@ -16,8 +16,8 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 
 // ── Contract sub-types ────────────────────────────────────────────────────────
 
@@ -318,27 +318,29 @@ export class FrontendExperienceContractManager {
    */
   static hashFrontendSource(outputDirectory: string): string {
     try {
-      const { readdirSync, statSync, readFileSync: readFS } = require("node:fs");
-      const { join: joinPath, relative } = require("node:path");
-
-      const srcDir = joinPath(outputDirectory, "src");
+      const srcDir = join(outputDirectory, "src");
       if (!existsSync(srcDir)) return "no-src";
 
       const hash = createHash("sha256");
+      let fileCount = 0;
       const collectFiles = (dir: string): void => {
-        for (const entry of readdirSync(dir)) {
-          const fullPath = joinPath(dir, entry);
+        const entries = readdirSync(dir).sort();
+        for (const entry of entries) {
+          const fullPath = join(dir, entry);
           const stat = statSync(fullPath);
           if (stat.isDirectory()) {
             collectFiles(fullPath);
-          } else if (/\.(ts|tsx|js|jsx|css)$/.test(entry)) {
-            const rel = relative(outputDirectory, fullPath);
+          } else if (/\.(ts|tsx|js|jsx|css|html|json)$/.test(entry)) {
+            const rel = relative(outputDirectory, fullPath).replace(/\\/g, "/");
             hash.update(rel);
-            hash.update(readFS(fullPath, "utf8"));
+            const content = readFileSync(fullPath, "utf8").replace(/\r\n/g, "\n");
+            hash.update(content);
+            fileCount++;
           }
         }
       };
       collectFiles(srcDir);
+      if (fileCount === 0) return "no-src";
       return hash.digest("hex").slice(0, 16);
     } catch {
       return "hash-error";

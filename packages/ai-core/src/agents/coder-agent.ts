@@ -244,7 +244,26 @@ ${principles || "  • Domain authenticity and high-contrast usability"}
 
 
 
+    const isFrontendStage = (task as any)?.stage === "Frontend" || (task as any)?.stage === "frontend";
+    const STAGE_SPECIFIC_CODER_INSTRUCTION = isFrontendStage
+      ? `══════════════════════════════════════════════════════════════════════════════
+CURRENT ACTIVE STAGE: FRONTEND ONLY (STAGE 3)
+══════════════════════════════════════════════════════════════════════════════
+You are implementing a FRONTEND-ONLY task: "${task.title}".
+- DO NOT generate or modify backend files: NO server/, NO express, NO prisma/, NO database files.
+- Backend and database generation will happen in a later stage AFTER human review and approval.
+- Any backend/database files generated in this task WILL BE REJECTED by FrontendFilePolicy.
+- ALL interactive features, forms, filters, toggles, modals, and metric calculations MUST work immediately in the browser using React local state (useState, useReducer, or mock stores).
+- Prepopulate all state with realistic, rich domain seed data.`
+      : `══════════════════════════════════════════════════════════════════════════════
+CURRENT ACTIVE STAGE: BACKEND & DATABASE (POST-APPROVAL)
+══════════════════════════════════════════════════════════════════════════════
+The frontend has been reviewed and approved by the human user.
+Implement the backend routes, controllers, services, and Prisma database schema to fulfill the approved frontend requirements.`;
+
     const CANONICAL_CODER_CONTEXT_HEADER = `
+${STAGE_SPECIFIC_CODER_INSTRUCTION}
+
 ══════════════════════════════════════════════════════════════════════════════
 DO NOT REPLACE THE EXISTING GOVERNANCE PROTECTIONS.
 This is a workflow refactor. Preserve provenance, domain isolation, non-generative ProjectGraphEngine, mechanical-only FastSanitizer, capability completeness, DesignBrief locking, and architecture validation. Build the new staged frontend → approval → database → backend → integration workflow on top of them.

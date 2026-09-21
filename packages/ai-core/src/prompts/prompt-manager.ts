@@ -95,7 +95,43 @@ Do not generate code.
 Do not explain anything.`;
   }
 
-  public getPlannerPrompt(spec?: ProjectSpecification): string {
+  public getPlannerPrompt(spec?: ProjectSpecification, stage: "frontend" | "backend" = "frontend"): string {
+    if (stage === "backend") {
+      return `${this.getBaseSystemPrompt("Backend Planner Agent")}
+
+════════════════════════════════════════════════════════════════════════════════
+AEGIS POST-APPROVAL BACKEND TASK PLANNER
+════════════════════════════════════════════════════════════════════════════════
+
+The frontend has been reviewed and APPROVED by the human user.
+You are now planning the BACKEND, DATABASE, and API INTEGRATION tasks.
+
+RULES:
+- Plan ONLY backend, database, and integration tasks.
+- Do NOT plan any frontend tasks (the frontend is locked and approved).
+- Tasks must implement the Express server, Prisma database persistence, and API endpoints matching the approved frontend requirements.
+- Use stage: "Backend" or "Database".
+
+TASK LIMIT: Maximum 4 tasks.
+TASK ORDERING:
+  1. Database Schema & Persistence Verification (Prisma models, PostgreSQL migrations/seeds)
+  2. Server Architecture & Middleware (Express app, authentication, CORS, error handling)
+  3. API Routes & Business Logic (REST controllers, services, queries matching approved frontend features)
+  4. Fullstack Integration & End-to-End Verification (connecting frontend API client to verified backend)
+
+Each task MUST contain:
+  - id: number (unique, starting at 101)
+  - title: string
+  - description: string
+  - completed: false
+  - stage: "Backend"
+  - priority: number
+  - dependencies: number[]
+  - estimatedComplexity: number (1–5)
+
+Return ONLY a valid JSON array. No markdown, no extra text, no backticks.`;
+    }
+
     return `${this.getBaseSystemPrompt("Planner Agent")}
 
 ════════════════════════════════════════════════════════════════════════════════
@@ -229,8 +265,9 @@ Do NOT generate:
 - eslint.config.js
 - .gitignore
 
-Generate BOTH backend source code (e.g. server/index.ts, server/routes/*, prisma/schema.prisma) and frontend source code (e.g. src/App.tsx, src/components/*) to make the application fully functional.
-Do not restrict yourself to only frontend files.
+Follow the staged generation workflow:
+- When implementing a Frontend task: generate ONLY frontend code (src/App.tsx, src/components/*, src/features/*). Build rich, fully interactive browser-side features powered by React local state and realistic seed data. Do NOT generate server/ or prisma/ files during the frontend stage (they will be rejected by policy).
+- When implementing a Backend task (post-approval): generate the server routes, controllers, and Prisma schemas according to the approved frontend contracts.
 
 CRITICAL STANDARDS:
 - Never generate incomplete functions, classes, or code blocks.
@@ -308,9 +345,8 @@ PRODUCTION CODE STANDARDS:
         - NEVER generate multiple <h1> headings on the same page.
         - Derive the <h1> title directly from the active feature, never generic boilerplate (e.g. not generic "Dashboard" or "Component").
   ✓ Real Data Flows: If the application needs data (e.g., studies, plans, chat logs, scores, history):
-    - Connect the frontend to the backend or local database schema using real api endpoints.
-    - Implement React Query (useQuery/useMutation) or native fetch hooks that call backend controllers.
-    - Ensure a proper persistence flow is modeled: database, backend APIs, frontend services/hooks.
+    - In Frontend tasks, provide rich local state (useState/useReducer/mock store) with domain-specific seed records so all UI flows are 100% interactive out-of-the-box without requiring live backend endpoints.
+    - In Backend tasks (post-approval), connect the frontend to Express backend controllers and Prisma database models using real api endpoints.
   ✓ Zero bare console.log() — remove all debug logging.
   ✓ Zero TypeScript 'any' — use 'unknown' with type guards.
   ✓ All environment-specific values in import.meta.env variables.

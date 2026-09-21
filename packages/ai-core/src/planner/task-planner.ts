@@ -18,13 +18,14 @@ export class TaskPlanner {
 
   async plan(
     specification: ProjectSpecification,
+    stage: "frontend" | "backend" = "frontend"
   ): Promise<Task[]> {
 
     const response =
       await this.provider.chat([
         {
           role: "system",
-          content: this.promptManager.getPlannerPrompt(specification),
+          content: this.promptManager.getPlannerPrompt(specification, stage),
         },
         {
           role: "user",

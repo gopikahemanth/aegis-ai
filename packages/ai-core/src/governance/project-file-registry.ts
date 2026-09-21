@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ArchitectureContractV1 } from "./architecture-resolver.js";
 import { CANONICAL_FILES, CanonicalFileGraph } from "./canonical-file-graph.js";
@@ -36,7 +36,6 @@ export class ProjectFileRegistry {
 
     if (existsSync(manifestPath)) {
       try {
-        const { readFileSync } = require("node:fs");
         const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
         if (manifest.files && Array.isArray(manifest.files)) {
           entriesToRegister = manifest.files.map((f: any) => ({

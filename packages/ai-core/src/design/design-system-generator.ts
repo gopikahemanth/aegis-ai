@@ -1,4 +1,4 @@
-import type { ProjectSpecification } from "../architect/specification.js";
+﻿import type { ProjectSpecification } from "../architect/specification.js";
 import type { GeneratedFile } from "../writer/writer.js";
 import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "./domain-visual-contract.js";
 import type { ProductDesignBrief } from "./design-director.js";
@@ -849,11 +849,19 @@ export default GlassCard;
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: 'primary' | 'live' | 'warning' | 'danger';
+  status?: string;
   dot?: boolean;
 }
 
-export const Badge: React.FC<BadgeProps> = ({ children, variant = 'primary', dot = false, className = '', ...props }) => {
-  const variantClass = variant === 'live' ? 'badge-live' : 'badge';
+const STATUS_VARIANT_MAP: Record<string, BadgeProps['variant']> = {
+  online: 'live', active: 'live', running: 'live',
+  warning: 'warning', degraded: 'warning',
+  offline: 'danger', error: 'danger', failed: 'danger',
+};
+
+export const Badge: React.FC<BadgeProps> = ({ children, variant, status, dot = false, className = '', ...props }) => {
+  const resolvedVariant = variant ?? (status ? STATUS_VARIANT_MAP[status.toLowerCase()] ?? 'primary' : 'primary');
+  const variantClass = resolvedVariant === 'live' ? 'badge-live' : resolvedVariant === 'warning' ? 'badge-warning' : resolvedVariant === 'danger' ? 'badge-danger' : 'badge';
   return (
     <span className={\`\${variantClass} \${className}\`} {...props}>
       {dot && <span className="live-dot mr-1" />}

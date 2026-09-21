@@ -1,4 +1,4 @@
-import { spawn, ChildProcess } from "node:child_process";
+import { spawn, execSync, ChildProcess } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import http from "node:http";
@@ -108,7 +108,6 @@ export class AppServerRunner {
       try {
         if (process.platform === "win32" && this.process.pid) {
           try {
-            const { execSync } = require("child_process");
             execSync(`taskkill /pid ${this.process.pid} /T /F`, { stdio: "ignore" });
           } catch {}
         }

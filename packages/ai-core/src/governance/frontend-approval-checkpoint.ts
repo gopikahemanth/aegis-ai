@@ -12,6 +12,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { FrontendBrowserReview } from "../validation/read-only-browser-validator.js";
+import { FrontendExperienceContractManager } from "./frontend-experience-contract.js";
 
 export type ApprovalStatus = "PENDING" | "APPROVED" | "CHANGES_REQUESTED";
 
@@ -174,28 +175,7 @@ export class FrontendApprovalCheckpoint {
     // any mutation of the frontend after human approval.
     let frontendSourceHash = "unknown";
     try {
-      const { createHash } = require("node:crypto");
-      const { readdirSync, statSync, readFileSync: readFS } = require("node:fs");
-      const { join: joinPath } = require("node:path");
-
-      const srcDir = joinPath(outputDirectory, "src");
-      if (existsSync(srcDir)) {
-        const hash = createHash("sha256");
-        const collectFiles = (dir: string): void => {
-          for (const entry of readdirSync(dir)) {
-            const fullPath = joinPath(dir, entry);
-            const stat = statSync(fullPath);
-            if (stat.isDirectory()) {
-              collectFiles(fullPath);
-            } else if (/\.(ts|tsx|js|jsx|css)$/.test(entry)) {
-              hash.update(entry);
-              hash.update(readFS(fullPath, "utf8"));
-            }
-          }
-        };
-        collectFiles(srcDir);
-        frontendSourceHash = hash.digest("hex").slice(0, 16);
-      }
+      frontendSourceHash = FrontendExperienceContractManager.hashFrontendSource(outputDirectory);
     } catch {
       // Non-fatal — hash computation failure doesn't block approval
     }

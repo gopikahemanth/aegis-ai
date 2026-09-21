@@ -19,9 +19,11 @@ export class PlannerAgent extends BaseAgent {
 
   async execute(
     specification: ProjectSpecification,
+    stage: "frontend" | "backend" = "frontend"
   ): Promise<Task[]> {
     return this.planner.plan(
       specification,
+      stage
     );
   }
 }

@@ -263,4 +263,150 @@ export class ASTSafeTransformer {
       return { valid: false, isValid: false, errors: [err.message] };
     }
   }
+
+  /**
+   * Safely closes small trailing bracket imbalances (braces, parens, brackets) if verified by TypeScript parser.
+   */
+  public static closeUnbalancedBrackets(content: string, fileName: string): string {
+    if (!content || !content.trim()) return content;
+
+    // Check if file is already 100% syntactically valid
+    const initialCheck = ASTSafeTransformer.validateSyntax(content, fileName);
+    if (initialCheck.valid) {
+      return content;
+    }
+
+    const countDeltas = (str: string) => {
+      let braceCount = 0;
+      let parenCount = 0;
+      let bracketCount = 0;
+      let inString = false;
+      let stringChar = "";
+      let inLineComment = false;
+      let inBlockComment = false;
+
+      for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+        const nextChar = str[i + 1];
+
+        if (!inString && !inLineComment && !inBlockComment) {
+          if (char === '/' && nextChar === '/') {
+            inLineComment = true;
+            i++;
+            continue;
+          }
+          if (char === '/' && nextChar === '*') {
+            inBlockComment = true;
+            i++;
+            continue;
+          }
+        }
+        if (inLineComment) {
+          if (char === '\n') inLineComment = false;
+          continue;
+        }
+        if (inBlockComment) {
+          if (char === '*' && nextChar === '/') {
+            inBlockComment = false;
+            i++;
+          }
+          continue;
+        }
+
+        if ((char === '"' || char === "'" || char === '`')) {
+          if (!inString) {
+            inString = true;
+            stringChar = char;
+          } else if (char === stringChar && str[i - 1] !== '\\') {
+            inString = false;
+          }
+          continue;
+        }
+        if (inString) continue;
+
+        if (char === '{') braceCount++;
+        if (char === '}') braceCount--;
+        if (char === '(') parenCount++;
+        if (char === ')') parenCount--;
+        if (char === '[') bracketCount++;
+        if (char === ']') bracketCount--;
+      }
+      return { braceCount, parenCount, bracketCount };
+    };
+
+    // Generate content bases: original content, and content with 1 to 4 incomplete trailing lines trimmed
+    const allLines = content.split("\n");
+    const contentBases: string[] = [content];
+    for (let popCount = 1; popCount <= 4; popCount++) {
+      if (allLines.length > popCount) {
+        contentBases.push(allLines.slice(0, allLines.length - popCount).join("\n"));
+      }
+    }
+
+    const isJsxFile = fileName.endsWith(".tsx") || fileName.endsWith(".jsx");
+    const componentMatch = content.match(/export\s+(?:default\s+)?(?:function|const)\s+([A-Z][A-Za-z0-9_$]*)/);
+
+    for (const base of contentBases) {
+      const { braceCount, parenCount, bracketCount } = countDeltas(base);
+      if (braceCount < 0 || parenCount < 0 || bracketCount < 0) continue;
+      if (braceCount > 6 || parenCount > 6 || bracketCount > 6) continue;
+
+      const candidates: string[] = [];
+      const closeBrackets = bracketCount > 0 ? "]".repeat(bracketCount) : "";
+      const closeParens = parenCount > 0 ? ")".repeat(parenCount) : "";
+      const closeBraces = braceCount > 0 ? "}".repeat(braceCount) : "";
+      const closeBracesSemi = braceCount > 1 ? ("}".repeat(braceCount - 1) + "\n};\n") : (braceCount === 1 ? "};\n" : "");
+
+      // Variant 1: standard closing brackets
+      candidates.push(base.trimEnd() + "\n" + closeBrackets + closeParens + "\n" + closeBraces + "\n");
+
+      // Variant 2: semicolon after parens (common in `return (...);`)
+      candidates.push(base.trimEnd() + "\n" + closeBrackets + closeParens + ";\n" + closeBraces + "\n");
+
+      // Variant 3: semicolon after braces (common in `const App = () => { ... };`)
+      candidates.push(base.trimEnd() + "\n" + closeBrackets + closeParens + ";\n" + closeBracesSemi);
+
+      // Variant 4: with export default if defined
+      if (componentMatch && !base.includes(`export default ${componentMatch[1]}`) && !base.includes("export default function") && !base.includes("export default class")) {
+        candidates.push(base.trimEnd() + "\n" + closeBrackets + closeParens + ";\n" + closeBracesSemi + `export default ${componentMatch[1]};\n`);
+      }
+
+      // Variant 5: JSX tag closing variants
+      if (isJsxFile) {
+        const jsxTags = [
+          "</div>",
+          "</div></div>",
+          "</div></div></div>",
+          "</div></div></div></div>",
+          "</main></div>",
+          "</section></div>",
+          "</main></section></div>",
+          "</form></div>",
+          "</div>\n))}\n</div>",
+          "</div>\n))}\n</div></div>",
+          "</div>\n))}\n</div></div></div>",
+          "</div>\n))}\n</main></div>",
+        ];
+        for (const tag of jsxTags) {
+          candidates.push(base.trimEnd() + "\n" + tag + "\n" + closeBrackets + closeParens + ";\n" + closeBraces + "\n");
+          candidates.push(base.trimEnd() + "\n" + tag + "\n" + closeBrackets + closeParens + ";\n" + closeBracesSemi);
+          candidates.push(base.trimEnd() + "\n" + tag + "\n);\n}\n");
+          if (componentMatch && !base.includes(`export default ${componentMatch[1]}`)) {
+            candidates.push(base.trimEnd() + "\n" + tag + "\n" + closeBrackets + closeParens + ";\n" + closeBracesSemi + `export default ${componentMatch[1]};\n`);
+            candidates.push(base.trimEnd() + "\n" + tag + "\n);\n}\n" + `export default ${componentMatch[1]};\n`);
+          }
+        }
+      }
+
+      for (const candidate of candidates) {
+        const check = ASTSafeTransformer.validateSyntax(candidate, fileName);
+        if (check.valid) {
+          console.log(`[ASTSafeTransformer] 🔧 Auto-closed trailing unbalanced brackets in ${fileName} (braces: +${braceCount}, parens: +${parenCount}, brackets: +${bracketCount})`);
+          return candidate;
+        }
+      }
+    }
+
+    return content;
+  }
 }

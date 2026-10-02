@@ -374,7 +374,7 @@ export class ArtifactProvenanceValidator {
             const authorizedLayers = [
               "pages", "components", "features", "services", "utils", "types",
               "hooks", "lib", "context", "shared", "design-system", "assets", "styles", "entities",
-              "__tests__", "tests"
+              "__tests__", "tests", "content"
             ];
             if (!authorizedLayers.includes(entry.toLowerCase())) {
               records.push({

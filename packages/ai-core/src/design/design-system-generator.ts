@@ -1,4 +1,4 @@
-﻿import type { ProjectSpecification } from "../architect/specification.js";
+import type { ProjectSpecification } from "../architect/specification.js";
 import type { GeneratedFile } from "../writer/writer.js";
 import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "./domain-visual-contract.js";
 import type { ProductDesignBrief } from "./design-director.js";
@@ -60,6 +60,14 @@ export class DesignSystemGenerator {
     }
     const resolved = DomainVisualContractGenerator.resolveCssTokens(contract);
     const files: GeneratedFile[] = [];
+
+    const brief = (visualContractOrBrief && "pageCompositions" in (visualContractOrBrief as any))
+      ? (visualContractOrBrief as ProductDesignBrief)
+      : ((spec as any).lockedBrief || (spec as any).designBrief);
+    const hasSummaryOverviewPage = Boolean(
+      brief?.pageCompositions?.some((p: any) => p.isSummaryOverview === true || p.heroElement === "metric-cluster") ??
+      (brief?.productCharacteristics?.experiencePattern === "operations-dashboard" || brief?.productCharacteristics?.experiencePattern === "realtime-console")
+    );
 
     const brand = contract.colorSystem.primary;
     const neutral = contract.colorSystem.secondary;
@@ -776,7 +784,7 @@ export default {
       path: "src/design-system/components/Button.tsx",
       content: `import React from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'accent' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'accent' | 'ghost' | 'danger' | 'outline' | 'default';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -848,15 +856,16 @@ export default GlassCard;
       content: `import React from 'react';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'primary' | 'live' | 'warning' | 'danger';
+  variant?: 'primary' | 'live' | 'warning' | 'danger' | 'destructive' | 'secondary' | 'outline' | 'default';
   status?: string;
   dot?: boolean;
 }
 
-const STATUS_VARIANT_MAP: Record<string, BadgeProps['variant']> = {
+const STATUS_VARIANT_MAP: Record<string, string> = {
   online: 'live', active: 'live', running: 'live',
   warning: 'warning', degraded: 'warning',
   offline: 'danger', error: 'danger', failed: 'danger',
+  destructive: 'danger',
 };
 
 export const Badge: React.FC<BadgeProps> = ({ children, variant, status, dot = false, className = '', ...props }) => {
@@ -921,10 +930,11 @@ export default Select;
 `,
     });
 
-    // ── 8. MetricCard.tsx & PageHeader.tsx ────────────────────────────────────
-    files.push({
-      path: "src/design-system/components/MetricCard.tsx",
-      content: `import React from 'react';
+    // ── 8. MetricCard.tsx (only if project has summary/overview pages) & PageHeader.tsx ──
+    if (hasSummaryOverviewPage) {
+      files.push({
+        path: "src/design-system/components/MetricCard.tsx",
+        content: `import React from 'react';
 
 export interface MetricCardProps {
   label: string;
@@ -950,7 +960,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({ label, value, trend, ico
 );
 export default MetricCard;
 `,
-    });
+      });
+    }
 
     files.push({
       path: "src/design-system/components/PageHeader.tsx",
@@ -1002,17 +1013,20 @@ export default Skeleton;
 
 export interface EmptyStateProps {
   icon?: React.ReactNode;
-  title: string;
+  title?: string;
+  message?: string;
   description?: string;
-  action?: React.ReactNode;
+  action?: any;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description, action }) => (
+export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, message, description, action }) => (
   <div className="empty-state">
     {icon && <div className="mb-4 text-[var(--color-primary)] text-3xl">{icon}</div>}
-    <h3 className="text-base font-semibold text-[var(--color-text-primary)] mb-1">{title}</h3>
+    <h3 className="text-base font-semibold text-[var(--color-text-primary)] mb-1">{title || message}</h3>
     {description && <p className="text-sm text-[var(--color-text-muted)] max-w-sm mb-6">{description}</p>}
-    {action && <div>{action}</div>}
+    {action && <div>{React.isValidElement(action) ? action : typeof action === 'object' && 'label' in action ? <button type="button" onClick={(action as any).onClick} className="btn btn-primary">{action.label}</button> : action}</div>}
   </div>
 );
 export default EmptyState;
@@ -1236,8 +1250,7 @@ export * from './components/GlassCard';
 export * from './components/Badge';
 export * from './components/Input';
 export * from './components/Select';
-export * from './components/MetricCard';
-export * from './components/PageHeader';
+${hasSummaryOverviewPage ? "export * from './components/MetricCard';\n" : ""}export * from './components/PageHeader';
 export * from './components/Skeleton';
 export * from './components/EmptyState';
 export * from './components/Timeline';
@@ -1364,6 +1377,11 @@ ${b.globalForbiddenPatterns.map(p => "  ✗ " + p).join("\n")}
 `;
     }
 
+    const hasMetricCard = Boolean(
+      productBrief?.pageCompositions?.some((p: any) => p.isSummaryOverview === true || p.heroElement === "metric-cluster") ??
+      (productBrief?.productCharacteristics?.experiencePattern === "operations-dashboard" || productBrief?.productCharacteristics?.experiencePattern === "realtime-console")
+    );
+
     return briefMandate + `
 DOMAIN VISUAL DESIGN CONTRACT — MANDATORY USAGE:
 Domain: ${contract.domain} (${contract.productType})
@@ -1381,7 +1399,7 @@ Color Palette Tokens:
   Active Nav: ${contract.colorSystem.activeNavStyle}
 
 Pre-generated Specialized Components available in src/design-system/:
-  import { Button, GlassCard, Badge, Input, Select, PageHeader, MetricCard, Skeleton, EmptyState, Timeline${hasKanban ? ', KanbanBoard' : ''}, TelemetryGrid, ShowcaseGrid } from '../design-system';
+  import { Button, GlassCard, Badge, Input, Select, PageHeader${hasMetricCard ? ', MetricCard' : ''}, Skeleton, EmptyState, Timeline${hasKanban ? ', KanbanBoard' : ''}, TelemetryGrid, ShowcaseGrid } from '../design-system';
 
 ANTI-PATTERNS (STRICTLY PROHIBITED):
 ${contract.antiPatterns.map(a => `  ✗ ${a}`).join('\n')}

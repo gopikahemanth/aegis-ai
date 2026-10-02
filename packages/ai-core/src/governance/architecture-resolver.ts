@@ -66,6 +66,8 @@ export interface ArchitectureContractV1 {
   requiredFeatures: string[];
   requiredRoutes: string[];
   requiredModels: string[];
+  primaryLandingFeature?: string;
+  primaryLandingRoute?: string;
   projectStructure: Record<string, string>;
   architectureHash?: string;
   technologyHash?: string;
@@ -353,6 +355,19 @@ export class ArchitectureResolver {
         })
       : []);
 
+    // Resolve authoritative primaryLandingFeature from canonical spec or primary discovered entity in prompt order
+    let primaryLandingFeature = (canonical as any).primaryLandingFeature || (raw as any).primaryLandingFeature;
+    if (!primaryLandingFeature) {
+      if (explicitModels.length > 0) {
+        // Primary business entity discovered in prompt order (e.g. "Course" for EdTech, "Shipment" for Freight)
+        primaryLandingFeature = explicitModels[0];
+      } else if (resolvedFeatures.length > 0) {
+        primaryLandingFeature = resolvedFeatures[0];
+      } else if (canonical.userFlows && canonical.userFlows.length > 0) {
+        primaryLandingFeature = canonical.userFlows[0];
+      }
+    }
+
     const contract: ArchitectureContractV1 = Object.freeze({
       version: 1,
       status: "locked",
@@ -403,6 +418,8 @@ export class ArchitectureResolver {
       requiredFeatures: resolvedFeatures,
       requiredRoutes: resolvedRoutes,
       requiredModels: resolvedModels,
+      primaryLandingFeature,
+      primaryLandingRoute: "/",
       projectStructure: Object.freeze({
         src: "Frontend presentation layer",
         server: "Backend API and database services",

@@ -58,6 +58,7 @@ export class ExecutionEngine {
       approveFrontend?: boolean;
       skipApproval?: boolean;
       onFrontendReview?: (summary: any) => Promise<boolean | string>;
+      seed?: string;
     }
   ) {
     const basePath = process.env.INIT_CWD || process.cwd();
@@ -90,7 +91,7 @@ export class ExecutionEngine {
     console.log("Analyzing request...");
 
     // ── Step 1: generateProject — resolves architecture contract ────────────
-    const result = await this.orchestrator.generateProject(request, projectPath, imagePath);
+    const result = await this.orchestrator.generateProject(request, projectPath, imagePath, options);
 
     console.log(`[ExecutionEngine] generateProject result: framework=${result.framework}, tasks=${result.tasks?.length ?? 0}`);
 

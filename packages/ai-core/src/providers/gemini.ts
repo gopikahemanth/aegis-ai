@@ -39,8 +39,8 @@ export class GeminiProvider implements AIProvider {
           .map(
             (m) => {
               let text = m.content;
-              if (text.length > 12000) {
-                text = text.slice(0, 12000) + "\n\n...[Context Truncated to Stay Within Token Limits]...";
+              if (text.length > 250000) {
+                text = text.slice(0, 250000) + "\n\n...[Context Truncated to Stay Within Token Limits]...";
               }
               return `${m.role.toUpperCase()}:\n${text}`;
             },
@@ -49,8 +49,11 @@ export class GeminiProvider implements AIProvider {
 
       const geminiFreeModels = [
         options?.model ?? Models.gemini.default,
-        "gemini-3.1-flash-lite",
         "gemini-3.6-flash",
+        "gemini-3.8-flash",
+        "gemini-3.7-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-flash-lite",
       ];
       // Deduplicate
       const uniqueModels = [...new Set(geminiFreeModels)];
@@ -78,7 +81,7 @@ export class GeminiProvider implements AIProvider {
               model: targetModel,
               contents: contentParts,
               config: {
-                maxOutputTokens: options?.maxTokens ?? 8192,
+                maxOutputTokens: options?.maxTokens ?? 16384,
               },
             }),
             timeoutPromise,
@@ -93,6 +96,13 @@ export class GeminiProvider implements AIProvider {
 
           const finishReason = response.candidates?.[0]?.finishReason;
           if (finishReason === "MAX_TOKENS") {
+            const text = response.text ?? "";
+            const lastFileIdx = text.lastIndexOf("===FILE:");
+            const lastEndIdx = text.lastIndexOf("===END===");
+            if (lastFileIdx !== -1 && lastEndIdx > lastFileIdx) {
+              console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS but all files cleanly ended with ===END=== (${text.length} chars). Returning for parser...`);
+              return text;
+            }
             throw new ProviderError(
               "Gemini response was truncated (MAX_TOKENS) — output incomplete.",
               2

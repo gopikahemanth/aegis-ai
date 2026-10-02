@@ -114,12 +114,12 @@ export class CapabilityCompletenessInvariant {
     }
 
     // Strip comments and string literals before checking parenthesis balance
+    // Uses a single unified regex so quotes inside strings (e.g. "Today's", 'say "hello"') do not corrupt parsing
     const strippedSyntax = trimmed
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/\/\/[^\r\n]*/g, "")
-      .replace(/'(?:[^'\\]|\\.)*'/g, "''")
-      .replace(/"(?:[^"\\]|\\.)*"/g, '""')
-      .replace(/`[\s\S]*?`/g, "``");
+      .replace(/>([^<]*)</g, (_, text) => `>${text.replace(/['"]/g, "")}<`)
+      .replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`[\s\S]*?`/g, '""');
     const openParens = (strippedSyntax.match(/\(/g) || []).length;
     const closeParens = (strippedSyntax.match(/\)/g) || []).length;
     if (openParens !== closeParens) {

@@ -69,6 +69,8 @@ export interface ProductCharacteristics {
    * page compositions and layout families. Derived from primaryActivity + context.
    */
   experiencePattern:
+    | "storefront-commerce"    // retail shopping, marketplaces, consumer storefronts
+    | "hospitality-portal"     // luxury resorts, hotels, vacation stays, retreats
     | "personal-tracker"       // wellness, journaling, habit — personal over time
     | "operations-dashboard"   // monitoring, analytics, reporting, back-office
     | "content-feed"           // social, news, discovery feed
@@ -79,6 +81,10 @@ export interface ProductCharacteristics {
     | "team-workspace"         // project management, team collaboration tools
     | "realtime-console"       // trading, telemetry, ops console
     | "configurator-workspace";// interactive studio/engineering tools, configurators, calculators, estimators
+
+  /** Flagged if activity detection had equal top scores, requesting LLM refinement */
+  isAmbiguous?: boolean;
+  tiedContenders?: string[];
 
   /**
    * Three-tier vocabulary contract — derived from primaryActivity, NOT from domain name.
@@ -165,13 +171,17 @@ export function normalizeToneHint(toneHint: unknown): string | undefined {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PERSONAL_TRACKING_SIGNALS = [
-  "habit", "mood", "wellness", "journal", "diary", "tracker", "daily",
+  "habit", "mood", "wellness", "journal", "diary", "tracker",
+  "daily check-in", "daily checkin", "daily habit", "daily log", "daily routine",
   "check-in", "checkin", "streak", "self-care", "mindful", "meditation",
   "sleep", "hydration", "water intake", "step count", "calories",
   "fitness log", "health log", "personal log", "reflection", "gratitude",
   "symptom", "anxiety", "mental health", "weight", "nutrition log",
   "workout log", "progress", "routine", "goal tracking", "life tracker",
-  "morning", "evening routine",
+  "morning routine", "evening routine",
+  "companion", "plant", "plants", "houseplant", "houseplants", "botanical",
+  "watering", "watering schedule", "watering schedules", "sunlight needs",
+  "growth photos", "plant care", "plant-care", "leaf", "gardening",
 ];
 
 const CONTENT_BROWSING_SIGNALS = [
@@ -203,7 +213,7 @@ const DATA_ANALYSIS_SIGNALS = [
 ];
 
 const BOOKING_ORDERING_SIGNALS = [
-  "booking", "reservation", "appointment", "schedule", "order", "checkout",
+  "booking", "reservation", "appointment", "appointment schedule", "booking schedule", "order", "checkout",
   "cart", "ecommerce", "e-commerce", "shop", "store", "marketplace",
   "hotel", "restaurant", "salon", "clinic appointment", "ticket booking",
   "event booking", "rental", "hire", "buy", "commission", "bespoke commission",
@@ -262,12 +272,12 @@ const VOCABULARY_MAP: Record<
   "personal-tracking": {
     required: [],  // populated dynamically from prompt nouns
     preferred: ["Today", "Progress", "Streak", "Reflect", "Check in", "How are you feeling?", "Log", "Goal", "Journey"],
-    forbidden: ["Registry", "Inspect", "Record ID", "Manage Records", "Delete Record", "Submit", "Operational Data"],
+    forbidden: ["Registry", "Inspect Record", "Record ID", "Manage Records", "Delete Record", "Submit Form", "Operational Data"],
   },
   "content-browsing": {
     required: [],
     preferred: ["Discover", "Explore", "Trending", "Curated", "Browse", "Recommended", "New", "Featured"],
-    forbidden: ["Registry", "Inspect", "Record ID", "Manage Records", "Submit Form"],
+    forbidden: ["Registry", "Inspect Record", "Record ID", "Manage Records", "Submit Form"],
   },
   "record-management": {
     required: ["Record", "Status"],
@@ -287,12 +297,12 @@ const VOCABULARY_MAP: Record<
   "booking-ordering": {
     required: [],
     preferred: ["Book", "Availability", "Reserve", "Confirm", "Schedule", "Select", "Date", "Time", "Details", "Commission", "Workshop"],
-    forbidden: ["Registry", "Inspect", "Record ID", "Manage Records"],
+    forbidden: ["Registry", "Inspect Record", "Record ID", "Manage Records"],
   },
   "portfolio-showcase": {
     required: ["Work", "Project"],
     preferred: ["Story", "Explore", "Featured", "Selected", "View", "Case Study", "About"],
-    forbidden: ["CRUD", "Submit Form", "Add Record", "Registry", "Inspect", "Record ID"],
+    forbidden: ["CRUD", "Submit Form", "Add Record", "Registry", "Inspect Record", "Record ID"],
   },
   "team-collaboration": {
     required: ["Team", "Member"],
@@ -312,33 +322,81 @@ function countSignals(text: string, signals: string[]): number {
   return signals.filter(s => text.includes(s)).length;
 }
 
-function detectPrimaryActivity(text: string): ProductCharacteristics["primaryActivity"] {
-  // Score each activity by how many signals match
+interface ActivityDetectionResult {
+  activity: ProductCharacteristics["primaryActivity"];
+  isAmbiguous: boolean;
+  tiedContenders?: string[];
+}
+
+function detectPrimaryActivity(text: string): ActivityDetectionResult {
+  // Score each activity
   const scores: Record<ProductCharacteristics["primaryActivity"], number> = {
-    "personal-tracking":   countSignals(text, PERSONAL_TRACKING_SIGNALS),
-    "content-browsing":    countSignals(text, CONTENT_BROWSING_SIGNALS),
-    "record-management":   countSignals(text, RECORD_MANAGEMENT_SIGNALS),
-    "content-creation":    countSignals(text, CONTENT_CREATION_SIGNALS),
-    "data-analysis":       countSignals(text, DATA_ANALYSIS_SIGNALS),
     "booking-ordering":    countSignals(text, BOOKING_ORDERING_SIGNALS),
+    "content-browsing":    countSignals(text, CONTENT_BROWSING_SIGNALS),
     "portfolio-showcase":  countSignals(text, PORTFOLIO_SHOWCASE_SIGNALS),
+    "content-creation":    countSignals(text, CONTENT_CREATION_SIGNALS),
     "team-collaboration":  countSignals(text, TEAM_COLLABORATION_SIGNALS),
+    "data-analysis":       countSignals(text, DATA_ANALYSIS_SIGNALS),
     "realtime-monitoring": countSignals(text, REALTIME_MONITORING_SIGNALS),
+    "record-management":   countSignals(text, RECORD_MANAGEMENT_SIGNALS),
+    "personal-tracking":   countSignals(text, PERSONAL_TRACKING_SIGNALS),
   };
 
-  // Pick the highest-scoring activity
-  let best: ProductCharacteristics["primaryActivity"] = "record-management";
-  let bestScore = -1;
-  for (const [activity, score] of Object.entries(scores)) {
-    if (score > bestScore) {
-      bestScore = score;
-      best = activity as ProductCharacteristics["primaryActivity"];
-    }
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const bestScore = sorted[0][1];
+
+  if (bestScore === 0) {
+    return { activity: "content-browsing", isAmbiguous: false };
   }
 
-  // Minimum signal threshold — if nothing matched strongly, default to content-browsing
-  if (bestScore === 0) return "content-browsing";
-  return best;
+  // Find all activities tied for best score
+  const tied = sorted.filter(([_, score]) => score === bestScore).map(([act]) => act as ProductCharacteristics["primaryActivity"]);
+
+  if (tied.length === 1) {
+    return { activity: tied[0], isAmbiguous: false };
+  }
+
+  // A tie occurred! Log warning with exact contenders and matched signals
+  const tiedSignals = tied.map(act => {
+    const sigMap: Record<string, string[]> = {
+      "booking-ordering": BOOKING_ORDERING_SIGNALS,
+      "content-browsing": CONTENT_BROWSING_SIGNALS,
+      "portfolio-showcase": PORTFOLIO_SHOWCASE_SIGNALS,
+      "content-creation": CONTENT_CREATION_SIGNALS,
+      "team-collaboration": TEAM_COLLABORATION_SIGNALS,
+      "data-analysis": DATA_ANALYSIS_SIGNALS,
+      "realtime-monitoring": REALTIME_MONITORING_SIGNALS,
+      "record-management": RECORD_MANAGEMENT_SIGNALS,
+      "personal-tracking": PERSONAL_TRACKING_SIGNALS,
+    };
+    const matched = (sigMap[act] || []).filter(s => text.includes(s));
+    return `${act}(score=${bestScore}, matched=[${matched.join(", ")}])`;
+  });
+
+  console.warn(`[ProductUnderstanding] ⚠️ Activity tie detected (score ${bestScore}) between: ${tiedSignals.join(" vs ")}. Flagging as ambiguous.`);
+
+  // Sane, deterministic fallback tie-break for when LLM discovery does not run:
+  // Domain-specific transactional/commercial/showcase activities take precedence over generic personal/record buckets
+  const DOMAIN_SPECIFICITY_ORDER: ProductCharacteristics["primaryActivity"][] = [
+    "booking-ordering",
+    "content-creation",
+    "portfolio-showcase",
+    "team-collaboration",
+    "data-analysis",
+    "realtime-monitoring",
+    "content-browsing",
+    "personal-tracking",
+    "record-management",
+  ];
+
+  // However, if personal pronouns/phrases explicitly dominate ("my ", "personal ", "for myself", "habit"), preserve personal-tracking
+  const hasExplicitPersonalContext = /\b(my|myself|personal log|my habit|my routine|my tracker)\b/i.test(text);
+  if (tied.includes("personal-tracking") && hasExplicitPersonalContext) {
+    return { activity: "personal-tracking", isAmbiguous: true, tiedContenders: tied };
+  }
+
+  const chosen = DOMAIN_SPECIFICITY_ORDER.find(act => tied.includes(act)) || tied[0];
+  return { activity: chosen, isAmbiguous: true, tiedContenders: tied };
 }
 
 function detectExperiencePattern(
@@ -349,15 +407,50 @@ function detectExperiencePattern(
   text?: string
 ): ProductCharacteristics["experiencePattern"] {
   const lower = (text || "").toLowerCase();
-  const isConfiguratorOrTool =
-    lower.includes("configurator") ||
-    lower.includes("calculator") ||
-    lower.includes("estimator") ||
-    lower.includes("formulator") ||
-    lower.includes("simulator") ||
-    lower.includes("workbench");
 
-  if (isConfiguratorOrTool) {
+  // 1. Retail storefront & e-commerce marketplace detection (Pass 1)
+  const isStorefront =
+    lower.includes("marketplace") ||
+    lower.includes("storefront") ||
+    lower.includes("e-commerce") ||
+    lower.includes("ecommerce") ||
+    lower.includes("shopping") ||
+    lower.includes("online store") ||
+    (lower.includes("cart") && (lower.includes("product") || lower.includes("retail") || lower.includes("shop"))) ||
+    ((lower.includes("bakery") || lower.includes("bread") || lower.includes("pastry") || lower.includes("cake") || lower.includes("cafe")) &&
+     (lower.includes("menu") || lower.includes("order") || lower.includes("ordering") || lower.includes("cart") || lower.includes("catalog")));
+
+  if (isStorefront) {
+    return "storefront-commerce";
+  }
+
+  // 2. Hospitality portal detection (Pass 1)
+  const isHospitality =
+    lower.includes("resort") ||
+    lower.includes("hotel") ||
+    lower.includes("villas") ||
+    lower.includes("vacation stay") ||
+    lower.includes("luxury stay") ||
+    lower.includes("retreat") ||
+    (lower.includes("hospitality") && !lower.includes("software"));
+
+  if (isHospitality) {
+    return "hospitality-portal";
+  }
+
+  // 3. Primary tool / configurator detection
+  // ONLY triggers if the PRIMARY subject is a tool/calculator/estimator, NOT when auxiliary/incidental
+  const isPrimaryTool =
+    /^(?:calculator|estimator|simulator|configurator|workbench)\b/i.test(lower) ||
+    /(?:calculator|estimator|simulator|configurator|workbench)\s+(?:app|tool|suite|platform|engine)/i.test(lower) ||
+    (
+      (lower.includes("calculator") || lower.includes("estimator") || lower.includes("configurator") || lower.includes("simulator")) &&
+      !lower.includes("with ") &&
+      !lower.includes("including ") &&
+      !lower.includes("and ")
+    );
+
+  if (isPrimaryTool) {
     return "configurator-workspace";
   }
 
@@ -481,6 +574,9 @@ function detectAudienceContext(
   const isPersonal =
     activity === "personal-tracking" ||
     activity === "portfolio-showcase" ||
+    text.includes("companion") ||
+    text.includes("houseplant") ||
+    (text.includes("plant") && (text.includes("care") || text.includes("water") || text.includes("companion"))) ||
     countSignals(text, ["my ", "personal", "myself", "self-", "individual", "private", "one person"]) >= 2;
 
   const isProfessional =
@@ -569,7 +665,8 @@ export class ProductUnderstanding {
     const text = prompt.toLowerCase();
 
     // [1] Primary activity — drives everything else
-    const primaryActivity = detectPrimaryActivity(text);
+    const activityResult = detectPrimaryActivity(text);
+    const primaryActivity = activityResult.activity;
 
     // [2] Audience context
     const audienceContext = detectAudienceContext(text, primaryActivity);
@@ -606,7 +703,7 @@ export class ProductUnderstanding {
     const isSolar = text.includes("solar") || text.includes("inverter") || text.includes("photovoltaic");
     const foreignForbidden: string[] = [
       ...(!isAts ? ["resume", "candidate", "ATS"] : []),
-      ...(!isSolar ? ["inverter", "INV-01", "telemetry", "MPPT", "maintenance job queue"] : []),
+      ...(!isSolar ? ["inverter", "INV-01", "solar telemetry", "MPPT", "maintenance job queue"] : []),
     ];
 
     const forbidden = Array.from(new Set([...vocab.forbidden, ...foreignForbidden]));
@@ -627,6 +724,8 @@ export class ProductUnderstanding {
       isTextFirst,
       requiresRealTime,
       experiencePattern,
+      isAmbiguous: activityResult.isAmbiguous,
+      tiedContenders: activityResult.tiedContenders,
       vocabularyContract: {
         required,
         preferred: vocab.preferred,
@@ -688,6 +787,10 @@ function deriveVisualPersonality(tone: ProductCharacteristics["emotionalTone"], 
 
 function deriveContentHierarchy(activity: ProductCharacteristics["primaryActivity"], pattern: ProductCharacteristics["experiencePattern"]): string[] {
   switch (pattern) {
+    case "storefront-commerce":
+      return ["Promotional Banner & Deals Carousel", "Top Category Navigation Row", "Product Catalog Grid with Ratings & Discounts", "Interactive Slide-out Cart Drawer", "Order & Delivery Summary"];
+    case "hospitality-portal":
+      return ["Immersive Editorial Hero & Availability Bar", "Villa & Suite Showcase", "Curated Retreat Experiences & Dining", "Guest Reviews & Provenance", "Reservation Intake Flow"];
     case "catalog-browser":
     case "booking-flow":
       return ["Hero Showcase & Ethos", "Interactive Catalog / Grid", "Detail & Specification View", "Intake / Reservation Flow", "Operational Dashboard"];

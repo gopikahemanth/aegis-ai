@@ -27,6 +27,8 @@ export type DataShape =
   | "media-grid";        // photo, video, or card grid
 
 export type HeroElementType =
+  | "storefront-hero"          // retail carousel, deals banner, category bar
+  | "hospitality-hero"         // full-bleed hero with date/guest booking bar
   | "large-interaction"        // the core daily action (check-in, compose, book)
   | "progress-visualization"   // ring, streak, progress bar
   | "timeline-scroll"          // vertical log of events
@@ -53,6 +55,7 @@ export interface PageNode {
   heroElement: HeroElementType;
   supportingElements: string[];
   requiredDataShapes: DataShape[];
+  isSummaryOverview?: boolean;
 }
 
 export interface FeaturePriority {
@@ -60,6 +63,9 @@ export interface FeaturePriority {
   core: FeatureNode[];        // primary daily actions — get the most visual weight
   secondary: FeatureNode[];   // supporting — present but not dominant
   insights: FeatureNode[];    // analytics/history — subordinate
+
+  /** Authoritative primary landing feature designated for root "/" landing experience */
+  primaryLandingFeature?: string;
 
   informationArchitecture: {
     pages: PageNode[];
@@ -103,6 +109,83 @@ type PageTemplate = {
 };
 
 const PAGE_TEMPLATES: Record<ProductCharacteristics["experiencePattern"], PageTemplate> = {
+  "storefront-commerce": {
+    primaryInteraction: "Browse promotional deals, explore categories, add items to cart, and checkout",
+    navigationDepth: "shallow",
+    pages: [
+      {
+        route: "/",
+        name: "Storefront",
+        primaryFocus: "Continuous retail storefront with category row, deals carousel, product grid, and cart drawer",
+        heroElement: "storefront-hero",
+        supportingElements: ["category icon row", "promo banner carousel", "lightning deals countdown", "product catalog grid", "cart drawer"],
+      },
+      {
+        route: "/deals",
+        name: "Lightning Deals",
+        primaryFocus: "Time-limited discounted products and promotional bundles",
+        heroElement: "showcase-grid",
+        supportingElements: ["countdown timer", "discount badge filter", "stock availability bar"],
+      },
+      {
+        route: "/categories",
+        name: "Categories",
+        primaryFocus: "Departmental directory and category exploration",
+        heroElement: "showcase-grid",
+        supportingElements: ["category tiles", "subcategory list", "trending products"],
+      },
+      {
+        route: "/cart",
+        name: "Cart & Checkout",
+        primaryFocus: "Order review, item quantity adjustment, and delivery estimation",
+        heroElement: "form-flow",
+        supportingElements: ["pincode checker", "item summary", "price breakdown", "checkout button"],
+      },
+    ],
+  },
+
+  "hospitality-portal": {
+    primaryInteraction: "Explore luxury accommodations, view curated resort experiences, and reserve dates",
+    navigationDepth: "shallow",
+    pages: [
+      {
+        route: "/",
+        name: "Sanctuary",
+        primaryFocus: "Immersive editorial hero, date-booking availability bar, suite showcase, and resort experiences",
+        heroElement: "hospitality-hero",
+        supportingElements: ["date & guest booking bar", "villas showcase", "amenities highlights", "guest testimonials"],
+      },
+      {
+        route: "/villas",
+        name: "Villas & Suites",
+        primaryFocus: "Luxury villa accommodations with floorplans, amenities, and nightly rates",
+        heroElement: "showcase-grid",
+        supportingElements: ["filter by view", "amenities list", "virtual tour preview", "reserve CTA"],
+      },
+      {
+        route: "/experiences",
+        name: "Experiences",
+        primaryFocus: "Curated wellness, culinary, and excursion activities",
+        heroElement: "editorial-hero",
+        supportingElements: ["sommelier cellar", "spa wellness", "yacht excursions", "private dining"],
+      },
+      {
+        route: "/dining",
+        name: "Dining & Culinary",
+        primaryFocus: "Fine dining venues, farm-to-table menus, and private chef bookings",
+        heroElement: "showcase-grid",
+        supportingElements: ["menu download", "chef profile", "table reservation"],
+      },
+      {
+        route: "/reservations",
+        name: "Reservations",
+        primaryFocus: "Booking flow — date selection, suite customization, and confirmation",
+        heroElement: "form-flow",
+        supportingElements: ["date picker", "guest selector", "concierge add-ons", "total breakdown"],
+      },
+    ],
+  },
+
   "personal-tracker": {
     primaryInteraction: "Daily check-in or log entry",
     navigationDepth: "shallow",
@@ -111,7 +194,7 @@ const PAGE_TEMPLATES: Record<ProductCharacteristics["experiencePattern"], PageTe
         route: "/",
         name: "Today",
         primaryFocus: "The primary daily action — check-in, log entry, or habit completion",
-        heroElement: "large-interaction",
+        heroElement: "progress-visualization",
         supportingElements: ["current streak", "today's quick summary", "last entry preview"],
       },
       {
@@ -335,7 +418,7 @@ const PAGE_TEMPLATES: Record<ProductCharacteristics["experiencePattern"], PageTe
         route: "/",
         name: "Home",
         primaryFocus: "Search or browse with availability CTA",
-        heroElement: "large-interaction",
+        heroElement: "showcase-grid",
         supportingElements: ["search form", "featured options", "social proof"],
       },
       {
@@ -533,10 +616,24 @@ function scoreFeature(featureName: string): {
   return { priority, frequency, dataShape };
 }
 
+// Pattern-anchored heroes encode the entire layout mandate for the home page and
+// must NEVER be overridden by the generic feature-signal table. For example,
+// "villa availability calendar" contains the word "calendar" which would match
+// the calendar signal, silently replacing "hospitality-hero" with "calendar" and
+// breaking the HOSPITALITY_PORTAL composition family assignment.
+const PATTERN_ANCHORED_HEROES: ReadonlySet<HeroElementType> = new Set([
+  "storefront-hero",
+  "hospitality-hero",
+]);
+
 function resolveHeroElement(
   baseHero: HeroElementType,
   features: string[],
 ): HeroElementType {
+  // Never override a pattern-anchored hero — it is set intentionally by PAGE_TEMPLATES
+  // for a specific experience pattern and must survive any feature-name signals.
+  if (PATTERN_ANCHORED_HEROES.has(baseHero)) return baseHero;
+
   const featureText = features.join(" ").toLowerCase();
   for (const { signals, hero } of HERO_OVERRIDES_BY_FEATURE) {
     if (signals.some(s => new RegExp(`\\b${s}\\b`, "i").test(featureText))) return hero;
@@ -592,7 +689,7 @@ export class CapabilityPlanner {
       const { priority, frequency, dataShape } = scoreFeature(name);
       const node: FeatureNode = {
         name,
-        userIntent: `User wants to ${name.toLowerCase()}`,
+        userIntent: `Manage and track ${name.toLowerCase()}`,
         dataShape,
         estimatedUsageFrequency: frequency,
         visualPriority: priority,
@@ -613,13 +710,25 @@ export class CapabilityPlanner {
 
     // Build page IA from template
     const template = PAGE_TEMPLATES[experiencePattern];
-    const pages: PageNode[] = template.pages.map(p => ({
-      ...p,
-      heroElement: resolveHeroElement(p.heroElement, featureNames),
-      requiredDataShapes: core
-        .filter(f => !f.suggestedPage || f.suggestedPage === p.route)
-        .map(f => f.dataShape),
-    }));
+    const pages: PageNode[] = template.pages.map(p => {
+      const hero = resolveHeroElement(p.heroElement, featureNames);
+      const isSummary = Boolean(
+        p.isSummaryOverview ??
+        (hero === "metric-cluster" ||
+         p.primaryFocus?.toLowerCase().includes("kpi summary") ||
+         p.primaryFocus?.toLowerCase().includes("high-level kpi") ||
+         p.primaryFocus?.toLowerCase().includes("critical metrics") ||
+         p.primaryFocus?.toLowerCase().includes("analytics and metrics"))
+      );
+      return {
+        ...p,
+        heroElement: hero,
+        isSummaryOverview: isSummary,
+        requiredDataShapes: core
+          .filter(f => !f.suggestedPage || f.suggestedPage === p.route)
+          .map(f => f.dataShape),
+      };
+    });
 
     // Enforce diversity rule: no more than 2 consecutive pages with same heroElement
     for (let i = 2; i < pages.length; i++) {
@@ -638,11 +747,103 @@ export class CapabilityPlanner {
       }
     }
 
+    const primaryLandingFeature = core[0]?.name || template.pages[0]?.name || "Home";
+
     return {
       features: [...core, ...secondary, ...insights],
       core,
       secondary,
       insights,
+      primaryLandingFeature,
+      informationArchitecture: {
+        pages,
+        primaryInteraction: template.primaryInteraction,
+        navigationDepth: template.navigationDepth,
+      },
+    };
+  }
+
+  /**
+   * Plans feature priority and information architecture directly from a discovered FeatureMatrix.
+   * Skips all generic template/default guessing, ensuring discovered domain features and pages
+   * take direct precedence.
+   */
+  static fromFeatureMatrix(
+    matrix: { standardFeatures: Array<{ name: string; description: string }>; differentiatorFeatures: Array<{ name: string; description: string }>; corePages: string[]; primaryLandingFeature?: string },
+    characteristics: ProductCharacteristics
+  ): FeaturePriority {
+    const experiencePattern = characteristics.experiencePattern;
+    const template = PAGE_TEMPLATES[experiencePattern] || PAGE_TEMPLATES["operations-dashboard"];
+
+    const allFeatures = [
+      ...matrix.standardFeatures.map(f => ({ name: f.name, desc: f.description, isDifferentiator: false })),
+      ...matrix.differentiatorFeatures.map(f => ({ name: f.name, desc: f.description, isDifferentiator: true })),
+    ];
+
+    const core: FeatureNode[] = [];
+    const secondary: FeatureNode[] = [];
+    const insights: FeatureNode[] = [];
+
+    allFeatures.forEach((feat, idx) => {
+      const { priority, frequency, dataShape } = scoreFeature(feat.name);
+      const isCore = feat.isDifferentiator || idx < 3 || priority === "primary";
+      const node: FeatureNode = {
+        name: feat.name,
+        userIntent: feat.desc || `User interacts with ${feat.name}`,
+        dataShape,
+        estimatedUsageFrequency: isCore ? "daily" : frequency,
+        visualPriority: isCore ? "primary" : priority,
+      };
+
+      if (isCore) {
+        core.push(node);
+      } else if (priority === "tertiary") {
+        insights.push(node);
+      } else {
+        secondary.push(node);
+      }
+    });
+
+    const featureNames = allFeatures.map(f => f.name);
+
+    // Diverse hero element rotation for non-home pages:
+    // Ensures no 3+ consecutive pages share the same heroElement (DesignIntentGate check 5).
+    const NON_HOME_HERO_ROTATION: HeroElementType[] = [
+      "showcase-grid", "form-flow", "timeline-scroll", "metric-cluster", "editorial-hero",
+    ];
+
+    // Build pages from matrix.corePages or template
+    const pages: PageNode[] = matrix.corePages && matrix.corePages.length > 0
+      ? matrix.corePages.map((route, i) => {
+          const name = route.replace(/^\//, "").replace(/-/g, " ") || "Home";
+          const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
+          const heroElement: HeroElementType = i === 0
+            ? (template.pages[0]?.heroElement || "large-interaction")
+            : NON_HOME_HERO_ROTATION[(i - 1) % NON_HOME_HERO_ROTATION.length];
+          return {
+            route: route.startsWith("/") ? route : `/${route}`,
+            name: capitalized,
+            primaryFocus: `Core user flow for ${capitalized}`,
+            heroElement,
+            supportingElements: allFeatures.slice(i * 2, i * 2 + 3).map(f => f.name),
+            requiredDataShapes: core.map(f => f.dataShape),
+          };
+        })
+      : template.pages.map(p => ({
+          ...p,
+          heroElement: resolveHeroElement(p.heroElement, featureNames),
+          requiredDataShapes: core.map(f => f.dataShape),
+        }));
+
+
+    const primaryLandingFeature = matrix.primaryLandingFeature || matrix.standardFeatures[0]?.name || core[0]?.name || "Home";
+
+    return {
+      features: [...core, ...secondary, ...insights],
+      core,
+      secondary,
+      insights,
+      primaryLandingFeature,
       informationArchitecture: {
         pages,
         primaryInteraction: template.primaryInteraction,
@@ -665,6 +866,33 @@ export class CapabilityPlanner {
       secondary: FeatureNode[];
       insights: FeatureNode[];
     }> = {
+      "storefront-commerce": {
+        core: [
+          { name: "Product Catalog Grid", userIntent: "Browse products with ratings and discount badges", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
+          { name: "Promotional Banner Carousel", userIntent: "Discover featured sales and seasonal campaigns", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
+          { name: "Interactive Shopping Cart Drawer", userIntent: "Manage items and quantity with live total", dataShape: "list", estimatedUsageFrequency: "daily", visualPriority: "primary" },
+        ],
+        secondary: [
+          { name: "Category Navigation Row", userIntent: "Quickly filter by department", dataShape: "list", estimatedUsageFrequency: "daily", visualPriority: "secondary" },
+          { name: "Delivery Pincode Checker", userIntent: "Verify courier serviceability and transit time", dataShape: "single-value", estimatedUsageFrequency: "occasional", visualPriority: "secondary" },
+        ],
+        insights: [
+          { name: "Lightning Deals Countdown", userIntent: "Monitor flash sale timers", dataShape: "comparison", estimatedUsageFrequency: "daily", visualPriority: "tertiary" },
+        ],
+      },
+      "hospitality-portal": {
+        core: [
+          { name: "Villa & Suite Showcase", userIntent: "Explore accommodations and nightly rates", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
+          { name: "Availability & Reservation Bar", userIntent: "Select travel dates and guest count", dataShape: "form-flow", estimatedUsageFrequency: "daily", visualPriority: "primary" },
+        ],
+        secondary: [
+          { name: "Curated Resort Experiences", userIntent: "Book sommelier tastings, spa, and excursions", dataShape: "media-grid", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
+          { name: "Fine Dining & Culinary Venues", userIntent: "Reserve tables and view chef tasting menus", dataShape: "list", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
+        ],
+        insights: [
+          { name: "Guest Testimonials & Accolades", userIntent: "Review verified retreat feedback", dataShape: "list", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
+        ],
+      },
       "personal-tracker": {
         core: [
           { name: "Daily check-in", userIntent: "Log today's data", dataShape: "single-value", estimatedUsageFrequency: "daily", visualPriority: "primary" },

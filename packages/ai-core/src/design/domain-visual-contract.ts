@@ -232,6 +232,7 @@ export class DomainVisualContractGenerator {
     
     // Primary palette map with fallback to artDirection
     const primaryMap: Record<string, { hex: string; hover: string; subtle: string }> = {
+      sage:       { hex: "#5b7f6e", hover: "#4a6b5b", subtle: "rgba(91, 127, 110, 0.18)" },
       teal:       { hex: "#0d9488", hover: "#0f766e", subtle: "rgba(13, 148, 136, 0.18)" },
       amber:      { hex: "#d97706", hover: "#b45309", subtle: "rgba(217, 119, 6, 0.18)" },
       emerald:    { hex: "#059669", hover: "#047857", subtle: "rgba(5, 150, 105, 0.18)" },
@@ -243,7 +244,7 @@ export class DomainVisualContractGenerator {
       blue:       { hex: "#2563eb", hover: "#1d4ed8", subtle: "rgba(37, 99, 235, 0.18)" },
       fuchsia:    { hex: "#c026d3", hover: "#a21caf", subtle: "rgba(192, 38, 211, 0.18)" },
       orange:     { hex: "#f97316", hover: "#ea580c", subtle: "rgba(249, 115, 22, 0.18)" },
-      terracotta: { hex: "#c2410c", hover: "#9a3412", subtle: "rgba(194, 65, 12, 0.18)" },
+      terracotta: { hex: "#c4734a", hover: "#a85d38", subtle: "rgba(196, 115, 74, 0.18)" },
       yellow:     { hex: "#eab308", hover: "#ca8a04", subtle: "rgba(234, 179, 8, 0.18)" },
     };
 
@@ -454,8 +455,48 @@ export class DomainVisualContractGenerator {
 
     // ── 2. Domain-Specific Visual Adaptation ──────────────────────────────────
 
+    // Plant Care / Houseplant / Botanical Companion
+    if (rawText.includes("plant") || rawText.includes("botanical") || rawText.includes("houseplant") || rawText.includes("garden") || rawText.includes("foliage") || (rawText.includes("watering") && !rawText.includes("vehicle"))) {
+      domain = "Houseplant Care & Botanical Companion";
+      productType = "Plant Care & Growth Companion";
+      layoutFamily = "EDITORIAL_CATALOG";
+      navStrategy = "TOPBAR_PILL";
+      density = "balanced";
+      formality = "casual";
+      mood = "Warm, playful, hand-illustrated botanical atmosphere with sage green, terracotta, warm ivory, and soft rounded shapes";
+
+      mode = "light";
+      bgClass = "bg-[#f9f6f1]";
+      surfaceClass = "bg-[#ffffff] border-[rgba(91,127,110,0.18)]";
+      cardClass = "bg-[#ffffff] border border-[rgba(91,127,110,0.18)] rounded-2xl shadow-sm";
+      primary = "terracotta";
+      secondary = "sage";
+      accent = "from-[#c4734a] via-[#5b7f6e] to-[#d4a373]";
+      textPrimary = "text-[#2d2420]";
+      textMuted = "text-[#8a7968]";
+      badgeStyle = "bg-[#c4734a]/12 text-[#c4734a] border border-[#c4734a]/25 rounded-full font-medium";
+      activeNavStyle = "bg-[#5b7f6e] text-white rounded-xl shadow-sm";
+      fontFamily = "Outfit, Plus Jakarta Sans, sans-serif";
+      headingStyle = "font-bold tracking-tight text-[#2d2420]";
+      bodyStyle = "text-sm text-[#5a4e44]";
+      emphasis = "font-semibold text-[#5b7f6e]";
+
+      headline = "Houseplant Care & Botanical Companion";
+      primaryMetric = { label: "Active Plants", value: "12 Plants", trend: "All watered & healthy", icon: "Sprout" };
+      secondaryMetrics = [
+        { label: "Watering Schedules", value: "8 Schedules", trend: "Next due tomorrow", icon: "Droplets" },
+        { label: "Sunlight Requirements", value: "10 Verified", trend: "Balanced light exposure", icon: "Sun" },
+        { label: "Growth Timeline Photos", value: "34 Entries", trend: "+3 new this week", icon: "Camera" },
+      ];
+      heroAction = { label: "+ Add Houseplant", targetRoute: "/watering-schedules", icon: "Plus" };
+      alerts = ["Watering reminder: Monstera Deliciosa is ready for hydration today."];
+      primaryWidget = "SHOWCASE";
+      components = ["PlantShelf", "WateringScheduleTable", "SunlightCard"];
+      antiPatterns.push("Corporate slate dark modes", "Generic SaaS blue", "Dense administrative tables", "Raw unstyled tables");
+    }
+
     // A. Music Festival / Live Production / Entertainment / Tour
-    if (rawText.includes("music") || rawText.includes("festival") || rawText.includes("concert") || rawText.includes("soundwave") || rawText.includes("live-event") || rawText.includes("performer") || (rawText.includes("artist") && rawText.includes("stage"))) {
+    else if (rawText.includes("music") || rawText.includes("festival") || rawText.includes("concert") || rawText.includes("soundwave") || rawText.includes("live-event") || rawText.includes("performer") || (rawText.includes("artist") && rawText.includes("stage"))) {
       domain = "Music & Live Entertainment";
       productType = "Festival Operations & Stage Dispatch";
       layoutFamily = "MEDIA_SHOWCASE";
@@ -602,7 +643,7 @@ export class DomainVisualContractGenerator {
       bodyStyle = "text-sm text-stone-300 font-light";
       emphasis = "font-medium text-amber-300";
 
-      headline = "Sanctuary Operations & VIP Guest Registry";
+      headline = "Sanctuary Operations & VIP Guest Suites";
       primaryMetric = { label: "Suite Occupancy Rate", value: "92.8%", trend: "+4.1% vs last week", icon: "Sparkles" };
       secondaryMetrics = [
         { label: "Today's VIP Arrivals", value: "18 Guests", trend: "4 Penthouse Bookings", icon: "Users" },
@@ -1050,7 +1091,7 @@ export class DomainVisualContractGenerator {
         hero: {
           type: "sanctuary_showcase",
           title: headline,
-          subtitle: "Exclusive luxury sanctuary suite registry & concierge operations",
+          subtitle: "Exclusive luxury sanctuary suite collection & concierge operations",
           badge: "VIP Hospitality Mode",
           cta: heroAction,
         },
@@ -1163,7 +1204,7 @@ export class DomainVisualContractGenerator {
           title: "Sky Object Catalogue & Target Browser",
         },
         supportingWidgets: [
-          { type: "telescope_equipment", title: "Telescope & Equipment Registry" },
+          { type: "telescope_equipment", title: "Telescope & Equipment Catalogue" },
           { type: "astronomer_roster", title: "Resident Astronomer Profiles" },
         ],
         interactionModel: "session_reservation_flow",

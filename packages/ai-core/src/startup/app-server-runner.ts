@@ -65,7 +65,7 @@ export class AppServerRunner {
       this.process = spawn(process.execPath, [localViteBin, "--port", String(port)], {
         cwd: absDir,
         shell: false,
-        stdio: "pipe",
+        stdio: "ignore",
         env: { ...process.env, PORT: String(port) },
       });
     } else {
@@ -73,7 +73,7 @@ export class AppServerRunner {
       this.process = spawn(npxCmd, ["vite", "--port", String(port)], {
         cwd: absDir,
         shell: false,
-        stdio: "pipe",
+        stdio: "ignore",
         env: { ...process.env, PORT: String(port) },
       });
     }

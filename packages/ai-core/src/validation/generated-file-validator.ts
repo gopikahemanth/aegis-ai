@@ -1,4 +1,5 @@
 import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
+import { ASTSafeTransformer } from "../governance/ast-safe-transformer.js";
 
 export interface ValidationIssue {
   type: "TRUNCATION" | "SYNTAX" | "UNBALANCED" | "MISSING_EXPORT";
@@ -33,26 +34,53 @@ export class GeneratedFileValidator {
       issues.push({ type: "TRUNCATION", message: `File "${path}" appears to be truncated or incomplete.` });
     }
 
-    // 2. Bracket Balance Check
+    // 2. Bracket Balance Check (lexical scanner with comment & string awareness)
     let braceCount = 0;
     let parenCount = 0;
     let bracketCount = 0;
     let inString = false;
     let stringChar = "";
-    let inComment = false;
+    let inLineComment = false;
+    let inBlockComment = false;
 
     for (let i = 0; i < content.length; i++) {
       const char = content[i];
       const nextChar = content[i + 1];
 
+      // Handle comments
+      if (!inString && !inLineComment && !inBlockComment) {
+        if (char === '/' && nextChar === '/') {
+          inLineComment = true;
+          i++;
+          continue;
+        }
+        if (char === '/' && nextChar === '*') {
+          inBlockComment = true;
+          i++;
+          continue;
+        }
+      }
+      if (inLineComment) {
+        if (char === '\n') inLineComment = false;
+        continue;
+      }
+      if (inBlockComment) {
+        if (char === '*' && nextChar === '/') {
+          inBlockComment = false;
+          i++;
+        }
+        continue;
+      }
+
       // Handle strings
-      if ((char === '"' || char === "'" || char === '`') && !inComment) {
+      if ((char === '"' || char === "'" || char === '`')) {
         if (!inString) {
           inString = true;
           stringChar = char;
         } else if (char === stringChar && content[i - 1] !== '\\') {
           inString = false;
         }
+        continue;
       }
 
       if (inString) continue;
@@ -66,14 +94,20 @@ export class GeneratedFileValidator {
       if (char === ']') bracketCount--;
     }
 
-    if (braceCount !== 0) {
-      issues.push({ type: "UNBALANCED", message: `Unbalanced curly braces in "${path}" (delta: ${braceCount}).` });
-    }
-    if (parenCount !== 0) {
-      issues.push({ type: "UNBALANCED", message: `Unbalanced parentheses in "${path}" (delta: ${parenCount}).` });
-    }
-    if (bracketCount !== 0) {
-      issues.push({ type: "UNBALANCED", message: `Unbalanced square brackets in "${path}" (delta: ${bracketCount}).` });
+    if (braceCount !== 0 || parenCount !== 0 || bracketCount !== 0) {
+      // Check if TypeScript AST confirms valid syntax despite lexical scanner heuristics
+      const syntaxCheck = isTs ? ASTSafeTransformer.validateSyntax(content, path) : { valid: false };
+      if (!syntaxCheck.valid) {
+        if (braceCount !== 0) {
+          issues.push({ type: "UNBALANCED", message: `Unbalanced curly braces in "${path}" (delta: ${braceCount}).` });
+        }
+        if (parenCount !== 0) {
+          issues.push({ type: "UNBALANCED", message: `Unbalanced parentheses in "${path}" (delta: ${parenCount}).` });
+        }
+        if (bracketCount !== 0) {
+          issues.push({ type: "UNBALANCED", message: `Unbalanced square brackets in "${path}" (delta: ${bracketCount}).` });
+        }
+      }
     }
 
     // 3. Suspicious Trailing Expressions Check (check only the actual file ending, not lines in middle of file)

@@ -252,6 +252,21 @@ export class FinalSuccessGate {
       const icon = item.passed ? "✓" : "❌";
       console.log(`  ${icon}  ${item.name.padEnd(26)} ${item.message}`);
     }
+
+    // Surface route governance warnings if present
+    const brownfieldWarningsPath = join(input.projectRoot, ".aegis", "sanitizer-warnings.json");
+    if (existsSync(brownfieldWarningsPath)) {
+      try {
+        const warnings = JSON.parse(readFileSync(brownfieldWarningsPath, "utf8"));
+        if (Array.isArray(warnings) && warnings.length > 0) {
+          console.log("\n  ⚠️  ROUTE GOVERNANCE WARNINGS:");
+          for (const w of warnings) {
+            console.log(`     • ${w}`);
+          }
+        }
+      } catch {}
+    }
+
     console.log(`\n  [FINAL STATUS]: ${status}`);
     console.log(`  [EVIDENCE]:     ${evidenceSummary}\n`);
 
@@ -565,6 +580,21 @@ export class FinalSuccessGate {
       const tag = item.critical ? "" : " (env)";
       console.log(`  ${icon}${tag}  ${item.name.padEnd(24)} ${item.message}`);
     }
+
+    // Surface route governance warnings if present
+    const greenfieldWarningsPath = join(projectRoot, ".aegis", "sanitizer-warnings.json");
+    if (existsSync(greenfieldWarningsPath)) {
+      try {
+        const warnings = JSON.parse(readFileSync(greenfieldWarningsPath, "utf8"));
+        if (Array.isArray(warnings) && warnings.length > 0) {
+          console.log("\n  ⚠️  ROUTE GOVERNANCE WARNINGS:");
+          for (const w of warnings) {
+            console.log(`     • ${w}`);
+          }
+        }
+      } catch {}
+    }
+
     console.log(`\n  [FINAL STATUS]: ${status}`);
     console.log(`  [EVIDENCE]:     ${evidenceSummary}\n`);
 

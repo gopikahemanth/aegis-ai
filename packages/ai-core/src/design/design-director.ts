@@ -143,6 +143,7 @@ export interface ProductDesignBrief {
     name: string;
     primaryFocus: string;
     heroElement: HeroElementType;
+    isSummaryOverview?: boolean;
     secondaryElements: string[];
     tertiaryElements: string[];
     compositionFamily: string;
@@ -268,7 +269,7 @@ function candidatesFromCharacteristics(
   // If modeHint from --design-mode=pick, filter toward that tone family
   if (modeHint) {
     const hint = modeHint.toLowerCase();
-    if (hint.includes("calm") || hint.includes("botanical") || hint.includes("natural") || hint.includes("earthy")) {
+    if (hint.includes("calm") || hint.includes("botanical") || hint.includes("natural") || hint.includes("earthy") || hint.includes("plant")) {
       return isPersonal
         ? ["CALM_BOTANICAL", "BOTANICAL_EARTH", "EDITORIAL_NARRATIVE"]
         : ["BOTANICAL_EARTH", "CALM_BOTANICAL", "NORDIC_MINIMAL"];
@@ -440,17 +441,21 @@ function resolveVisualLanguage(characteristics: ProductCharacteristics, archetyp
 // ─── Page composition builder ─────────────────────────────────────────────────
 
 type CompositionFamily =
-  | "HERO_FIRST"      // large hero + supporting content below
-  | "GRID_CATALOG"    // equal-weight card grid
-  | "DASHBOARD"       // metric header + content body
-  | "EDITORIAL"       // image + text alternating
-  | "TIMELINE"        // vertical chronological
-  | "FORM_CENTRIC"    // form as the primary element
-  | "CONSOLE"         // dense data terminal view
-  | "TRACKER";        // personal tracker with streak/progress hero
+  | "HERO_FIRST"          // large hero + supporting content below
+  | "GRID_CATALOG"        // equal-weight card grid
+  | "DASHBOARD"           // metric header + content body
+  | "EDITORIAL"           // image + text alternating
+  | "TIMELINE"            // vertical chronological
+  | "FORM_CENTRIC"        // form as the primary element
+  | "CONSOLE"             // dense data terminal view
+  | "STOREFRONT"          // retail marketplace with promo carousel, deals, product grid, cart drawer
+  | "HOSPITALITY_PORTAL"  // luxury resort/hotel with immersive hero, booking bar, suite showcase
+  | "TRACKER";            // personal tracker with streak/progress hero
 
 const COMPOSITION_FAMILY_MAP: Record<HeroElementType, CompositionFamily> = {
-  "large-interaction":      "TRACKER",
+  "storefront-hero":        "STOREFRONT",
+  "hospitality-hero":       "HOSPITALITY_PORTAL",
+  "large-interaction":      "HERO_FIRST",
   "progress-visualization": "TRACKER",
   "timeline-scroll":        "TIMELINE",
   "showcase-grid":          "GRID_CATALOG",
@@ -462,43 +467,55 @@ const COMPOSITION_FAMILY_MAP: Record<HeroElementType, CompositionFamily> = {
 };
 
 const FORBIDDEN_PATTERNS_BY_FAMILY: Record<CompositionFamily, string[]> = {
-  "TRACKER":     ["Generic KPI grid as hero", "Admin table as primary content", "Sidebar navigation for personal tracker"],
-  "TIMELINE":    ["Card grid as hero", "Metric cluster without context", "Admin sidebar"],
-  "GRID_CATALOG": ["Timeline as hero", "Sidebar nav without benefit", "Single-column card list"],
-  "DASHBOARD":   ["Empty hero section", "No data visualization", "Text wall without metrics"],
-  "EDITORIAL":   ["Card grid layout", "Dense data table", "Admin sidebar"],
-  "FORM_CENTRIC": ["Multiple simultaneous forms", "Card grid hero", "Dashboard header"],
-  "CONSOLE":     ["Soft decorative illustration", "Large editorial hero", "Bottom tab navigation"],
-  "HERO_FIRST":  ["Multiple competing hero sections", "Dense data table", "Admin sidebar"],
+  "STOREFRONT":     ["Internal engineering suite headers", "Telemetry metrics as primary hero", "Admin CRUD table as primary view", "Tabbed capability engine console", "Technical telemetry gauges"],
+  "HOSPITALITY_PORTAL": ["Telemetry metrics", "Admin backoffice tables", "Tabbed console engine", "Technical parameter sliders", "System log viewer"],
+  "TRACKER":        ["Generic KPI grid as hero", "Admin table as primary content", "Sidebar navigation for personal tracker"],
+  "TIMELINE":       ["Card grid as hero", "Metric cluster without context", "Admin sidebar"],
+  "GRID_CATALOG":   ["Timeline as hero", "Sidebar nav without benefit", "Single-column card list"],
+  "DASHBOARD":      ["Empty hero section", "No data visualization", "Text wall without metrics"],
+  "EDITORIAL":      ["Card grid layout", "Dense data table", "Admin sidebar"],
+  "FORM_CENTRIC":   ["Multiple simultaneous forms", "Card grid hero", "Dashboard header"],
+  "CONSOLE":        ["Soft decorative illustration", "Large editorial hero", "Bottom tab navigation"],
+  "HERO_FIRST":     ["Multiple competing hero sections", "Dense data table", "Admin sidebar"],
 };
 
 const VISUAL_RHYTHM_BY_FAMILY: Record<CompositionFamily, string> = {
-  "TRACKER":     "LARGE interaction → compact summary → medium chart",
-  "TIMELINE":    "LARGE timeline hero → detail cards → action footer",
-  "GRID_CATALOG": "featured editorial → GRID cards → pagination",
-  "DASHBOARD":   "METRIC row → medium charts → data list",
-  "EDITORIAL":   "HERO image + headline → content sections → CTA",
-  "FORM_CENTRIC": "FORM hero → help text → confirmation",
-  "CONSOLE":     "DENSE header → data rows → status footer",
-  "HERO_FIRST":  "FULL-BLEED hero → feature sections → footer",
+  "STOREFRONT":         "HERO carousel → categories row → deals banner → PRODUCT grid → cart drawer",
+  "HOSPITALITY_PORTAL": "FULL-BLEED hero + booking bar → villa showcase → experiential carousel → reservation CTA",
+  "TRACKER":            "LARGE interaction → compact summary → medium chart",
+  "TIMELINE":           "LARGE timeline hero → detail cards → action footer",
+  "GRID_CATALOG":       "featured editorial → GRID cards → pagination",
+  "DASHBOARD":          "METRIC row → medium charts → data list",
+  "EDITORIAL":          "HERO image + headline → content sections → CTA",
+  "FORM_CENTRIC":       "FORM hero → help text → confirmation",
+  "CONSOLE":            "DENSE header → data rows → status footer",
+  "HERO_FIRST":         "FULL-BLEED hero → feature sections → footer",
 };
 
 const VOCABULARY_BY_FAMILY: Record<CompositionFamily, string[]> = {
-  "TRACKER":     ["Today", "Check in", "Streak", "Progress", "Reflect"],
-  "TIMELINE":    ["History", "Recent", "Past", "Entry"],
-  "GRID_CATALOG": ["Browse", "Discover", "View", "Featured", "Explore"],
-  "DASHBOARD":   ["Overview", "Metrics", "Performance", "Filter", "Export"],
-  "EDITORIAL":   ["Story", "Feature", "Read", "About", "Work"],
-  "FORM_CENTRIC": ["Book", "Reserve", "Confirm", "Schedule", "Details"],
-  "CONSOLE":     ["Status", "Alert", "Live", "Monitor", "Active"],
-  "HERO_FIRST":  ["Explore", "Discover", "Featured", "Get Started"],
+  "STOREFRONT":         ["Shop", "Category", "Add to Cart", "Deals", "Ratings", "Discount", "Cart", "Checkout"],
+  "HOSPITALITY_PORTAL": ["Villas", "Suites", "Reserve", "Stay", "Amenities", "Dining", "Concierge", "Retreat"],
+  "TRACKER":            ["Today", "Check in", "Streak", "Progress", "Reflect"],
+  "TIMELINE":           ["History", "Recent", "Past", "Entry"],
+  "GRID_CATALOG":       ["Browse", "Discover", "View", "Featured", "Explore"],
+  "DASHBOARD":          ["Overview", "Metrics", "Performance", "Filter", "Export"],
+  "EDITORIAL":          ["Story", "Feature", "Read", "About", "Work"],
+  "FORM_CENTRIC":       ["Book", "Reserve", "Confirm", "Schedule", "Details"],
+  "CONSOLE":            ["Status", "Alert", "Live", "Monitor", "Active"],
+  "HERO_FIRST":         ["Explore", "Discover", "Featured", "Get Started"],
 };
 
 function buildEmptyStateCopy(pages: PageNode[], characteristics: ProductCharacteristics): Record<string, string> {
   const copy: Record<string, string> = {};
   for (const page of pages) {
-    const family = COMPOSITION_FAMILY_MAP[page.heroElement] || "DASHBOARD";
+    const family = COMPOSITION_FAMILY_MAP[page.heroElement] || "HERO_FIRST";
     switch (family) {
+      case "STOREFRONT":
+        copy[page.route] = `No items found in this section`;
+        break;
+      case "HOSPITALITY_PORTAL":
+        copy[page.route] = `Select dates to check suite availability`;
+        break;
       case "TRACKER":
         copy[page.route] = `Log your first entry to get started`;
         break;
@@ -541,7 +558,22 @@ export class DesignDirector {
     characteristics: ProductCharacteristics,
     seed: number,
     modeHint?: string,
+    rawPrompt?: string,
   ): VisualArtDirectionContract {
+    const promptLower = (rawPrompt || "").toLowerCase();
+    const hasBotanicalDirectives =
+      promptLower.includes("botanical") ||
+      promptLower.includes("sage") ||
+      promptLower.includes("terracotta") ||
+      promptLower.includes("dusty rose") ||
+      promptLower.includes("plant-care") ||
+      promptLower.includes("plant care") ||
+      (promptLower.includes("plant") && (promptLower.includes("companion") || promptLower.includes("watering") || promptLower.includes("care")));
+
+    if (hasBotanicalDirectives) {
+      return buildCalmBotanicalContract(seed, rawPrompt);
+    }
+
     const candidates = candidatesFromCharacteristics(characteristics, modeHint);
     const archetypeKey = candidates[Math.abs(seed) % candidates.length];
 
@@ -558,38 +590,29 @@ export class DesignDirector {
 
     // Use CALM_BOTANICAL archetype if selected — it's a new archetype added by this plan
     if (archetypeKey === "CALM_BOTANICAL") {
-      return buildCalmBotanicalContract(seed);
+      return buildCalmBotanicalContract(seed, rawPrompt);
     }
 
-    // For all other archetypes, use the existing deriveArtDirection with the archetype forced
-    // by creating a synthetic prompt that will score toward the right candidate pool
-    const artDirection = deriveArtDirection(syntheticPrompt);
-
-    // If the auto-selected archetype doesn't match our candidate, we override it
-    // by constructing the correct archetype deterministically
-    if (!candidates.includes(artDirection.archetype as ArchetypeKey)) {
-      // Force the selected archetype by passing its key signal keywords
-      const archetypeSignals: Partial<Record<ArchetypeKey, string>> = {
-        "INDUSTRIAL_UTILITY": "industrial utility sensor telemetry monitoring",
-        "OCEANIC_MARITIME": "ocean maritime navigation",
-        "CLINICAL_LABORATORY": "clinical laboratory diagnostic hospital",
-        "EDITORIAL_HERITAGE": "editorial heritage museum archive monograph",
-        "OBSIDIAN_PRECISION": "trading fintech order execution precision",
-        "MODERN_SWISS": "minimal swiss typographic precision",
-        "BOTANICAL_EARTH": "botanical earth ecology natural",
-        "NORDIC_MINIMAL": "nordic minimal clean simple workspace",
-        "AMBER_WARM_DARK": "amber warm dark vintage luxury",
-        "NEON_SYNTHETIC": "neon synthetic cyberpunk electric",
-        "EDITORIAL_NARRATIVE": "editorial narrative story publication",
-        "RESTRAINED_PRODUCT": "restrained product saas developer",
-        "PLAYFUL_APPROACHABLE": "playful approachable cute friendly fun",
-        "SOPHISTICATED_ELEGANT": "sophisticated elegant wealth premium",
-      };
-      const forcedPrompt = archetypeSignals[archetypeKey] || syntheticPrompt;
-      return deriveArtDirection(forcedPrompt);
-    }
-
-    return artDirection;
+    // For all other archetypes, derive art direction for the selected archetypeKey
+    // passing the run seed to vary both archetype and palette variants deterministically
+    const archetypeSignals: Partial<Record<ArchetypeKey, string>> = {
+      "INDUSTRIAL_UTILITY": "industrial utility sensor telemetry monitoring",
+      "OCEANIC_MARITIME": "ocean maritime navigation",
+      "CLINICAL_LABORATORY": "clinical laboratory diagnostic hospital",
+      "EDITORIAL_HERITAGE": "editorial heritage museum archive monograph",
+      "OBSIDIAN_PRECISION": "trading fintech order execution precision",
+      "MODERN_SWISS": "minimal swiss typographic precision",
+      "BOTANICAL_EARTH": "botanical earth ecology natural",
+      "NORDIC_MINIMAL": "nordic minimal clean simple workspace",
+      "AMBER_WARM_DARK": "amber warm dark vintage luxury",
+      "NEON_SYNTHETIC": "neon synthetic cyberpunk electric",
+      "EDITORIAL_NARRATIVE": "editorial narrative story publication",
+      "RESTRAINED_PRODUCT": "restrained product saas developer",
+      "PLAYFUL_APPROACHABLE": "playful approachable cute friendly fun",
+      "SOPHISTICATED_ELEGANT": "sophisticated elegant wealth premium",
+    };
+    const forcedPrompt = archetypeSignals[archetypeKey] || syntheticPrompt;
+    return deriveArtDirection(forcedPrompt, undefined, seed);
   }
 
   /**
@@ -610,11 +633,12 @@ export class DesignDirector {
     rawPrompt: string,
     selectionMode: DesignSelectionMode = "AUTO",
     modeHint?: string,
+    explicitSeed?: number,
   ): ProductDesignBrief {
-    const seed = computeDeterministicHash(rawPrompt.trim());
+    const seed = explicitSeed !== undefined ? explicitSeed : computeDeterministicHash(rawPrompt.trim());
 
     // [1] Select art direction from characteristics
-    const artDirection = DesignDirector.selectArtDirection(characteristics, seed, modeHint);
+    const artDirection = DesignDirector.selectArtDirection(characteristics, seed, modeHint, rawPrompt);
     const artDirectionName = artDirection.archetype;
     const artDirectionRationale = buildRationale(characteristics, artDirectionName, modeHint);
 
@@ -689,12 +713,13 @@ export class DesignDirector {
     // [9] Page compositions
     const pages = featurePriority.informationArchitecture.pages;
     const pageCompositions = pages.map(page => {
-      const family = COMPOSITION_FAMILY_MAP[page.heroElement] || "DASHBOARD";
+      const family = COMPOSITION_FAMILY_MAP[page.heroElement] || "HERO_FIRST";
       return {
         route: page.route,
         name: page.name,
         primaryFocus: page.primaryFocus,
         heroElement: page.heroElement,
+        isSummaryOverview: page.isSummaryOverview ?? (page.heroElement === "metric-cluster"),
         secondaryElements: page.supportingElements,
         tertiaryElements: [],
         compositionFamily: family,
@@ -743,7 +768,7 @@ export class DesignDirector {
       provenanceHash: promptHash,
       compositionBrief: {
         heroElement: pageCompositions[0]?.heroElement || "large-interaction",
-        compositionFamily: pageCompositions[0]?.compositionFamily || "DASHBOARD",
+        compositionFamily: pageCompositions[0]?.compositionFamily || "HERO_FIRST",
       },
       productCharacteristics: characteristics,
       featurePriority,
@@ -767,15 +792,26 @@ export class DesignDirector {
 
 // ─── CALM_BOTANICAL archetype (new — added by Design Director plan) ───────────
 
-function buildCalmBotanicalContract(seed: number): VisualArtDirectionContract {
-  // Sage / terracotta / marigold on ivory — a calm, light botanical identity
-  // For personal trackers with calm/warm emotional tone
+function buildCalmBotanicalContract(seed: number, rawPrompt?: string): VisualArtDirectionContract {
+  // Sage / terracotta / cream / dusty rose on warm ivory — a cozy, light botanical identity
+  const promptLower = (rawPrompt || "").toLowerCase();
   const variants = [
     { name: "sage",       hex: "#5b7f6e", hoverHex: "#4a6b5b", subtle: "rgba(91, 127, 110, 0.14)", gradient: "from-[#5b7f6e] to-[#8ab5a1]" },
     { name: "terracotta", hex: "#c4734a", hoverHex: "#a85c37", subtle: "rgba(196, 115, 74, 0.14)", gradient: "from-[#c4734a] to-[#e8a882]" },
     { name: "marigold",   hex: "#d4a017", hoverHex: "#b88a10", subtle: "rgba(212, 160, 23, 0.14)", gradient: "from-[#d4a017] to-[#f0c84a]" },
   ];
-  const variant = variants[Math.abs(seed) % variants.length];
+  let variant = variants[0]; // default to sage
+  if (promptLower.includes("terracotta") && !promptLower.includes("sage")) {
+    variant = variants[1];
+  } else if (promptLower.includes("marigold")) {
+    variant = variants[2];
+  }
+
+  const hasDustyRose = promptLower.includes("dusty rose") || promptLower.includes("rose");
+  const secondaryHex = "#c4734a"; // terracotta
+  const accentGradient = hasDustyRose
+    ? "from-[#5b7f6e] via-[#c4734a] to-[#d4a373]"
+    : "from-[#5b7f6e] to-[#c4734a]";
 
   return {
     id: `vad_calm_botanical_${seed.toString(16)}`,
@@ -790,14 +826,14 @@ function buildCalmBotanicalContract(seed: number): VisualArtDirectionContract {
       primaryHex: variant.hex,
       primaryHoverHex: variant.hoverHex,
       primarySubtle: variant.subtle,
-      secondary: "stone",
-      secondaryHex: "#8a7968",
-      accentGradient: variant.gradient,
+      secondary: "terracotta",
+      secondaryHex,
+      accentGradient,
       textPrimary: "#2d2420",        // deep warm brown
       textSecondary: "#5a4e44",
       textMuted: "#8a7968",
-      border: "rgba(91, 127, 110, 0.15)",
-      borderSubtle: "rgba(91, 127, 110, 0.07)",
+      border: "rgba(91, 127, 110, 0.18)",
+      borderSubtle: "rgba(91, 127, 110, 0.08)",
       success: "#5b7f6e",
       warning: "#d4a017",
       danger: "#c4734a",
@@ -809,10 +845,10 @@ function buildCalmBotanicalContract(seed: number): VisualArtDirectionContract {
     },
     geometry: {
       style: "soft",
-      radiusSm: "6px",
-      radiusMd: "12px",
-      radiusLg: "20px",
-      radiusXl: "28px",
+      radiusSm: "8px",
+      radiusMd: "16px",
+      radiusLg: "24px",
+      radiusXl: "32px",
       radiusFull: "9999px",
     },
     surfaceTreatment: {
@@ -824,7 +860,7 @@ function buildCalmBotanicalContract(seed: number): VisualArtDirectionContract {
     typography: {
       pairing: "modern_geometric",
       fontDisplay: "Outfit, Plus Jakarta Sans, sans-serif",
-      fontBody: "Inter, -apple-system, sans-serif",
+      fontBody: "Outfit, Inter, -apple-system, sans-serif",
       headingStyle: "font-semibold tracking-tight text-[#2d2420]",
       bodyStyle: "text-sm text-[#5a4e44] leading-relaxed",
       emphasis: `font-semibold text-[${variant.hex}]`,
@@ -838,7 +874,7 @@ function buildCalmBotanicalContract(seed: number): VisualArtDirectionContract {
     },
     layoutPersonality: {
       family: "EDITORIAL_LANDING",
-      mood: "Calm botanical sanctuary — warm ivory surfaces, natural sage and terracotta accents, generous breathing room",
+      mood: "Calm botanical sanctuary — warm ivory surfaces, natural sage and terracotta accents, soft rounded cards, generous breathing room",
       motifs: ["organic_leaf_motifs", "soft_pill_chips", "warm_surface_texture"],
     },
   };

@@ -48,6 +48,8 @@ export interface FrontendReviewSummary {
   uncaughtExceptions?: string[];
   reviewPassed?: boolean;
   productIdentity?: import("../validation/read-only-browser-validator.js").ProductIdentityResult;
+  warnings?: string[];
+  designTokenViolations?: Array<{ file: string; line: number; matchedClass: string; rule: string }>;
   status: ApprovalStatus;
   userFeedback?: string;
   reviewedAt?: string;

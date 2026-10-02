@@ -26,14 +26,36 @@ export function cleanDirectory(targetPath: string): void {
 
   if (process.platform === "win32") {
     try {
-      const myPid = process.pid;
-      const myPpid = process.ppid;
-      // Terminate only orphan dev servers locking port 5173, never the generator itself
-      const psCommand = `powershell -Command "Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessId -ne ${myPid} -and $_.ProcessId -ne ${myPpid} -and ($_.CommandLine -like '*vite*5173*' -or $_.CommandLine -like '*--port 5173*') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`;
-      execSync(psCommand, { stdio: "ignore" });
-    } catch {
-      /* ignore if process termination fails */
-    }
+      const netstatOut = execSync("netstat -ano -p tcp", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+      for (const line of netstatOut.split(/\r?\n/)) {
+        if (line.includes(":5173") && line.includes("LISTENING")) {
+          const parts = line.trim().split(/\s+/);
+          const pid = parts[parts.length - 1];
+          if (pid && !isNaN(Number(pid)) && Number(pid) !== process.pid && Number(pid) !== process.ppid) {
+            try { execSync(`taskkill /F /PID ${pid}`, { stdio: "ignore" }); } catch {}
+          }
+        }
+      }
+    } catch {}
+    try {
+      const psScript = `
+        $currentPid = ${process.pid};
+        $parentPid = ${process.ppid};
+        Get-Process node -ErrorAction SilentlyContinue | Where-Object {
+          $_.Id -ne $currentPid -and $_.Id -ne $parentPid
+        } | ForEach-Object {
+          try {
+            $proc = Get-CimInstance Win32_Process -Filter "ProcessId = $($_.Id)" -ErrorAction SilentlyContinue
+            $normalizedTarget = '${targetPath.replace(/'/g, "''")}';
+            if ($proc.CommandLine -and ($proc.CommandLine -like "*vite*" -or $proc.CommandLine -like "*5173*" -or $proc.CommandLine -like "*$normalizedTarget*")) {
+              Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+            }
+          } catch {}
+        }
+      `;
+      const b64 = Buffer.from(psScript, "utf16le").toString("base64");
+      execSync(`powershell -NoProfile -NonInteractive -EncodedCommand ${b64}`, { stdio: "ignore" });
+    } catch {}
   }
 
   try {

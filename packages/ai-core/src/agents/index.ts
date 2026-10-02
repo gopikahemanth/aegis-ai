@@ -11,4 +11,5 @@ export * from "./docs-generator-agent.js";
 export * from "./reality-checker-agent.js";
 export * from "./data-architecture-agent.js";
 export * from "./test-generator-agent.js";
-
+export * from "./product-discovery-agent.js";
+export * from "./content-strategist-agent.js";

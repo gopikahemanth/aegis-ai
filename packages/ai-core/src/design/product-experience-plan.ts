@@ -17,6 +17,7 @@ export interface ProductExperiencePlan {
   planId: string;
   experiencePattern: string;
   expectedHomeRoute: string;
+  primaryLandingFeature?: string;
   primaryActivity: string;
   requiredCapabilities: RequiredCapability[];
   forbiddenVocabulary: string[];
@@ -61,7 +62,11 @@ export class ProductExperiencePlanManager {
       controls: string[],
       interaction?: RequiredCapability["testInteraction"]
     ) => {
-      if (triggers.some(t => lowerPrompt.includes(t.toLowerCase()))) {
+      if (triggers.some(t => {
+        const escaped = t.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(^|\\W)${escaped}(\\W|$)`, 'i');
+        return regex.test(lowerPrompt);
+      })) {
         requiredCapabilities.push({
           id,
           name,
@@ -94,7 +99,7 @@ export class ProductExperiencePlanManager {
     addIfMatching(
       "quote-estimator",
       "Project Quote Estimator",
-      ["quote", "estimator", "pricing", "cost estimation", "budget"],
+      ["quote", "estimator", "cost estimation", "project quote"],
       ["quote", "estimat", "cost", "price", "budget", "breakdown", "total"],
       ["input", "button"],
       { controlType: "button", action: "click" }
@@ -172,20 +177,158 @@ export class ProductExperiencePlanManager {
       { controlType: "button", action: "click" }
     );
 
+    // ── STOREFRONT: Discovery-driven retail commerce capabilities ─────────────
+    if (experiencePattern === "storefront-commerce") {
+      const isBakeryOrFood = lowerPrompt.includes("bakery") || lowerPrompt.includes("bread") || lowerPrompt.includes("pastry") || lowerPrompt.includes("cake") || lowerPrompt.includes("food") || lowerPrompt.includes("cafe");
+
+      // 1. Mandatory core retail capabilities: Product Catalog & Cart
+      if (!requiredCapabilities.some(c => c.id === "product-catalog" || c.id === "daily-menu")) {
+        requiredCapabilities.push({
+          id: isBakeryOrFood ? "daily-menu" : "product-catalog",
+          name: isBakeryOrFood ? "Daily Bread & Fresh Bakes Menu" : "Product Catalog Grid",
+          evidenceVocabulary: isBakeryOrFood
+            ? ["menu", "bread", "pastry", "sourdough", "loaves", "croissant", "price", "order", "bag", "bakes", "fresh"]
+            : ["product", "catalog", "grid", "price", "add to cart", "rating", "item"],
+          controlsRequired: ["button"],
+          testInteraction: { controlType: "button", action: "click" },
+        });
+      }
+
+      if (!requiredCapabilities.some(c => c.id === "cart-drawer")) {
+        requiredCapabilities.push({
+          id: "cart-drawer",
+          name: isBakeryOrFood ? "Artisan Bakery Order Bag & Cart" : "Slide-Out Shopping Cart Drawer",
+          evidenceVocabulary: ["cart", "bag", "checkout", "subtotal", "quantity", "order"],
+          controlsRequired: ["button"],
+          testInteraction: { controlType: "button", action: "click" },
+        });
+      }
+
+      // 2. Discovery-driven capabilities (ONLY if requested in prompt):
+      // Custom cake ordering/builder
+      if (lowerPrompt.includes("cake") || lowerPrompt.includes("custom order") || lowerPrompt.includes("cake ordering")) {
+        if (!requiredCapabilities.some(c => c.id === "custom-cake-builder")) {
+          requiredCapabilities.push({
+            id: "custom-cake-builder",
+            name: "Custom Cake Ordering Configurator",
+            evidenceVocabulary: ["cake", "custom", "tiers", "flavor", "frosting", "sponge", "inscription", "size", "order"],
+            controlsRequired: ["select", "button", "input"],
+            testInteraction: { controlType: "button", action: "click" },
+          });
+        }
+      }
+
+      // Pickup scheduler
+      if (lowerPrompt.includes("pickup") || lowerPrompt.includes("slot") || lowerPrompt.includes("scheduler")) {
+        if (!requiredCapabilities.some(c => c.id === "pickup-scheduler")) {
+          requiredCapabilities.push({
+            id: "pickup-scheduler",
+            name: "Fresh Bake Pickup Scheduler",
+            evidenceVocabulary: ["pickup", "slot", "time", "date", "fresh", "reserve", "schedule"],
+            controlsRequired: ["input", "button"],
+            testInteraction: { controlType: "button", action: "click" },
+          });
+        }
+      }
+
+      // Bread subscription
+      if (lowerPrompt.includes("subscription") || lowerPrompt.includes("recurring") || lowerPrompt.includes("bread club")) {
+        if (!requiredCapabilities.some(c => c.id === "bread-subscription")) {
+          requiredCapabilities.push({
+            id: "bread-subscription",
+            name: "Recurring Bread Club Subscription",
+            evidenceVocabulary: ["subscription", "weekly", "loaf", "recurring", "club", "box"],
+            controlsRequired: ["button", "select"],
+            testInteraction: { controlType: "button", action: "click" },
+          });
+        }
+      }
+
+      // Promotional Hero Carousel (only if requested)
+      if (lowerPrompt.includes("carousel") || lowerPrompt.includes("banner") || lowerPrompt.includes("promotional")) {
+        if (!requiredCapabilities.some(c => c.id === "hero-carousel")) {
+          requiredCapabilities.push({
+            id: "hero-carousel",
+            name: "Promotional Hero Carousel",
+            evidenceVocabulary: ["carousel", "banner", "slide", "promotional", "hero"],
+            controlsRequired: ["button"],
+            testInteraction: { controlType: "button", action: "click" },
+          });
+        }
+      }
+
+      // Lightning Deals / Flash Sales (only if requested)
+      if (lowerPrompt.includes("deal") || lowerPrompt.includes("lightning") || lowerPrompt.includes("countdown") || lowerPrompt.includes("timer") || lowerPrompt.includes("flash sale")) {
+        if (!requiredCapabilities.some(c => c.id === "lightning-deals")) {
+          requiredCapabilities.push({
+            id: "lightning-deals",
+            name: "Lightning Deal Countdown Timer",
+            evidenceVocabulary: ["deal", "countdown", "timer", "limited", "flash"],
+            controlsRequired: ["button"],
+            testInteraction: { controlType: "button", action: "click" },
+          });
+        }
+      }
+
+      // Pincode / Delivery availability (only if requested)
+      if (lowerPrompt.includes("pincode") || lowerPrompt.includes("zip code") || lowerPrompt.includes("delivery checker") || lowerPrompt.includes("serviceable")) {
+        if (!requiredCapabilities.some(c => c.id === "pincode-checker")) {
+          requiredCapabilities.push({
+            id: "pincode-checker",
+            name: "Delivery Pincode Availability Checker",
+            evidenceVocabulary: ["pincode", "delivery", "availability", "check", "serviceable"],
+            controlsRequired: ["input", "button"],
+            testInteraction: { controlType: "input", action: "input" },
+          });
+        }
+      }
+    }
+
+    // ── HOSPITALITY: Discovery-driven resort portal capabilities ──────────────
+    if (experiencePattern === "hospitality-portal") {
+      if (!requiredCapabilities.some(c => c.id === "villa-booking" || c.id === "accommodations")) {
+        requiredCapabilities.push({
+          id: "villa-booking",
+          name: "Villa Accommodations & Reservation",
+          evidenceVocabulary: ["villa", "suite", "stay", "bedroom", "night", "check-in", "guests", "book", "availability"],
+          controlsRequired: ["button", "input"],
+          testInteraction: { controlType: "button", action: "click" },
+        });
+      }
+
+      if (!requiredCapabilities.some(c => c.id === "culinary-showcase" || c.id === "dining")) {
+        requiredCapabilities.push({
+          id: "culinary-showcase",
+          name: "Curated Dining & Gastronomy Showcase",
+          evidenceVocabulary: ["dining", "restaurant", "culinary", "chef", "menu", "gastronomy", "reserve", "table"],
+          controlsRequired: ["button"],
+          testInteraction: { controlType: "button", action: "click" },
+        });
+      }
+    }
+
     // Fallback: If no specialized capabilities matched from custom patterns, derive from brief/specification features
     if (requiredCapabilities.length === 0) {
       // Strictly exclude auth / infrastructure plumbing from domain UI completeness verification
       const featureList = (brief.featurePriority?.features || []).filter(
         (feat: any) => !["auth", "authentication", "login", "signup", "register", "session", "user", "profile"].includes(feat.name.toLowerCase())
       );
+      const META_STOPWORDS = new Set([
+        "user", "users", "wants", "want", "need", "needs", "manage", "interact",
+        "with", "from", "that", "this", "able", "allow", "allows", "system",
+        "page", "view", "data", "item", "items", "help", "helps"
+      ]);
       for (const feat of featureList.slice(0, 4)) {
         const id = feat.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
         const baseName = feat.name.toLowerCase();
-        const words = feat.userIntent ? feat.userIntent.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3).slice(0, 5) : [];
+        // Extract domain vocabulary purely from the feature's name and terms — NEVER from boilerplate sentence templates
+        const nameTokens = baseName
+          .split(/[\s-_/]+/)
+          .map((w: string) => w.replace(/[^a-z0-9]/g, ""))
+          .filter((w: string) => w.length > 2 && !META_STOPWORDS.has(w));
         const vocab = Array.from(new Set([
           baseName,
-          ...baseName.split(/[\s-]+/).filter(w => w.length > 2),
-          ...words
+          ...nameTokens,
         ]));
         requiredCapabilities.push({
           id,
@@ -208,12 +351,24 @@ export class ProductExperiencePlanManager {
       ...(domainContract?.forbiddenArtifacts || []),
     ];
 
-    const expectedRoutes = brief.featurePriority?.informationArchitecture?.pages?.map(p => p.route) || ["/"];
+    const pageRoutes = brief.featurePriority?.informationArchitecture?.pages?.map(p => p.route) || [];
+    const contractRoutes = domainContract?.requiredRoutes || [];
+    const specRoutes = specification?.userFlows || [];
+    const expectedRoutes = Array.from(new Set(["/", ...pageRoutes, ...contractRoutes, ...specRoutes]));
+
+    const primaryLandingFeature =
+      domainContract?.primaryLandingFeature ||
+      brief.featurePriority?.primaryLandingFeature ||
+      brief.featurePriority?.core?.[0]?.name ||
+      brief.featurePriority?.informationArchitecture?.pages?.[0]?.name ||
+      requiredCapabilities[0]?.name ||
+      "Home";
 
     return {
       planId: `plan_${Date.now()}`,
       experiencePattern,
       expectedHomeRoute,
+      primaryLandingFeature,
       primaryActivity: brief.productCharacteristics.primaryActivity,
       requiredCapabilities,
       forbiddenVocabulary: Array.from(new Set(forbiddenVocabulary)),

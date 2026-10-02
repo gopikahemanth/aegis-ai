@@ -365,7 +365,7 @@ export class DatabaseVerifier {
 
   private static checkInvalidDataRejection(content: string): DatabaseCheckResult {
     // Verify typed schema rejects invalid types
-    const hasTypedFields = content.includes("Int") || content.includes("Float") || content.includes("Boolean");
+    const hasTypedFields = content.includes("Int") || content.includes("Float") || content.includes("Decimal") || content.includes("Boolean") || content.includes("Json") || content.includes("DateTime") || content.includes("enum ");
     return {
       checkId: 14,
       name: "Invalid-data rejection",

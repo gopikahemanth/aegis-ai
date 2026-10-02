@@ -7,7 +7,7 @@ export interface ChatOptions {
   model?: string;
   temperature?: number;
   maxTokens?: number;
-  agentType?: "planner" | "architect" | "coder" | "reviewer" | "healer";
+  agentType?: "planner" | "architect" | "coder" | "reviewer" | "healer" | "discovery";
   complexity?: number;
   image?: {
     mimeType: string;

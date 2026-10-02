@@ -10,7 +10,7 @@
  * - TS2304: Unresolved name
  */
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { join, dirname, resolve, extname } from "node:path";
 
 export interface SymbolRepairAction {
@@ -279,6 +279,33 @@ export class TsSymbolRepairEngine {
       }
     }
 
+    // If target module is src/types/index.ts, check if requested symbol is in src/entities
+    if (targetModuleAbs.replace(/\\/g, "/").endsWith("src/types/index.ts")) {
+      const entitiesDir = resolve(projectRoot, "src/entities");
+      if (existsSync(entitiesDir)) {
+        try {
+          const files = readdirSync(entitiesDir).filter((f: string) => f.endsWith(".ts"));
+          for (const f of files) {
+            const entityContent = readFileSync(join(entitiesDir, f), "utf8");
+            if (entityContent.includes(requested)) {
+              const mod = f.replace(/\.ts$/, "");
+              const exportStmt = `\nexport * from "../entities/${mod}";\n`;
+              const newContent = content + exportStmt;
+              writeFileSync(targetModuleAbs, newContent, "utf8");
+              console.log(`[TsSymbolRepairEngine] ✓ Re-exported entity module '${mod}' to satisfy '${requested}' in ${targetModuleAbs}`);
+              return {
+                fileToModify: targetModuleAbs,
+                originalContent: content,
+                modifiedContent: newContent,
+                description: `Re-exported entity module '../entities/${mod}' in src/types/index.ts`,
+                applied: true,
+              };
+            }
+          }
+        } catch { /* non-fatal */ }
+      }
+    }
+
     return null;
   }
 
@@ -289,6 +316,35 @@ export class TsSymbolRepairEngine {
     projectRoot: string,
     err: TsErrorParsed
   ): SymbolRepairAction | null {
+    // If target module is src/types/index.ts, check if requested symbol is in src/entities
+    const targetModuleAbs = this.resolveModulePath(projectRoot, err.importerFile, err.moduleSpecifier || "");
+    if (targetModuleAbs && targetModuleAbs.replace(/\\/g, "/").endsWith("src/types/index.ts")) {
+      const entitiesDir = resolve(projectRoot, "src/entities");
+      if (existsSync(entitiesDir)) {
+        try {
+          const files = readdirSync(entitiesDir).filter((f: string) => f.endsWith(".ts"));
+          for (const f of files) {
+            const entityContent = readFileSync(join(entitiesDir, f), "utf8");
+            if (entityContent.includes(err.requestedSymbol || "")) {
+              const mod = f.replace(/\.ts$/, "");
+              const content = readFileSync(targetModuleAbs, "utf8");
+              const exportStmt = `\nexport * from "../entities/${mod}";\n`;
+              const newContent = content + exportStmt;
+              writeFileSync(targetModuleAbs, newContent, "utf8");
+              console.log(`[TsSymbolRepairEngine] ✓ Re-exported entity module '${mod}' for TS2614 '${err.requestedSymbol}' in ${targetModuleAbs}`);
+              return {
+                fileToModify: targetModuleAbs,
+                originalContent: content,
+                modifiedContent: newContent,
+                description: `Re-exported entity module '../entities/${mod}' in src/types/index.ts`,
+                applied: true,
+              };
+            }
+          }
+        } catch { /* non-fatal */ }
+      }
+    }
+
     const absImporter = join(projectRoot, err.importerFile);
     if (!existsSync(absImporter)) return null;
 
@@ -415,8 +471,13 @@ export class TsSymbolRepairEngine {
     importerRelFile: string,
     moduleSpecifier: string
   ): string | null {
-    const importerDir = dirname(join(projectRoot, importerRelFile));
-    let rawTarget = resolve(importerDir, moduleSpecifier);
+    let rawTarget: string;
+    if (moduleSpecifier.startsWith("@/")) {
+      rawTarget = resolve(projectRoot, "src", moduleSpecifier.slice(2));
+    } else {
+      const importerDir = dirname(join(projectRoot, importerRelFile));
+      rawTarget = resolve(importerDir, moduleSpecifier);
+    }
 
     const extensions = ["", ".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.tsx", "/index.js", "/index.jsx"];
     for (const ext of extensions) {

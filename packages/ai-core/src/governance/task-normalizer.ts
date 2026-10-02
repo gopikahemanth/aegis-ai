@@ -126,7 +126,7 @@ export class TaskNormalizer {
     for (const task of tasks) {
       const titleOnly = (task.title || "").toLowerCase();
       const descOnly = (task.description || "").toLowerCase();
-      let semanticRole = "FEATURE";
+      let semanticRole = "";
 
       // 1. Primary classification by task title (highest semantic intent)
       if (/integration|validation|e2e|testing/i.test(titleOnly)) {
@@ -140,9 +140,14 @@ export class TaskNormalizer {
       } else if (/analysis|engine|parser|pdf|keyword|matcher|scorer/i.test(titleOnly)) {
         semanticRole = "ANALYSIS_ENGINE";
       } else if (/domain\s+feature|feature\s+ui|feature\s+integration|domain\s+ui/i.test(titleOnly)) {
-        semanticRole = "DOMAIN_FEATURE_UI";
-      } else if (/frontend|react|vite|ui|dashboard|page|client/i.test(titleOnly)) {
-        semanticRole = "FRONTEND_APPLICATION";
+        const slug = titleOnly.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+        semanticRole = `DOMAIN_FEATURE_UI:${slug}`;
+      } else if (/shell|routing|navigation|router|scaffold|app\s+shell/i.test(titleOnly)) {
+        semanticRole = "FRONTEND_SHELL";
+      } else if (/frontend|react|vite|ui|dashboard|page|client|catalog|portal|selector|builder|customization|manager/i.test(titleOnly)) {
+        // Disambiguate frontend tasks by their distinct feature slug so multiple domain feature tasks are preserved
+        const slug = titleOnly.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+        semanticRole = `FRONTEND_APPLICATION:${slug}`;
       } else if (/api|route|endpoint/i.test(titleOnly)) {
         semanticRole = "API_LAYER";
       } else {
@@ -152,19 +157,28 @@ export class TaskNormalizer {
           semanticRole = "INTEGRATION_VALIDATION";
         } else if (/database|schema|prisma|model/i.test(combined)) {
           semanticRole = "DB_SCHEMA";
-        } else if (/domain\s+api|feature\s+api|business\s+logic|domain\s+route|glaze.*api|kiln.*api|commission.*api/i.test(combined)) {
+        } else if (/domain\s+api|feature\s+api|business\s+logic|domain\s+route/i.test(combined)) {
           semanticRole = "DOMAIN_API";
         } else if (/backend|server|express|infrastructure|middleware/i.test(combined)) {
           semanticRole = "BACKEND_INFRASTRUCTURE";
         } else if (/analysis|engine|parser|pdf|keyword|matcher|scorer/i.test(combined)) {
           semanticRole = "ANALYSIS_ENGINE";
-        } else if (/domain\s+feature|feature\s+ui|feature\s+integration|domain\s+ui|feature\s+view|glaze.*ui|kiln.*ui|commission.*ui/i.test(combined)) {
-          semanticRole = "DOMAIN_FEATURE_UI";
+        } else if (/domain\s+feature|feature\s+ui|feature\s+integration|domain\s+ui|feature\s+view/i.test(combined)) {
+          const slug = titleOnly.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+          semanticRole = `DOMAIN_FEATURE_UI:${slug}`;
+        } else if (/shell|routing|navigation|router|scaffold/i.test(combined)) {
+          semanticRole = "FRONTEND_SHELL";
         } else if (/frontend|react|vite|ui|dashboard|component|page/i.test(combined)) {
-          semanticRole = "FRONTEND_APPLICATION";
+          const slug = titleOnly.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+          semanticRole = `FRONTEND_APPLICATION:${slug}`;
         } else if (/api|route|controller|endpoint/i.test(combined)) {
           semanticRole = "API_LAYER";
         }
+      }
+
+      if (!semanticRole) {
+        const slug = titleOnly.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+        semanticRole = slug ? `FEATURE:${slug}` : `FEATURE:${task.id}`;
       }
 
       if (!seenRoles.has(semanticRole)) {
@@ -174,7 +188,35 @@ export class TaskNormalizer {
       }
     }
 
-    const deduplicated = Array.from(seenRoles.values()).slice(0, maxTasks);
+    const taskList = Array.from(seenRoles.values());
+    let deduplicated: Task[] = [];
+
+    // If task count exceeds maxTasks, merge overflow tasks into the last task instead of silently dropping them
+    if (taskList.length <= maxTasks) {
+      deduplicated = taskList;
+    } else {
+      deduplicated = taskList.slice(0, maxTasks - 1);
+      const targetTask = { ...taskList[maxTasks - 1] };
+      const overflowTasks = taskList.slice(maxTasks - 1);
+
+      const mergedTitles: string[] = [];
+      const mergedDescriptions: string[] = [targetTask.description || ""];
+      const allDeps = new Set<number>(targetTask.dependencies || []);
+
+      for (let i = 1; i < overflowTasks.length; i++) {
+        const ov = overflowTasks[i];
+        mergedTitles.push(ov.title);
+        mergedDescriptions.push(`• Also implements ${ov.title}: ${ov.description || ""}`);
+        (ov.dependencies || []).forEach(d => allDeps.add(d));
+      }
+
+      if (mergedTitles.length > 0) {
+        targetTask.title = `${targetTask.title} & ${mergedTitles.join(" & ")}`.slice(0, 100);
+        targetTask.description = mergedDescriptions.join("\n");
+        targetTask.dependencies = Array.from(allDeps);
+      }
+      deduplicated.push(targetTask);
+    }
 
     // Re-index IDs to 1, 2, 3, ... and clean dependencies to be strictly < id
     return deduplicated.map((t, idx) => {

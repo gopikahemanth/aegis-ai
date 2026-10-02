@@ -102,6 +102,13 @@ Options:
     args.splice(saIdx, 1);
   }
 
+  let seed: string | undefined;
+  const seedIdx = args.indexOf("--seed");
+  if (seedIdx !== -1 && args[seedIdx + 1]) {
+    seed = args[seedIdx + 1];
+    args.splice(seedIdx, 2);
+  }
+
   const prompt = args.join(" ");
 
   if (!prompt) {
@@ -109,14 +116,59 @@ Options:
     return;
   }
 
-  if (fresh && targetDir) {
+  const effectiveTarget = targetDir || "./generated/project";
+  if (fresh) {
     const { resolve } = await import("node:path");
     const { existsSync, rmSync } = await import("node:fs");
+    const { execSync } = await import("node:child_process");
     const basePath = process.env.INIT_CWD || process.cwd();
-    const absTarget = resolve(basePath, targetDir);
+    const absTarget = resolve(basePath, effectiveTarget);
     if (existsSync(absTarget)) {
-      console.log(`[Fresh] 🧹 Removing target directory "${targetDir}" for fresh clean generation...`);
-      rmSync(absTarget, { recursive: true, force: true });
+      console.log(`[Fresh] 🧹 Removing target directory "${effectiveTarget}" for fresh clean generation...`);
+      if (process.platform === "win32") {
+        try {
+          // 1. Instantly kill any process listening on standard dev server port 5173
+          const netstatOut = execSync("netstat -ano -p tcp", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+          for (const line of netstatOut.split(/\r?\n/)) {
+            if (line.includes(":5173") && line.includes("LISTENING")) {
+              const parts = line.trim().split(/\s+/);
+              const pid = parts[parts.length - 1];
+              if (pid && !isNaN(Number(pid)) && Number(pid) !== process.pid && Number(pid) !== process.ppid) {
+                try { execSync(`taskkill /F /PID ${pid}`, { stdio: "ignore" }); } catch {}
+              }
+            }
+          }
+        } catch {}
+        try {
+          // 2. Kill orphan vite/dev processes using base64 encoded PowerShell
+          const psScript = `
+            $currentPid = ${process.pid};
+            $parentPid = ${process.ppid};
+            Get-Process node -ErrorAction SilentlyContinue | Where-Object {
+              $_.Id -ne $currentPid -and $_.Id -ne $parentPid
+            } | ForEach-Object {
+              try {
+                $proc = Get-CimInstance Win32_Process -Filter "ProcessId = $($_.Id)" -ErrorAction SilentlyContinue
+                $normalizedTarget = '${absTarget.replace(/'/g, "''")}';
+                if ($proc.CommandLine -and ($proc.CommandLine -like "*vite*" -or $proc.CommandLine -like "*5173*" -or $proc.CommandLine -like "*$normalizedTarget*")) {
+                  Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+                }
+              } catch {}
+            }
+          `;
+          const b64 = Buffer.from(psScript, "utf16le").toString("base64");
+          execSync(`powershell -NoProfile -NonInteractive -EncodedCommand ${b64}`, { stdio: "ignore" });
+        } catch {}
+      }
+      try {
+        rmSync(absTarget, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
+      } catch {
+        if (process.platform === "win32") {
+          try {
+            execSync(`cmd /c rmdir /s /q "${absTarget}"`, { stdio: "ignore" });
+          } catch {}
+        }
+      }
     }
   }
 
@@ -264,6 +316,7 @@ Options:
       incremental,
       approveFrontend,
       onFrontendReview,
+      seed,
     });
 
     if (success) {
@@ -278,9 +331,14 @@ Options:
       console.log();
       console.log("❌ Target Directory Not Empty");
       console.log();
-      console.log("The target directory already contains a project. Clean generation requires a new/empty directory. Use a different --output path, delete the old generated project, or explicitly use --incremental if you intend to evolve that project.");
+      console.log("The target directory already contains an existing project. Clean generation requires an empty directory to prevent cross-domain contamination.");
       console.log();
-      console.log(`Suggested clean target:\n  pnpm cli create "${prompt}" --output ./projects/lumina-terra-v2`);
+      console.log("Options:");
+      console.log("  • Pass --fresh to automatically clear the directory and generate clean:");
+      console.log(`      aegis create "${prompt}" --fresh -y`);
+      console.log("  • Pass --output <dir> to generate into a new folder:");
+      console.log(`      aegis create "${prompt}" --output ./projects/my-app -y`);
+      console.log("  • Pass --incremental to evolve or modify the existing project.");
       return;
     }
 

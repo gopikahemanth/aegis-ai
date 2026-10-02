@@ -1311,7 +1311,13 @@ export class Orchestrator {
         planForRepair = ProductExperiencePlanManager.load(outputDirectory);
       } catch {}
 
-      const isConfiguratorWorkspace = planForRepair?.experiencePattern === "configurator-workspace" || planForRepair?.experiencePattern === "workspace-editor";
+      const isExplicitWorkspaceOptIn = [
+        "configurator-workspace",
+        "workspace-editor",
+        "canvas-editor",
+        "realtime-console",
+      ].includes(planForRepair?.experiencePattern || "");
+
       const missingCapabilities = (browserReview.productIdentity?.featureEvidence || []).filter((f: any) => !f.visible);
       const capList = missingCapabilities.map((f: any) => `  - ${f.name}`).join("\n");
       const capDetails = (planForRepair?.requiredCapabilities || [])
@@ -1331,7 +1337,8 @@ export class Orchestrator {
       }).join("\n\n");
 
       const repairInstructions = isProductMismatch
-        ? `TARGETED CODER CAPABILITY REPAIR INSTRUCTION
+        ? (isExplicitWorkspaceOptIn
+            ? `TARGETED CODER CAPABILITY REPAIR INSTRUCTION
 TARGET FILE: src/features/workspace/PrimaryWorkspace.tsx
 
 The rendered frontend failed the authoritative Product Identity & Completeness Gate.
@@ -1373,6 +1380,27 @@ export { PrimaryWorkspace };
 ===END===
 
 DO NOT touch server/, prisma/, or any backend files.`
+            : `TARGETED CODER CAPABILITY REPAIR INSTRUCTION
+TARGET: Distinct feature page components for each missing capability
+
+The rendered frontend failed the authoritative Product Identity & Completeness Gate.
+ISSUES:
+${browserReview.productIdentity!.mismatchReasons.map(r => `  - ${r}`).join("\n")}
+
+MANDATORY DISTINCT ROUTE & FEATURE IMPLEMENTATION:
+This application is a multi-page domain with distinct routes.
+Each required route must mount its own distinct page component.
+DO NOT collapse all routes into a single tabbed PrimaryWorkspace console.
+Every domain capability must be implemented in its own dedicated view component with interactive controls.
+
+MISSING CAPABILITIES DETECTED:
+${capList}
+
+REQUIRED VOCABULARY & CONTROLS PER CAPABILITY:
+${capDetails}
+
+Ensure each capability is visible and fully interactive in its dedicated page/feature component.
+DO NOT touch server/, prisma/, or any backend files.`)
         : `TARGETED CODER CAPABILITY REPAIR INSTRUCTION
 FRONTEND_RUNTIME_ERROR: ${browserReview.failureReason}.
 Ensure all components export properly, imports resolve, and variables/hooks are properly initialized.
@@ -1381,27 +1409,46 @@ Do NOT touch backend or database.`;
 
       const fixTask: Task = {
         id: 9900 + repairAttempts,
-        title: isProductMismatch ? "Implement missing domain workspace UI" : "Repair frontend runtime errors",
+        title: isProductMismatch
+          ? (isExplicitWorkspaceOptIn ? "Implement missing domain workspace UI" : "Implement missing domain route pages")
+          : "Repair frontend runtime errors",
         description: repairInstructions,
         dependencies: [],
         stage: "Frontend",
-        ownedFiles: ["src/features/workspace/PrimaryWorkspace.tsx"],
+        ownedFiles: isExplicitWorkspaceOptIn
+          ? ["src/features/workspace/PrimaryWorkspace.tsx"]
+          : ["src/routes.tsx", "src/pages/"],
       } as any;
 
-      const fixResult = await this.coderAgent.execute(
-        fixTask,
-        architecture,
-        architecturePlan,
-        repairInstructions,
-        outputDirectory,
-        existingFiles,
-        imagePayload,
-      );
-      if (fixResult.files && fixResult.files.length > 0) {
-        new FileWriter().write(fixResult.files, outputDirectory);
+      try {
+        const fixResult = await this.coderAgent.execute(
+          fixTask,
+          architecture,
+          architecturePlan,
+          repairInstructions,
+          outputDirectory,
+          existingFiles,
+          imagePayload,
+        );
+        if (fixResult && fixResult.files && fixResult.files.length > 0) {
+          new FileWriter().write(fixResult.files, outputDirectory);
+        }
+        if (fixResult && fixResult.response) {
+          patchEngine.apply(fixResult.response, outputDirectory);
+        }
+      } catch (coderErr: any) {
+        console.warn(`[Orchestrator] Targeted coder repair encountered error: ${coderErr.message}.`);
       }
-      patchEngine.apply(fixResult.response, outputDirectory);
-      // Force fresh regeneration of routes.tsx so that PrimaryWorkspace is mounted at '/'
+
+      // If not explicit workspace opt-in, ensure any stray PrimaryWorkspace is removed
+      if (!isExplicitWorkspaceOptIn) {
+        const primaryWorkspacePath = join(outputDirectory, "src", "features", "workspace", "PrimaryWorkspace.tsx");
+        if (existsSync(primaryWorkspacePath)) {
+          try { unlinkSync(primaryWorkspacePath); } catch {}
+        }
+      }
+
+      // Force fresh regeneration of routes.tsx so that distinct page components are mounted
       const routesTsxPath = join(outputDirectory, "src", "routes.tsx");
       if (existsSync(routesTsxPath)) {
         try { unlinkSync(routesTsxPath); } catch {}
@@ -1474,23 +1521,62 @@ Do NOT touch backend or database.`;
         } else if (typeof userDecision === "string") {
           console.log(`[StageApproval] 🔄 User requested changes: "${userDecision}". Modifying FRONTEND ONLY...`);
           FrontendApprovalCheckpoint.requestChanges(outputDirectory, userDecision);
+          const userChangePrompt = `USER REQUESTED FRONTEND REFINEMENTS:
+The user reviewed the running frontend application in the browser and requested the following changes:
+"${userDecision}"
+
+INSTRUCTIONS FOR FRONTEND REFINEMENT:
+1. Directly implement the user's requested additions, changes, or deletions.
+2. If modifying or adding components, features, or pages, output the complete file using ===FILE: path===.
+3. If removing or deleting a file, output ===DELETE: path===.
+4. Preserve TypeScript and React correctness, imports, and styling.
+5. Output ONLY frontend files (src/). Do NOT touch backend or database.`;
+
           const repairTask: Task = {
             id: "task_frontend_refinement",
             title: "Refine frontend design based on user review",
-            description: `Modify and refine frontend components according to user feedback: "${userDecision}". Do NOT touch backend or database.`,
+            description: userChangePrompt,
             dependencies: [],
             stage: "Frontend",
           } as any;
+
           const refineResult = await this.coderAgent.execute(
             repairTask,
             architecture,
             architecturePlan,
-            enrichedRequest + `\n\nUSER REQUESTED FRONTEND REFINEMENTS:\n${userDecision}`,
+            enrichedRequest + `\n\n` + userChangePrompt,
             outputDirectory,
             existingFiles,
             imagePayload,
           );
-          patchEngine.apply(refineResult.response, outputDirectory);
+
+          // 1. Write any full files returned by coderAgent
+          if (refineResult && refineResult.files && refineResult.files.length > 0) {
+            new FileWriter().write(refineResult.files, outputDirectory);
+            for (const f of refineResult.files) {
+              if (!existingFiles.includes(f.path)) existingFiles.push(f.path);
+            }
+            console.log(`[StageApproval] ✍️ Applied ${refineResult.files.length} updated file(s) for user refinement.`);
+          }
+
+          // 2. Apply any diffs or patches
+          if (refineResult && refineResult.response) {
+            patchEngine.apply(refineResult.response, outputDirectory);
+
+            // Handle explicit file deletions
+            const deleteMatches = [...refineResult.response.matchAll(/===DELETE:\s*(.*?)===/g)];
+            for (const dm of deleteMatches) {
+              const rel = dm[1].trim();
+              const delPath = join(outputDirectory, rel);
+              if (existsSync(delPath)) {
+                try {
+                  unlinkSync(delPath);
+                  console.log(`[StageApproval] 🗑️ Deleted requested file: ${rel}`);
+                } catch {}
+              }
+            }
+          }
+
           FastDeterministicSanitizer.sanitizeProject(outputDirectory, resolvedContract);
           reviewSummary.userFeedback = userDecision;
 

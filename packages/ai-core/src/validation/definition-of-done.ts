@@ -529,6 +529,37 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
       const tokens = feat.toLowerCase().split(/[\s_-]+/).filter(t => t.length > 2);
       const searchTerms = new Set(tokens);
       for (const t of tokens) {
+        if (t.endsWith("s") && t.length > 3) {
+          searchTerms.add(t.slice(0, -1));
+        }
+        if (t.endsWith("er") && t.length > 4) {
+          searchTerms.add(t.slice(0, -2));
+          searchTerms.add(t.slice(0, -1)); // scheduler -> schedule
+        }
+        if (t.endsWith("ing") && t.length > 5) {
+          searchTerms.add(t.slice(0, -3));
+        }
+        if (t.endsWith("ies") && t.length > 4) {
+          searchTerms.add(t.slice(0, -3) + "y");
+        }
+        if (t.startsWith("schedul")) {
+          searchTerms.add("schedule");
+          searchTerms.add("scheduling");
+          searchTerms.add("scheduler");
+          searchTerms.add("calendar");
+          searchTerms.add("pickup");
+          searchTerms.add("window");
+          searchTerms.add("fulfillment");
+        }
+        if (t.startsWith("fulfill")) {
+          searchTerms.add("fulfill");
+          searchTerms.add("fulfillment");
+          searchTerms.add("pickup");
+          searchTerms.add("delivery");
+          searchTerms.add("order");
+          searchTerms.add("dispatch");
+          searchTerms.add("schedule");
+        }
         if (t.startsWith("auth")) searchTerms.add("auth");
         if (t === "authentication" || t === "authorisation" || t === "authorization") {
           searchTerms.add("auth");
@@ -553,10 +584,20 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
           searchTerms.add("firing");
           searchTerms.add("temperature");
         }
-        if (t === "monitor" || t === "schedule") {
+        if (t === "monitor" || t === "schedule" || t === "scheduler") {
           searchTerms.add("profile");
           searchTerms.add("session");
           searchTerms.add("timer");
+        }
+        if (t === "analytics" || t === "telemetry" || t === "metrics" || t === "reporting") {
+          searchTerms.add("metric");
+          searchTerms.add("stat");
+          searchTerms.add("insight");
+          searchTerms.add("rate");
+          searchTerms.add("chart");
+          searchTerms.add("progress");
+          searchTerms.add("kpi");
+          searchTerms.add("summary");
         }
       }
       // Check if any search term appears in source files or file paths

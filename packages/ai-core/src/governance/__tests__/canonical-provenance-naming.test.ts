@@ -199,4 +199,18 @@ describe("Canonical Path Ownership, Component Provenance & Bounded Naming", () =
     // Specifically confirm /risk-controls or /order-routing exists instead of 100-char route
     expect(contract.requiredRoutes.some(r => r === "/risk-controls" || r === "/order-routing" || r === "/audit-trail")).toBe(true);
   });
+
+  it("TEST 8: Frontend features under src/ are never treated as duplicates of backend routes under server/ sharing the same stem", () => {
+    // When a frontend file tries to import or reference a feature like student or advisor,
+    // detectSemanticDuplicate must NOT resolve it to server/routes/student.ts or server/routes/advisor.ts
+    const studentCheck = CanonicalFileGraph.detectSemanticDuplicate("src/features/student");
+    expect(studentCheck.canonicalFile?.canonicalPath?.startsWith("server/")).toBeFalsy();
+
+    const advisorCheck = CanonicalFileGraph.detectSemanticDuplicate("src/features/advisor/index.tsx");
+    expect(advisorCheck.canonicalFile?.canonicalPath?.startsWith("server/")).toBeFalsy();
+
+    const knowledgeCheck = CanonicalFileGraph.detectSemanticDuplicate("src/features/knowledge-article");
+    expect(knowledgeCheck.canonicalFile?.canonicalPath?.startsWith("server/")).toBeFalsy();
+  });
 });
+

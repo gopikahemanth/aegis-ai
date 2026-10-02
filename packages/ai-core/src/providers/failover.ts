@@ -54,7 +54,7 @@ export class FailoverProvider implements AIProvider {
     if (options?.agentType) {
       const type = options.agentType;
       const complexity = options.complexity ?? 0;
-      if (type === "planner" || type === "architect" || type === "healer") {
+      if (type === "planner" || type === "architect" || type === "healer" || type === "discovery") {
         targetedClassification = "strong";
       } else if (type === "reviewer") {
         targetedClassification = "balanced";
@@ -87,6 +87,23 @@ export class FailoverProvider implements AIProvider {
       if (until && Date.now() < until) {
         continue;
       }
+
+      // Groq role filtering: Groq is reserved exclusively for lightweight roles (discovery, classification, content strategy).
+      // Heavy context roles (coder, reviewer, healer) are strictly excluded from Groq to eliminate failover latency and dead weight.
+      if (provider.name === "groq") {
+        const agentType = options?.agentType || "";
+        const isHeavyRole = ["coder", "reviewer", "visual-reviewer", "repair-coordinator"].includes(agentType);
+        if (isHeavyRole) {
+          continue;
+        }
+
+        const totalPromptText = messages.map(m => m.content).join("\n");
+        if (totalPromptText.length > 50000) { // ~13,000 tokens
+          console.log(`[FailoverProvider] ⚡ Prompt context (${totalPromptText.length} chars) exceeds safe limit for "groq". Proactively skipping...`);
+          continue;
+        }
+      }
+
       let providerAttempts = 0;
       let delay = this.initialDelayMs;
 
@@ -120,6 +137,22 @@ export class FailoverProvider implements AIProvider {
             error.message
           );
 
+          const isPromptOverflow = error.message?.includes("GROQ_PROMPT_OVERFLOW_ERROR") ||
+            error.message?.includes("prompt exceeds safe Groq limit");
+          if (isPromptOverflow) {
+            console.warn(`[FailoverProvider] ⚡ Prompt exceeds context limit on "${provider.name}". Failing over to large-context provider immediately without retry...`);
+            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 10000);
+            FailoverProvider.healthStates.set(provider.name, "DEGRADED");
+            break;
+          }
+
+          const isMaxTokens = error.message?.includes("MAX_TOKENS") || error.message?.includes("truncated (MAX_TOKENS)");
+          if (isMaxTokens) {
+            console.warn(`[FailoverProvider] ⚡ Provider "${provider.name}" hit MAX_TOKENS output limit. Failing over to next provider immediately...`);
+            break;
+          }
+
+          const is401 = error.message?.includes("401") || error.message?.toLowerCase().includes("unauthorized") || error.message?.toLowerCase().includes("invalid api key");
           const is402 = error.message?.includes("402") || error.message?.toLowerCase().includes("payment required");
           const is404 = error.message?.includes("404") || error.message?.includes("NOT_FOUND") || error.message?.toLowerCase().includes("no longer available") || error.message?.toLowerCase().includes("does not exist");
           const is503 = error.message?.includes("503") || error.message?.toLowerCase().includes("high demand") || error.message?.includes("UNAVAILABLE") || error.message?.toLowerCase().includes("temporarily unavailable");
@@ -138,6 +171,25 @@ export class FailoverProvider implements AIProvider {
             console.warn(`[FailoverProvider] ⚡ Provider "${provider.name}" does not support vision modality for this request. Failing over to vision-capable provider immediately...`);
             FailoverProvider.disabledUntil.set(provider.name, Date.now() + 10000);
             FailoverProvider.healthStates.set(provider.name, "DEGRADED");
+            break;
+          }
+
+          const isOllamaOffline = provider.name === "ollama" && (
+            error.message?.includes("Ollama is not running") ||
+            error.message?.includes("ECONNREFUSED") ||
+            error.message?.includes("fetch failed")
+          );
+          if (isOllamaOffline) {
+            console.warn(`[FailoverProvider] Ollama is not running locally. Session disabling provider "ollama"...`);
+            FailoverProvider.sessionDisabled.add(provider.name);
+            FailoverProvider.healthStates.set(provider.name, "UNAVAILABLE");
+            break;
+          }
+
+          if (is401) {
+            console.warn(`[FailoverProvider] 401 Unauthorized on provider "${provider.name}". Permanently disabled.`);
+            FailoverProvider.permanentlyDisabled.add(provider.name);
+            FailoverProvider.healthStates.set(provider.name, "AUTH_FAILED");
             break;
           }
 
@@ -174,9 +226,9 @@ export class FailoverProvider implements AIProvider {
           }
 
           if (is429) {
-            console.warn(`[FailoverProvider] ⚡ 429 Quota Exhausted on provider "${provider.name}". Marking QUOTA_EXHAUSTED for current generation session and failing over immediately...`);
-            FailoverProvider.sessionDisabled.add(provider.name);
-            FailoverProvider.healthStates.set(provider.name, "QUOTA_EXHAUSTED");
+            console.warn(`[FailoverProvider] ⚡ 429 Rate Limit on provider "${provider.name}". Setting temporary 15s cooldown...`);
+            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 15000);
+            FailoverProvider.healthStates.set(provider.name, "DEGRADED");
             break;
           }
 
@@ -190,6 +242,21 @@ export class FailoverProvider implements AIProvider {
 
       FailoverProvider.disabledUntil.set(provider.name, Date.now() + 10000);
       FailoverProvider.healthStates.set(provider.name, "DEGRADED");
+    }
+
+    // Check if cooldown recovery is possible before giving up
+    const currentTime = Date.now();
+    const cooldownRetries = (options as any)?._cooldownRetries || 0;
+    const availableSoon = Array.from(FailoverProvider.disabledUntil.entries())
+      .filter(([name, expiry]) => !FailoverProvider.permanentlyDisabled.has(name) && !FailoverProvider.sessionDisabled.has(name) && expiry > currentTime)
+      .map(([_, expiry]) => expiry);
+
+    if (availableSoon.length > 0 && cooldownRetries < 3) {
+      const earliest = Math.min(...availableSoon);
+      const waitMs = Math.max(1000, Math.min(earliest - currentTime + 500, 20000));
+      console.log(`[FailoverProvider] All active providers in temporary cooldown. Waiting ${Math.ceil(waitMs / 1000)}s for cooldown recovery (attempt ${cooldownRetries + 1}/3)...`);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      return this.chat(messages, { ...options, _cooldownRetries: cooldownRetries + 1 } as any);
     }
 
     throw new Error(

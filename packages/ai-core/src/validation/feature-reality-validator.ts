@@ -159,8 +159,15 @@ export class FeatureRealityValidator {
 
       // Check for inert <button> tags without onClick, type="submit", or parent form/link
       if (f.rel.startsWith("src/") && (f.rel.endsWith(".tsx") || f.rel.endsWith(".jsx"))) {
-        const buttonMatches = f.content.match(/<button\b([^>]*)>/g) || [];
+        // Normalize: collapse JSX expression values {…} to a safe placeholder so that
+        // `>` characters inside arrow functions like `onClick={() => foo()}` don't
+        // terminate the [^>]* regex early and cause false-positive "inert button" failures.
+        let normalizedContent = f.content;
+        // Replace all {...} JSX expressions with a placeholder that has no `>` chars
+        normalizedContent = normalizedContent.replace(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)?\}/g, "{__EXPR__}");
+        const buttonMatches = normalizedContent.match(/<button\b([^>]*)>/g) || [];
         for (const btn of buttonMatches) {
+          // Check against normalized btn string (placeholders preserve onClick= presence)
           const hasOnClick = /onClick\s*=/i.test(btn);
           const isSubmit = /type\s*=\s*["']submit["']/i.test(btn);
           const isDisabled = /disabled/i.test(btn);

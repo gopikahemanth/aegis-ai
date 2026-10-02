@@ -344,5 +344,27 @@ describe("SemanticDuplicateDetector & Task Governance Tests", () => {
     expect(deduplicated.length).toBeLessThanOrEqual(6);
     expect(deduplicated.map(t => t.id)).toEqual([1, 2, 3, 4, 5, 6]);
   });
+
+  it("TEST 9: 6 distinct domain feature tasks are capped at 5 with the 6th feature overflow-merged into task 5", async () => {
+    const { TaskNormalizer } = await import("../task-normalizer.js");
+    const sixFeatureTasks: Task[] = [
+      makeCanonicalTask({ id: 1, title: "App Shell, Navigation & Theme", description: "Global shell and theme tokens" }),
+      makeCanonicalTask({ id: 2, title: "Bean Origin & Single-Origin Catalog", description: "Explore single origin lots and terroir details" }),
+      makeCanonicalTask({ id: 3, title: "Tasting Notes & Flavor Visualizer", description: "Radar charts and sensory flavor notes" }),
+      makeCanonicalTask({ id: 4, title: "Subscription Frequency & Delivery Scheduler", description: "Recurring deliveries and calendar adjustments" }),
+      makeCanonicalTask({ id: 5, title: "Grind Size & Brew Customizer", description: "Dial-in grind sizes for various brew methods" }),
+      makeCanonicalTask({ id: 6, title: "Roaster Reserve Club & Extraction Log", description: "Micro-lot access and extraction ratio notes" }),
+    ];
+
+    const capped = TaskNormalizer.deduplicateAndCapTasks(sixFeatureTasks, 5);
+    expect(capped.length).toBe(5);
+    expect(capped.map(t => t.id)).toEqual([1, 2, 3, 4, 5]);
+
+    // Verify task 5 merged task 6
+    const task5 = capped[4];
+    expect(task5.title).toContain("Grind Size");
+    expect(task5.title).toContain("Roaster Reserve Club");
+    expect(task5.description).toContain("Micro-lot access");
+  });
 });
 

@@ -94,14 +94,50 @@ export class PatchPreviewEngine {
     let defaultValue = options.defaultValue;
 
     const lowerReq = userRequest.toLowerCase();
+
+    // Model inference — expanded to cover common domain nouns
     if (!modelName) {
-      if (lowerReq.includes("task")) {
+      // Tracker / Journal domains
+      if (lowerReq.includes("diary") || lowerReq.includes("journal") || lowerReq.includes("entry") || lowerReq.includes("entries")) {
+        modelName = "Entry";
+      } else if (lowerReq.includes("mood")) {
+        modelName = "MoodEntry";
+      } else if (lowerReq.includes("habit")) {
+        modelName = "Habit";
+      } else if (lowerReq.includes("sticker")) {
+        modelName = "Sticker";
+      } else if (lowerReq.includes("tag")) {
+        modelName = "Tag";
+      // Commerce / Catalog domains
+      } else if (lowerReq.includes("product") || lowerReq.includes("item") || lowerReq.includes("catalogue") || lowerReq.includes("catalog")) {
+        modelName = "Product";
+      } else if (lowerReq.includes("order")) {
+        modelName = "Order";
+      } else if (lowerReq.includes("booking") || lowerReq.includes("appointment") || lowerReq.includes("reservation")) {
+        modelName = "Booking";
+      } else if (lowerReq.includes("category")) {
+        modelName = "Category";
+      // Generic app domains
+      } else if (lowerReq.includes("task")) {
         modelName = "Task";
       } else if (lowerReq.includes("expense")) {
         modelName = "Expense";
+      } else if (lowerReq.includes("user") || lowerReq.includes("profile")) {
+        modelName = "User";
+      } else if (lowerReq.includes("post") || lowerReq.includes("article") || lowerReq.includes("blog")) {
+        modelName = "Post";
+      } else if (lowerReq.includes("event")) {
+        modelName = "Event";
+      } else if (lowerReq.includes("notification") || lowerReq.includes("alert")) {
+        modelName = "Notification";
+      } else if (lowerReq.includes("comment") || lowerReq.includes("review")) {
+        modelName = "Comment";
+      } else if (lowerReq.includes("media") || lowerReq.includes("image") || lowerReq.includes("photo")) {
+        modelName = "Media";
       }
     }
 
+    // Field inference — expanded to cover common field names
     if (!fieldName) {
       if (lowerReq.includes("priority")) {
         fieldName = "priority";
@@ -113,6 +149,61 @@ export class PatchPreviewEngine {
         prismaFieldDef = prismaFieldDef || "String?";
         tsType = tsType || "string";
         defaultValue = defaultValue || "null";
+      } else if (lowerReq.includes("color") || lowerReq.includes("colour") || lowerReq.includes("background") || lowerReq.includes("theme")) {
+        fieldName = "color";
+        prismaFieldDef = prismaFieldDef || 'String? @default("#6366f1")';
+        tsType = tsType || "string";
+        defaultValue = defaultValue || '"#6366f1"';
+      } else if (lowerReq.includes("description") || lowerReq.includes("bio") || lowerReq.includes("about")) {
+        fieldName = "description";
+        prismaFieldDef = prismaFieldDef || "String?";
+        tsType = tsType || "string";
+        defaultValue = defaultValue || "null";
+      } else if (lowerReq.includes("title") || lowerReq.includes("name") || lowerReq.includes("label")) {
+        fieldName = "title";
+        prismaFieldDef = prismaFieldDef || "String?";
+        tsType = tsType || "string";
+        defaultValue = defaultValue || "null";
+      } else if (lowerReq.includes("image") || lowerReq.includes("photo") || lowerReq.includes("avatar") || lowerReq.includes("thumbnail")) {
+        fieldName = "imageUrl";
+        prismaFieldDef = prismaFieldDef || "String?";
+        tsType = tsType || "string";
+        defaultValue = defaultValue || "null";
+      } else if (lowerReq.includes("tag") || lowerReq.includes("label") || lowerReq.includes("category")) {
+        fieldName = "tags";
+        prismaFieldDef = prismaFieldDef || "String? @default(\"[]\")";
+        tsType = tsType || "string";
+        defaultValue = defaultValue || '"[]"';
+      } else if (lowerReq.includes("emoji") || lowerReq.includes("sticker") || lowerReq.includes("icon")) {
+        fieldName = "emoji";
+        prismaFieldDef = prismaFieldDef || 'String? @default("📝")';
+        tsType = tsType || "string";
+        defaultValue = defaultValue || '"📝"';
+      } else if (lowerReq.includes("status")) {
+        fieldName = "status";
+        prismaFieldDef = prismaFieldDef || 'String? @default("active")';
+        tsType = tsType || "string";
+        defaultValue = defaultValue || '"active"';
+      } else if (lowerReq.includes("price") || lowerReq.includes("cost") || lowerReq.includes("amount")) {
+        fieldName = "price";
+        prismaFieldDef = prismaFieldDef || "Float? @default(0)";
+        tsType = tsType || "number";
+        defaultValue = defaultValue || "0";
+      } else if (lowerReq.includes("date") || lowerReq.includes("time") || lowerReq.includes("due")) {
+        fieldName = "dueDate";
+        prismaFieldDef = prismaFieldDef || "DateTime?";
+        tsType = tsType || "string";
+        defaultValue = defaultValue || "null";
+      } else if (lowerReq.includes("pin") || lowerReq.includes("favorite") || lowerReq.includes("favourite") || lowerReq.includes("star")) {
+        fieldName = "isPinned";
+        prismaFieldDef = prismaFieldDef || "Boolean? @default(false)";
+        tsType = tsType || "boolean";
+        defaultValue = defaultValue || "false";
+      } else if (lowerReq.includes("count") || lowerReq.includes("streak") || lowerReq.includes("score") || lowerReq.includes("rating")) {
+        fieldName = "count";
+        prismaFieldDef = prismaFieldDef || "Int? @default(0)";
+        tsType = tsType || "number";
+        defaultValue = defaultValue || "0";
       }
     }
 

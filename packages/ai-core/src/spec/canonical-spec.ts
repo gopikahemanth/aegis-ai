@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ProjectSpecification, DomainVocabulary } from "../architect/specification.js";
+import { DomainContaminationDetector } from "../governance/domain-contamination-detector.js";
 
 export interface CanonicalProjectSpecification extends ProjectSpecification {
   domainCategory: string;
@@ -61,7 +62,9 @@ export class SpecificationNormalizer {
       domainCategory = "hotel-booking";
     } else if (promptLower.includes("restaurant") || promptLower.includes("dining") || (promptLower.includes("reservation") && promptLower.includes("table")) || promptLower.includes("menu")) {
       domainCategory = "restaurant-reservation";
-    } else if (promptLower.includes("vehicle") || promptLower.includes("car") || promptLower.includes("auto") || promptLower.includes("repair") || promptLower.includes("mechanic")) {
+    } else if (promptLower.includes("plant") || promptLower.includes("houseplant") || promptLower.includes("botanical") || promptLower.includes("botany") || promptLower.includes("succulent") || promptLower.includes("watering schedule") || promptLower.includes("flora")) {
+      domainCategory = "plant-care";
+    } else if (/\b(vehicle|car|auto|mechanic)\b/i.test(promptLower) || (promptLower.includes("repair") && (promptLower.includes("auto") || promptLower.includes("car") || promptLower.includes("vehicle")))) {
       domainCategory = "vehicle-service";
     } else if (promptLower.includes("ceramic") || promptLower.includes("pottery") || promptLower.includes("stoneware") || promptLower.includes("kiln") || promptLower.includes("glaze") || (promptLower.includes("artisan") && (promptLower.includes("studio") || promptLower.includes("craft")))) {
       domainCategory = "artisan-studio";
@@ -120,23 +123,139 @@ export class SpecificationNormalizer {
     if (promptLower.includes("nextauth") || promptLower.includes("next-auth")) auth = "NextAuth.js";
     else if (promptLower.includes("jwt")) auth = "JWT";
 
-    // 3. Define Forbidden Domain Patterns (starter template contamination is strictly forbidden)
+    // 3. Define Forbidden Domain Patterns dynamically using DomainContaminationDetector
+    const activeDomainKey = DomainContaminationDetector.getActiveDomainKey(promptLower);
     const forbiddenPatterns: string[] = [];
-    if (domainCategory !== "art-gallery" && domainCategory !== "artisan-studio") {
-      forbiddenPatterns.push("ArtworkCard", "ArtworkDashboard", "Vincent van Gogh", "Oil Painting", "Curated Exhibitions", "Starry Horizon");
-    }
-    if (domainCategory !== "task-manager") {
-      forbiddenPatterns.push("KanbanBoard", "BoardColumn");
-    }
-    if (domainCategory !== "library-management") {
-      forbiddenPatterns.push("BookTable", "BorrowRecord", "borrowed books", "total books", "library overview");
+    if (activeDomainKey !== "generic") {
+      for (const [key, sig] of Object.entries(DomainContaminationDetector.DOMAIN_SIGNATURES)) {
+        if (key !== activeDomainKey) {
+          forbiddenPatterns.push(...sig.forbiddenInOtherDomains);
+        }
+      }
+    } else {
+      // Novel domain fallback: strictly restrict to explicit known starter template code artifacts
+      forbiddenPatterns.push("resumeUpload", "MatchDashboard", "scan.service", "ArtworkCard", "ArtworkDashboard");
     }
 
-    // 4. Deterministically extract Domain Vocabulary and Data Models from user prompt
-    const domainVocabulary = SpecificationNormalizer.extractDomainVocabulary(promptLower, domainCategory);
-
+    // 4. Deterministically extract Domain Vocabulary and Data Models
+    // If rawSpec or featureMatrix has authoritative dataModels/features, use them as single source of truth
     let dataModels = rawSpec.dataModels && rawSpec.dataModels.length > 0 ? rawSpec.dataModels : [];
-    if (dataModels.length === 0) {
+    let domainVocabulary: DomainVocabulary;
+
+    if (dataModels.length > 0) {
+      const primaryModel = typeof dataModels[0] === "string" ? dataModels[0] : (dataModels[0] as any).name;
+      const secondModel = dataModels[1] ? (typeof dataModels[1] === "string" ? dataModels[1] : (dataModels[1] as any).name) : null;
+      const rawFeatures = rawSpec.features || [];
+      const secondFeature = rawFeatures[1] ? (typeof rawFeatures[1] === "string" ? rawFeatures[1] : (rawFeatures[1] as any).name) : null;
+
+      // Derive neutral, category-accurate fallback metrics when secondModel/secondFeature are absent
+      let fallbackMetric3 = `Featured ${primaryModel}s`;
+      let fallbackMetric4 = `Total Engagements`;
+
+      if (domainCategory) {
+        switch (domainCategory) {
+          case "restaurant-reservation":
+          case "hotel-booking":
+          case "pet-grooming":
+          case "home-repair":
+            fallbackMetric3 = "Upcoming Bookings";
+            fallbackMetric4 = "Client Satisfaction";
+            break;
+          case "ecommerce":
+          case "artisan-studio":
+            fallbackMetric3 = "Featured Catalog";
+            fallbackMetric4 = "Customer Reviews";
+            break;
+          case "portfolio":
+          case "photography-studio":
+          case "art-gallery":
+            fallbackMetric3 = "Featured Highlights";
+            fallbackMetric4 = "Total Views";
+            break;
+          case "blog":
+          case "content-platform":
+            fallbackMetric3 = "Published Articles";
+            fallbackMetric4 = "Reader Engagements";
+            break;
+          case "workout-fitness":
+          case "gym-management":
+            fallbackMetric3 = "Active Streaks";
+            fallbackMetric4 = "Milestones Reached";
+            break;
+          case "solar-telemetry":
+          case "operations-dashboard":
+          case "equipment-maintenance":
+            fallbackMetric3 = "System Throughput";
+            fallbackMetric4 = "Operational Uptime";
+            break;
+          case "edtech":
+          case "music-school":
+          case "student-management":
+            fallbackMetric3 = "Active Lessons";
+            fallbackMetric4 = "Completion Rate";
+            break;
+          default:
+            fallbackMetric3 = `Featured ${primaryModel}s`;
+            fallbackMetric4 = `Total Engagements`;
+        }
+      }
+
+      const toNaturalTitle = (slug: string): string => {
+        return slug
+          .split(/[-_]+/)
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(" ");
+      };
+
+      const formatActionVerb = (verbOrSlug: string, model: string): string => {
+        const clean = verbOrSlug.replace(/[-_]/g, " ").trim();
+        if (/^(add|create|log|record|update|view|check|schedule|manage|track|upload)\b/i.test(clean)) {
+          return toNaturalTitle(clean);
+        }
+        if (/management$/i.test(clean)) {
+          return `Manage ${toNaturalTitle(clean.replace(/management$/i, "").trim() || model)}`;
+        }
+        if (/schedules?$/i.test(clean)) {
+          return `Schedule ${toNaturalTitle(clean.replace(/schedules?$/i, "").trim() || model)}`;
+        }
+        if (/journal$/i.test(clean)) {
+          return `Log ${toNaturalTitle(clean)}`;
+        }
+        return `Add ${toNaturalTitle(clean)}`;
+      };
+
+      if (promptLower.includes("plant") || promptLower.includes("botanical") || promptLower.includes("houseplant")) {
+        domainVocabulary = {
+          entityName: "Plant",
+          entityPlural: "Plants",
+          primaryMetrics: ["Thriving Houseplants", "Watering Due Today", "Optimal Sunlight Rate", "Growth Milestones"],
+          actionVerbs: ["Add Plant", "Water Today", "Upload Photo", "Log Sunlight", "Add Note"],
+          domainPrefix: "plant"
+        };
+      } else {
+        domainVocabulary = {
+          entityName: primaryModel,
+          entityPlural: primaryModel.endsWith("s") ? primaryModel : primaryModel + "s",
+          primaryMetrics: [
+            `Active ${primaryModel}s`,
+            rawFeatures[0] ? `${toNaturalTitle(rawFeatures[0])}` : `Total ${primaryModel}s`,
+            secondModel ? `Total ${secondModel}s` : (secondFeature ? `${toNaturalTitle(secondFeature)}` : fallbackMetric3),
+            fallbackMetric4
+          ],
+          actionVerbs: rawFeatures.length > 0 
+            ? rawFeatures.slice(0, 4).map(f => {
+                const name = typeof f === "string" ? f : (f as any).name || "";
+                return formatActionVerb(name, primaryModel);
+              })
+            : [`Add ${primaryModel}`, `Edit ${primaryModel}`, `Delete`, `Export`],
+          domainPrefix: primaryModel.toLowerCase()
+        };
+      }
+    } else if (rawSpec.domainVocabulary && rawSpec.domainVocabulary.entityName && rawSpec.domainVocabulary.entityName !== "Specialty" && rawSpec.domainVocabulary.entityName !== "Item") {
+      domainVocabulary = rawSpec.domainVocabulary;
+      dataModels = SpecificationNormalizer.deriveDataModels(promptLower, domainCategory, domainVocabulary);
+    } else {
+      domainVocabulary = SpecificationNormalizer.extractDomainVocabulary(promptLower, domainCategory);
       dataModels = SpecificationNormalizer.deriveDataModels(promptLower, domainCategory, domainVocabulary);
     }
 
@@ -177,6 +296,8 @@ export class SpecificationNormalizer {
         return ["User", "Product", "Workshop", "Booking", "KilnFiring", "Commission", "InventoryItem"];
       case "community-garden":
         return ["User", "Garden", "Plot", "Member", "Plant", "Harvest", "Event"];
+      case "plant-care":
+        return ["User", "Plant", "WateringSchedule", "GrowthMilestone", "CareReminder", "SunlightLog"];
       case "home-repair":
         return ["User", "Customer", "Technician", "ServiceRequest", "WorkOrder", "Invoice", "Part"];
       case "pet-grooming":
@@ -298,6 +419,16 @@ export class SpecificationNormalizer {
           primaryMetrics: ["Total Plots", "Active Gardeners", "Harvest Yield", "Scheduled Workdays"],
           actionVerbs: ["Allocate Plot", "Register Member", "Record Harvest", "Schedule Workday"],
           domainPrefix: "garden"
+        };
+      }
+
+      case "plant-care": {
+        return {
+          entityName: "Plant",
+          entityPlural: "Plants",
+          primaryMetrics: ["Total Plants", "Watering Due Today", "Optimal Sunlight Rate", "Growth Milestones"],
+          actionVerbs: ["Add Plant", "Log Watering", "Upload Growth Photo", "Set Care Reminder", "Check Sunlight"],
+          domainPrefix: "plant"
         };
       }
 
@@ -570,7 +701,12 @@ export class SpecificationNormalizer {
       default: {
         // Dynamic fallback: extract primary entity from prompt
         const words = promptLower.replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 3);
-        const stopWords = new Set(["build", "with", "system", "management", "application", "where", "staff", "manage", "view", "include", "small", "responsive", "storage", "database", "modern", "platform", "should", "allow", "track"]);
+        const stopWords = new Set([
+          "build", "with", "system", "management", "application", "where", "staff", "manage", "view", "include",
+          "small", "responsive", "storage", "database", "modern", "platform", "should", "allow", "track",
+          "specialty", "custom", "online", "digital", "premium", "simple", "advanced", "smart", "weekly",
+          "daily", "monthly", "recurring", "artisanal", "artisan"
+        ]);
         const candidateWords = words.filter(w => !stopWords.has(w));
         const prime = candidateWords[0] ? candidateWords[0].charAt(0).toUpperCase() + candidateWords[0].slice(1) : "Item";
         

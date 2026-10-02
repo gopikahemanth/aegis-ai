@@ -227,7 +227,7 @@ interface ArchetypeDefinition {
 }
 
 const ARCHETYPES: Record<VisualArtDirectionContract["archetype"], ArchetypeDefinition> = {
-  // CALM_BOTANICAL — sage/terracotta/marigold on warm ivory
+  // CALM_BOTANICAL — sage/terracotta/dusty rose on warm ivory
   // The intentional personal-tracker direction for calm/warm emotional tones
   CALM_BOTANICAL: {
     archetype: "CALM_BOTANICAL",
@@ -236,17 +236,17 @@ const ARCHETYPES: Record<VisualArtDirectionContract["archetype"], ArchetypeDefin
     surface: "#ffffff",
     surfaceElevated: "#f3ede4",
     primaryVariants: [
-      { name: "sage",       hex: "#5b7f6e", hoverHex: "#4a6b5b", subtle: "rgba(91, 127, 110, 0.14)", gradient: "from-[#5b7f6e] to-[#8ab5a1]" },
-      { name: "terracotta",hex: "#c4734a", hoverHex: "#a85c37", subtle: "rgba(196, 115, 74, 0.14)",  gradient: "from-[#c4734a] to-[#e8a882]" },
-      { name: "marigold",  hex: "#d4a017", hoverHex: "#b88a10", subtle: "rgba(212, 160, 23, 0.14)",  gradient: "from-[#d4a017] to-[#f0c84a]" },
+      { name: "terracotta",hex: "#c4734a", hoverHex: "#a85c37", subtle: "rgba(196, 115, 74, 0.16)",  gradient: "from-[#c4734a] to-[#e8a882]" },
+      { name: "sage",       hex: "#5b7f6e", hoverHex: "#4a6b5b", subtle: "rgba(91, 127, 110, 0.16)", gradient: "from-[#5b7f6e] to-[#8ab5a1]" },
+      { name: "dusty-rose", hex: "#c97a7e", hoverHex: "#b0666a", subtle: "rgba(201, 122, 126, 0.16)", gradient: "from-[#c97a7e] to-[#e8a8ac]" },
     ],
-    secondary: "stone",
-    secondaryHex: "#8a7968",
+    secondary: "sage",
+    secondaryHex: "#5b7f6e",
     textPrimary: "#2d2420",
     textSecondary: "#5a4e44",
     textMuted: "#8a7968",
-    border: "rgba(91, 127, 110, 0.15)",
-    borderSubtle: "rgba(91, 127, 110, 0.07)",
+    border: "rgba(91, 127, 110, 0.18)",
+    borderSubtle: "rgba(91, 127, 110, 0.08)",
     geometry: {
       style: "soft",
       radiusSm: "6px",
@@ -1100,9 +1100,9 @@ export function extractSemanticPersonality(prompt: string, domainHint?: string):
  * Derives a complete, deterministic, and WCAG-compliant VisualArtDirectionContract
  * based on prompt semantics, semantic personality, and a reproducible hash seed.
  */
-export function deriveArtDirection(prompt: string, domainHint?: string): VisualArtDirectionContract {
+export function deriveArtDirection(prompt: string, domainHint?: string, explicitSeed?: number): VisualArtDirectionContract {
   const seedString = `${prompt.trim()} ${domainHint || ""}`.trim();
-  const hash = computeDeterministicHash(seedString);
+  const hash = explicitSeed !== undefined ? Math.abs(explicitSeed) : computeDeterministicHash(seedString);
   const promptLower = seedString.toLowerCase();
 
   // 1. Semantic Personality Extraction
@@ -1111,7 +1111,9 @@ export function deriveArtDirection(prompt: string, domainHint?: string): VisualA
   // 2. Archetype Mapping based on Semantic Personality Tone & Domain Signals
   let compatibleArchetypes: Array<VisualArtDirectionContract["archetype"]> = [];
 
-  if (semanticPersonality.tone === "playful" || semanticPersonality.tone === "friendly") {
+  if (promptLower.includes("botanical") || promptLower.includes("plant") || promptLower.includes("sage") || promptLower.includes("terracotta") || promptLower.includes("houseplant")) {
+    compatibleArchetypes = ["CALM_BOTANICAL"];
+  } else if (semanticPersonality.tone === "playful" || semanticPersonality.tone === "friendly") {
     compatibleArchetypes = ["PLAYFUL_APPROACHABLE", "CALM_BOTANICAL", "BOTANICAL_EARTH", "NORDIC_MINIMAL"];
   } else if (semanticPersonality.tone === "calm") {
     compatibleArchetypes = ["CALM_BOTANICAL", "EDITORIAL_NARRATIVE", "BOTANICAL_EARTH", "NORDIC_MINIMAL"];
@@ -1148,7 +1150,22 @@ export function deriveArtDirection(prompt: string, domainHint?: string): VisualA
   const def = ARCHETYPES[archetypeKey];
 
   // Primary color variant selection
-  const primaryVariant = def.primaryVariants[Math.abs(hash >> 3) % def.primaryVariants.length] || def.primaryVariants[0];
+  let primaryVariant = def.primaryVariants[Math.abs(hash >> 3) % def.primaryVariants.length] || def.primaryVariants[0];
+
+  // Explicit color keyword matching: prioritize requested botanical palette
+  if (promptLower.includes("terracotta")) {
+    const matched = def.primaryVariants.find(v => v.name === "terracotta");
+    if (matched) primaryVariant = matched;
+  } else if (promptLower.includes("sage")) {
+    const matched = def.primaryVariants.find(v => v.name === "sage");
+    if (matched) primaryVariant = matched;
+  } else if (promptLower.includes("dusty rose") || promptLower.includes("rose")) {
+    const matched = def.primaryVariants.find(v => v.name.includes("rose"));
+    if (matched) primaryVariant = matched;
+  } else if (archetypeKey === "CALM_BOTANICAL") {
+    const matched = def.primaryVariants.find(v => v.name === "terracotta");
+    if (matched) primaryVariant = matched;
+  }
 
   // Navigation style variation
   const navStyles: Array<VisualArtDirectionContract["navigation"]["style"]> = [

@@ -30,7 +30,7 @@ export interface DomainContaminationReport {
 }
 
 export class DomainContaminationDetector {
-  private static readonly DOMAIN_SIGNATURES: Record<string, { name: string; terms: string[]; forbiddenInOtherDomains: string[] }> = {
+  public static readonly DOMAIN_SIGNATURES: Record<string, { name: string; terms: string[]; forbiddenInOtherDomains: string[] }> = {
     security: {
       name: "Code Security / Vulnerability Scanner",
       terms: ["vulnerability", "cve", "owasp", "scan", "remediation", "security audit", "risk score", "ast rule"],

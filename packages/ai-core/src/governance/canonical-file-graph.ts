@@ -1158,7 +1158,12 @@ export class CanonicalFileGraph {
       normalized.startsWith("src/context/") ||
       normalized.startsWith("src/shared/") ||
       normalized.startsWith("src/design-system/") ||
+      normalized.startsWith("src/content/") ||
       normalized.startsWith("src/features/") ||
+      normalized.startsWith("src/entities/") ||
+      normalized.startsWith("src/models/") ||
+      normalized.startsWith("src/__tests__/") ||
+      normalized.startsWith("test/") ||
       normalized === "src/routes.tsx" ||
       normalized === "src/routes.ts" ||
       normalized === "src/App.tsx" ||
@@ -1249,8 +1254,15 @@ export class CanonicalFileGraph {
       };
     }
 
+    const isProposedFrontend = normalized.startsWith("src/") || normalized.startsWith("public/");
+    const isProposedBackend = normalized.startsWith("server/") || normalized.startsWith("prisma/");
+
     // Check all aliases
     for (const entry of aliasCheckSet) {
+      const isEntryFrontend = entry.canonicalPath.startsWith("src/") || entry.canonicalPath.startsWith("public/");
+      const isEntryBackend = entry.canonicalPath.startsWith("server/") || entry.canonicalPath.startsWith("prisma/");
+      const crossesBoundary = (isProposedFrontend && isEntryBackend) || (isProposedBackend && isEntryFrontend);
+
       // Check if proposedPath is a known alias
       for (const alias of entry.semanticAliases) {
         const aliasNorm = alias.replace(/\\/g, "/");
@@ -1261,8 +1273,8 @@ export class CanonicalFileGraph {
             reason: `"${proposedPath}" is a registered alias for canonical file "${entry.canonicalPath}" (role: ${entry.semanticRole})`,
           };
         }
-        // Stem-only alias check (no path prefix) — skip for generic stems like "index"
-        if (!isGenericStem) {
+        // Stem-only alias check (no path prefix) — skip for generic stems like "index" and cross-boundary pairs
+        if (!isGenericStem && !crossesBoundary) {
           const aliasStem = aliasNorm.split("/").pop()?.replace(/\.(ts|tsx|js|jsx)$/, "").toLowerCase();
           if (aliasStem && aliasStem === proposedStem) {
             return {
@@ -1273,8 +1285,8 @@ export class CanonicalFileGraph {
           }
         }
       }
-      // Check if stem matches the canonical path stem — skip for generic stems like "index"
-      if (!isGenericStem) {
+      // Check if stem matches the canonical path stem — skip for generic stems like "index" and cross-boundary pairs
+      if (!isGenericStem && !crossesBoundary) {
         const canonStem = entry.canonicalPath.split("/").pop()?.replace(/\.(ts|tsx|js|jsx)$/, "").toLowerCase();
         if (canonStem && canonStem === proposedStem && entry.canonicalPath !== normalized) {
           return {

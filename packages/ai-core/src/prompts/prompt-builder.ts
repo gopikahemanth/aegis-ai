@@ -59,7 +59,7 @@ DOMAIN VOCABULARY CONTRACT:
 • Entity Singular: ${dv.entityName}
 • Entity Plural:   ${dv.entityPlural}
 • Domain Prefix:   ${dv.domainPrefix}
-• Primary KPI Metrics: ${dv.primaryMetrics.join(" | ")}
+• Domain Metrics Reference (for summary views only; compute dynamically from page data): ${dv.primaryMetrics.join(" | ")}
 • Primary Action Verbs: ${dv.actionVerbs.join(" | ")}
 
 PLANNED CANONICAL FILES:

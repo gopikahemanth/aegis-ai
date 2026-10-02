@@ -553,9 +553,16 @@ export class ProjectGraphEngine {
 
           // 2. Redirect any importers in the project to the canonical path
           const canonicalFullPath = join(projectRoot, dupCheck.canonicalFile.canonicalPath);
+          const canonicalTargetPath = dupCheck.canonicalFile.canonicalPath;
+          const canonicalIsBackend = canonicalTargetPath.startsWith("server/") || canonicalTargetPath.startsWith("server\\");
           const stem = relPath.replace(/\.(ts|tsx|js|jsx)$/, "");
           for (const otherRel of this.nodes.keys()) {
             if (otherRel === relPath) continue;
+            const otherIsFrontend = otherRel.startsWith("src/") || otherRel.startsWith("src\\");
+            if (otherIsFrontend && canonicalIsBackend) {
+              // Boundary protection: never redirect a frontend importer to a backend canonical path
+              continue;
+            }
             const otherFullPath = join(projectRoot, otherRel);
             if (!existsSync(otherFullPath)) continue;
             try {

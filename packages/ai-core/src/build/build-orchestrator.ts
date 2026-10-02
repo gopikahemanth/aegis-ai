@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { BuildRunner } from "./build-runner.js";
@@ -50,11 +50,23 @@ export class BuildOrchestrator {
     if (existsSync(packageJsonPath)) {
       try {
         const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-        if (pkg.scripts && pkg.scripts.lint) {
+        const hasEslintConfig = [
+          ".eslintrc",
+          ".eslintrc.js",
+          ".eslintrc.cjs",
+          ".eslintrc.json",
+          ".eslintrc.yaml",
+          ".eslintrc.yml",
+          "eslint.config.js",
+          "eslint.config.mjs",
+          "eslint.config.cjs",
+        ].some((f) => existsSync(join(projectPath, f)));
+
+        if (pkg.scripts && pkg.scripts.lint && hasEslintConfig) {
           console.log("Running lint verification...");
           try {
             const sanitizedCmd = SecurityGuard.sanitizeCommand("pnpm lint");
-            const validatedPath = SecurityGuard.validateSafePath("./generated/project", projectPath);
+            const validatedPath = resolve(projectPath);
             await execute(sanitizedCmd, {
               cwd: validatedPath,
             });

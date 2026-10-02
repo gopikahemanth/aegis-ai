@@ -1,16 +1,16 @@
 export const Models = {
   cerebras: {
-    default: "llama-3.3-70b",
-    strong: "llama-3.3-70b",
-    fast: "llama-3.1-8b",
-    balanced: "llama-3.3-70b",
+    default: "gpt-oss-120b",
+    strong: "gpt-oss-120b",
+    fast: "qwen-3.8-27b",
+    balanced: "gpt-oss-120b",
   },
 
   groq: {
-    default: "qwen/qwen3.8-27b",
+    default: "openai/gpt-oss-120b",
     strong: "openai/gpt-oss-120b",
     fast: "qwen/qwen3.8-27b",
-    balanced: "qwen/qwen3.8-27b",
+    balanced: "openai/gpt-oss-120b",
   },
 
   openai: {
@@ -28,38 +28,38 @@ export const Models = {
   },
 
   gemini: {
-    default: "gemini-3.1-flash-lite",
-    strong: "gemini-3.1-flash-lite",
-    fast: "gemini-3.1-flash-lite",
-    balanced: "gemini-3.1-flash-lite",
+    default: "gemini-3.6-flash",
+    strong: "gemini-3.6-flash",
+    fast: "gemini-3.6-flash",
+    balanced: "gemini-3.6-flash",
   },
 
   "gemini-2": {
-    default: "gemini-3.1-flash-lite",
-    strong: "gemini-3.1-flash-lite",
-    fast: "gemini-3.1-flash-lite",
-    balanced: "gemini-3.1-flash-lite",
+    default: "gemini-3.6-flash",
+    strong: "gemini-3.6-flash",
+    fast: "gemini-3.6-flash",
+    balanced: "gemini-3.6-flash",
   },
 
   "gemini-3": {
-    default: "gemini-3.1-flash-lite",
-    strong: "gemini-3.1-flash-lite",
-    fast: "gemini-3.1-flash-lite",
-    balanced: "gemini-3.1-flash-lite",
+    default: "gemini-3.6-flash",
+    strong: "gemini-3.6-flash",
+    fast: "gemini-3.6-flash",
+    balanced: "gemini-3.6-flash",
   },
 
   "gemini-4": {
-    default: "gemini-3.1-flash-lite",
-    strong: "gemini-3.1-flash-lite",
-    fast: "gemini-3.1-flash-lite",
-    balanced: "gemini-3.1-flash-lite",
+    default: "gemini-3.6-flash",
+    strong: "gemini-3.6-flash",
+    fast: "gemini-3.6-flash",
+    balanced: "gemini-3.6-flash",
   },
 
   "gemini-5": {
-    default: "gemini-3.1-flash-lite",
-    strong: "gemini-3.1-flash-lite",
-    fast: "gemini-3.1-flash-lite",
-    balanced: "gemini-3.1-flash-lite",
+    default: "gemini-3.6-flash",
+    strong: "gemini-3.6-flash",
+    fast: "gemini-3.6-flash",
+    balanced: "gemini-3.6-flash",
   },
 
   ollama: {

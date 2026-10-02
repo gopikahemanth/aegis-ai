@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, statSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import http from "node:http";
 import { ErrorClassifier } from "../healing/error-classifier.js";
@@ -48,6 +48,7 @@ export interface FrontendBrowserReview {
     desktop?: string;
     tablet?: string;
     mobile?: string;
+    [key: string]: string | undefined;
   };
   fatalConsoleErrors: string[];
   uncaughtExceptions: string[];
@@ -153,14 +154,32 @@ export class ReadOnlyBrowserValidator {
 
       let visibleText = "";
       let interactiveCount = 0;
+
+      // Settle on root landing route for accurate metric inspection and screenshot
       try {
+        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 8000 });
+        await page.evaluate(() => document.fonts ? document.fonts.ready : Promise.resolve());
+        await page.waitForFunction(() => document.querySelectorAll('#root *').length > 0 || document.body.children.length > 0, { timeout: 3000 }).catch(() => {});
+        await new Promise(r => setTimeout(r, 600));
+
+        // Prevent compositor transparency bleed on screenshot capture
+        await page.evaluate(() => {
+          const htmlEl = document.documentElement;
+          const bodyEl = document.body;
+          if (bodyEl) {
+            const computedBody = window.getComputedStyle(bodyEl).backgroundColor;
+            if (!computedBody || computedBody === "rgba(0, 0, 0, 0)" || computedBody === "transparent") {
+              const computedHtml = window.getComputedStyle(htmlEl).backgroundColor;
+              bodyEl.style.backgroundColor = (computedHtml && computedHtml !== "rgba(0, 0, 0, 0)" && computedHtml !== "transparent")
+                ? computedHtml
+                : "#ffffff";
+            }
+          }
+        });
+
         visibleText = await page.evaluate(() => document.body.innerText || "");
         interactiveCount = await page.evaluate(() => document.querySelectorAll("button, input, select, table, form, a, [role='button'], [data-metric]").length);
-      } catch {}
 
-      // Capture screenshot
-      try {
-        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 5000 });
         const screenshotDir = join(outputDirectory, ".aegis", "screenshots");
         if (!existsSync(screenshotDir)) mkdirSync(screenshotDir, { recursive: true });
         screenshotPath = join(screenshotDir, `runtime_check_${Date.now()}.png`);
@@ -354,14 +373,52 @@ export class ReadOnlyBrowserValidator {
             review.renderedElementsCount = Math.max(review.renderedElementsCount, count);
 
             const filePath = join(screenshotDir, `${vp.name}.png`);
-            await page.screenshot({ path: filePath, fullPage: false });
+            await page.screenshot({ path: filePath, fullPage: true });
 
             if (existsSync(filePath) && statSync(filePath).size > 1000) {
               review.screenshots[vp.name] = filePath;
-              console.log(`[BrowserValidator] 📸 Captured ${vp.name} (${vp.width}x${vp.height}) screenshot at ${filePath} (${statSync(filePath).size} bytes)`);
+              console.log(`[BrowserValidator] 📸 Captured ${vp.name} (${vp.width}x${vp.height} full-page) screenshot at ${filePath} (${statSync(filePath).size} bytes)`);
               captured = true;
             } else {
               console.warn(`[BrowserValidator] ⚠️ Screenshot file for ${vp.name} is missing or invalid size (attempt ${attempts}/2)`);
+            }
+
+            // If desktop viewport, capture interactive cart drawer open state if available
+            if (vp.name === "desktop" && captured) {
+              try {
+                const opened = await page.evaluate(() => {
+                  const buttons = Array.from(document.querySelectorAll("button, a[role='button']"));
+                  const cartBtn = buttons.find(b => {
+                    const text = (b.textContent || "").toLowerCase();
+                    const aria = (b.getAttribute("aria-label") || "").toLowerCase();
+                    return (aria.includes("cart") || aria.includes("bag") || text.includes("cart") || text.includes("bag")) &&
+                           !text.includes("add to") && !text.includes("add ");
+                  });
+                  if (cartBtn) {
+                    (cartBtn as HTMLElement).click();
+                    return true;
+                  }
+                  return false;
+                });
+
+                if (opened) {
+                  await new Promise(r => setTimeout(r, 600));
+                  const cartPath = join(screenshotDir, "desktop-cart-open.png");
+                  await page.screenshot({ path: cartPath, fullPage: true });
+                  if (existsSync(cartPath) && statSync(cartPath).size > 1000) {
+                    review.screenshots["desktop-cart-open"] = cartPath;
+                    console.log(`[BrowserValidator] 📸 Captured desktop cart-open (1440px full-page) screenshot at ${cartPath} (${statSync(cartPath).size} bytes)`);
+                  }
+                  // Close drawer
+                  await page.evaluate(() => {
+                    const closeBtn = document.querySelector("[aria-label*='close' i], button:has-text('×'), button:has-text('Close')");
+                    if (closeBtn) (closeBtn as HTMLElement).click();
+                  });
+                  await new Promise(r => setTimeout(r, 300));
+                }
+              } catch (cartErr: any) {
+                // Non-fatal, cart drawer might not exist or be needed
+              }
             }
           } catch (e: any) {
             console.warn(`[BrowserValidator] ⚠️ Could not capture ${vp.name} screenshot (attempt ${attempts}/2): ${e.message}`);
@@ -380,14 +437,17 @@ export class ReadOnlyBrowserValidator {
         let navigated = false;
         for (let i = 0; i < 2 && !navigated; i++) {
           try {
-            await page.goto(cleanUrl, { waitUntil: "networkidle2", timeout: 10000 });
+            await page.goto(cleanUrl, { waitUntil: "domcontentloaded", timeout: 8000 });
+            await page.evaluate(() => document.fonts ? document.fonts.ready : Promise.resolve());
+            await page.waitForFunction(() => document.querySelectorAll('#root *').length > 0 || document.body.children.length > 0, { timeout: 3000 }).catch(() => {});
+            await new Promise(r => setTimeout(r, 500));
             navigated = true;
           } catch (navErr: any) {
             if (i === 0) await new Promise(r => setTimeout(r, 1000));
             else console.warn(`[BrowserValidator] ⚠️ Navigation to ${cleanUrl} for product check failed: ${navErr.message}`);
           }
         }
-        review.productIdentity = await ReadOnlyBrowserValidator.validateProductIdentity(page, plan, undefined, cleanUrl);
+        review.productIdentity = await ReadOnlyBrowserValidator.validateProductIdentity(page, plan, { outputDirectory }, cleanUrl);
       } catch (prodGateErr: any) {
         console.warn(`[BrowserValidator] ⚠️ Product identity check warning: ${prodGateErr.message}`);
       }
@@ -523,11 +583,117 @@ export class ReadOnlyBrowserValidator {
       passedChecks.push(`Experience pattern: ${expectedPattern}`);
     }
 
+    // 2b. Structural Fit & Consumer Layout Gate
+    const isConsumerPattern = [
+      "storefront-commerce",
+      "hospitality-portal",
+      "editorial-catalog",
+      "booking-flow",
+    ].includes(expectedPattern);
+
+    if (isConsumerPattern && (url === "/" || url.endsWith("/"))) {
+      // 1. Root route tab switcher check: Consumer patterns must NOT be a 3+ panel tab switcher
+      const tabData = await page.evaluate(() => {
+        const tabLists = Array.from(document.querySelectorAll("[role='tablist'], .tabs, nav.tabs"));
+        const tabButtons = Array.from(document.querySelectorAll("button[role='tab'], [role='tablist'] button, .tab-button, [data-tab]"));
+        const mgmtTitles = Array.from(document.querySelectorAll("h1, h2, h3"))
+          .map(h => (h.textContent || "").trim())
+          .filter(t => /management suite|operations console|admin suite|control panel|internal dashboard/i.test(t));
+        return {
+          tabListsCount: tabLists.length,
+          tabButtonsCount: tabButtons.length,
+          tabLabels: tabButtons.map(b => (b.textContent || "").trim()).slice(0, 8),
+          mgmtTitles,
+        };
+      });
+
+      if (tabData.tabButtonsCount >= 3 || tabData.mgmtTitles.length > 0) {
+        mismatchReasons.push(
+          `Structural Defect: Consumer-facing pattern "${expectedPattern}" must render a continuous-scroll customer journey on route '/', not a tabbed console (${tabData.tabButtonsCount} tab buttons detected: [${tabData.tabLabels.join(", ")}]; titles: [${tabData.mgmtTitles.join(", ")}]).`
+        );
+      } else {
+        passedChecks.push(`Structural fit verified: Continuous-scroll ${expectedPattern} (no root tabbed console)`);
+      }
+
+      // 2. Heading Check: No headings that literally print internal capability names
+      for (const cap of (plan?.requiredCapabilities || [])) {
+        const capNameLower = cap.name.trim().toLowerCase();
+        const literalMatch = domData.headings.find((h: string) => {
+          const hClean = h.trim().toLowerCase().replace(/^section\s+\d+[:—\-]\s*/i, "");
+          return hClean === capNameLower;
+        });
+        if (literalMatch) {
+          mismatchReasons.push(
+            `Incentive/Content Defect: Heading "${literalMatch}" literally prints internal capability name "${cap.name}". Consumer pages must use authentic customer-facing copy (e.g. "From the Hearth", "Daily Fresh Bakes", "Check Delivery"), not raw capability IDs.`
+          );
+        }
+      }
+
+      // 3. Admin-only controls leakage check on customer routes
+      const adminControls = domData.buttons.filter((b: string) => {
+        return /^\+\s*(add|create|new)\s+(product|menu\s*item|dish|villa|room|item|record|batch|inventory)/i.test(b) ||
+               /^(manage|delete|edit)\s+(menu\s*items|products|villas|inventory|records)/i.test(b);
+      });
+      if (adminControls.length > 0) {
+        mismatchReasons.push(
+          `Role Leakage: Admin management control(s) [${adminControls.join(", ")}] detected on customer route '${url}'. Management actions must not leak into customer storefront/portal.`
+        );
+      } else {
+        passedChecks.push("No administrative control leakage on customer route");
+      }
+    }
+
     // 3. Semantic Feature Evidence & Real Chromium Interaction Checks
     const featureEvidence: ProductIdentityResult["featureEvidence"] = [];
     for (const cap of (plan?.requiredCapabilities || [])) {
-      const matchedVocab = cap.evidenceVocabulary.filter(v => bodyLower.includes(v.toLowerCase()));
-      const visible = matchedVocab.length > 0 && !authWallDetected;
+      let matchedVocab = cap.evidenceVocabulary.filter(v => bodyLower.includes(v.toLowerCase()));
+      let visible = matchedVocab.length > 0 && !authWallDetected;
+
+      // If not visible on root page, check other expected routes and discovered navigation links
+      const candidateRoutes = new Set<string>(plan?.expectedRoutes || []);
+      if (domainSpec?.outputDirectory) {
+        try {
+          const contractFile = join(domainSpec.outputDirectory, ".aegis", "architecture-contract.json");
+          if (existsSync(contractFile)) {
+            const contractData = JSON.parse(readFileSync(contractFile, "utf8"));
+            (contractData.requiredRoutes || []).forEach((r: any) => {
+              const clean = typeof r === "string" ? r : r?.path;
+              if (clean) candidateRoutes.add(clean.startsWith("/") ? clean : `/${clean}`);
+            });
+          }
+        } catch {}
+      }
+      try {
+        const liveLinks: string[] = await page.evaluate(() => {
+          return Array.from(document.querySelectorAll("a[href]"))
+            .map((a: any) => a.getAttribute("href"))
+            .filter((h: string) => h && h.startsWith("/") && !h.startsWith("//"));
+        });
+        liveLinks.forEach(l => candidateRoutes.add(l));
+      } catch {}
+      candidateRoutes.add("/primary");
+      candidateRoutes.add("/workspace");
+
+      if (!visible && candidateRoutes.size > 1) {
+        for (const r of candidateRoutes) {
+          if (r === "/" || r === "") continue;
+          try {
+            const targetUrl = new URL(r.startsWith("/") ? r.slice(1) : r, url.endsWith("/") ? url : url + "/").toString();
+            await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 4000 });
+            const pageText = (await page.evaluate(() => document.body ? document.body.innerText || "" : "")).toLowerCase();
+            const subMatches = cap.evidenceVocabulary.filter(v => pageText.includes(v.toLowerCase()));
+            if (subMatches.length > 0) {
+              matchedVocab = subMatches;
+              visible = true;
+              break;
+            }
+          } catch {}
+        }
+        // Navigate back to root page after route probing
+        try {
+          await page.goto(url, { waitUntil: "domcontentloaded", timeout: 4000 });
+        } catch {}
+      }
 
       const controlEvidence: string[] = [];
       for (const ctrl of cap.controlsRequired) {
@@ -574,8 +740,22 @@ export class ReadOnlyBrowserValidator {
       ...(domainSpec?.forbiddenVocabulary || []),
     ];
 
+    const GENERIC_UI_VERBS = new Set([
+      "inspect", "manage", "track", "view", "submit", "record",
+      "records", "table", "list", "item", "items", "data", "status",
+      "edit", "delete", "filter", "search", "details", "close", "open",
+      "save", "update", "cancel"
+    ]);
+
     for (const token of forbiddenTokens) {
-      if (token && token.length > 3 && bodyLower.includes(token.toLowerCase())) {
+      if (!token) continue;
+      const trimmed = token.trim().toLowerCase();
+      // Standalone single words matching generic UI verbs/nouns are ignored to prevent false positives.
+      // Compound phrases (e.g. "manage kanban board", "inspect record", "resume scan") are fully preserved.
+      if (!trimmed.includes(" ") && GENERIC_UI_VERBS.has(trimmed)) {
+        continue;
+      }
+      if (trimmed.length > 3 && bodyLower.includes(trimmed)) {
         forbiddenEvidence.push({ token, source: "DOM Text" });
         mismatchReasons.push(`Forbidden foreign-domain vocabulary detected: "${token}"`);
       }

@@ -91,15 +91,20 @@ Entity (singular): ${dv.entityName}
 Entity (plural):   ${dv.entityPlural}
 Domain prefix:     ${dv.domainPrefix}
 
-KPI Card Titles (use ONLY these — no generic placeholders):
-${dv.primaryMetrics.map((m: string) => `  • ${m}`).join("\n")}
-
 Action Labels (buttons, CTAs, menu items):
 ${dv.actionVerbs.map((v: string) => `  • ${v}`).join("\n")}
 
-CRITICAL: Every KPI card title MUST come from the list above.
-FORBIDDEN: "Total Activity Volume", "Target Goal Metric", "Performance Compliance",
-           "Units" as a measurement, any generic dashboard placeholder label.
+Domain Metric References (ONLY for dedicated summary/overview views — NEVER stamp onto feature/catalog pages):
+${dv.primaryMetrics.map((m: string) => `  • ${m}`).join("\n")}
+
+METRIC INTEGRITY & DATA DERIVATION RULES:
+1. NON-DASHBOARD PAGES (storefronts, catalogs, photo journals, schedules, forms, details):
+   Open directly with the primary feature UI. STRICTLY FORBIDDEN: Do NOT render a top row of KPI stat cards or metric summaries.
+2. SUMMARY / OVERVIEW PAGES:
+   When metric cards are legitimately required, each metric MUST be derived dynamically from that page's active dataset (e.g. data.length, filtered counts, calculated sums).
+   NEVER hardcode duplicate static numbers (e.g. "6 Specimens", "96% Optimal") across routes.
+3. FORBIDDEN LABELS: "Total Activity Volume", "Target Goal Metric", "Performance Compliance",
+   "Units" as a measurement, any generic dashboard placeholder label.
 ═══════════════════════════════════════════════════════
 `;
     }

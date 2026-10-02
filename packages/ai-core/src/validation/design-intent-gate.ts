@@ -196,6 +196,8 @@ function checkExperiencePatternMatch(
     const normalized = f.replace(/\\/g, "/");
     return normalized.includes("/pages/Home") ||
            normalized.includes("/pages/Index") ||
+           normalized.includes("/pages/Dashboard") ||
+           normalized.includes("/features/dashboard") ||
            normalized.includes("/App.tsx") ||
            normalized.includes("/routes/index");
   });
@@ -211,6 +213,7 @@ function checkExperiencePatternMatch(
     const forbiddenHeroPatterns = [
       /<table\b/i,
       /<MetricGrid\b/i,
+      /<MetricCard\b/i,
       /className=".*grid.*grid-cols-[3-9]/,
       /className=".*grid.*col-span/,
     ];
@@ -471,7 +474,7 @@ function checkHeroElementPresence(
   // Hero → expected JSX patterns
   const heroPatterns: Record<string, RegExp[]> = {
     "large-interaction": [/CheckIn|DailyLog|QuickAdd|LogEntry|MoodLogger|HabitLogger|PrimaryAction|hero.*button|button.*hero|btn-primary|button|Book|Reserve|Inquiry|Commission|Discover|Action/i],
-    "progress-visualization": [/ProgressRing|StreakCard|ProgressBar|GoalProgress|CompletionRing/i],
+    "progress-visualization": [/ProgressRing|StreakCard|ProgressBar|CircularProgress|Progress\b|GoalProgress|CompletionRing|progress/i],
     "timeline-scroll": [/Timeline|HistoryList|LogList|EntryList|ActivityFeed|ScrollList|Schedule|Firing|Workflow|EventList|Feed|Activities|Recent|Monograph|Dispatch|Alerts/i],
     "showcase-grid": [/ShowcaseGrid|GalleryGrid|PortfolioGrid|CatalogGrid|ImageGrid|ProductGrid|Collection|Masterwork|Masterpiece/i],
     "metric-cluster": [/MetricCard|MetricGrid|KPICard|StatsRow|TelemetryGrid|DashboardHeader|Highlights|Stat/i],
@@ -583,11 +586,46 @@ function checkContextualEmptyStates(
   return violations;
 }
 
+/**
+ * CHECK 11 — Content Finality / Content Strategist Adherence
+ * Severity: CRITICAL
+ * If src/content/site-content.ts exists on disk, generated .tsx files must import and render from it.
+ */
+function checkContentStrategistAdherence(
+  outputDirectory: string,
+  files: string[],
+): DesignViolation[] {
+  const contentFile = join(outputDirectory, "src", "content", "site-content.ts");
+  if (!existsSync(contentFile)) return [];
+
+  const tsxFiles = files.filter(f => f.endsWith(".tsx") || f.endsWith(".jsx"));
+  let importingFilesCount = 0;
+  for (const f of tsxFiles) {
+    try {
+      const code = readFileSync(f, "utf8");
+      if (/from\s+['"][^'"]*site-content['"]|siteContent\b/.test(code)) {
+        importingFilesCount++;
+      }
+    } catch {}
+  }
+
+  if (importingFilesCount === 0) {
+    return [{
+      check: "content-finality",
+      severity: "CRITICAL",
+      expected: "Generated UI pages must import and render authoritative copy and seed data from src/content/site-content.ts",
+      found: "Zero .tsx files import or reference siteContent — CoderAgent invented unapproved mock copy",
+    }];
+  }
+
+  return [];
+}
+
 // ─── Main gate ────────────────────────────────────────────────────────────────
 
 export class DesignIntentGate {
   /**
-   * Runs all 10 design intent checks against the generated source files.
+   * Runs all design intent checks against the generated source files.
    *
    * @param brief           The locked ProductDesignBrief
    * @param outputDirectory The project output directory (contains src/)
@@ -601,7 +639,7 @@ export class DesignIntentGate {
 
     const allViolations: DesignViolation[] = [];
 
-    // Run all 10 checks
+    // Run all checks
     allViolations.push(
       ...checkForbiddenVocabulary(brief, files),
       ...checkRequiredVocabulary(brief, allSource),
@@ -613,6 +651,7 @@ export class DesignIntentGate {
       ...checkVisualHierarchy(brief, files),
       ...checkHeroElementPresence(brief, files),
       ...checkContextualEmptyStates(brief, files),
+      ...checkContentStrategistAdherence(outputDirectory, files),
     );
 
     const criticalCount = allViolations.filter(v => v.severity === "CRITICAL").length;

@@ -39,9 +39,14 @@ export class ArchitectureAuditor {
     const allDeps = { ...pkgDeps, ...pkgDevDeps };
 
     // 1. Detect Frontend Framework
-    if ("next" in allDeps || existsSync(join(outputDirectory, "next.config.js")) || existsSync(join(outputDirectory, "next.config.ts")) || existsSync(join(outputDirectory, "app")) || existsSync(join(outputDirectory, "pages"))) {
+    const hasNextConfig = existsSync(join(outputDirectory, "next.config.js")) || existsSync(join(outputDirectory, "next.config.mjs")) || existsSync(join(outputDirectory, "next.config.ts"));
+    const hasNextAppRouter = existsSync(join(outputDirectory, "app", "layout.tsx")) || existsSync(join(outputDirectory, "app", "page.tsx"));
+    const hasNextPagesRouter = existsSync(join(outputDirectory, "pages", "_app.tsx")) || existsSync(join(outputDirectory, "pages", "index.tsx"));
+    const hasViteConfig = existsSync(join(outputDirectory, "vite.config.ts")) || existsSync(join(outputDirectory, "vite.config.js")) || existsSync(join(outputDirectory, "vite.config.mjs"));
+
+    if ("next" in allDeps || hasNextConfig || (hasNextAppRouter && !("vite" in allDeps)) || (hasNextPagesRouter && !("vite" in allDeps))) {
       frontendFramework = "Next.js";
-    } else if ("vite" in allDeps || existsSync(join(outputDirectory, "vite.config.ts")) || existsSync(join(outputDirectory, "vite.config.js"))) {
+    } else if ("vite" in allDeps || hasViteConfig) {
       frontendFramework = "React-Vite";
     } else {
       frontendFramework = "HTML";

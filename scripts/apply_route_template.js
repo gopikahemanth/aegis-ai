@@ -1,0 +1,433 @@
+const fs = require('fs');
+const path = require('path');
+
+const targetFile = path.resolve('packages/ai-core/src/governance/fast-sanitizer.ts');
+const raw = fs.readFileSync(targetFile, 'utf8');
+const lines = raw.split(/\r?\n/);
+
+const startIdx = 1792; // 0-indexed: line 1793
+const endIdx = 1956;   // 0-indexed: line 1957
+
+if (!lines[startIdx].includes('const content = `import React')) {
+  console.error('Mismatch at startIdx! Found:', lines[startIdx]);
+  process.exit(1);
+}
+if (!lines[endIdx].trim().startsWith('`;')) {
+  console.error('Mismatch at endIdx! Found:', lines[endIdx]);
+  process.exit(1);
+}
+
+const newTemplateCode = `    // Derive domain context from contract
+    const experiencePattern: string = (contract as any)?.experiencePattern || "";
+    const promptLower = (contract?.prompt || "").toLowerCase();
+
+    // Detect page purpose from route slug + experience pattern
+    const routeLower = routePath.toLowerCase();
+    const isPersonalTracker = experiencePattern === "personal-tracker" ||
+      promptLower.includes("diary") || promptLower.includes("journal") ||
+      promptLower.includes("mood") || promptLower.includes("habit") || promptLower.includes("tracker");
+
+    const isMoodPage = routeLower.includes("mood") || routeLower.includes("emotion") || routeLower.includes("feel");
+    const isJournalPage = routeLower.includes("write") || routeLower.includes("entry") || routeLower.includes("journal");
+    const isStreakPage = routeLower.includes("streak") || routeLower.includes("progress") || routeLower.includes("stats");
+    const isStickerPage = routeLower.includes("sticker") || routeLower.includes("tag") || routeLower.includes("decor");
+    const isCalendarPage = routeLower.includes("calendar") || routeLower.includes("history") || routeLower.includes("timeline");
+    const isThemePage = routeLower.includes("theme") || routeLower.includes("customize") || routeLower.includes("pastel");
+    const isExportPage = routeLower.includes("export") || routeLower.includes("download") || routeLower.includes("backup");
+    const isEncryptPage = routeLower.includes("encrypt") || routeLower.includes("lock") || routeLower.includes("security");
+    const isPromptPage = routeLower.includes("prompt") || routeLower.includes("reflect") || routeLower.includes("inspire");
+
+    let stateDecls = "";
+    let pageHeading = pageTitle;
+    let pageSubtitle = "";
+    let mainJSX = "";
+
+    if (isPersonalTracker) {
+      if (isMoodPage) {
+        pageHeading = "How are you feeling today?";
+        pageSubtitle = "Pick a mood that matches your vibe — there's no wrong answer. 🌈";
+        stateDecls = \`  const moods = [
+    { emoji: "😴", label: "Tired" }, { emoji: "😔", label: "Low" }, { emoji: "😐", label: "Okay" },
+    { emoji: "😊", label: "Good" }, { emoji: "😄", label: "Great" }, { emoji: "🌟", label: "Amazing" },
+  ];
+  const [selectedMood, setSelectedMood] = React.useState<string>("");
+  const [note, setNote] = React.useState<string>("");
+  const [saved, setSaved] = React.useState(false);
+  const saveMood = () => { if (!selectedMood) return; setSaved(true); setTimeout(() => setSaved(false), 3000); setSelectedMood(""); setNote(""); };\`;
+        mainJSX = \`
+    <div style={{minHeight:"100vh",background:"var(--color-background,#fdf6ff)",color:"var(--color-text-primary,#1e1a2e)"}}>
+      <header style={{background:"var(--color-surface,#fff)",borderBottom:"1px solid var(--color-border,#e9d8fd)",padding:"1rem 1.5rem",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:20}}>
+        <Link to="/" style={{fontWeight:700,fontSize:"1.125rem",color:"var(--color-text-primary,#1e1a2e)",textDecoration:"none"}}>🌸 \${domainTitle}</Link>
+        <span style={{fontSize:"0.875rem",color:"var(--color-text-muted,#9ca3af)"}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</span>
+      </header>
+      <main style={{maxWidth:"640px",margin:"0 auto",padding:"2rem 1.5rem"}}>
+        <p style={{fontSize:"0.875rem",color:"var(--color-text-muted,#9ca3af)",marginBottom:"0.25rem"}}>Today · {new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
+        <h1 style={{fontSize:"clamp(1.75rem,4vw,2.5rem)",fontWeight:800,marginBottom:"0.5rem"}}>\${pageHeading}</h1>
+        <p style={{color:"var(--color-text-muted,#9ca3af)",marginBottom:"2rem"}}>\${pageSubtitle}</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1rem",marginBottom:"2rem"}}>
+          {moods.map(m => (
+            <button key={m.label} onClick={() => setSelectedMood(m.label)}
+              style={{padding:"1.25rem 0.5rem",borderRadius:"1rem",border:\\\`2px solid \\\${selectedMood===m.label?"var(--color-primary,#a855f7)":"var(--color-border,#e9d8fd)"}\\\`,background:selectedMood===m.label?"var(--color-primary-subtle,#f3e8ff)":"var(--color-surface,#fff)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"0.375rem",transition:"all 0.15s"}}>
+              <span style={{fontSize:"2rem"}}>{m.emoji}</span>
+              <span style={{fontSize:"0.75rem",fontWeight:600,color:selectedMood===m.label?"var(--color-primary,#a855f7)":"var(--color-text-muted,#9ca3af)"}}>{m.label}</span>
+            </button>
+          ))}
+        </div>
+        <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3} placeholder="Add a note about your mood (optional)..."
+          style={{width:"100%",padding:"0.875rem",borderRadius:"0.75rem",border:"1px solid var(--color-border,#e9d8fd)",background:"var(--color-surface,#fff)",fontSize:"0.9375rem",resize:"vertical",marginBottom:"1rem",boxSizing:"border-box",color:"var(--color-text-primary,#1e1a2e)"}}/>
+        {saved && <div style={{padding:"0.75rem 1rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"0.75rem",color:"#15803d",fontSize:"0.875rem",marginBottom:"1rem"}}>✅ Mood saved! Keep shining. ✨</div>}
+        <button onClick={saveMood} disabled={!selectedMood}
+          style={{width:"100%",padding:"0.875rem",borderRadius:"0.875rem",background:"var(--color-primary,#a855f7)",color:"#fff",fontWeight:700,fontSize:"1rem",border:"none",cursor:selectedMood?"pointer":"not-allowed",opacity:selectedMood?1:0.5,transition:"opacity 0.15s"}}>
+          Save Mood ✨
+        </button>
+      </main>
+    </div>\`;
+      } else if (isJournalPage) {
+        pageHeading = "What's on your mind today?";
+        pageSubtitle = "Write freely — your diary is a safe space. ✍️";
+        stateDecls = \`  const [entryText, setEntryText] = React.useState<string>("");
+  const [selectedMood, setSelectedMood] = React.useState<string>("😊");
+  const [tags, setTags] = React.useState<string[]>([]);
+  const [saved, setSaved] = React.useState(false);
+  const tagOptions = ["grateful","anxious","excited","reflective","happy","calm"];
+  const saveEntry = () => { if (!entryText.trim()) return; setSaved(true); setTimeout(() => setSaved(false), 3000); setEntryText(""); setTags([]); };\`;
+        mainJSX = \`
+    <div style={{minHeight:"100vh",background:"var(--color-background,#fdf6ff)",color:"var(--color-text-primary,#1e1a2e)"}}>
+      <header style={{background:"var(--color-surface,#fff)",borderBottom:"1px solid var(--color-border,#e9d8fd)",padding:"1rem 1.5rem",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:20}}>
+        <Link to="/" style={{fontWeight:700,fontSize:"1.125rem",color:"var(--color-text-primary,#1e1a2e)",textDecoration:"none"}}>📖 \${domainTitle}</Link>
+        <span style={{fontSize:"0.875rem",color:"var(--color-text-muted,#9ca3af)"}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</span>
+      </header>
+      <main style={{maxWidth:"720px",margin:"0 auto",padding:"2rem 1.5rem"}}>
+        <p style={{fontSize:"0.875rem",color:"var(--color-text-muted,#9ca3af)",marginBottom:"0.25rem"}}>Today · {new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
+        <h1 style={{fontSize:"clamp(1.75rem,4vw,2.25rem)",fontWeight:800,marginBottom:"0.25rem"}}>\${pageHeading}</h1>
+        <p style={{color:"var(--color-text-muted,#9ca3af)",marginBottom:"1.5rem"}}>\${pageSubtitle}</p>
+        <div style={{display:"flex",gap:"0.75rem",marginBottom:"1rem",flexWrap:"wrap"}}>
+          {["😊","🌟","😔","😄","😴","🥰"].map(e => (
+            <button key={e} onClick={()=>setSelectedMood(e)}
+              style={{padding:"0.375rem 0.75rem",borderRadius:"2rem",border:\\\`2px solid \\\${selectedMood===e?"var(--color-primary,#a855f7)":"var(--color-border,#e9d8fd)"}\\\`,background:selectedMood===e?"var(--color-primary-subtle,#f3e8ff)":"var(--color-surface,#fff)",cursor:"pointer",fontSize:"1.125rem",transition:"all 0.15s"}}>
+              {e}
+            </button>
+          ))}
+        </div>
+        <textarea value={entryText} onChange={e=>setEntryText(e.target.value)} rows={10}
+          placeholder="Start writing... your thoughts are safe here. 🌿"
+          style={{width:"100%",padding:"1.25rem",borderRadius:"1rem",border:"1px solid var(--color-border,#e9d8fd)",background:"var(--color-surface,#fff)",fontSize:"1rem",lineHeight:1.7,resize:"vertical",marginBottom:"1rem",boxSizing:"border-box",color:"var(--color-text-primary,#1e1a2e)"}}/>
+        <div style={{display:"flex",gap:"0.5rem",marginBottom:"1rem",flexWrap:"wrap"}}>
+          {tagOptions.map(t => (
+            <button key={t} onClick={()=>setTags(prev=>prev.includes(t)?prev.filter(x=>x!==t):[...prev,t])}
+              style={{padding:"0.375rem 0.875rem",borderRadius:"2rem",border:"1px solid var(--color-border,#e9d8fd)",background:tags.includes(t)?"var(--color-primary,#a855f7)":"var(--color-surface,#fff)",color:tags.includes(t)?"#fff":"var(--color-text-secondary,#6b7280)",fontSize:"0.8125rem",fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
+              #{t}
+            </button>
+          ))}
+        </div>
+        {saved && <div style={{padding:"0.75rem 1rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"0.75rem",color:"#15803d",fontSize:"0.875rem",marginBottom:"1rem"}}>📝 Entry saved! ✨</div>}
+        <button onClick={saveEntry}
+          style={{padding:"0.875rem 2rem",borderRadius:"0.875rem",background:"var(--color-primary,#a855f7)",color:"#fff",fontWeight:700,fontSize:"0.9375rem",border:"none",cursor:"pointer"}}>
+          Save Entry 💾
+        </button>
+      </main>
+    </div>\`;
+      } else if (isStreakPage) {
+        pageHeading = "Your Writing Journey 🔥";
+        pageSubtitle = "Every entry is a step forward. Keep the streak alive!";
+        stateDecls = \`  const [currentStreak] = React.useState(12);
+  const [totalEntries] = React.useState(47);
+  const [longestStreak] = React.useState(21);
+  const weekData = [3,5,4,6,5,7,4].map((v,i) => ({ day: ["M","T","W","T","F","S","S"][i], entries: v }));\`;
+        mainJSX = \`
+    <div style={{minHeight:"100vh",background:"var(--color-background,#fdf6ff)",color:"var(--color-text-primary,#1e1a2e)"}}>
+      <header style={{background:"var(--color-surface,#fff)",borderBottom:"1px solid var(--color-border,#e9d8fd)",padding:"1rem 1.5rem",display:"flex",alignItems:"center",gap:"0.75rem",position:"sticky",top:0,zIndex:20}}>
+        <Link to="/" style={{fontWeight:700,fontSize:"1.125rem",color:"var(--color-text-primary,#1e1a2e)",textDecoration:"none"}}>← \${domainTitle}</Link>
+      </header>
+      <main style={{maxWidth:"640px",margin:"0 auto",padding:"2rem 1.5rem"}}>
+        <h1 style={{fontSize:"clamp(1.75rem,4vw,2.5rem)",fontWeight:800,marginBottom:"0.5rem"}}>\${pageHeading}</h1>
+        <p style={{color:"var(--color-text-muted,#9ca3af)",marginBottom:"2rem"}}>\${pageSubtitle}</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1rem",marginBottom:"2rem"}}>
+          {[{icon:"🔥",label:"Current Streak",value:currentStreak,unit:"days"},{icon:"📖",label:"Total Entries",value:totalEntries,unit:"entries"},{icon:"🏆",label:"Longest Streak",value:longestStreak,unit:"days"}].map(s=>(
+            <div key={s.label} style={{background:"var(--color-surface,#fff)",border:"1px solid var(--color-border,#e9d8fd)",borderRadius:"1rem",padding:"1.25rem",textAlign:"center"}}>
+              <div style={{fontSize:"2rem",marginBottom:"0.25rem"}}>{s.icon}</div>
+              <div style={{fontSize:"1.75rem",fontWeight:800,color:"var(--color-primary,#a855f7)"}}>{s.value}</div>
+              <div style={{fontSize:"0.75rem",color:"var(--color-text-muted,#9ca3af)",fontWeight:600}}>{s.unit}</div>
+              <div style={{fontSize:"0.6875rem",color:"var(--color-text-muted,#9ca3af)",marginTop:"0.125rem"}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{background:"var(--color-surface,#fff)",border:"1px solid var(--color-border,#e9d8fd)",borderRadius:"1rem",padding:"1.5rem"}}>
+          <h2 style={{fontWeight:700,marginBottom:"1rem",fontSize:"1rem"}}>This Week's Activity</h2>
+          <div style={{display:"flex",gap:"0.5rem",alignItems:"flex-end",height:"80px"}}>
+            {weekData.map(d=>(
+              <div key={d.day} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:"0.25rem"}}>
+                <div style={{width:"100%",background:"var(--color-primary,#a855f7)",borderRadius:"0.375rem",height:\\\`\\\${(d.entries/7)*100}%\\\`,minHeight:"4px",opacity:0.8}}/>
+                <span style={{fontSize:"0.6875rem",color:"var(--color-text-muted,#9ca3af)",fontWeight:600}}>{d.day}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+    </div>\`;
+      } else if (isStickerPage) {
+        pageHeading = "Decorate Your Entry ✨";
+        pageSubtitle = "Choose stickers and tags to express your vibe.";
+        stateDecls = \`  const stickerCategories = [
+    { name: "Nature", stickers: ["🌸","🌻","🍃","🌙","⭐","🌈"] },
+    { name: "Feelings", stickers: ["💖","😊","🥰","💫","🌟","✨"] },
+    { name: "Activities", stickers: ["📚","🎵","🏃","☕","🎨","🧘"] },
+  ];
+  const [activeCategory, setActiveCategory] = React.useState<string>("Nature");
+  const [selectedStickers, setSelectedStickers] = React.useState<string[]>([]);
+  const toggleSticker = (s: string) => setSelectedStickers(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);\`;
+        mainJSX = \`
+    <div style={{minHeight:"100vh",background:"var(--color-background,#fdf6ff)",color:"var(--color-text-primary,#1e1a2e)"}}>
+      <header style={{background:"var(--color-surface,#fff)",borderBottom:"1px solid var(--color-border,#e9d8fd)",padding:"1rem 1.5rem",display:"flex",alignItems:"center",gap:"0.75rem",position:"sticky",top:0,zIndex:20}}>
+        <Link to="/" style={{fontWeight:700,fontSize:"1.125rem",color:"var(--color-text-primary,#1e1a2e)",textDecoration:"none"}}>← \${domainTitle}</Link>
+      </header>
+      <main style={{maxWidth:"640px",margin:"0 auto",padding:"2rem 1.5rem"}}>
+        <h1 style={{fontSize:"clamp(1.75rem,4vw,2.5rem)",fontWeight:800,marginBottom:"0.5rem"}}>\${pageHeading}</h1>
+        <p style={{color:"var(--color-text-muted,#9ca3af)",marginBottom:"1.5rem"}}>\${pageSubtitle}</p>
+        {selectedStickers.length > 0 && (
+          <div style={{padding:"1rem",background:"var(--color-surface,#fff)",border:"1px solid var(--color-border,#e9d8fd)",borderRadius:"1rem",marginBottom:"1.5rem",display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
+            {selectedStickers.map((s,i)=>(<span key={i} style={{fontSize:"1.75rem"}}>{s}</span>))}
+          </div>
+        )}
+        <div style={{display:"flex",gap:"0.5rem",marginBottom:"1rem"}}>
+          {stickerCategories.map(c=>(
+            <button key={c.name} onClick={()=>setActiveCategory(c.name)}
+              style={{padding:"0.375rem 0.875rem",borderRadius:"2rem",border:"1px solid var(--color-border,#e9d8fd)",background:activeCategory===c.name?"var(--color-primary,#a855f7)":"var(--color-surface,#fff)",color:activeCategory===c.name?"#fff":"var(--color-text-secondary,#6b7280)",fontSize:"0.8125rem",fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
+              {c.name}
+            </button>
+          ))}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:"0.75rem",background:"var(--color-surface,#fff)",border:"1px solid var(--color-border,#e9d8fd)",borderRadius:"1rem",padding:"1.25rem"}}>
+          {(stickerCategories.find(c=>c.name===activeCategory)?.stickers||[]).map(s=>(
+            <button key={s} onClick={()=>toggleSticker(s)}
+              style={{fontSize:"1.75rem",padding:"0.5rem",borderRadius:"0.75rem",border:\\\`2px solid \\\${selectedStickers.includes(s)?"var(--color-primary,#a855f7)":"transparent"}\\\`,background:selectedStickers.includes(s)?"var(--color-primary-subtle,#f3e8ff)":"transparent",cursor:"pointer",transition:"all 0.15s"}}>
+              {s}
+            </button>
+          ))}
+        </div>
+      </main>
+    </div>\`;
+      } else if (isThemePage) {
+        pageHeading = "Choose Your Palette 🎨";
+        pageSubtitle = "Make your diary feel like home. Pick a color theme you love.";
+        stateDecls = \`  const themes = [
+    { name: "Rosé", bg: "#fff1f2", primary: "#f43f5e" },
+    { name: "Lavender", bg: "#f5f3ff", primary: "#8b5cf6" },
+    { name: "Peach", bg: "#fff7ed", primary: "#f97316" },
+    { name: "Sage", bg: "#f0fdf4", primary: "#22c55e" },
+    { name: "Sky", bg: "#f0f9ff", primary: "#0ea5e9" },
+    { name: "Honey", bg: "#fffbeb", primary: "#f59e0b" },
+  ];
+  const [activeTheme, setActiveTheme] = React.useState<string>("Rosé");\`;
+        mainJSX = \`
+    <div style={{minHeight:"100vh",background:"var(--color-background,#fdf6ff)",color:"var(--color-text-primary,#1e1a2e)"}}>
+      <header style={{background:"var(--color-surface,#fff)",borderBottom:"1px solid var(--color-border,#e9d8fd)",padding:"1rem 1.5rem",display:"flex",alignItems:"center",gap:"0.75rem",position:"sticky",top:0,zIndex:20}}>
+        <Link to="/" style={{fontWeight:700,fontSize:"1.125rem",color:"var(--color-text-primary,#1e1a2e)",textDecoration:"none"}}>← \${domainTitle}</Link>
+      </header>
+      <main style={{maxWidth:"640px",margin:"0 auto",padding:"2rem 1.5rem"}}>
+        <h1 style={{fontSize:"clamp(1.75rem,4vw,2.5rem)",fontWeight:800,marginBottom:"0.5rem"}}>\${pageHeading}</h1>
+        <p style={{color:"var(--color-text-muted,#9ca3af)",marginBottom:"2rem"}}>\${pageSubtitle}</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:"1rem"}}>
+          {themes.map(t=>(
+            <button key={t.name} onClick={()=>setActiveTheme(t.name)}
+              style={{padding:"1.5rem",borderRadius:"1rem",border:\\\`3px solid \\\${activeTheme===t.name?t.primary:"transparent"}\\\`,background:t.bg,cursor:"pointer",textAlign:"left",transition:"all 0.2s",boxShadow:activeTheme===t.name?"0 0 0 4px "+t.primary+"33":"none"}}>
+              <div style={{width:"2rem",height:"2rem",borderRadius:"50%",background:t.primary,marginBottom:"0.75rem"}}/>
+              <div style={{fontWeight:700,color:"#1e1a2e"}}>{t.name}</div>
+              <div style={{fontSize:"0.75rem",color:"#6b7280",marginTop:"0.125rem"}}>{activeTheme===t.name?"✓ Active":"Tap to apply"}</div>
+            </button>
+          ))}
+        </div>
+      </main>
+    </div>\`;
+      } else if (isExportPage) {
+        pageHeading = "Export Your Diary 📦";
+        pageSubtitle = "Download your memories as a PDF, Markdown, or JSON file.";
+        stateDecls = \`  const [format, setFormat] = React.useState<"pdf"|"md"|"json">("pdf");
+  const [dateRange, setDateRange] = React.useState<"all"|"month"|"year">("all");
+  const [exporting, setExporting] = React.useState(false);
+  const [done, setDone] = React.useState(false);
+  const handleExport = () => { setExporting(true); setTimeout(() => { setExporting(false); setDone(true); setTimeout(() => setDone(false), 3000); }, 1500); };\`;
+        mainJSX = \`
+    <div style={{minHeight:"100vh",background:"var(--color-background,#fdf6ff)",color:"var(--color-text-primary,#1e1a2e)"}}>
+      <header style={{background:"var(--color-surface,#fff)",borderBottom:"1px solid var(--color-border,#e9d8fd)",padding:"1rem 1.5rem",display:"flex",alignItems:"center",gap:"0.75rem",position:"sticky",top:0,zIndex:20}}>
+        <Link to="/" style={{fontWeight:700,fontSize:"1.125rem",color:"var(--color-text-primary,#1e1a2e)",textDecoration:"none"}}>← \${domainTitle}</Link>
+      </header>
+      <main style={{maxWidth:"560px",margin:"0 auto",padding:"2rem 1.5rem"}}>
+        <h1 style={{fontSize:"clamp(1.75rem,4vw,2.5rem)",fontWeight:800,marginBottom:"0.5rem"}}>\${pageHeading}</h1>
+        <p style={{color:"var(--color-text-muted,#9ca3af)",marginBottom:"2rem"}}>\${pageSubtitle}</p>
+        <div style={{background:"var(--color-surface,#fff)",border:"1px solid var(--color-border,#e9d8fd)",borderRadius:"1rem",padding:"1.5rem",marginBottom:"1.5rem",display:"flex",flexDirection:"column",gap:"1.25rem"}}>
+          <div>
+            <label style={{display:"block",fontWeight:600,marginBottom:"0.5rem",fontSize:"0.875rem"}}>Format</label>
+            <div style={{display:"flex",gap:"0.5rem"}}>
+              {(["pdf","md","json"] as const).map(f=>(
+                <button key={f} onClick={()=>setFormat(f)} style={{padding:"0.5rem 1rem",borderRadius:"0.625rem",border:\\\`2px solid \\\${format===f?"var(--color-primary,#a855f7)":"var(--color-border,#e9d8fd)"}\\\`,background:format===f?"var(--color-primary-subtle,#f3e8ff)":"var(--color-surface,#fff)",fontWeight:600,fontSize:"0.875rem",cursor:"pointer",textTransform:"uppercase",color:format===f?"var(--color-primary,#a855f7)":"var(--color-text-secondary,#6b7280)"}}>
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={{display:"block",fontWeight:600,marginBottom:"0.5rem",fontSize:"0.875rem"}}>Date Range</label>
+            <div style={{display:"flex",gap:"0.5rem"}}>
+              {(["all","month","year"] as const).map(r=>(
+                <button key={r} onClick={()=>setDateRange(r)} style={{padding:"0.5rem 1rem",borderRadius:"0.625rem",border:\\\`2px solid \\\${dateRange===r?"var(--color-primary,#a855f7)":"var(--color-border,#e9d8fd)"}\\\`,background:dateRange===r?"var(--color-primary-subtle,#f3e8ff)":"var(--color-surface,#fff)",fontWeight:600,fontSize:"0.875rem",cursor:"pointer",color:dateRange===r?"var(--color-primary,#a855f7)":"var(--color-text-secondary,#6b7280)"}}>
+                  {r==="all"?"All time":r==="month"?"This month":"This year"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        {done && <div style={{padding:"0.75rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"0.75rem",color:"#15803d",fontSize:"0.875rem",marginBottom:"1rem"}}>✅ Export ready! Check your downloads.</div>}
+        <button onClick={handleExport} disabled={exporting}
+          style={{width:"100%",padding:"0.875rem",borderRadius:"0.875rem",background:"var(--color-primary,#a855f7)",color:"#fff",fontWeight:700,fontSize:"1rem",border:"none",cursor:exporting?"wait":"pointer",opacity:exporting?0.7:1}}>
+          {exporting?"⏳ Preparing...":"Download "+format.toUpperCase()+" 📥"}
+        </button>
+      </main>
+    </div>\`;
+      } else if (isEncryptPage) {
+        pageHeading = "Lock Your Diary 🔐";
+        pageSubtitle = "Set a passphrase to keep your entries private and secure.";
+        stateDecls = \`  const [passphrase, setPassphrase] = React.useState<string>("");
+  const [confirm, setConfirm] = React.useState<string>("");
+  const [locked, setLocked] = React.useState(false);
+  const [error, setError] = React.useState<string>("");
+  const handleLock = () => {
+    if (passphrase.length < 6) { setError("Passphrase must be at least 6 characters."); return; }
+    if (passphrase !== confirm) { setError("Passphrases do not match."); return; }
+    setError(""); setLocked(true); setTimeout(() => setLocked(false), 3000); setPassphrase(""); setConfirm("");
+  };;\`;
+        mainJSX = \`
+    <div style={{minHeight:"100vh",background:"var(--color-background,#fdf6ff)",color:"var(--color-text-primary,#1e1a2e)"}}>
+      <header style={{background:"var(--color-surface,#fff)",borderBottom:"1px solid var(--color-border,#e9d8fd)",padding:"1rem 1.5rem",display:"flex",alignItems:"center",gap:"0.75rem",position:"sticky",top:0,zIndex:20}}>
+        <Link to="/" style={{fontWeight:700,fontSize:"1.125rem",color:"var(--color-text-primary,#1e1a2e)",textDecoration:"none"}}>← \${domainTitle}</Link>
+      </header>
+      <main style={{maxWidth:"480px",margin:"0 auto",padding:"2rem 1.5rem"}}>
+        <h1 style={{fontSize:"clamp(1.75rem,4vw,2.5rem)",fontWeight:800,marginBottom:"0.5rem"}}>\${pageHeading}</h1>
+        <p style={{color:"var(--color-text-muted,#9ca3af)",marginBottom:"2rem"}}>\${pageSubtitle}</p>
+        <div style={{background:"var(--color-surface,#fff)",border:"1px solid var(--color-border,#e9d8fd)",borderRadius:"1rem",padding:"1.5rem",display:"flex",flexDirection:"column",gap:"1rem"}}>
+          <div>
+            <label style={{display:"block",fontWeight:600,marginBottom:"0.375rem",fontSize:"0.875rem"}}>Passphrase</label>
+            <input type="password" value={passphrase} onChange={e=>setPassphrase(e.target.value)} placeholder="Enter passphrase..."
+              style={{width:"100%",padding:"0.75rem 1rem",borderRadius:"0.75rem",border:"1px solid var(--color-border,#e9d8fd)",background:"var(--color-background,#fdf6ff)",fontSize:"0.9375rem",boxSizing:"border-box",color:"var(--color-text-primary,#1e1a2e)"}}/>
+          </div>
+          <div>
+            <label style={{display:"block",fontWeight:600,marginBottom:"0.375rem",fontSize:"0.875rem"}}>Confirm Passphrase</label>
+            <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Confirm passphrase..."
+              style={{width:"100%",padding:"0.75rem 1rem",borderRadius:"0.75rem",border:"1px solid var(--color-border,#e9d8fd)",background:"var(--color-background,#fdf6ff)",fontSize:"0.9375rem",boxSizing:"border-box",color:"var(--color-text-primary,#1e1a2e)"}}/>
+          </div>
+          {error&&<div style={{padding:"0.625rem 0.875rem",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:"0.625rem",color:"#dc2626",fontSize:"0.875rem"}}>{error}</div>}
+          {locked&&<div style={{padding:"0.625rem 0.875rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"0.625rem",color:"#15803d",fontSize:"0.875rem"}}>🔐 Diary locked successfully!</div>}
+          <button onClick={handleLock} style={{padding:"0.875rem",borderRadius:"0.875rem",background:"var(--color-primary,#a855f7)",color:"#fff",fontWeight:700,border:"none",cursor:"pointer"}}>
+            Lock Diary 🔐
+          </button>
+        </div>
+      </main>
+    </div>\`;
+      } else if (isPromptPage) {
+        pageHeading = "Today's Reflection Prompt ✨";
+        pageSubtitle = "Let a thoughtful question guide your writing today.";
+        stateDecls = \`  const prompts = [
+    "What moment today made you smile, even briefly?",
+    "Describe one thing you're grateful for right now.",
+    "What's something you want to let go of today?",
+    "If today had a color, what would it be and why?",
+    "What did you learn about yourself this week?",
+  ];
+  const [promptIndex, setPromptIndex] = React.useState<number>(0);
+  const [response, setResponse] = React.useState<string>("");
+  const [saved, setSaved] = React.useState(false);
+  const nextPrompt = () => setPromptIndex(i => (i + 1) % prompts.length);
+  const saveResponse = () => { if (!response.trim()) return; setSaved(true); setTimeout(() => setSaved(false), 3000); setResponse(""); };\`;
+        mainJSX = \`
+    <div style={{minHeight:"100vh",background:"var(--color-background,#fdf6ff)",color:"var(--color-text-primary,#1e1a2e)"}}>
+      <header style={{background:"var(--color-surface,#fff)",borderBottom:"1px solid var(--color-border,#e9d8fd)",padding:"1rem 1.5rem",display:"flex",alignItems:"center",gap:"0.75rem",position:"sticky",top:0,zIndex:20}}>
+        <Link to="/" style={{fontWeight:700,fontSize:"1.125rem",color:"var(--color-text-primary,#1e1a2e)",textDecoration:"none"}}>← \${domainTitle}</Link>
+      </header>
+      <main style={{maxWidth:"640px",margin:"0 auto",padding:"2rem 1.5rem"}}>
+        <h1 style={{fontSize:"clamp(1.75rem,4vw,2.5rem)",fontWeight:800,marginBottom:"0.5rem"}}>\${pageHeading}</h1>
+        <p style={{color:"var(--color-text-muted,#9ca3af)",marginBottom:"1.5rem"}}>\${pageSubtitle}</p>
+        <div style={{background:"linear-gradient(135deg,var(--color-primary,#a855f7)22,var(--color-primary,#a855f7)11)",border:"2px solid var(--color-primary,#a855f7)33",borderRadius:"1.25rem",padding:"2rem",marginBottom:"1.5rem"}}>
+          <span style={{fontSize:"1.5rem",display:"block",marginBottom:"0.75rem"}}>💭</span>
+          <p style={{fontSize:"1.125rem",fontWeight:600,lineHeight:1.6,color:"var(--color-text-primary,#1e1a2e)",marginBottom:"1rem"}}>{prompts[promptIndex]}</p>
+          <button onClick={nextPrompt} style={{padding:"0.5rem 1rem",borderRadius:"2rem",border:"1px solid var(--color-primary,#a855f7)",background:"transparent",color:"var(--color-primary,#a855f7)",fontWeight:600,fontSize:"0.875rem",cursor:"pointer"}}>
+            New prompt ✨
+          </button>
+        </div>
+        <textarea value={response} onChange={e=>setResponse(e.target.value)} rows={6} placeholder="Write your reflection here..."
+          style={{width:"100%",padding:"1rem",borderRadius:"1rem",border:"1px solid var(--color-border,#e9d8fd)",background:"var(--color-surface,#fff)",fontSize:"0.9375rem",lineHeight:1.7,resize:"vertical",marginBottom:"1rem",boxSizing:"border-box",color:"var(--color-text-primary,#1e1a2e)"}}/>
+        {saved&&<div style={{padding:"0.75rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"0.75rem",color:"#15803d",fontSize:"0.875rem",marginBottom:"1rem"}}>✅ Reflection saved!</div>}
+        <button onClick={saveResponse} style={{padding:"0.875rem 2rem",borderRadius:"0.875rem",background:"var(--color-primary,#a855f7)",color:"#fff",fontWeight:700,border:"none",cursor:"pointer"}}>
+          Save Reflection 💾
+        </button>
+      </main>
+    </div>\`;
+      } else {
+        pageHeading = pageTitle;
+        pageSubtitle = "Continue your journaling journey. 📖";
+        stateDecls = \`  const [inputValue, setInputValue] = React.useState<string>("");
+  const [saved, setSaved] = React.useState(false);
+  const handleSave = () => { if (!inputValue.trim()) return; setSaved(true); setTimeout(() => setSaved(false), 3000); setInputValue(""); };\`;
+        mainJSX = \`
+    <div style={{minHeight:"100vh",background:"var(--color-background,#fdf6ff)",color:"var(--color-text-primary,#1e1a2e)"}}>
+      <header style={{background:"var(--color-surface,#fff)",borderBottom:"1px solid var(--color-border,#e9d8fd)",padding:"1rem 1.5rem",display:"flex",alignItems:"center",gap:"0.75rem",position:"sticky",top:0,zIndex:20}}>
+        <Link to="/" style={{fontWeight:700,fontSize:"1.125rem",color:"var(--color-text-primary,#1e1a2e)",textDecoration:"none"}}>🌸 \${domainTitle}</Link>
+      </header>
+      <main style={{maxWidth:"640px",margin:"0 auto",padding:"2rem 1.5rem"}}>
+        <h1 style={{fontSize:"clamp(1.75rem,4vw,2.5rem)",fontWeight:800,marginBottom:"0.5rem"}}>\${pageHeading}</h1>
+        <p style={{color:"var(--color-text-muted,#9ca3af)",marginBottom:"2rem"}}>\${pageSubtitle}</p>
+        <div style={{background:"var(--color-surface,#fff)",border:"1px solid var(--color-border,#e9d8fd)",borderRadius:"1rem",padding:"1.5rem"}}>
+          <textarea value={inputValue} onChange={e=>setInputValue(e.target.value)} rows={6} placeholder="Write something wonderful... ✨"
+            style={{width:"100%",padding:"1rem",borderRadius:"0.75rem",border:"1px solid var(--color-border,#e9d8fd)",background:"var(--color-background,#fdf6ff)",fontSize:"0.9375rem",lineHeight:1.7,resize:"vertical",marginBottom:"1rem",boxSizing:"border-box",color:"var(--color-text-primary,#1e1a2e)"}}/>
+          {saved&&<div style={{padding:"0.75rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"0.75rem",color:"#15803d",fontSize:"0.875rem",marginBottom:"1rem"}}>✅ Saved! 🌟</div>}
+          <button onClick={handleSave} style={{padding:"0.875rem 2rem",borderRadius:"0.875rem",background:"var(--color-primary,#a855f7)",color:"#fff",fontWeight:700,border:"none",cursor:"pointer"}}>
+            Save 💾
+          </button>
+        </div>
+      </main>
+    </div>\`;
+      }
+    } else {
+      pageHeading = pageTitle;
+      stateDecls = \`  const [inputValue, setInputValue] = React.useState<string>("");
+  const [submitted, setSubmitted] = React.useState(false);
+  const handleAction = (e: React.FormEvent) => { e.preventDefault(); if (!inputValue.trim()) return; setSubmitted(true); setTimeout(() => setSubmitted(false), 3000); setInputValue(""); };\`;
+      mainJSX = \`
+    <div style={{minHeight:"100vh",background:"var(--color-background,#f8fafc)",color:"var(--color-text-primary,#0f172a)"}}>
+      <header style={{background:"var(--color-surface,#fff)",borderBottom:"1px solid var(--color-border,rgba(0,0,0,0.08))",padding:"1rem 1.5rem",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:20}}>
+        <Link to="/" style={{fontWeight:700,fontSize:"1.125rem",color:"var(--color-text-primary,#0f172a)",textDecoration:"none"}}>← \${domainTitle}</Link>
+      </header>
+      <main style={{maxWidth:"900px",margin:"0 auto",padding:"2rem 1.5rem"}}>
+        <h1 style={{fontSize:"clamp(1.5rem,3vw,2rem)",fontWeight:800,marginBottom:"0.375rem"}}>\${pageTitle}</h1>
+        <p style={{color:"var(--color-text-muted,#64748b)",marginBottom:"2rem",fontSize:"0.9375rem"}}>\${pageTitle} overview and interaction workspace.</p>
+        <form onSubmit={handleAction} style={{background:"var(--color-surface,#fff)",border:"1px solid var(--color-border,rgba(0,0,0,0.08))",borderRadius:"1rem",padding:"1.5rem",display:"flex",flexDirection:"column",gap:"1rem"}}>
+          <textarea value={inputValue} onChange={e=>setInputValue(e.target.value)} rows={4}
+            placeholder={\\\`Enter details for \\\${pageTitle.toLowerCase()}...\\\`}
+            style={{width:"100%",padding:"0.875rem",borderRadius:"0.75rem",border:"1px solid var(--color-border,rgba(0,0,0,0.12))",background:"var(--color-background,#f8fafc)",fontSize:"0.9375rem",resize:"vertical",boxSizing:"border-box",color:"var(--color-text-primary,#0f172a)"}}/>
+          {submitted&&<div style={{padding:"0.75rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"0.75rem",color:"#15803d",fontSize:"0.875rem"}}>✅ Updated successfully.</div>}
+          <button type="submit" style={{alignSelf:"flex-start",padding:"0.75rem 1.5rem",borderRadius:"0.75rem",background:"var(--color-primary,#6366f1)",color:"#fff",fontWeight:600,border:"none",cursor:"pointer",fontSize:"0.9375rem"}}>
+            Update
+          </button>
+        </form>
+      </main>
+    </div>\`;
+    }
+
+    const content = \\\`import React from "react";
+import { Link } from "react-router-dom";
+
+export function \\\${pascal}() {
+\\\${stateDecls}
+
+  return (\\\${mainJSX}
+  );
+}
+
+export default \\\${pascal};
+\\\`;\`;
+
+const before = lines.slice(0, startIdx);
+const after = lines.slice(endIdx + 1);
+
+const result = before.join('\n') + '\n' + newTemplateCode + '\n' + after.join('\n');
+fs.writeFileSync(targetFile, result, 'utf8');
+console.log('Successfully patched fast-sanitizer.ts!');

@@ -87,10 +87,12 @@ export class SemanticDuplicateDetector {
     const norm = filePath.replace(/\\/g, "/");
     // 1. Authorized in CanonicalFileGraph
     if (CanonicalFileGraph.isAuthorized(norm)) return true;
-    // 2. Design system files
-    if (norm.startsWith("src/design-system/")) return true;
-    // 3. Configuration & Tooling files
-    if (/(vite|tailwind|postcss|tsconfig|eslint|prettier)\.config\./i.test(norm)) return true;
+    // 2. Design system files & Content Strategist copy
+    if (norm.startsWith("src/design-system/") || norm.startsWith("src/content/")) return true;
+    // 3. Test suites
+    if (norm.startsWith("src/__tests__/") || norm.startsWith("test/")) return true;
+    // 4. Configuration & Tooling files
+    if (/(vite|tailwind|postcss|tsconfig|eslint|prettier|vitest)\.config\./i.test(norm)) return true;
     if (norm === "package.json" || norm === "index.html" || norm.endsWith(".d.ts")) return true;
     // 4. Contract artifacts & Dotfiles
     if (norm.startsWith(".aegis/") || norm.startsWith("prisma/") || norm.startsWith(".")) return true;

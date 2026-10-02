@@ -179,9 +179,9 @@ TASK LIMIT: Maximum 4 tasks.
   If the product has 8 features, group them across 4 tasks.
 
 TASK ORDERING:
-  1. Product shell + navigation + routing scaffold
-  2. Primary workspace / hero experience (most important feature)
-  3. Remaining domain features (grouped)
+  1. Product shell + navigation + routing scaffold (Navbar, routes, layout, and clean page stubs for feature views. DO NOT generate full pages for all routes in Task 1; feature pages belong in Tasks 2-4)
+  2. Primary workspace / hero experience (most important feature view)
+  3. Remaining domain features (grouped feature views)
   4. Responsive layout + interaction polish + empty/error states
 
 Each task MUST contain:
@@ -199,7 +199,7 @@ EXAMPLE OUTPUT for a lighting configurator product:
   {
     "id": 1,
     "title": "Studio Shell, Navigation & Routing",
-    "description": "Create the application shell with sticky nav, brand identity, route configuration (/, /configurator, /photometric, /quote), and responsive mobile menu. Use React Router. All routes must render real components.",
+    "description": "Create the application shell with sticky nav, brand identity, layout, route configuration (/, /configurator, /photometric, /quote), and responsive mobile menu. Use React Router with clean page stubs. Detailed feature pages are fully implemented in Tasks 2-4.",
     "completed": false,
     "stage": "Frontend",
     "priority": 1,

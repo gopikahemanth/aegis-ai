@@ -85,6 +85,13 @@ describe("FrontendApprovalCheckpoint", () => {
       expect(FrontendApprovalCheckpoint.isApproved(tempDir)).toBe(true);
       const reviewApproved = FrontendApprovalCheckpoint.loadReview(tempDir);
       expect(reviewApproved?.status).toBe("APPROVED");
+
+      const approvalManifest = FrontendApprovalCheckpoint.loadApprovalManifest(tempDir);
+      expect(approvalManifest).not.toBeNull();
+      expect(approvalManifest?.approved).toBe(true);
+      expect(approvalManifest?.status).toBe("APPROVED");
+      expect(approvalManifest?.approvedBy).toBe("human");
+      expect(approvalManifest?.frontendVersionHash).toBeDefined();
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }

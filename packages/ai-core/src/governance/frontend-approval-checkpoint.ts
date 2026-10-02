@@ -81,6 +81,20 @@ export class FrontendApprovalCheckpoint {
     return join(outputDirectory, ".aegis", "stage-checkpoint.json");
   }
 
+  private static getApprovalManifestPath(outputDirectory: string): string {
+    return join(outputDirectory, ".aegis", "frontend-approval.json");
+  }
+
+  static loadApprovalManifest(outputDirectory: string): Record<string, any> | null {
+    const path = this.getApprovalManifestPath(outputDirectory);
+    if (!existsSync(path)) return null;
+    try {
+      return JSON.parse(readFileSync(path, "utf8"));
+    } catch {
+      return null;
+    }
+  }
+
   static saveReview(outputDirectory: string, summary: FrontendReviewSummary): void {
     const aegisDir = join(outputDirectory, ".aegis");
     if (!existsSync(aegisDir)) {
@@ -210,6 +224,20 @@ export class FrontendApprovalCheckpoint {
       approvedFeatures: (review?.productIdentity as any)?.featureEvidence?.map((f: any) => f.name) ?? [],
     };
     writeFileSync(this.getCheckpointPath(outputDirectory), JSON.stringify(extendedCheckpoint, null, 2), "utf8");
+
+    // Write .aegis/frontend-approval.json manifest per Architecture Specification §8 & Rule 12
+    const approvalManifest = {
+      approved: true,
+      approvedBy: "human" as const,
+      approvalTimestamp,
+      frontendVersionHash: frontendSourceHash,
+      frontendSourceHash,
+      approvedRoutes: review?.routes ?? [],
+      approvedFeatures: (review?.productIdentity as any)?.featureEvidence?.map((f: any) => f.name) ?? [],
+      status: "APPROVED" as const,
+    };
+    writeFileSync(this.getApprovalManifestPath(outputDirectory), JSON.stringify(approvalManifest, null, 2), "utf8");
+
     console.log(
       `[FrontendApproval] ✓ HUMAN_FRONTEND_APPROVED recorded.\n` +
       `  Approved by: human\n` +
@@ -238,6 +266,8 @@ export class FrontendApprovalCheckpoint {
   }
 
   static isApproved(outputDirectory: string): boolean {
+    const manifest = this.loadApprovalManifest(outputDirectory);
+    if (manifest && (manifest.approved === true || manifest.status === "APPROVED")) return true;
     const checkpoint = this.loadCheckpoint(outputDirectory);
     if (checkpoint && checkpoint.approvalStatus === "APPROVED") return true;
     const review = this.loadReview(outputDirectory);

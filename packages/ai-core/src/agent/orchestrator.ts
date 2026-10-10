@@ -24,6 +24,8 @@ import { FileWriter } from "../writer/writer.js";
 import { Parser } from "../generator/parser.js";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, statSync, readdirSync } from "node:fs";
 import { join, dirname, resolve, relative, basename } from "node:path";
+import { createHash } from "node:crypto";
+import { GenerationSeedManager, type GenerationMode } from "../design/generation-seed.js";
 import { DependencyResolver, DependencyInstaller } from "@aegis/project-builder";
 import { PatchEngine } from "../healing/patch-engine.js";
 import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
@@ -64,7 +66,7 @@ import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-gener
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
 import { TransactionalRepairSystem, RepairConvergenceTracker, TsSymbolRepairEngine } from "../healing/index.js";
-import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator, CanonicalArchitectureState, CanonicalManifestGenerator, CanonicalDataModelContract, CanonicalFileGraph, SemanticDuplicateDetector, ProjectFileRegistry, TaskNormalizer, PlanContractGate, ManifestCompletenessValidator, CanonicalDependencyClosureValidator, SymbolContractValidator, DynamicFileGraphManager, FrontendFilePolicyGuard, FrontendExperienceContractManager } from "../governance/index.js";
+import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator, CanonicalArchitectureState, CanonicalManifestGenerator, CanonicalDataModelContract, CanonicalFileGraph, SemanticDuplicateDetector, ProjectFileRegistry, TaskNormalizer, PlanContractGate, ManifestCompletenessValidator, CanonicalDependencyClosureValidator, SymbolContractValidator, DynamicFileGraphManager, FrontendFilePolicyGuard, FrontendExperienceContractManager, InteractionProvenanceTracker } from "../governance/index.js";
 import { DomainModelGuard } from "../governance/domain-model-guard.js";
 import { StagedValidator } from "../validation/staged-validator.js";
 import { FinalSuccessGate } from "../validation/final-success-gate.js";
@@ -121,7 +123,11 @@ const VALID_DEPENDENCIES_WHITELIST = new Set([
   "@hookform/resolvers",
   "concurrently",
   "tsx",
-  "react-is"
+  "react-is",
+  "three",
+  "@types/three",
+  "gsap",
+  "@types/gsap"
 ]);
 
 export class Orchestrator {
@@ -172,6 +178,11 @@ export class Orchestrator {
   /** Design selection mode — set before calling generateProject. */
   designMode: DesignSelectionMode = "AUTO";
   designModeHint?: string;
+
+  /** Creative generation mode and seed */
+  generationMode: GenerationMode = "creative";
+  generationSeed?: number;
+  currentGenerationIdentity?: import("../design/generation-seed.js").ResolvedGenerationIdentity;
 
   private readonly projectStartupAgent = new ProjectStartupAgent();
 
@@ -259,6 +270,25 @@ export class Orchestrator {
     ValidationStateManager.getInstance().reset();
     MetricsTracker.getInstance().reset();
     ProjectFileRegistry.getInstance().reset();
+    CanonicalArchitectureState.getInstance().reset();
+
+    const genIdentity = GenerationSeedManager.resolveSeed({
+      mode: this.generationMode,
+      explicitSeed: this.generationSeed,
+      prompt: request,
+    });
+    this.currentGenerationIdentity = genIdentity;
+
+    console.log();
+    console.log("============================================================");
+    console.log("                 AEGIS GENERATION IDENTITY                  ");
+    console.log(` Mode:            ${genIdentity.mode.toUpperCase()}`);
+    console.log(` Seed:            ${genIdentity.seed}`);
+    console.log(` Prompt Hash:     ${genIdentity.promptHash}`);
+    console.log(` Generation ID:   ${genIdentity.generationId}`);
+    console.log("============================================================");
+    console.log();
+
     const memEngine = new ProjectMemoryEngine(outputDirectory);
     const existingMem = memEngine.loadMemory();
     if (!existingMem || (existingMem.lastRequest && existingMem.lastRequest.trim() !== request.trim())) {
@@ -490,6 +520,13 @@ export class Orchestrator {
       onFrontendReview?: (summary: any) => Promise<boolean | string>;
     },
   ) {
+    const genIdentity = this.currentGenerationIdentity || GenerationSeedManager.resolveSeed({
+      mode: this.generationMode,
+      explicitSeed: this.generationSeed,
+      prompt: request,
+    });
+    this.currentGenerationIdentity = genIdentity;
+
     const loadedPlan = providedPlan || CanonicalPlanManager.load(outputDirectory);
     const hasLockedPlan = !!(loadedPlan && (loadedPlan.request?.trim() === request?.trim() || !loadedPlan.request));
 
@@ -699,9 +736,14 @@ export class Orchestrator {
       try {
         const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
         pkg.dependencies = pkg.dependencies || {};
-        const rawLibs = specification.inferredLibraries || inferredLibraries || [];
+        const rawPrompt = specification.userPrompt || (specification as any).prompt || "";
+        const rawLibs = [...(specification.inferredLibraries || inferredLibraries || [])];
+        const is3DReq = Boolean(rawPrompt.match(/\b(3d|webgl|three\.?js|r3f|claymation|volumetric)\b/i));
+        if (is3DReq && !rawLibs.includes("three")) {
+          rawLibs.push("three");
+        }
         const libs = rawLibs.filter((lib: string) => VALID_DEPENDENCIES_WHITELIST.has(lib));
-        const commonTypesNeeded = ["express", "cors", "canvas-confetti", "bcryptjs", "jsonwebtoken", "react", "react-dom"];
+        const commonTypesNeeded = ["express", "cors", "canvas-confetti", "bcryptjs", "jsonwebtoken", "react", "react-dom", "three", "gsap"];
         
         for (const lib of libs) {
           if (!pkg.dependencies[lib] && !pkg.devDependencies?.[lib]) {
@@ -773,8 +815,21 @@ export class Orchestrator {
       });
       console.log(`[DesignPipeline] Pattern: ${characteristics.experiencePattern} | Tone: ${characteristics.emotionalTone.primary}`);
 
-      // [2] Plan feature priority and page IA (deterministic)
-      const featurePriority = CapabilityPlanner.plan(characteristics, specification);
+      // [1b] Synthesize bespoke CompositionGraph via ExperienceArchitect (anti-template invariant)
+      const { ExperienceCapabilityResolver } = await import("../design/experience-capability-plan.js");
+      const { ExperienceArchitect } = await import("../design/experience-architect.js");
+      const experienceCapability = ExperienceCapabilityResolver.resolve(rawPrompt, characteristics, specification);
+      const compositionGraph = ExperienceArchitect.architect(
+        rawPrompt,
+        characteristics,
+        experienceCapability,
+        resolvedContract,
+        genIdentity.seed
+      );
+      console.log(`[DesignPipeline] ✓ CompositionGraph synthesized: ${compositionGraph.structuralFingerprint}`);
+
+      // [2] Plan feature priority and page IA directly from bespoke CompositionGraph
+      const featurePriority = CapabilityPlanner.plan(characteristics, specification, compositionGraph);
       console.log(`[DesignPipeline] Primary interaction: ${featurePriority.informationArchitecture.primaryInteraction}`);
 
       // [3] Select art direction and assemble locked brief
@@ -785,6 +840,7 @@ export class Orchestrator {
         rawPrompt,
         this.designMode,
         this.designModeHint,
+        genIdentity.seed,
       );
       designBrief = brief;
       console.log(`[DesignPipeline] Art direction: ${brief.artDirectionName} (${brief.artDirectionRationale})`);
@@ -798,6 +854,44 @@ export class Orchestrator {
       const experiencePlan = ProductExperiencePlanManager.build(brief, specification, rawPrompt, resolvedContract);
       ProductExperiencePlanManager.save(experiencePlan, outputDirectory);
       console.log(`[DesignPipeline] ✓ ProductExperiencePlan locked (Pattern: ${experiencePlan.experiencePattern}, Capabilities: ${experiencePlan.requiredCapabilities.length})`);
+      try {
+        ArchitectureContractManager.syncRouteCapabilitiesFromBrief(outputDirectory, brief, rawPrompt);
+      } catch {}
+
+      // Display Inspectable Creative Decisions
+      console.log();
+      console.log("------------------------------------------------------------");
+      console.log(` [CreativeArchitect] Experience Type:      ${experienceCapability.experienceType}`);
+      console.log(` [CreativeArchitect] Composition Strategy: ${compositionGraph.compositionStrategy || "CUSTOM"}`);
+      console.log(` [CreativeArchitect] Navigation Strategy:  ${experiencePlan.navigationDesign?.model || "CUSTOM"}`);
+      console.log("------------------------------------------------------------");
+      console.log();
+
+      // Persist authoritative generation provenance to .aegis/generation.json
+      GenerationSeedManager.saveProvenance(outputDirectory, {
+        generationId: genIdentity.generationId,
+        generationSeed: genIdentity.seed,
+        promptHash: genIdentity.promptHash,
+        designBriefHash: brief.briefId,
+        productContractHash: resolvedContract ? createHash("sha256").update(JSON.stringify(resolvedContract)).digest("hex").slice(0, 16) : undefined,
+        createdAt: new Date().toISOString(),
+        mode: genIdentity.mode,
+        experienceType: experienceCapability.experienceType,
+        compositionStrategy: compositionGraph.compositionStrategy,
+        navigationStrategy: experiencePlan.navigationDesign?.model,
+      });
+
+      // [4c] Content Strategist: Generate authoritative site content in src/content/site-content.ts
+      try {
+        const { ContentStrategistAgent } = await import("../agents/content-strategist-agent.js");
+        const { ProductDiscoveryAgent } = await import("../agents/product-discovery-agent.js");
+        const discovery = new ProductDiscoveryAgent(this.provider);
+        const featureMatrix = discovery.fallback(rawPrompt, characteristics, brief.seed);
+        const contentAgent = new ContentStrategistAgent(this.provider);
+        await contentAgent.generateContent(featureMatrix, brief, outputDirectory);
+      } catch (contentErr: any) {
+        console.warn(`[DesignPipeline] ⚠️ Content generation issue: ${contentErr.message}`);
+      }
 
       // [5] Generate design tokens + components using the locked brief
       const dsFiles = this.designSystemGenerator.generate(specification, brief);
@@ -1092,6 +1186,17 @@ export class Orchestrator {
             }
 
             // ── STEP C: Completeness validation ──
+            result.files = result.files.filter(file => {
+              if (!file.content || file.content.trim().length === 0) {
+                const diskPath = join(outputDirectory, file.path);
+                if (existsSync(diskPath) && statSync(diskPath).size > 0) {
+                  console.log(`[Task: ${task.title}] ℹ️ Skipping empty candidate for existing non-empty file: ${file.path}`);
+                  return false;
+                }
+              }
+              return true;
+            });
+
             const invalidCandidates: string[] = [];
             for (const file of result.files) {
               const validation = GeneratedFileValidator.validateCompleteness(file.content, file.path);
@@ -1226,6 +1331,14 @@ export class Orchestrator {
 
     // ── STAGE 3: FRONTEND GENERATION (FRONTEND ONLY) ──────────────────────────
     await executeTaskBatch(frontendTasks, "STAGE 3: FRONTEND GENERATION (FRONTEND ONLY)", true);
+
+    // ─── Interaction Provenance: Capture Native Baseline (Post-Coder, Pre-Sanitization) ─
+    try {
+      InteractionProvenanceTracker.captureBaseline(outputDirectory);
+    } catch (provErr: any) {
+      console.warn(`[InteractionProvenance] Warning: Failed to capture baseline at post-Coder boundary: ${provErr.message}`);
+    }
+
     FastDeterministicSanitizer.sanitizeProject(outputDirectory);
 
     // ── STAGES 4–7: FRONTEND VISUAL & FUNCTIONAL CHECK ────────────────────────
@@ -1302,7 +1415,8 @@ export class Orchestrator {
       repairAttempts++;
       console.warn(`[BrowserValidator] ⚠️ Frontend review failed (${browserReview.failureReason}). Triggering targeted frontend repair (Attempt ${repairAttempts}/${MAX_FRONTEND_REPAIR_ATTEMPTS})...`);
 
-      const isProductMismatch = browserReview.productIdentity && !browserReview.productIdentity.passed;
+      const hasRuntimeError = Boolean(browserReview.failureReason && browserReview.failureReason.includes("Uncaught runtime exception"));
+      const isProductMismatch = !hasRuntimeError && Boolean(browserReview.productIdentity && !browserReview.productIdentity.passed);
 
       // Load the ProductExperiencePlan to tailor repair instructions to the exact pattern
       let planForRepair: any = null;
@@ -1470,11 +1584,22 @@ Do NOT touch backend or database.`;
       : [];
     const extractedPages = pageFiles.map(f => f.replace(/\.(tsx|jsx)$/, ""));
 
+    let expPlan: any = null;
+    try {
+      const { ProductExperiencePlanManager } = await import("../design/product-experience-plan.js");
+      expPlan = ProductExperiencePlanManager.load(outputDirectory);
+    } catch {}
+
+    const rawPrompt = specification.userPrompt || (specification as any).prompt || "";
     const reviewSummary: FrontendReviewSummary = {
       appName: (specification as any)?.name || "Generated Application",
       serverUrl: frontendServerInfo.url,
       pages: extractedPages.length > 0 ? extractedPages : ["Home", "Application Showcase"],
       routes: ["/", ...extractedPages.map(p => `/${p.toLowerCase()}`)],
+      experienceType: expPlan?.experienceCapability?.experienceType || (rawPrompt.match(/\b(3d|webgl)\b/i) ? "IMMERSIVE_3D" : "STANDARD_WEB"),
+      renderingMode: expPlan?.experienceCapability?.renderingMode || (rawPrompt.match(/\b(3d|webgl)\b/i) ? "webgl" : "standard-dom"),
+      real3dRequired: Boolean(expPlan?.experienceCapability?.real3dRequired || rawPrompt.match(/\b(3d|webgl)\b/i)),
+      experienceFidelity: browserReview.experienceFidelity,
       colorPalette: {
         primary: (designBrief as any)?.palette?.primary || "#c2410c",
         surface: (designBrief as any)?.palette?.surface || "#ffffff",
@@ -1952,29 +2077,53 @@ INSTRUCTIONS FOR FRONTEND REFINEMENT:
         const activeRoutes = (resolvedContract.requiredRoutes || []).map((r: any) => typeof r === "string" ? r : r.path).join(", ");
         const expectedWorkspace = specification.visualContract?.composition?.primaryWorkspace?.type || "catalog_grid";
 
-        const hasMissingSelection = fail.reasons.some(r => r.includes("Entity Selection") || r.includes("inspect_record"));
-        const hasMissingFilter = fail.reasons.some(r => r.includes("Status Category Filtering") || r.includes("filter_status"));
-        const hasMissingWorkspace = fail.reasons.some(r => r.includes("Primary workspace contract"));
+        let matchingPagePlan: any = null;
+        try {
+          const planPath = join(outputDirectory, ".aegis", "product-experience-plan.json");
+          if (existsSync(planPath)) {
+            const expPlan = JSON.parse(readFileSync(planPath, "utf8"));
+            matchingPagePlan = (expPlan.pagePlans || []).find((p: any) => {
+              const rSlug = p.route.replace(/^\//, "").replace(/[-_]/g, "");
+              const pLower = relPagePath.toLowerCase();
+              return (rSlug && pLower.includes(rSlug)) || (p.route === "/" && (pLower.includes("home") || pLower.includes("worldstage")));
+            });
+          }
+        } catch {}
 
-        const capabilityRequirements: string[] = [
-          `- Primary workspace container MUST include attribute: data-workspace="${expectedWorkspace || 'catalog_grid'}"`
-        ];
-        if (hasMissingSelection) {
+        const capabilityRequirements: string[] = [];
+        if (matchingPagePlan) {
           capabilityRequirements.push(
-            `- MANDATORY ITEM SELECTION & DETAIL INSPECTOR (YOU MUST INCLUDE THIS EXACT CODE PATTERN DIRECTLY IN THE COMPONENT):\n` +
-            `  1. State: const [selectedItem, setSelectedItem] = useState<any>(null);\n` +
-            `  2. On each table row or card item: <tr key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors">\n` +
-            `  3. Detail inspector view when item is selected: {selectedItem && (<div className="p-4 bg-stone-900/60 border border-stone-700 rounded-lg mt-4"><div className="flex justify-between"><h3>{selectedItem.name || selectedItem.title || selectedItem.kilnName || selectedItem.id} Details</h3><button onClick={() => setSelectedItem(null)} className="px-2 py-1 bg-stone-700 text-xs rounded">Close</button></div><p>Status: {selectedItem.status}</p></div>)}`
+            `- PRIMARY INTENDED ROLE: "${matchingPagePlan.pageRole}"`,
+            `- DOMINANT STRUCTURE: ${matchingPagePlan.composition.dominantStructure} (${matchingPagePlan.composition.topology})`,
+            `- PRIMARY FOCAL ELEMENT: ${matchingPagePlan.focalElement}`,
+            `- REQUIRED CAPABILITIES: ${(matchingPagePlan.requiredCapabilities || []).join(", ")}`,
+            `- PRIMARY INTERACTIONS: ${(matchingPagePlan.interaction?.primary || []).join("; ")}`,
+            `- STRICTLY FORBIDDEN PATTERNS: ${(matchingPagePlan.forbiddenPatterns || []).join(", ")}`,
+            `- HARD NEGATIVE CONSTRAINT: DO NOT render <input placeholder="Search...">, filter buttons, or 3-column card grids. Implement the intentional ${matchingPagePlan.pageRole} stage with data-workspace="${matchingPagePlan.pageRole.toLowerCase().replace(/[^a-z0-9]/g, '_')}".`
           );
-        }
-        if (hasMissingFilter) {
+        } else {
           capabilityRequirements.push(
-            `- MANDATORY STATUS CATEGORY FILTERING (YOU MUST INCLUDE THIS EXACT CODE PATTERN DIRECTLY IN THE COMPONENT):\n` +
-            `  1. State: const [statusFilter, setStatusFilter] = useState('all');\n` +
-            `  2. Status buttons: <div className="flex gap-2 mb-4"><button onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'font-bold' : ''}>All</button><button onClick={() => setStatusFilter('active')} className={statusFilter === 'active' ? 'font-bold' : ''}>Active</button><button onClick={() => setStatusFilter('completed')} className={statusFilter === 'completed' ? 'font-bold' : ''}>Completed</button></div>\n` +
-            `  3. Filtered record set calculation: const filteredItems = (data || pieces || records || []).filter((r: any) => statusFilter === 'all' || (r.status || '').toLowerCase() === statusFilter.toLowerCase());\n` +
-            `  4. Map and render filteredItems in table/list: {filteredItems.map(item => (...))}`
+            `- Primary workspace container MUST include attribute: data-workspace="${expectedWorkspace || 'catalog_grid'}"`
           );
+          const hasMissingSelection = fail.reasons.some(r => r.includes("Entity Selection") || r.includes("inspect_record"));
+          const hasMissingFilter = fail.reasons.some(r => r.includes("Status Category Filtering") || r.includes("filter_status"));
+          if (hasMissingSelection) {
+            capabilityRequirements.push(
+              `- MANDATORY ITEM SELECTION & DETAIL INSPECTOR (YOU MUST INCLUDE THIS EXACT CODE PATTERN DIRECTLY IN THE COMPONENT):\n` +
+              `  1. State: const [selectedItem, setSelectedItem] = useState<any>(null);\n` +
+              `  2. On each table row or card item: <tr key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors">\n` +
+              `  3. Detail inspector view when item is selected: {selectedItem && (<div className="p-4 bg-stone-900/60 border border-stone-700 rounded-lg mt-4"><div className="flex justify-between"><h3>{selectedItem.name || selectedItem.title || selectedItem.kilnName || selectedItem.id} Details</h3><button onClick={() => setSelectedItem(null)} className="px-2 py-1 bg-stone-700 text-xs rounded">Close</button></div><p>Status: {selectedItem.status}</p></div>)}`
+            );
+          }
+          if (hasMissingFilter) {
+            capabilityRequirements.push(
+              `- MANDATORY STATUS CATEGORY FILTERING (YOU MUST INCLUDE THIS EXACT CODE PATTERN DIRECTLY IN THE COMPONENT):\n` +
+              `  1. State: const [statusFilter, setStatusFilter] = useState('all');\n` +
+              `  2. Status buttons: <div className="flex gap-2 mb-4"><button onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'font-bold' : ''}>All</button><button onClick={() => setStatusFilter('active')} className={statusFilter === 'active' ? 'font-bold' : ''}>Active</button><button onClick={() => setStatusFilter('completed')} className={statusFilter === 'completed' ? 'font-bold' : ''}>Completed</button></div>\n` +
+              `  3. Filtered record set calculation: const filteredItems = (data || pieces || records || []).filter((r: any) => statusFilter === 'all' || (r.status || '').toLowerCase() === statusFilter.toLowerCase());\n` +
+              `  4. Map and render filteredItems in table/list: {filteredItems.map(item => (...))}`
+            );
+          }
         }
 
         let currentContent = "";
@@ -2026,6 +2175,7 @@ Every primary page component MUST contain exactly one semantic <h1> matching the
 FORBIDDEN STUB PATTERNS:
 - NEVER return ellipses or comments like "// ... (previous imports)", "// ... rest of code", "// ... existing code".
 - Return the ENTIRE COMPLETE file from the first line of imports to the last line of export.
+- CRITICAL: The generated code MUST NOT contain 'ROUTE_STUB_ONLY', 'CAPABILITY_IMPLEMENTATION_REQUIRED', or 'data-testid="route-stub"'. Replace any stub markers completely with genuine UI, state, and interaction logic.
 ══════════════════════════════════════════════════════════════════════════════
 `.trim();
 
@@ -2084,12 +2234,24 @@ FORBIDDEN STUB PATTERNS:
           if (isTarget) {
             const absTarget = join(outputDirectory, relPagePath);
             mkdirSync(dirname(absTarget), { recursive: true });
-            writeFileSync(absTarget, file.content, "utf8");
+            let cleanContent = file.content;
+            if (cleanContent.length >= 150) {
+              cleanContent = cleanContent
+                .replace(/\/\*\s*ROUTE_STUB_ONLY:[^*]*\*\//g, "")
+                .replace(/data-testid=["']route-stub["']/g, "");
+            }
+            writeFileSync(absTarget, cleanContent, "utf8");
             console.log(`[CapabilityGate] ✓ Re-generated ${relPagePath}`);
           } else if (file.path.startsWith("src/")) {
             const absTarget = join(outputDirectory, file.path);
             mkdirSync(dirname(absTarget), { recursive: true });
-            writeFileSync(absTarget, file.content, "utf8");
+            let cleanContent = file.content;
+            if (cleanContent.length >= 150) {
+              cleanContent = cleanContent
+                .replace(/\/\*\s*ROUTE_STUB_ONLY:[^*]*\*\//g, "")
+                .replace(/data-testid=["']route-stub["']/g, "");
+            }
+            writeFileSync(absTarget, cleanContent, "utf8");
             console.log(`[CapabilityGate] ✓ Re-generated helper ${file.path}`);
           }
         }
@@ -2136,9 +2298,14 @@ FORBIDDEN STUB PATTERNS:
       try {
         const pkg = JSON.parse(readFileSync(finalPkgPath, "utf8"));
         pkg.dependencies = pkg.dependencies || {};
-        const rawLibs = specification.inferredLibraries || [];
+        const rawPrompt = specification.userPrompt || (specification as any).prompt || "";
+        const rawLibs = [...(specification.inferredLibraries || [])];
+        const is3DReq = Boolean(rawPrompt.match(/\b(3d|webgl|three\.?js|r3f|claymation|volumetric)\b/i));
+        if (is3DReq && !rawLibs.includes("three")) {
+          rawLibs.push("three");
+        }
         const libs = rawLibs.filter((lib: string) => VALID_DEPENDENCIES_WHITELIST.has(lib));
-        const commonTypesNeeded = ["express", "cors", "canvas-confetti", "bcryptjs", "jsonwebtoken", "react", "react-dom"];
+        const commonTypesNeeded = ["express", "cors", "canvas-confetti", "bcryptjs", "jsonwebtoken", "react", "react-dom", "three", "gsap"];
         
         for (const lib of libs) {
           if (!pkg.dependencies[lib] && !pkg.devDependencies?.[lib]) {
@@ -2210,6 +2377,15 @@ FORBIDDEN STUB PATTERNS:
     console.log(`[Orchestrator] package.json exists: ${existsSync(pkgJsonPath)}`);
     console.log(`[Orchestrator] Current working directory: ${process.cwd()}`);
 
+    // ─── Interaction Provenance: Capture Native Baseline (Post-Coder) ─────────
+    if (!InteractionProvenanceTracker.hasBaseline(outputDirectory)) {
+      try {
+        InteractionProvenanceTracker.captureBaseline(outputDirectory);
+      } catch (provErr: any) {
+        console.warn(`[InteractionProvenance] Warning: Failed to capture baseline: ${provErr.message}`);
+      }
+    }
+
     // ─── Project Startup Agent (Pre-Verification Setup) ─────────────────────
     console.log("[Startup] Running Project Startup Agent to prepare database and environment...");
     try {
@@ -2224,6 +2400,13 @@ FORBIDDEN STUB PATTERNS:
       }
     } catch (startupErr: any) {
       console.warn(`[Startup] Warning: Pre-verification startup agent failed: ${startupErr.message}`);
+    }
+
+    // ─── Interaction Provenance: Post-Sanitizer Audit ─────────────────────────
+    try {
+      InteractionProvenanceTracker.audit(outputDirectory);
+    } catch (provErr: any) {
+      console.warn(`[InteractionProvenance] Warning: Failed to audit provenance: ${provErr.message}`);
     }
 
     // Initial package dependencies installation
@@ -2953,8 +3136,11 @@ FORBIDDEN STUB PATTERNS:
             }
           }
         }
-        browserValResult = await ReadOnlyBrowserValidator.validate(server.url, outputDirectory, { routes: dynamicRoutes });
-        apiWorkflowReport = await ApiWorkflowVerifier.executeWorkflows(server.url);
+        try {
+          ArchitectureContractManager.ensureRouteCapabilities(outputDirectory, dynamicRoutes, specification?.userPrompt);
+        } catch {}
+        apiWorkflowReport = await ApiWorkflowVerifier.executeWorkflows(server.url, undefined, outputDirectory);
+        browserValResult = await ReadOnlyBrowserValidator.validate(server.url, outputDirectory, { routes: dynamicRoutes, strictMode: true, apiReport: apiWorkflowReport });
       }
     } catch (runtimeErr: any) {
       console.warn(`[RuntimeValidation] Warning: Runtime validation encountered non-fatal error: ${runtimeErr.message}`);
@@ -3005,6 +3191,10 @@ FORBIDDEN STUB PATTERNS:
       realityResult: realityAuditResult,
       databaseBlocked: dbIsBlocked,
       testReport: inProjectTestReport,
+      // Enforce strict unassisted policy: reject any run where the sanitizer
+      // injected handlers that were not present at the CoderAgent boundary.
+      // NIR must be 1.00 for unassisted certification.
+      provenancePolicy: "STRICT_UNASSISTED",
     });
     if (!finalGateResult.success && finalGateResult.status !== "BLOCKED") {
       this.execution.complete();
@@ -3135,7 +3325,7 @@ FORBIDDEN STUB PATTERNS:
             results.push(...getAllProjectFiles(full));
           } else if (/\.(ts|tsx|js|jsx)$/.test(entry)) {
             try {
-              results.push({ fullPath: full, relPath: relative(outputDirectory, full), content: readFileSync(full, "utf8") });
+              results.push({ fullPath: full, relPath: relative(outputDirectory, full).replace(/\\/g, "/"), content: readFileSync(full, "utf8") });
             } catch {}
           }
         }

@@ -9,6 +9,8 @@ export interface AppServerInfo {
   port: number;
   url: string;
   ready: boolean;
+  backendPort?: number;
+  backendUrl?: string;
 }
 
 export class AppServerRunner {
@@ -52,6 +54,29 @@ export class AppServerRunner {
     console.log(`  Target Port: ${port}`);
     console.log(`  Target URL: ${url}`);
 
+    // Parse .env if present in project directory so backend and server have access to DATABASE_URL etc.
+    const projectEnv: Record<string, string> = {};
+    const dotEnvPath = join(absDir, ".env");
+    if (existsSync(dotEnvPath)) {
+      try {
+        const raw = readFileSync(dotEnvPath, "utf8");
+        for (const line of raw.split("\n")) {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith("#")) {
+            const eqIdx = trimmed.indexOf("=");
+            if (eqIdx > 0) {
+              const k = trimmed.substring(0, eqIdx).trim();
+              let v = trimmed.substring(eqIdx + 1).trim();
+              if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+                v = v.slice(1, -1);
+              }
+              projectEnv[k] = v;
+            }
+          }
+        }
+      } catch {}
+    }
+
     if (process.platform === "win32") {
       try {
         const { execSync } = await import("child_process");
@@ -68,7 +93,7 @@ export class AppServerRunner {
         cwd: absDir,
         shell: false,
         stdio: "ignore",
-        env: { ...process.env, PORT: String(port) },
+        env: { ...process.env, ...projectEnv, PORT: String(port) },
       });
     } else {
       const npxCmd = isWindows ? "npx.cmd" : "npx";
@@ -76,19 +101,20 @@ export class AppServerRunner {
         cwd: absDir,
         shell: isWindows,
         stdio: "ignore",
-        env: { ...process.env, PORT: String(port) },
+        env: { ...process.env, ...projectEnv, PORT: String(port) },
       });
     }
 
     const serverIndex = join(absDir, "server", "index.ts");
     if (existsSync(serverIndex)) {
+      const backendEnv = { ...process.env, ...projectEnv, PORT: "5000" };
       const localTsxBin = join(absDir, "node_modules", "tsx", "dist", "cli.mjs");
       if (existsSync(localTsxBin)) {
         this.backendProcess = spawn(process.execPath, [localTsxBin, "server/index.ts"], {
           cwd: absDir,
           shell: false,
           stdio: ["ignore", "pipe", "pipe"],
-          env: { ...process.env, PORT: "5000" },
+          env: backendEnv,
         });
       } else {
         const cmd = isWindows ? "npx.cmd" : "npx";
@@ -96,7 +122,7 @@ export class AppServerRunner {
           cwd: absDir,
           shell: isWindows,
           stdio: ["ignore", "pipe", "pipe"],
-          env: { ...process.env, PORT: "5000" },
+          env: backendEnv,
         });
       }
       this.backendProcess.stderr?.on("data", (data) => {
@@ -122,8 +148,8 @@ export class AppServerRunner {
     const timeoutMs = 20_000;
 
     while (Date.now() - startTime < timeoutMs) {
-      const frontendHealthy = await this.checkHealth(port);
-      const backendHealthy = existsSync(serverIndex) ? await this.checkHealth(5000) : true;
+      const frontendHealthy = await this.checkHealth(port, ["/"]);
+      const backendHealthy = existsSync(serverIndex) ? await this.checkHealth(5000, ["/api/health", "/"]) : true;
       if (frontendHealthy && backendHealthy) {
         isReady = true;
         break;
@@ -138,15 +164,18 @@ export class AppServerRunner {
     if (isReady) {
       console.log(`[AppServerRunner] ✓ Server is live and ready at ${url}`);
     } else {
-      console.warn(`[AppServerRunner] ⚠️ Server health check timed out after 20s. Proceeding with browser validation on ${url}...`);
+      console.warn(`[AppServerRunner] ⚠️ Server health check timed out after 20s. Proceeding with validation on ${url}...`);
     }
 
+    const hasBackend = existsSync(serverIndex);
     return {
       framework: "React-Vite",
       startCommand,
       port,
       url,
       ready: isReady,
+      backendPort: hasBackend ? 5000 : undefined,
+      backendUrl: hasBackend ? "http://localhost:5000" : undefined,
     };
   }
 
@@ -177,16 +206,38 @@ export class AppServerRunner {
     }
   }
 
-  private static checkHealth(port: number): Promise<boolean> {
+  private static checkHealth(port: number, paths: string[] = ["/", "/api/health"]): Promise<boolean> {
     return new Promise((resolve) => {
-      const req = http.get(`http://localhost:${port}`, (res) => {
-        resolve(res.statusCode !== undefined && res.statusCode < 500);
-      });
-      req.on("error", () => resolve(false));
-      req.setTimeout(1000, () => {
-        req.destroy();
-        resolve(false);
-      });
+      let resolved = false;
+      const tryFetch = (pathIdx: number, useLoopbackIp: boolean) => {
+        if (resolved) return;
+        if (pathIdx >= paths.length) {
+          if (!useLoopbackIp) {
+            tryFetch(0, true);
+          } else {
+            resolve(false);
+          }
+          return;
+        }
+        const host = useLoopbackIp ? "127.0.0.1" : "localhost";
+        const path = paths[pathIdx];
+        const req = http.get(`http://${host}:${port}${path}`, (res) => {
+          if (res.statusCode !== undefined && res.statusCode < 500) {
+            resolved = true;
+            resolve(true);
+          } else {
+            tryFetch(pathIdx + 1, useLoopbackIp);
+          }
+        });
+        req.on("error", () => {
+          tryFetch(pathIdx + 1, useLoopbackIp);
+        });
+        req.setTimeout(1000, () => {
+          req.destroy();
+          tryFetch(pathIdx + 1, useLoopbackIp);
+        });
+      };
+      tryFetch(0, false);
     });
   }
 }

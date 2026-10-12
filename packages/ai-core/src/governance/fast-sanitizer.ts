@@ -1777,6 +1777,115 @@ export default DashboardPage;
   }
 
   /**
+   * Pre-baseline auth hook synthesis (Stage 3.5).
+   * Ensures that if the project has or requires authentication, an authentic auth hook
+   * is synthesized BEFORE baseline capture so it is audited as native baseline rather than
+   * an injected post-baseline handler.
+   */
+  public static ensurePreBaselineAuthHook(srcDir: string, contract?: ArchitectureContractV1): void {
+    const hooksDir = join(srcDir, "hooks");
+    const authTs = join(hooksDir, "useAuth.ts");
+    const authTsx = join(hooksDir, "useAuth.tsx");
+
+    if (existsSync(authTs) || existsSync(authTsx)) {
+      return;
+    }
+
+    let needsAuth = Boolean(
+      contract?.features?.some(f => /auth|login|session|user/i.test(f.name || f.description || "")) ||
+      contract?.models?.some(m => /user|account|session/i.test(m.name || ""))
+    );
+
+    if (!needsAuth) {
+      try {
+        const promptTxtPath = join(srcDir, "..", ".aegis", "prompt.txt");
+        if (existsSync(promptTxtPath)) {
+          const prompt = readFileSync(promptTxtPath, "utf8").toLowerCase();
+          if (/auth|login|session|jwt|user/i.test(prompt)) needsAuth = true;
+        }
+      } catch {}
+    }
+
+    if (!needsAuth) {
+      try {
+        const checkFiles = (dir: string): boolean => {
+          for (const item of readdirSync(dir)) {
+            const p = join(dir, item);
+            const st = statSync(p);
+            if (st.isDirectory() && !item.includes("node_modules")) {
+              if (checkFiles(p)) return true;
+            } else if (item.endsWith(".ts") || item.endsWith(".tsx")) {
+              const c = readFileSync(p, "utf8");
+              if (/from\s+["'][^"']*useAuth["']|useAuth\s*\(/i.test(c)) return true;
+            }
+          }
+          return false;
+        };
+        needsAuth = checkFiles(srcDir);
+      } catch {}
+    }
+
+    if (needsAuth) {
+      if (!existsSync(hooksDir)) {
+        mkdirSync(hooksDir, { recursive: true });
+      }
+      const code = `import { useState, useEffect } from 'react';
+
+export interface UserSession {
+  id: string | number;
+  email: string;
+  name?: string;
+  role?: string;
+}
+
+export function useAuth() {
+  const [token, setToken] = useState<string | null>(() => {
+    try { return localStorage.getItem('token'); } catch { return null; }
+  });
+  const [user, setUser] = useState<UserSession | null>(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  });
+
+  const login = (newToken: string, newUser?: UserSession) => {
+    try {
+      localStorage.setItem('token', newToken);
+      if (newUser) localStorage.setItem('user', JSON.stringify(newUser));
+    } catch {}
+    setToken(newToken);
+    if (newUser) setUser(newUser);
+  };
+
+  const logout = () => {
+    try {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    } catch {}
+    setToken(null);
+    setUser(null);
+  };
+
+  return {
+    token,
+    user,
+    isAuthenticated: !!token,
+    login,
+    logout,
+  };
+}
+
+export const useAuthStore = useAuth;
+export const authStore = useAuth;
+export default useAuth;
+`;
+      writeFileSync(authTsx, code, "utf8");
+      console.log("[FastSanitizer] 🛡️ Pre-baseline auth hook synthesized: src/hooks/useAuth.tsx");
+    }
+  }
+
+  /**
    * Pre-baseline route page synthesis (Stage 3.5).
    * Generates authentic, dedicated route experience pages for all required routes
    * BEFORE the immutable baseline is captured, ensuring legitimate Aegis-authored
@@ -1793,6 +1902,9 @@ export default DashboardPage;
     } catch {}
     try {
       FastDeterministicSanitizer.ensureFeatureContractCompliance(srcDir);
+    } catch {}
+    try {
+      FastDeterministicSanitizer.ensurePreBaselineAuthHook(srcDir, contract);
     } catch {}
     const routesCode = this.generateRoutesFromExistingPages(root, contract);
     if (routesCode && routesCode.trim().length > 0) {

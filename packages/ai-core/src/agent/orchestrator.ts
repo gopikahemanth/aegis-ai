@@ -1171,18 +1171,12 @@ export class Orchestrator {
                 result.files = policyResult.allowed;
               }
             } else if (InteractionProvenanceTracker.hasBaseline(outputDirectory)) {
-              // During post-baseline/backend tasks, strictly reject overwriting protected frontend files
+              // During post-baseline/backend tasks, strictly reject overwriting or introducing any frontend files under src/
               result.files = result.files.filter(f => {
                 const norm = f.path.replace(/\\/g, "/");
-                const isProtectedFrontend =
-                  norm.startsWith("src/features/") ||
-                  norm.startsWith("src/pages/") ||
-                  norm.startsWith("src/design-system/") ||
-                  norm.startsWith("src/components/") ||
-                  norm === "src/App.tsx" ||
-                  norm === "src/routes.tsx";
+                const isProtectedFrontend = norm.startsWith("src/");
                 if (isProtectedFrontend) {
-                  console.warn(`[BackendTaskGuard] 🛡️ Rejected frontend overwrite during backend task "${task.title}": ${f.path}`);
+                  console.warn(`[BackendTaskGuard] 🛡️ Rejected frontend write during backend task "${task.title}": ${f.path}`);
                   return false;
                 }
                 return true;
@@ -1357,7 +1351,7 @@ export class Orchestrator {
       // Synchronize in-memory parsedFiles with pre-baseline synthesized files
       const preBaselineSrcDir = join(outputDirectory, "src");
       if (existsSync(preBaselineSrcDir)) {
-        for (const cand of ["routes.tsx", "pages/DashboardPage.tsx"]) {
+        for (const cand of ["routes.tsx", "pages/DashboardPage.tsx", "hooks/useAuth.ts", "hooks/useAuth.tsx"]) {
           const fullCand = join(preBaselineSrcDir, cand);
           if (existsSync(fullCand)) {
             const content = readFileSync(fullCand, "utf8");
@@ -1949,13 +1943,7 @@ INSTRUCTIONS FOR FRONTEND REFINEMENT:
     // Filter out approved frontend files to protect interaction baseline
     const filesToWrite = files.filter(f => {
       const norm = f.path.replace(/\\/g, "/");
-      const isProtectedFrontend =
-        norm.startsWith("src/features/") ||
-        norm.startsWith("src/pages/") ||
-        norm.startsWith("src/design-system/") ||
-        norm.startsWith("src/components/") ||
-        norm === "src/App.tsx" ||
-        norm === "src/routes.tsx";
+      const isProtectedFrontend = norm.startsWith("src/");
       if (isProtectedFrontend && (InteractionProvenanceTracker.hasBaseline(outputDirectory) || existsSync(join(outputDirectory, ".aegis", "frontend-review.json")))) {
         console.warn(`[Orchestrator] 🛡️ Protecting approved frontend file from post-backend write: ${f.path}`);
         return false;
@@ -3200,7 +3188,8 @@ FORBIDDEN STUB PATTERNS:
         try {
           ArchitectureContractManager.ensureRouteCapabilities(outputDirectory, dynamicRoutes, specification?.userPrompt);
         } catch {}
-        apiWorkflowReport = await ApiWorkflowVerifier.executeWorkflows(server.url, undefined, outputDirectory);
+        const apiTargetUrl = server.backendUrl || server.url;
+        apiWorkflowReport = await ApiWorkflowVerifier.executeWorkflows(apiTargetUrl, undefined, outputDirectory);
         browserValResult = await ReadOnlyBrowserValidator.validate(server.url, outputDirectory, { routes: dynamicRoutes, strictMode: true, apiReport: apiWorkflowReport });
       }
     } catch (runtimeErr: any) {

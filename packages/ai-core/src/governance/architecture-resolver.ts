@@ -283,28 +283,80 @@ export class ArchitectureResolver {
 
     // ── Route & Entity Extraction from User Prompt ──────────────────────────
     const explicitRoutes: string[] = [];
-    const routeBlockMatch = userPrompt.match(/(?:Canonical routes|Required pages\/routes|Required routes|Pages\/routes|Canonical pages|Routes|Pages):\s*([\s\S]*?)(?:\n\n|\n[A-Z\s]{3,}:|$)/i);
+    const explicitModels: string[] = [];
+    const routeBlockMatch = userPrompt.match(/(?:Canonical routes|Required pages\/routes|Required routes and capabilities|Required capabilities and routes|Required routes|Required capabilities|Pages\/routes|Canonical pages|Routes and capabilities|Routes|Pages):\s*([\s\S]*?)(?:\n\n|\n[A-Z\s]{3,}:|$)/i);
     if (routeBlockMatch && routeBlockMatch[1]) {
+      const blockLines = routeBlockMatch[1].split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      for (const line of blockLines) {
+        const lineContent = line.replace(/^[-*•\d.]+\s*/, "").trim();
+        if (!lineContent || PromptConstraints.isGovernanceDirective(lineContent)) continue;
+
+        // Check if item contains an explicit URL path like "/dashboard" or "/assets"
+        const explicitPathMatch = lineContent.match(/\/[a-z0-9_-]+/i);
+        if (explicitPathMatch && explicitPathMatch[0].length > 1 && !explicitPathMatch[0].includes(":")) {
+          const cleanPath = explicitPathMatch[0].toLowerCase();
+          if (!PromptConstraints.isGovernanceDirective(cleanPath) && !explicitRoutes.includes(cleanPath)) {
+            explicitRoutes.push(cleanPath);
+          }
+        } else {
+          // Natural language capability/route requirement line (e.g. "Incident reporting with status updates")
+          const naming = SemanticNaming.deriveCapabilityNaming(lineContent);
+          if (naming.routeSlug && naming.routeSlug !== "/controls" && !PromptConstraints.isGovernanceDirective(naming.routeSlug) && !explicitRoutes.includes(naming.routeSlug)) {
+            if (explicitRoutes.length === 0) explicitRoutes.push("/");
+            explicitRoutes.push(naming.routeSlug);
+          }
+          if (naming.modelName && naming.modelName.length > 2 && !["User", "Overview", "Controls", "Control"].includes(naming.modelName) && !PromptConstraints.isGovernanceDirective(naming.modelName) && !explicitModels.includes(naming.modelName)) {
+            explicitModels.push(naming.modelName);
+          }
+        }
+      }
+
+      // Also tokenize comma/space separated words for single-line lists
       const tokens = routeBlockMatch[1].split(/[\s,\t\r\n]+/).map(t => t.trim().replace(/^[-*•\d.]+\s*/, "")).filter(Boolean);
       for (const token of tokens) {
+        if (PromptConstraints.isGovernanceDirective(token)) continue;
         if (token.startsWith("/") && token.length > 1 && !token.includes(":") && !token.includes(".")) {
           const clean = token.toLowerCase();
-          if (!explicitRoutes.includes(clean)) explicitRoutes.push(clean);
+          if (!PromptConstraints.isGovernanceDirective(clean) && !explicitRoutes.includes(clean)) explicitRoutes.push(clean);
         } else if (/^[a-z0-9_-]+$/i.test(token) && !["none", "n/a", "etc", "core", "entities", "functional", "requirements"].includes(token.toLowerCase())) {
           const clean = `/${token.toLowerCase()}`;
-          if (!explicitRoutes.includes(clean)) explicitRoutes.push(clean);
+          if (!PromptConstraints.isGovernanceDirective(clean) && !explicitRoutes.includes(clean)) explicitRoutes.push(clean);
         }
       }
     }
 
-    const explicitModels: string[] = [];
     const modelBlockMatch = userPrompt.match(/(?:Core entities|Required entities|Entities|Models|Required models|Core models):\s*([\s\S]*?)(?:\n\n|\n[A-Z\s]{3,}:|$)/i);
     if (modelBlockMatch && modelBlockMatch[1]) {
       const items = modelBlockMatch[1].split(/[,\n]/).map(m => m.trim().replace(/^[-*•\d.]+\s*/, "")).filter(Boolean);
       for (const item of items) {
         const nameOnly = item.split(/[(\s:]/)[0].trim().replace(/[^a-zA-Z0-9]/g, "");
-        if (nameOnly && nameOnly.length > 1 && !["none", "na", "user", "etc", "functional", "requirements"].includes(nameOnly.toLowerCase()) && !explicitModels.includes(nameOnly)) {
+        if (nameOnly && nameOnly.length > 1 && !["none", "na", "user", "etc", "functional", "requirements"].includes(nameOnly.toLowerCase()) && !PromptConstraints.isGovernanceDirective(nameOnly) && !explicitModels.includes(nameOnly)) {
           explicitModels.push(nameOnly);
+        }
+      }
+    }
+
+    // Domain-specific rich product routes extraction (e.g. Renewable Energy Operations Platform / GreenPulse)
+    if (!PromptConstraints.isForbiddenByPrompt(userPrompt, "energy") &&
+        /\b(renewable energy|solar farm|wind turbine|clean energy|energy operations|power grid|greenpulse)\b/i.test(cleanPrompt)) {
+      const energyRoutes = [
+        "/",
+        "/operations",
+        "/assets",
+        "/analytics",
+        "/maintenance",
+        "/incidents",
+        "/reports",
+      ];
+      for (const er of energyRoutes) {
+        if (!explicitRoutes.includes(er)) {
+          explicitRoutes.push(er);
+        }
+      }
+      const energyModels = ["Asset", "TelemetryReading", "WorkOrder", "Incident", "EnergyReport"];
+      for (const em of energyModels) {
+        if (!explicitModels.includes(em)) {
+          explicitModels.push(em);
         }
       }
     }
@@ -410,11 +462,13 @@ export class ArchitectureResolver {
       if (manageMatch && manageMatch[1]) {
         const words = manageMatch[1].split(/,| and |\s+and\s+/).map(w => w.trim()).filter(Boolean);
         for (const w of words) {
+          if (PromptConstraints.isGovernanceDirective(w)) continue;
           const naming = SemanticNaming.deriveCapabilityNaming(w);
-          if (naming.modelName && naming.modelName.length > 2 && !["User", "Record", "Item", "None", "System", "Operation", "Platform"].includes(naming.modelName) && !explicitModels.includes(naming.modelName)) {
+          if (PromptConstraints.isGovernanceDirective(naming.modelName) || PromptConstraints.isGovernanceDirective(naming.routeSlug)) continue;
+          if (naming.modelName && naming.modelName.length > 2 && !["User", "Record", "Item", "None", "System", "Operation", "Platform", "Overview", "Controls"].includes(naming.modelName) && !explicitModels.includes(naming.modelName)) {
             explicitModels.push(naming.modelName);
           }
-          if (naming.routeSlug && naming.routeSlug.length > 1 && !explicitRoutes.includes(naming.routeSlug)) {
+          if (naming.routeSlug && naming.routeSlug.length > 1 && naming.routeSlug !== "/controls" && !explicitRoutes.includes(naming.routeSlug)) {
             if (explicitRoutes.length === 0) explicitRoutes.push("/");
             explicitRoutes.push(naming.routeSlug);
           }
@@ -426,9 +480,10 @@ export class ArchitectureResolver {
     if (explicitRoutes.length === 0 && explicitModels.length > 0) {
       explicitRoutes.push("/");
       for (const m of explicitModels) {
+        if (PromptConstraints.isGovernanceDirective(m)) continue;
         const plural = toModelPlural(m);
         const slug = plural.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
-        if (!explicitRoutes.includes(`/${slug}`)) {
+        if (!PromptConstraints.isGovernanceDirective(slug) && !explicitRoutes.includes(`/${slug}`)) {
           explicitRoutes.push(`/${slug}`);
         }
       }
@@ -441,12 +496,12 @@ export class ArchitectureResolver {
         : (raw.userFlows && raw.userFlows.length > 0
           ? ["/", ...raw.userFlows.map(f => f.startsWith("/") ? f : `/${f.replace(/^(manage|browse|track|view|handle|create|fulfill)-?/i, "").toLowerCase()}`)]
           : (isStaticRequest ? ["/"] : ["/", "/dashboard"])));
-    resolvedRoutes = Array.from(new Set(resolvedRoutes));
+    resolvedRoutes = Array.from(new Set(resolvedRoutes)).filter(r => !PromptConstraints.isGovernanceDirective(r));
 
     let resolvedModels = explicitModels.length > 0
       ? ["User", ...explicitModels]
       : (dbProvider === "None" ? [] : (canonical.dataModels || raw.dataModels || ["User"]));
-    resolvedModels = Array.from(new Set(resolvedModels));
+    resolvedModels = Array.from(new Set(resolvedModels)).filter(m => !PromptConstraints.isGovernanceDirective(m));
 
     const resolvedFeatures = canonical.features || raw.features || (explicitModels.length > 0
       ? explicitModels.map(m => {

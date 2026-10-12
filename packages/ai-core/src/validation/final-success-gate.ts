@@ -464,28 +464,38 @@ export class FinalSuccessGate {
     }
 
     // ── 7. API Workflow Gate (API_WORKFLOW_PASS) ─────────────────────────────
-    if (apiReport) {
+    let effectiveApiReport = apiReport;
+    if (!effectiveApiReport) {
+      try {
+        const apiReportPath = join(projectRoot, ".aegis", "api-workflow-report.json");
+        if (existsSync(apiReportPath)) {
+          effectiveApiReport = JSON.parse(readFileSync(apiReportPath, "utf8"));
+        }
+      } catch {}
+    }
+
+    if (effectiveApiReport) {
       const isClientOnly = !existsSync(join(projectRoot, "server", "index.ts")) &&
         !existsSync(join(projectRoot, "server", "app.ts")) &&
         !existsSync(join(projectRoot, "server", "routes"));
-      const isDbFailure = databaseBlocked && !apiReport.passed;
-      const has500 = (apiReport.http500Count || 0) > 0;
-      const mutationUnverified = apiReport.statefulEndpointsTested > 0 &&
-        apiReport.mutationsVerified < apiReport.statefulEndpointsTested;
+      const isDbFailure = databaseBlocked && !effectiveApiReport.passed;
+      const has500 = (effectiveApiReport.http500Count || 0) > 0;
+      const mutationUnverified = effectiveApiReport.statefulEndpointsTested > 0 &&
+        effectiveApiReport.mutationsVerified < effectiveApiReport.statefulEndpointsTested;
 
-      const apiPassed = !has500 && !mutationUnverified && (apiReport.passed || isClientOnly || isDbFailure);
-      let apiMsg = apiReport.summary;
+      const apiPassed = !has500 && !mutationUnverified && (effectiveApiReport.passed || isClientOnly || isDbFailure);
+      let apiMsg = effectiveApiReport.summary;
       if (has500) {
-        apiMsg = `CRITICAL: ${apiReport.http500Count} HTTP 500 error(s) detected. API surface must have zero 500 responses.`;
+        apiMsg = `CRITICAL: ${effectiveApiReport.http500Count} HTTP 500 error(s) detected. API surface must have zero 500 responses.`;
       } else if (mutationUnverified) {
-        apiMsg = `Stateful mutation failure: only ${apiReport.mutationsVerified}/${apiReport.statefulEndpointsTested} mutations verified.`;
+        apiMsg = `Stateful mutation failure: only ${effectiveApiReport.mutationsVerified}/${effectiveApiReport.statefulEndpointsTested} mutations verified.`;
       }
 
       items.push({
         name: isDbFailure ? "(env) API Workflows" : "API Workflows",
         passed: apiPassed,
         message: isDbFailure
-          ? `${apiReport.summary} (Environment condition: database connection unavailable causes 500 responses)`
+          ? `${effectiveApiReport.summary} (Environment condition: database connection unavailable causes 500 responses)`
           : apiMsg,
         critical: !isClientOnly && !databaseBlocked,
         category: "API",
@@ -537,6 +547,7 @@ export class FinalSuccessGate {
       critical: false, // Environment issue does not mean code failure
       category: "ENVIRONMENT",
     });
+
 
     // ── 10. In-Project Automated Test Suite Gate (V2.2 Staged Rollout) ────────
     const testReport = input.testReport;

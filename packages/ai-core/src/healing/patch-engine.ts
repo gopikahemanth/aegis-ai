@@ -58,13 +58,7 @@ export class PatchEngine {
         isFrontendProtected = true;
       }
       if (isFrontendProtected) {
-        const isProtectedFrontend =
-          norm.startsWith("src/features/") ||
-          norm.startsWith("src/pages/") ||
-          norm.startsWith("src/design-system/") ||
-          norm.startsWith("src/components/") ||
-          norm === "src/App.tsx" ||
-          norm === "src/routes.tsx";
+        const isProtectedFrontend = norm.startsWith("src/");
         if (isProtectedFrontend) {
           console.warn(`[PatchEngine] 🛡️ Protecting approved frontend file from post-approval overwrite: ${f.path}`);
           continue;
@@ -130,13 +124,7 @@ export class PatchEngine {
       }
       if (isPatchProtected) {
         const norm = safeRelPath.replace(/\\/g, "/");
-        const isProtectedFrontend =
-          norm.startsWith("src/features/") ||
-          norm.startsWith("src/pages/") ||
-          norm.startsWith("src/design-system/") ||
-          norm.startsWith("src/components/") ||
-          norm === "src/App.tsx" ||
-          norm === "src/routes.tsx";
+        const isProtectedFrontend = norm.startsWith("src/");
         if (isProtectedFrontend) {
           console.warn(`[PatchEngine] 🛡️ Protecting approved frontend file from post-approval patch: ${safeRelPath}`);
           continue;

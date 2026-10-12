@@ -9,6 +9,8 @@
  * 5. modelName: concise PascalCase entity/model name (max 2 words, <= 24 chars)
  */
 
+import { PromptConstraints } from "../governance/prompt-constraints.js";
+
 export interface CapabilityNaming {
   originalRequirement: string;
   capabilityId: string;
@@ -25,6 +27,44 @@ interface ConceptMapping {
 }
 
 const DOMAIN_AGNOSTIC_CONCEPTS: ConceptMapping[] = [
+  // Renewable Energy & Power Operations
+  {
+    keywords: ["operations overview", "energy-production trends", "operational status", "telemetry hud", "grid frequency"],
+    displayName: "Operations",
+    routeSlug: "/operations",
+    modelName: "Operations",
+  },
+  {
+    keywords: ["solar farm", "wind turbine", "asset management", "asset fleet", "turbine asset", "solar array", "renewable asset"],
+    displayName: "Assets",
+    routeSlug: "/assets",
+    modelName: "Asset",
+  },
+  {
+    keywords: ["energy analytics", "production analytics", "site filters", "capacity factor", "generation trend", "production forecast"],
+    displayName: "Analytics",
+    routeSlug: "/analytics",
+    modelName: "Analytics",
+  },
+  {
+    keywords: ["maintenance scheduling", "maintenance dispatch", "work order", "technician assignment", "maintenance teams"],
+    displayName: "Maintenance",
+    routeSlug: "/maintenance",
+    modelName: "Maintenance",
+  },
+  {
+    keywords: ["incident reporting", "operational alerts", "status updates and resolution", "incident triage", "alert resolution"],
+    displayName: "Incidents",
+    routeSlug: "/incidents",
+    modelName: "Incident",
+  },
+  {
+    keywords: ["historical production reports", "historical reports", "production reports and export", "compliance reporting", "export functionality"],
+    displayName: "Reports",
+    routeSlug: "/reports",
+    modelName: "Report",
+  },
+
   // Financial & Trading
   {
     keywords: ["order routing limit", "routing limit", "var calculation", "portfolio var", "liquidation buffer", "risk limit", "circuit breaker", "risk control"],
@@ -118,7 +158,7 @@ export class SemanticNaming {
    */
   public static deriveCapabilityNaming(rawPhrase: string): CapabilityNaming {
     const originalRequirement = (rawPhrase || "").trim();
-    if (!originalRequirement) {
+    if (!originalRequirement || PromptConstraints.isGovernanceDirective(originalRequirement)) {
       return {
         originalRequirement: "",
         capabilityId: "default-capability",

@@ -57,6 +57,7 @@ export interface ApiWorkflowReport {
   validationTestsPassed: number;
   http500Count: number;
   coverageRatio: number;
+  postgresVerified?: boolean;
   results: ApiStepResult[];
   summary: string;
 }
@@ -631,6 +632,7 @@ export class ApiWorkflowVerifier {
       : 1.0;
 
     // Strict Invariant: passed requires: failedSteps === 0 AND http500Count === 0 AND (statefulTested === 0 || mutationsVerified > 0)
+    const postgresVerified = statefulTested === 0 || (mutationsVerified > 0 && mutationsVerified === statefulTested);
     const passed = failedSteps === 0 && http500Count === 0 && (statefulTested === 0 || mutationsVerified === statefulTested);
 
     const summary = `API Workflow Verification: ${passedSteps}/${results.length} passed (${failedSteps} failed). Read-only: ${readOnlyTested}, Stateful Mutations: ${mutationsVerified}/${statefulTested}, 4xx Validations: ${validationTestsPassed}, HTTP 500: ${http500Count}, Coverage: ${(coverageRatio * 100).toFixed(0)}%.`;
@@ -648,6 +650,7 @@ export class ApiWorkflowVerifier {
       validationTestsPassed,
       http500Count,
       coverageRatio,
+      postgresVerified,
       results,
       summary,
     };
@@ -657,6 +660,18 @@ export class ApiWorkflowVerifier {
         const aegisDir = join(projectRoot, ".aegis");
         if (existsSync(aegisDir)) {
           writeFileSync(join(aegisDir, "api-workflow-report.json"), JSON.stringify(report, null, 2), "utf8");
+          const evidence = {
+            timestamp: new Date().toISOString(),
+            status: passed ? "VERIFIED" : "FAILED",
+            mutationsVerified,
+            statefulEndpointsTested: statefulTested,
+            readOnlyEndpointsTested: readOnlyTested,
+            postgresVerified,
+            http500Count,
+            coverageRatio,
+            summary,
+          };
+          writeFileSync(join(aegisDir, "api-workflow-evidence.json"), JSON.stringify(evidence, null, 2), "utf8");
         }
       } catch {}
     }

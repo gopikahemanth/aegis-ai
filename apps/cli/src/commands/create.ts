@@ -16,11 +16,12 @@ Usage: aegis create "<prompt>" [options]
 Arguments:
   prompt                  Natural language description of the product to create
 
-Options:
   -o, --output <dir>      Output directory for the generated project (must be empty for clean gen)
   -y, --yes               Automatically approve frontend review without interactive prompt
   --fresh                 Explicitly remove and recreate the target directory before clean generation
   --incremental           Allow mutating an existing target directory instead of requiring clean dir
+  --generation-mode=<mod> Generation mode: creative (default) or deterministic
+  --seed <value>          Seed for reproducible creative generations
   --design-mode=<mode>    Design archetype: auto, calm, dark, editorial, random, custom
   --image <path>          Path to an image mockup or screenshot to guide visual direction
   -h, --help              Show this help message
@@ -102,6 +103,23 @@ Options:
     args.splice(saIdx, 1);
   }
 
+  let generationMode: "creative" | "deterministic" = "creative";
+  const gmRawIdx = args.findIndex(a => a === "--generation-mode" || a.startsWith("--generation-mode="));
+  if (gmRawIdx !== -1) {
+    const gmRaw = args[gmRawIdx];
+    if (gmRaw.includes("=")) {
+      const val = gmRaw.split("=").slice(1).join("=").toLowerCase().trim();
+      generationMode = val === "deterministic" ? "deterministic" : "creative";
+      args.splice(gmRawIdx, 1);
+    } else if (args[gmRawIdx + 1] && !args[gmRawIdx + 1].startsWith("-")) {
+      generationMode = args[gmRawIdx + 1].toLowerCase().trim() === "deterministic" ? "deterministic" : "creative";
+      args.splice(gmRawIdx, 2);
+    } else {
+      generationMode = "creative";
+      args.splice(gmRawIdx, 1);
+    }
+  }
+
   let seed: string | undefined;
   const seedIdx = args.indexOf("--seed");
   if (seedIdx !== -1 && args[seedIdx + 1]) {
@@ -179,6 +197,11 @@ Options:
     (engine as any).setDesignMode(designMode, designModeHint);
   }
 
+  // Thread generation seed & mode into the orchestrator
+  if (typeof (engine as any).setGenerationSeed === "function") {
+    (engine as any).setGenerationSeed(seed, generationMode);
+  }
+
   if (designMode && designMode !== "AUTO") {
     console.log(`[DesignMode] ${designMode}${designModeHint ? ` (hint: "${designModeHint}")` : ""}`);
   }
@@ -205,7 +228,10 @@ Options:
 
     const previewUrl = summary.serverUrl || "http://localhost:5173";
     const prodIdentity = summary.productIdentity;
+    const expFidelity = summary.experienceFidelity;
     const productName = summary.appName || "Generated Application";
+    const expType = summary.experienceType || "STANDARD_WEB";
+    const rendMode = summary.renderingMode || "standard-dom";
 
     // Build feature check list from product identity evidence
     const featureChecks = prodIdentity?.featureEvidence?.length
@@ -231,6 +257,7 @@ Options:
       `╚══════════════════════════════════════════════════════════════════════════════╝\n` +
       `\n` +
       `  Product:    ${productName}\n` +
+      `  Experience: ${expType} (rendering: ${rendMode})\n` +
       `  Preview:    ${previewUrl}\n` +
       `\n` +
       `${separator}\n` +
@@ -250,6 +277,7 @@ Options:
       `  ${consoleErrorCount === 0 ? "✓" : "✗"} Console errors: ${consoleErrorCount}\n` +
       `  ${domElements >= 10 ? "✓" : "✗"} Rendered elements: ${domElements}\n` +
       `  ${prodIdentity?.passed !== false ? "✓" : "✗"} Product identity\n` +
+      `  ${expFidelity?.passed !== false ? "✓" : "✗"} Experience fidelity${expFidelity?.real3dRequired ? " (Real 3D WebGL Verified)" : ""}\n` +
       `  ${automatedReviewPassed ? "✓" : "✗"} Feature completeness\n` +
       `\n` +
       `${separator}\n` +
@@ -317,6 +345,7 @@ Options:
       approveFrontend,
       onFrontendReview,
       seed,
+      generationMode,
     });
 
     if (success) {

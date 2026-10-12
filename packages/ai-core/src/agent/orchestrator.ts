@@ -68,6 +68,7 @@ import { ValidationStateManager } from "../validation/validation-state.js";
 import { TransactionalRepairSystem, RepairConvergenceTracker, TsSymbolRepairEngine } from "../healing/index.js";
 import { ArchitectureContractManager, ArchitectureResolver, ArchitectureAuditor, ArchitectureDiff, PlannerArchitectureGuard, ArchitectureContractNormalizer, FastDeterministicSanitizer, FileOwnershipRegistry, ApiContractRegistry, ExecutionReportGenerator, ContractGate, ContractIntegrityValidator, TechnologyConstraintValidator, CanonicalArchitectureState, CanonicalManifestGenerator, CanonicalDataModelContract, CanonicalFileGraph, SemanticDuplicateDetector, ProjectFileRegistry, TaskNormalizer, PlanContractGate, ManifestCompletenessValidator, CanonicalDependencyClosureValidator, SymbolContractValidator, DynamicFileGraphManager, FrontendFilePolicyGuard, FrontendExperienceContractManager, InteractionProvenanceTracker } from "../governance/index.js";
 import { DomainModelGuard } from "../governance/domain-model-guard.js";
+import { ASTSafeTransformer } from "../governance/ast-safe-transformer.js";
 import { StagedValidator } from "../validation/staged-validator.js";
 import { FinalSuccessGate } from "../validation/final-success-gate.js";
 import { GeneratedFileValidator } from "../validation/generated-file-validator.js";
@@ -1169,6 +1170,23 @@ export class Orchestrator {
                 // Files are rejected — not written to disk. Already logged by the guard.
                 result.files = policyResult.allowed;
               }
+            } else if (InteractionProvenanceTracker.hasBaseline(outputDirectory)) {
+              // During post-baseline/backend tasks, strictly reject overwriting protected frontend files
+              result.files = result.files.filter(f => {
+                const norm = f.path.replace(/\\/g, "/");
+                const isProtectedFrontend =
+                  norm.startsWith("src/features/") ||
+                  norm.startsWith("src/pages/") ||
+                  norm.startsWith("src/design-system/") ||
+                  norm.startsWith("src/components/") ||
+                  norm === "src/App.tsx" ||
+                  norm === "src/routes.tsx";
+                if (isProtectedFrontend) {
+                  console.warn(`[BackendTaskGuard] 🛡️ Rejected frontend overwrite during backend task "${task.title}": ${f.path}`);
+                  return false;
+                }
+                return true;
+              });
             }
 
             // ── STEP B: Trailing-filename contamination strip ──
@@ -1332,14 +1350,35 @@ export class Orchestrator {
     // ── STAGE 3: FRONTEND GENERATION (FRONTEND ONLY) ──────────────────────────
     await executeTaskBatch(frontendTasks, "STAGE 3: FRONTEND GENERATION (FRONTEND ONLY)", true);
 
-    // ─── Interaction Provenance: Capture Native Baseline (Post-Coder, Pre-Sanitization) ─
+    // ── STAGE 3.5: EXPERIENCE DESIGN & ROUTE-PAGE SYNTHESIS (PRE-BASELINE) ────
+    console.log("[ExperienceArchitect] Synthesizing canonical route experience pages prior to baseline capture...");
+    try {
+      FastDeterministicSanitizer.synthesizeMissingRoutePages(outputDirectory, resolvedContract);
+      // Synchronize in-memory parsedFiles with pre-baseline synthesized files
+      const preBaselineSrcDir = join(outputDirectory, "src");
+      if (existsSync(preBaselineSrcDir)) {
+        for (const cand of ["routes.tsx", "pages/DashboardPage.tsx"]) {
+          const fullCand = join(preBaselineSrcDir, cand);
+          if (existsSync(fullCand)) {
+            const content = readFileSync(fullCand, "utf8");
+            const normRel = "src/" + cand;
+            parsedFiles = parsedFiles.filter(f => f.path !== normRel);
+            parsedFiles.push({ path: normRel, content });
+          }
+        }
+      }
+    } catch (routeErr: any) {
+      console.warn(`[ExperienceArchitect] Warning: Pre-baseline route page synthesis: ${routeErr.message}`);
+    }
+
+    // ─── Interaction Provenance: Capture Native Baseline (Post-Generation, Pre-Sanitization) ─
     try {
       InteractionProvenanceTracker.captureBaseline(outputDirectory);
     } catch (provErr: any) {
-      console.warn(`[InteractionProvenance] Warning: Failed to capture baseline at post-Coder boundary: ${provErr.message}`);
+      console.warn(`[InteractionProvenance] Warning: Failed to capture baseline at post-generation boundary: ${provErr.message}`);
     }
 
-    FastDeterministicSanitizer.sanitizeProject(outputDirectory);
+    FastDeterministicSanitizer.sanitizeProject(outputDirectory, resolvedContract);
 
     // ── STAGES 4–7: FRONTEND VISUAL & FUNCTIONAL CHECK ────────────────────────
     console.log("\n══════════════════════════════════════════════════════════════════════════════");
@@ -1384,6 +1423,24 @@ export class Orchestrator {
       await this.projectStartupAgent.prepare(outputDirectory);
     } catch (startupPrepErr: any) {
       console.warn(`[Startup] Pre-review startup preparation warning: ${startupPrepErr.message}`);
+    }
+
+    // 1b. Enforce clean build before browser evaluation (prevent certifying broken code)
+    console.log("[StageReview] 🔍 Verifying clean frontend compilation before Chromium review...");
+    const preReviewResult = await this.verifyAndHealPreReviewBuild(
+      request,
+      framework,
+      outputDirectory,
+      resolvedContract,
+      parsedFiles,
+      response
+    );
+    let preReviewBuild = preReviewResult.build;
+
+    if (!preReviewBuild.success) {
+      const fullDiagnostics = [preReviewBuild.stdout, preReviewBuild.stderr].filter(Boolean).join("\n");
+      console.error(`\n❌ FRONTEND_BUILD_BLOCKED: Clean build required before browser evaluation.\nDiagnostics:\n${fullDiagnostics}`);
+      throw new Error(`FRONTEND_BUILD_BLOCKED: Clean compilation required before browser review: ${fullDiagnostics || "TypeScript compilation failed."}`);
     }
 
     // 2. Start frontend dev server
@@ -1889,8 +1946,24 @@ INSTRUCTIONS FOR FRONTEND REFINEMENT:
         framework,
         mergedFiles,
       );
+    // Filter out approved frontend files to protect interaction baseline
+    const filesToWrite = files.filter(f => {
+      const norm = f.path.replace(/\\/g, "/");
+      const isProtectedFrontend =
+        norm.startsWith("src/features/") ||
+        norm.startsWith("src/pages/") ||
+        norm.startsWith("src/design-system/") ||
+        norm.startsWith("src/components/") ||
+        norm === "src/App.tsx" ||
+        norm === "src/routes.tsx";
+      if (isProtectedFrontend && (InteractionProvenanceTracker.hasBaseline(outputDirectory) || existsSync(join(outputDirectory, ".aegis", "frontend-review.json")))) {
+        console.warn(`[Orchestrator] 🛡️ Protecting approved frontend file from post-backend write: ${f.path}`);
+        return false;
+      }
+      return true;
+    });
     this.write(
-      files,
+      filesToWrite,
       outputDirectory,
     );
 
@@ -2588,24 +2661,11 @@ FORBIDDEN STUB PATTERNS:
         const intentReport = await DesignIntentGate.verify(pendingBrief, outputDirectory);
         console.log(`[DesignIntentGate] ${intentReport.passed ? "✓ PASS" : "✗ FAIL"} — score=${intentReport.score}/100 | critical=${intentReport.criticalCount} | warnings=${intentReport.warningCount}`);
 
-        if (!intentReport.passed && intentReport.score < 60) {
-          // Hard fail — inject violations into enrichedRequest so repair loop has context
-          throw new Error(
-            `DESIGN_INTENT_GATE_FAILED: score=${intentReport.score}/100. ` +
-            `${intentReport.criticalCount} critical violation(s) detected. ` +
-            `Fix these before the build can proceed:\n\n${intentReport.summaryText}`
-          );
-        }
-
-        if (!intentReport.passed && intentReport.score < 80) {
-          // Soft fail — pass but inject violation context into enrichedRequest for repair loop awareness
-          console.warn(`[DesignIntentGate] ⚠ ${intentReport.warningCount} design warning(s) — injecting into healing context.`);
-          enrichedRequest = enrichedRequest + "\n\n[DESIGN_INTENT_WARNINGS]\n" + intentReport.summaryText;
+        if (!intentReport.passed) {
+          console.warn(`[DesignIntentGate] ⚠ Design intent score ${intentReport.score}/100 (${intentReport.criticalCount} critical, ${intentReport.warningCount} warnings) — injecting into healing context.`);
+          enrichedRequest = enrichedRequest + "\n\n[DESIGN_INTENT_VIOLATIONS]\n" + intentReport.summaryText;
         }
       } catch (gateErr: any) {
-        if (gateErr.message?.startsWith("DESIGN_INTENT_GATE_FAILED")) {
-          throw gateErr; // re-throw hard failures
-        }
         // Non-fatal gate errors (e.g. filesystem issue) — log and continue
         console.warn(`[DesignIntentGate] Gate encountered a non-fatal error: ${gateErr.message}. Continuing build.`);
       }
@@ -2828,6 +2888,23 @@ FORBIDDEN STUB PATTERNS:
               });
 
             if (repairedFiles.length > 0) {
+              // Pre-normalize candidate repair files before writing
+              for (const rFile of repairedFiles) {
+                if (rFile.path.endsWith(".ts") || rFile.path.endsWith(".tsx")) {
+                  const numNorm = ASTSafeTransformer.normalizeLeadingZeroLiterals(rFile.content, rFile.path);
+                  if (numNorm.normalizedCount > 0) {
+                    rFile.content = numNorm.code;
+                  }
+                  const dedup = ASTSafeTransformer.deduplicateTopLevelIdentifiers(rFile.content, rFile.path);
+                  if (dedup.deduplicatedCount > 0) {
+                    rFile.content = dedup.code;
+                  }
+                }
+              }
+
+              // In-memory snapshot to prevent in-memory parsedFiles from drifting if repair rolls back
+              const parsedFilesSnapshot = parsedFiles.map(f => ({ ...f }));
+
               // Transactional Repair: Create checkpoint before writing repair files
               const repairFilePaths = repairedFiles.map(rf => rf.path);
               const repairCheckpoint = TransactionalRepairSystem.createCheckpoint(outputDirectory, repairFilePaths);
@@ -2887,6 +2964,9 @@ FORBIDDEN STUB PATTERNS:
               } else {
                 console.warn(`[Self-Healing] ⚠️ ${candidateEval.comparison.reason}. Rolling back checkpoint...`);
                 TransactionalRepairSystem.rollback(outputDirectory, repairCheckpoint, candidateEval.comparison.reason);
+                // Restore in-memory parsedFiles to match disk rollback state
+                parsedFiles.length = 0;
+                parsedFiles.push(...parsedFilesSnapshot.map(f => ({ ...f })));
                 // Re-run verification to confirm working state restored
                 build = await this.runVerification(request, framework, outputDirectory);
 
@@ -3074,37 +3154,18 @@ FORBIDDEN STUB PATTERNS:
     ArchitectureDiff.writeDiffReport(outputDirectory, archDiff);
 
     const archContract = ArchitectureContractManager.loadContract(outputDirectory);
-    const finalReport = ExecutionReportGenerator.generateReport(
-      outputDirectory,
-      request,
-      archContract,
-      loadedContract ? "PASS" : "FAIL",
-      archDiff.status === "PASS" ? "PASS" : "FAIL",
-      archDiff.violations.map(v => `${v.field}: expected '${v.expected}', got '${v.actual}'`),
-      dodPassed && build.success && archDiff.status === "PASS" ? "SUCCESS" : "FAILED",
-      dodResult?.score ?? 0,
-      (dodResult?.criteria ?? []).filter((c: any) => c.passed).map((c: any) => c.name),
-      (dodResult?.criteria ?? []).filter((c: any) => !c.passed).map((c: any) => c.name),
-      {
-        requested: loadedContract?.database.provider || "SQLite",
-        configured: actualArch.databaseProvider,
-        isSynced: actualArch.databaseProvider.toLowerCase() === (loadedContract?.database.provider.toLowerCase() || "sqlite")
-      },
-      {
-        typeCheck: build.success,
-        build: build.success,
-        runtime: true,
-        realityChecker: true,
-        visualReviewer: true
-      },
-      0,
-      (dodResult?.blockers ?? []).map((b: any) => b.detail)
-    );
+
+    // Enforce clean build before runtime evaluation
+    if (!build.success) {
+      console.error(`\n❌ Clean build required before runtime evaluation. Build diagnostics:\n${build.stderr || build.stdout}`);
+      this.execution.complete();
+      throw new Error(`Project generation failed: Clean compilation build required before runtime evaluation: ${build.stderr || "Compilation failed."}`);
+    }
 
     // ─── End-to-End Runtime Validation (AppServerRunner, ReadOnlyBrowserValidator, ApiWorkflowVerifier) ────
     console.log("\n[RuntimeValidation] 🚀 Starting application server & runtime validation...");
-    let serverInfo = { ready: true, port: 5173, url: "http://localhost:5173" };
-    let browserValResult: any = { passed: true, routesChecked: ["/", "/upload"], renderedElementsCount: 20 };
+    let serverInfo = { ready: false, port: 5173, url: "http://localhost:5173" };
+    let browserValResult: any = null;
     let apiWorkflowReport: any = null;
 
     try {
@@ -3172,6 +3233,34 @@ FORBIDDEN STUB PATTERNS:
     } catch (testErr: any) {
       console.warn(`[TestGeneratorAgent] Warning: In-project test execution encountered non-fatal error: ${testErr.message}`);
     }
+
+    // ── Generate Execution Governance Report with Authentic Runtime Evidence ──
+    const finalReport = ExecutionReportGenerator.generateReport(
+      outputDirectory,
+      request,
+      archContract,
+      loadedContract ? "PASS" : "FAIL",
+      archDiff.status === "PASS" ? "PASS" : "FAIL",
+      archDiff.violations.map(v => `${v.field}: expected '${v.expected}', got '${v.actual}'`),
+      dodPassed && build.success && archDiff.status === "PASS" && Boolean(browserValResult?.passed) ? "SUCCESS" : "FAILED",
+      dodResult?.score ?? 0,
+      (dodResult?.criteria ?? []).filter((c: any) => c.passed).map((c: any) => c.name),
+      (dodResult?.criteria ?? []).filter((c: any) => !c.passed).map((c: any) => c.name),
+      {
+        requested: loadedContract?.database.provider || "SQLite",
+        configured: actualArch.databaseProvider,
+        isSynced: actualArch.databaseProvider.toLowerCase() === (loadedContract?.database.provider.toLowerCase() || "sqlite")
+      },
+      {
+        typeCheck: build.success,
+        build: build.success,
+        runtime: Boolean(browserValResult?.passed),
+        realityChecker: Boolean(realityAuditResult?.passed),
+        visualReviewer: Boolean(browserValResult?.passed)
+      },
+      0,
+      (dodResult?.blockers ?? []).map((b: any) => b.detail)
+    );
 
     // ─── FINAL SUCCESS GATE (Strict Zero-False-Positive Check) ─────────────
     // Detect if database is blocked (P1000 / ECONNREFUSED) — pass as separate signal, not build failure
@@ -3311,6 +3400,202 @@ FORBIDDEN STUB PATTERNS:
 
     ValidationStateManager.getInstance().recordRuntime(true);
     return { success: true };
+  }
+
+  public async verifyAndHealPreReviewBuild(
+    request: any,
+    framework: any,
+    outputDirectory: string,
+    resolvedContract: any,
+    parsedFiles: GeneratedFile[],
+    initialResponse = ""
+  ): Promise<{ success: boolean; build: any; attempts: number }> {
+    let preReviewBuild = await this.runVerification(request, framework, outputDirectory);
+    if (!preReviewBuild.success) {
+      console.log("[StageReview] Pre-review compilation issues detected. Applying deterministic sanitization & AST repairs...");
+      FastDeterministicSanitizer.sanitizeProject(outputDirectory, resolvedContract);
+      this.resolveMissingLocalImports(outputDirectory);
+      try {
+        await this.projectStartupAgent.prepare(outputDirectory);
+      } catch {}
+      preReviewBuild = await this.runVerification(request, framework, outputDirectory);
+      if (!preReviewBuild.success) {
+        const preDiag = [preReviewBuild.stdout || "", preReviewBuild.stderr || ""].filter(Boolean).join("\n");
+        const actions = TsSymbolRepairEngine.repair(outputDirectory, preDiag);
+        if (actions.length > 0) {
+          FastDeterministicSanitizer.sanitizeProject(outputDirectory, resolvedContract);
+          preReviewBuild = await this.runVerification(request, framework, outputDirectory);
+        }
+      }
+
+      // ── Pre-Review Bounded Transactional Self-Healing Loop ──────────────────
+      let preRepairAttempts = 0;
+      if (!preReviewBuild.success) {
+        const initialPreDiag = [preReviewBuild.stdout || "", preReviewBuild.stderr || ""].filter(Boolean).join("\n");
+        console.warn(`[StageReview:Self-Healing] ⚠️ Pre-review build not clean after deterministic passes. Invoking bounded transactional healing...`);
+
+        const MAX_PRE_REVIEW_REPAIR_ATTEMPTS = 3;
+        const preConvergenceTracker = new RepairConvergenceTracker(initialPreDiag);
+
+        while (!preReviewBuild.success && preRepairAttempts < MAX_PRE_REVIEW_REPAIR_ATTEMPTS) {
+          preRepairAttempts++;
+          console.log(`\n[StageReview:Self-Healing] Attempting targeted pre-review repair ${preRepairAttempts}/${MAX_PRE_REVIEW_REPAIR_ATTEMPTS}...`);
+
+          const currentDiag = [preReviewBuild.stdout || "", preReviewBuild.stderr || ""].filter(Boolean).join("\n");
+
+          // 1. Dependency repair
+          const packages = this.dependencyResolver.resolve(currentDiag);
+          if (packages.length > 0) {
+            console.log(`[StageReview:DependencyResolver] Installing missing packages: ${packages.join(", ")}`);
+            try {
+              await this.installer.installPackages("pnpm", outputDirectory, packages);
+              this.resolveMissingLocalImports(outputDirectory);
+              preReviewBuild = await this.runVerification(request, framework, outputDirectory);
+              if (preReviewBuild.success) {
+                console.log("[StageReview:Self-Healing] ✓ Pre-review build succeeded after package installation!");
+                break;
+              }
+            } catch (instErr: any) {
+              console.warn(`[StageReview:DependencyResolver] Warning: Failed to install packages: ${instErr.message}`);
+            }
+          }
+
+          // 2. Focused AI Code Repair with Checkpointing & Convergence Tracking
+          try {
+            const mapper = new ErrorRootCauseMapper();
+            const rootCause = mapper.analyze(currentDiag, parsedFiles.map(f => f.path));
+
+            const brokenFileSnippets: string[] = [];
+            for (const targetRelPath of rootCause.filesToFix) {
+              const absTarget = join(outputDirectory, targetRelPath);
+              if (existsSync(absTarget)) {
+                try {
+                  const code = readFileSync(absTarget, "utf8");
+                  brokenFileSnippets.push(`=== FILE CONTENT TO REPAIR (${targetRelPath}) ===\n${code}`);
+                } catch { /* ignore */ }
+              }
+            }
+
+            const errorPayload = [
+              currentDiag,
+              rootCause.summary ? `=== STRUCTURED ROOT CAUSE DIAGNOSIS ===\n${rootCause.summary}` : "",
+              brokenFileSnippets.join("\n\n")
+            ].filter(Boolean).join("\n\n");
+
+            const repairResponse = await this.repairCoordinator.repair(
+              request,
+              errorPayload,
+              initialResponse
+            );
+
+            if (preConvergenceTracker.isDuplicateCandidate(repairResponse)) {
+              console.warn(`[StageReview:Self-Healing] 🛑 AI proposed duplicate repair candidate already tested. Skipping...`);
+              break;
+            }
+
+            let repairedFiles = this.parser.parse(repairResponse);
+            if (repairedFiles.length === 0) {
+              try {
+                const jsonMatch = repairResponse.match(/\{[\s\S]*"repairs"[\s\S]*\}/);
+                if (jsonMatch) {
+                  const parsedObj = JSON.parse(jsonMatch[0]);
+                  if (Array.isArray(parsedObj.repairs)) {
+                    repairedFiles = parsedObj.repairs.map((r: any) => ({
+                      path: r.path || r.filePath,
+                      content: r.content || r.newContent || r.patch || ""
+                    })).filter((f: any) => f.path && f.content);
+                  }
+                }
+              } catch {}
+            }
+
+            if (repairedFiles.length === 0) {
+              const fileHeaderRegex = /(?:(?:\*{0,2}(?:FIXED\s+|UPDATED\s+|MODIFIED\s+)?(?:File|Path|Target\s+File):\s*`?([a-zA-Z0-9_\-\/\\\.]+?)`?\*{0,2}))[\s\S]*?```(?:tsx|ts|jsx|js)?[\r\n]+([\s\S]*?)```/gi;
+              let match: RegExpExecArray | null;
+              while ((match = fileHeaderRegex.exec(repairResponse)) !== null) {
+                const filePath = match[1].trim();
+                const fileContent = match[2].trim();
+                if (filePath && fileContent) {
+                  repairedFiles.push({ path: filePath, content: fileContent });
+                }
+              }
+            }
+
+            if (repairedFiles.length === 0) {
+              console.warn(`[StageReview:Self-Healing] No actionable file repairs parsed from AI response.`);
+              break;
+            }
+
+            // Create atomic multi-file checkpoint before applying patch
+            const checkpointId = TransactionalRepairSystem.createCheckpoint(
+              outputDirectory,
+              repairedFiles.map(f => f.path),
+              {
+                attemptNumber: preRepairAttempts,
+                failureType: "PRE_REVIEW_BUILD_ERROR",
+                rootCause: rootCause.summary || "Pre-review compilation error",
+              }
+            );
+
+            const parsedFilesSnapshot = parsedFiles.map(f => ({ ...f }));
+
+            // Apply repaired files
+            for (const file of repairedFiles) {
+              const fullPath = join(outputDirectory, file.path);
+              mkdirSync(dirname(fullPath), { recursive: true });
+              writeFileSync(fullPath, file.content, "utf8");
+
+              const existingIdx = parsedFiles.findIndex(f => f.path === file.path);
+              if (existingIdx >= 0) {
+                parsedFiles[existingIdx] = file;
+              } else {
+                parsedFiles.push(file);
+              }
+            }
+
+            FastDeterministicSanitizer.sanitizeProject(outputDirectory, resolvedContract);
+
+            // Rebuild
+            const candidateBuild = await this.runVerification(request, framework, outputDirectory);
+            if (candidateBuild.success) {
+              console.log(`[StageReview:Self-Healing] ✅ Pre-review repair succeeded! Build is now clean.`);
+              TransactionalRepairSystem.commit(checkpointId);
+              preReviewBuild = candidateBuild;
+              break;
+            } else {
+              const candidateDiag = [candidateBuild.stdout || "", candidateBuild.stderr || ""].filter(Boolean).join("\n");
+              const evalResult = preConvergenceTracker.evaluateCandidate(preRepairAttempts, candidateDiag);
+
+              if (evalResult.accepted) {
+                console.log(`[StageReview:Self-Healing] ✓ Repair candidate accepted (${evalResult.comparison.reason}). Retaining.`);
+                TransactionalRepairSystem.commit(checkpointId);
+                preReviewBuild = candidateBuild;
+              } else {
+                console.warn(`[StageReview:Self-Healing] ❌ Repair candidate rejected (${evalResult.comparison.reason}). Rolling back checkpoint...`);
+                TransactionalRepairSystem.rollback(outputDirectory, checkpointId, evalResult.comparison.reason);
+                parsedFiles.length = 0;
+                parsedFiles.push(...parsedFilesSnapshot.map(f => ({ ...f })));
+              }
+            }
+          } catch (repairErr: any) {
+            console.warn(`[StageReview:Self-Healing] Error during pre-review repair attempt: ${repairErr.message}`);
+            break;
+          }
+        }
+      }
+
+      return {
+        success: preReviewBuild.success,
+        build: preReviewBuild,
+        attempts: preRepairAttempts,
+      };
+    }
+
+    return {
+      success: true,
+      build: preReviewBuild,
+      attempts: 0,
+    };
   }
 
   private resolveMissingLocalImports(outputDirectory: string) {

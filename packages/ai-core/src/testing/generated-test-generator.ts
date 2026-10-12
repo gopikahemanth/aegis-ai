@@ -177,9 +177,23 @@ describe("${domainName} Business Logic & Calculation Engine", () => {
 
     // 5. App DOM Flow Test (src/__tests__/app-flow.test.tsx)
     const appFlowPath = join(testsDir, "app-flow.test.tsx");
+    let appHasRouter = false;
+    try {
+      const appFile = join(srcDir, "App.tsx");
+      if (existsSync(appFile)) {
+        const appSrc = readFileSync(appFile, "utf8");
+        appHasRouter = /BrowserRouter|Router|RouterProvider/.test(appSrc);
+      }
+    } catch {}
+
+    const appRenderSnippet = appHasRouter
+      ? `<App />`
+      : `<MemoryRouter><App /></MemoryRouter>`;
+
     const appFlowContent = `import React from "react";
 import { describe, it, expect, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import App from "../App";
 
 describe("${domainName} UI Workflow", () => {
@@ -188,13 +202,17 @@ describe("${domainName} UI Workflow", () => {
   });
 
   it("renders main dashboard interface and container", () => {
-    const { container } = render(<App />);
+    const { container } = render(
+      ${appRenderSnippet}
+    );
     expect(container.firstChild).not.toBeNull();
     expect(container.innerHTML.length).toBeGreaterThan(20);
   });
 
   it("verifies interactive application elements or controls", () => {
-    const { container } = render(<App />);
+    const { container } = render(
+      ${appRenderSnippet}
+    );
     const buttons = container.querySelectorAll("button, a, input, [role='button']");
     const headings = container.querySelectorAll("h1, h2, h3, [role='heading']");
     expect(buttons.length + headings.length + container.children.length).toBeGreaterThan(0);

@@ -38,6 +38,7 @@ export * from "./domain-contamination-validator.js";
 
 // ── Phase 4: Architecture Selection, Technology & Dependency Contracts ──────
 export * from "./technology-contract.js";
+export * from "./interaction-provenance-tracker.js";
 export * from "./dependency-contract.js";
 export * from "./architecture-decision-record.js";
 export * from "./architecture-drift-validator.js";
@@ -55,4 +56,5 @@ export * from "./artifact-provenance-validator.js";
 // -- Human-First Frontend Architecture ----------------------------------------
 export * from "./frontend-file-policy.js";
 export * from "./frontend-experience-contract.js";
+export * from "./prompt-constraints.js";
 

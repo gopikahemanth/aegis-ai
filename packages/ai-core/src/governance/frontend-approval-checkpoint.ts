@@ -48,6 +48,10 @@ export interface FrontendReviewSummary {
   uncaughtExceptions?: string[];
   reviewPassed?: boolean;
   productIdentity?: import("../validation/read-only-browser-validator.js").ProductIdentityResult;
+  experienceType?: string;
+  renderingMode?: string;
+  real3dRequired?: boolean;
+  experienceFidelity?: import("../validation/read-only-browser-validator.js").ExperienceFidelityResult;
   warnings?: string[];
   designTokenViolations?: Array<{ file: string; line: number; matchedClass: string; rule: string }>;
   status: ApprovalStatus;
@@ -155,6 +159,9 @@ export class FrontendApprovalCheckpoint {
       if (browserReview.productIdentity && !browserReview.productIdentity.passed) {
         blockers.push(...browserReview.productIdentity.mismatchReasons);
       }
+      if (browserReview.experienceFidelity && !browserReview.experienceFidelity.passed) {
+        blockers.push(...browserReview.experienceFidelity.mismatchReasons);
+      }
     }
 
     const screenshots = browserReview?.screenshots || persisted?.screenshots || {};
@@ -222,6 +229,9 @@ export class FrontendApprovalCheckpoint {
       frontendSourceHash,
       approvedRoutes: review?.routes ?? [],
       approvedFeatures: (review?.productIdentity as any)?.featureEvidence?.map((f: any) => f.name) ?? [],
+      experienceType: review?.experienceType,
+      renderingMode: review?.renderingMode,
+      real3dRequired: review?.real3dRequired,
     };
     writeFileSync(this.getCheckpointPath(outputDirectory), JSON.stringify(extendedCheckpoint, null, 2), "utf8");
 
@@ -234,6 +244,9 @@ export class FrontendApprovalCheckpoint {
       frontendSourceHash,
       approvedRoutes: review?.routes ?? [],
       approvedFeatures: (review?.productIdentity as any)?.featureEvidence?.map((f: any) => f.name) ?? [],
+      experienceType: review?.experienceType,
+      renderingMode: review?.renderingMode,
+      real3dRequired: review?.real3dRequired,
       status: "APPROVED" as const,
     };
     writeFileSync(this.getApprovalManifestPath(outputDirectory), JSON.stringify(approvalManifest, null, 2), "utf8");

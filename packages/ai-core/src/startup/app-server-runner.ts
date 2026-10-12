@@ -13,6 +13,7 @@ export interface AppServerInfo {
 
 export class AppServerRunner {
   private static process: ChildProcess | null = null;
+  private static backendProcess: ChildProcess | null = null;
   private static activePort: number = 5173;
 
   public static async startServer(outputDirectory: string): Promise<AppServerInfo> {
@@ -60,6 +61,7 @@ export class AppServerRunner {
       } catch {}
     }
 
+    const isWindows = process.platform === "win32";
     const localViteBin = join(absDir, "node_modules", "vite", "bin", "vite.js");
     if (existsSync(localViteBin)) {
       this.process = spawn(process.execPath, [localViteBin, "--port", String(port)], {
@@ -69,13 +71,50 @@ export class AppServerRunner {
         env: { ...process.env, PORT: String(port) },
       });
     } else {
-      const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
+      const npxCmd = isWindows ? "npx.cmd" : "npx";
       this.process = spawn(npxCmd, ["vite", "--port", String(port)], {
         cwd: absDir,
-        shell: false,
+        shell: isWindows,
         stdio: "ignore",
         env: { ...process.env, PORT: String(port) },
       });
+    }
+
+    const serverIndex = join(absDir, "server", "index.ts");
+    if (existsSync(serverIndex)) {
+      const localTsxBin = join(absDir, "node_modules", "tsx", "dist", "cli.mjs");
+      if (existsSync(localTsxBin)) {
+        this.backendProcess = spawn(process.execPath, [localTsxBin, "server/index.ts"], {
+          cwd: absDir,
+          shell: false,
+          stdio: ["ignore", "pipe", "pipe"],
+          env: { ...process.env, PORT: "5000" },
+        });
+      } else {
+        const cmd = isWindows ? "npx.cmd" : "npx";
+        this.backendProcess = spawn(cmd, ["tsx", "server/index.ts"], {
+          cwd: absDir,
+          shell: isWindows,
+          stdio: ["ignore", "pipe", "pipe"],
+          env: { ...process.env, PORT: "5000" },
+        });
+      }
+      this.backendProcess.stderr?.on("data", (data) => {
+        const line = data.toString().trim();
+        if (line) console.error(`[AppServerRunner:Backend] ⚠️ ${line}`);
+      });
+      this.backendProcess.stdout?.on("data", (data) => {
+        const line = data.toString().trim();
+        if (line && (line.includes("Server") || line.includes("running") || line.includes("Listening"))) {
+          console.log(`[AppServerRunner:Backend] ✓ ${line}`);
+        }
+      });
+      this.backendProcess.on("exit", (code) => {
+        if (code !== 0 && code !== null) {
+          console.error(`[AppServerRunner:Backend] ❌ Backend process exited with code ${code}`);
+        }
+      });
+      console.log(`[AppServerRunner] 🚀 Express backend process spawned on port 5000.`);
     }
 
     let isReady = false;
@@ -83,8 +122,16 @@ export class AppServerRunner {
     const timeoutMs = 20_000;
 
     while (Date.now() - startTime < timeoutMs) {
-      isReady = await this.checkHealth(port);
-      if (isReady) break;
+      const frontendHealthy = await this.checkHealth(port);
+      const backendHealthy = existsSync(serverIndex) ? await this.checkHealth(5000) : true;
+      if (frontendHealthy && backendHealthy) {
+        isReady = true;
+        break;
+      }
+      if (this.backendProcess && this.backendProcess.exitCode !== null) {
+        console.error(`[AppServerRunner] ❌ Express backend failed to start (exit code: ${this.backendProcess.exitCode}).`);
+        break;
+      }
       await new Promise((r) => setTimeout(r, 1000));
     }
 
@@ -115,6 +162,18 @@ export class AppServerRunner {
         console.log(`[AppServerRunner] 🛑 Stopped dev server process.`);
       } catch {}
       this.process = null;
+    }
+    if (this.backendProcess) {
+      try {
+        if (process.platform === "win32" && this.backendProcess.pid) {
+          try {
+            execSync(`taskkill /pid ${this.backendProcess.pid} /T /F`, { stdio: "ignore" });
+          } catch {}
+        }
+        this.backendProcess.kill();
+        console.log(`[AppServerRunner] 🛑 Stopped backend server process.`);
+      } catch {}
+      this.backendProcess = null;
     }
   }
 

@@ -1,10 +1,10 @@
 {
-  "certificateId": "cert_prod_val_1790945226732",
-  "issuedAt": "2026-10-02T12:47:06.732Z",
+  "certificateId": "cert_prod_val_1791562297641",
+  "issuedAt": "2026-10-09T16:11:37.641Z",
   "status": "PRODUCTION_VALIDATED",
   "platformCertificate": {
-    "certificateId": "cert_supreme_platform_1790945226731",
-    "issuedAt": "2026-10-02T12:47:06.731Z",
+    "certificateId": "cert_supreme_platform_1791562297639",
+    "issuedAt": "2026-10-09T16:11:37.639Z",
     "status": "PLATFORM_CERTIFIED",
     "governanceGatesPassed": 7,
     "totalFleetProjects": 0,
@@ -15,8 +15,8 @@
     "summary": "AEGIS SUPREME PLATFORM CERTIFICATE: ISSUED. 7/7 governance layers passed across 0 fleet projects."
   },
   "securityCertificate": {
-    "certificateId": "cert_sec_1790945226732",
-    "issuedAt": "2026-10-02T12:47:06.732Z",
+    "certificateId": "cert_sec_1791562297640",
+    "issuedAt": "2026-10-09T16:11:37.640Z",
     "status": "SECURITY_CERTIFIED",
     "dimensionsAudited": 14,
     "secretIsolationPassed": true,

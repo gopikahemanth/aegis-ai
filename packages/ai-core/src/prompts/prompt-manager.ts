@@ -110,6 +110,9 @@ RULES:
 - Plan ONLY backend, database, and integration tasks.
 - Do NOT plan any frontend tasks (the frontend is locked and approved).
 - Tasks must implement the Express server, Prisma database persistence, and API endpoints matching the approved frontend requirements.
+- MANDATORY HTTP 400 VALIDATION: Every POST, PUT, and PATCH controller must validate required payload fields. If required fields are missing, empty, or if req.body contains invalid/malformed data, immediately return res.status(400).json({ success: false, error: 'Validation failed' }). NEVER default missing required fields or return 200 on invalid requests.
+- Express controller catch blocks must return res.status(500).json({ success: false, error: error.message }), never res.json([]).
+- Interactive management/order forms on frontend routes must be wired to execute API mutations and update observable state on submit.
 - Use stage: "Backend" or "Database".
 
 TASK LIMIT: Maximum 4 tasks.
@@ -172,17 +175,20 @@ INTERACTION REQUIREMENT:
   A calculator must calculate. A configurator must configure.
   A filter must filter. A form must validate and show a result.
 
-TASK LIMIT: Maximum 4 tasks.
-  The 4-task limit is a planning-GROUP limit, not a feature limit.
-  Each task may implement MULTIPLE related features.
-  Do NOT omit requested features merely to stay within 4 tasks.
-  If the product has 8 features, group them across 4 tasks.
+TASK LIMIT: 4 to 6 focused tasks (maximum 6 tasks).
+  - Maximum 1 to 2 distinct page modules per task.
+  - NEVER combine 3 or more distinct domain features into a single task. Grouping too many pages into one task causes LLM output token truncation (MAX_TOKENS).
+  - For products with 4 to 8 feature views, plan 4 to 6 tasks so each feature module has dedicated focus and complete implementations.
+  - Do NOT omit requested features merely to reduce tasks.
+  - Each task must produce complete, production-grade, fully interactive components.
 
 TASK ORDERING:
-  1. Product shell + navigation + routing scaffold (Navbar, routes, layout, and clean page stubs for feature views. DO NOT generate full pages for all routes in Task 1; feature pages belong in Tasks 2-4)
-  2. Primary workspace / hero experience (most important feature view)
-  3. Remaining domain features (grouped feature views)
-  4. Responsive layout + interaction polish + empty/error states
+  1. Product shell + navigation + routing scaffold (Navbar, routes, layout, and clean page stubs for feature views. DO NOT generate full pages for all routes in Task 1; feature pages belong in subsequent tasks)
+  2. Primary workspace / hero experience (most important primary feature view)
+  3. Secondary core domain features (1-2 related feature views)
+  4. Additional domain features (1-2 related feature views, if applicable)
+  5. Final domain features (1-2 related feature views, if applicable)
+  6. Responsive layout + interaction polish + empty/error states
 
 Each task MUST contain:
   - id: number (unique, starting at 1)
@@ -199,7 +205,7 @@ EXAMPLE OUTPUT for a lighting configurator product:
   {
     "id": 1,
     "title": "Studio Shell, Navigation & Routing",
-    "description": "Create the application shell with sticky nav, brand identity, layout, route configuration (/, /configurator, /photometric, /quote), and responsive mobile menu. Use React Router with clean page stubs. Detailed feature pages are fully implemented in Tasks 2-4.",
+    "description": "Create the application shell with sticky nav, brand identity, layout, route configuration (/, /configurator, /photometric, /quote), and responsive mobile menu. Use React Router with clean page stubs. Detailed feature pages are fully implemented in subsequent tasks.",
     "completed": false,
     "stage": "Frontend",
     "priority": 1,
@@ -268,6 +274,9 @@ Do NOT generate:
 Follow the staged generation workflow:
 - When implementing a Frontend task: generate ONLY frontend code (src/App.tsx, src/components/*, src/features/*). Build rich, fully interactive browser-side features powered by React local state and realistic seed data. Do NOT generate server/ or prisma/ files during the frontend stage (they will be rejected by policy).
 - When implementing a Backend task (post-approval): generate the server routes, controllers, and Prisma schemas according to the approved frontend contracts.
+  * MANDATORY HTTP 400 VALIDATION: In every POST, PUT, and PATCH controller, ALWAYS validate required payload fields. If required fields are missing, empty, or if req.body has invalid keys, immediately return res.status(400).json({ success: false, error: 'Validation failed: required fields missing' }). NEVER substitute default fallback strings for missing required body fields in creation endpoints.
+  * PROPER ERROR STATUS: Inside catch (error: any) blocks, return res.status(500).json({ success: false, error: error.message || 'Internal error' }), NEVER res.json([]) or res.status(200).
+  * FRONTEND API CONNECTION: In fullstack integration tasks, ensure interactive submission forms (orders, schedules, bookings) invoke the API client and update local state upon successful submission.
 
 CRITICAL STANDARDS:
 - Never generate incomplete functions, classes, or code blocks.

@@ -10,6 +10,10 @@ import type { ApiWorkflowReport } from "./api-workflow-verifier.js";
 import type { BrowserValidationResult } from "./read-only-browser-validator.js";
 import { RealityCheckerAgent, type RealityCheckResult } from "../agents/reality-checker-agent.js";
 import { TemplateContaminationChecker } from "./template-contamination-checker.js";
+import { TemplateConvergenceGate } from "./template-convergence-gate.js";
+import { PageExperienceQualityGate } from "./page-experience-quality-gate.js";
+import { CopyQualityGate } from "./copy-quality-gate.js";
+import { InteractionProvenanceTracker, type InteractionProvenanceReport } from "../governance/interaction-provenance-tracker.js";
 
 export type FinalSuccessStatus = "SUCCESS" | "FAILED" | "BLOCKED" | "INCOMPLETE" | "REPAIRING";
 
@@ -29,6 +33,9 @@ export interface FinalSuccessGateResult {
   databaseStatus: "CONNECTED" | "BLOCKED" | "UNKNOWN";
   codeStatus: "PASS" | "FAIL";
   runtimeStatus: "VERIFIED" | "NOT_VERIFIED" | "PARTIALLY_VERIFIED";
+  provenanceStatus?: "UNASSISTED_NATIVE" | "ASSISTED_INJECTED";
+  nir?: number;
+  injectedHandlersCount?: number;
   evidenceSummary: string;
 }
 
@@ -56,9 +63,10 @@ export interface FinalSuccessGateInput {
   apiReport?: ApiWorkflowReport | null;
   realityResult?: RealityCheckResult | null;
   databaseBlocked?: boolean;
-  testReport?: import("./in-project-test-runner.js").TestExecutionReport | null;
-  runtimeReport?: import("../testing/runtime-acceptance-contract.js").RuntimeAcceptanceResult | null;
+  testReport?: any;
+  runtimeReport?: any;
   brownfieldReport?: BrownfieldExecutionReport | null;
+  provenancePolicy?: "STRICT_UNASSISTED" | "STANDARD";
 }
 
 export class FinalSuccessGate {
@@ -278,6 +286,9 @@ export class FinalSuccessGate {
       databaseStatus: "CONNECTED",
       codeStatus,
       runtimeStatus,
+      provenanceStatus: "UNASSISTED_NATIVE",
+      nir: 1.0,
+      injectedHandlersCount: 0,
       evidenceSummary,
     };
   }
@@ -380,7 +391,13 @@ export class FinalSuccessGate {
     // ── 3. Implementation Closure & File Graph ───────────────────────────────
     const graphEngine = new ProjectGraphEngine();
     const graphResult = graphEngine.validateGraph(projectRoot);
-    const closure = DependencyClosureValidator.validate(projectRoot);
+    let closure = DependencyClosureValidator.validate(projectRoot);
+    if (!closure.valid && closure.brokenImports.length > 0) {
+      const fixedCount = DependencyClosureValidator.applyDeterministicFixes(projectRoot, closure.brokenImports);
+      if (fixedCount > 0) {
+        closure = DependencyClosureValidator.validate(projectRoot);
+      }
+    }
     const graphValid = graphResult.valid && closure.valid;
 
     items.push({
@@ -409,14 +426,30 @@ export class FinalSuccessGate {
       category: "RUNTIME",
     });
 
-    // ── 6. Browser Runtime Gate (BROWSER_RUNTIME_PASS) ───────────────────────
+    // ── 6. Browser Runtime & Semantic State-Mutation Gate (BROWSER_RUNTIME_PASS) ──────
     if (browserResult) {
+      const hasMutationFailures = browserResult.semanticMutationResults?.some(m => !m.passed);
+      const zeroMutations = browserResult.semanticMutationsCount !== undefined &&
+        browserResult.semanticMutationsCount === 0 &&
+        browserResult.routesChecked.length > 0;
+
+      const browserPassed = browserResult.passed && !hasMutationFailures && !zeroMutations;
+      let browserMsg = browserResult.passed
+        ? `Rendered ${browserResult.renderedElementsCount} DOM elements cleanly across [${browserResult.routesChecked.join(", ")}].`
+        : `Browser crash / error: ${browserResult.classifiedError || "Console error detected"}`;
+
+      if (browserResult.semanticMutationsCount !== undefined) {
+        if (browserPassed) {
+          browserMsg += ` Verified ${browserResult.semanticMutationsCount} semantic state mutation(s).`;
+        } else if (zeroMutations || hasMutationFailures) {
+          browserMsg = `Behavioral state-mutation failure: route(s) acted as passive shells without observable DOM mutations on interaction.`;
+        }
+      }
+
       items.push({
         name: "Browser Runtime",
-        passed: browserResult.passed,
-        message: browserResult.passed
-          ? `Rendered ${browserResult.renderedElementsCount} DOM elements cleanly across [${browserResult.routesChecked.join(", ")}].`
-          : `Browser crash / error: ${browserResult.classifiedError || "Console error detected"}`,
+        passed: browserPassed,
+        message: browserMsg,
         critical: true,
         category: "RUNTIME",
       });
@@ -432,25 +465,38 @@ export class FinalSuccessGate {
 
     // ── 7. API Workflow Gate (API_WORKFLOW_PASS) ─────────────────────────────
     if (apiReport) {
-      const isClientOnly = !existsSync(join(projectRoot, "server", "index.ts")) && !existsSync(join(projectRoot, "server", "app.ts"));
+      const isClientOnly = !existsSync(join(projectRoot, "server", "index.ts")) &&
+        !existsSync(join(projectRoot, "server", "app.ts")) &&
+        !existsSync(join(projectRoot, "server", "routes"));
       const isDbFailure = databaseBlocked && !apiReport.passed;
-      const apiPassed = apiReport.passed || isClientOnly || isDbFailure || (apiReport.totalSteps > 0 && apiReport.passedSteps > 0);
+      const has500 = (apiReport.http500Count || 0) > 0;
+      const mutationUnverified = apiReport.statefulEndpointsTested > 0 &&
+        apiReport.mutationsVerified < apiReport.statefulEndpointsTested;
+
+      const apiPassed = !has500 && !mutationUnverified && (apiReport.passed || isClientOnly || isDbFailure);
+      let apiMsg = apiReport.summary;
+      if (has500) {
+        apiMsg = `CRITICAL: ${apiReport.http500Count} HTTP 500 error(s) detected. API surface must have zero 500 responses.`;
+      } else if (mutationUnverified) {
+        apiMsg = `Stateful mutation failure: only ${apiReport.mutationsVerified}/${apiReport.statefulEndpointsTested} mutations verified.`;
+      }
+
       items.push({
         name: isDbFailure ? "(env) API Workflows" : "API Workflows",
         passed: apiPassed,
         message: isDbFailure
           ? `${apiReport.summary} (Environment condition: database connection unavailable causes 500 responses)`
-          : apiReport.summary,
+          : apiMsg,
         critical: !isClientOnly && !databaseBlocked,
         category: "API",
       });
     } else {
       // If project has API endpoints, missing report is incomplete
-      const hasApis = existsSync(join(projectRoot, "server", "routes"));
+      const hasApis = existsSync(join(projectRoot, "server", "routes")) || existsSync(join(projectRoot, "server", "index.ts"));
       items.push({
         name: "API Workflows",
         passed: !hasApis, // Passing only if project has no backend routes
-        message: hasApis ? "API verification not executed." : "No API endpoints required.",
+        message: hasApis ? "API verification not executed (MANDATORY for backend routes)." : "No API endpoints required.",
         critical: hasApis,
         category: "API",
       });
@@ -538,11 +584,105 @@ export class FinalSuccessGate {
     // ── 12. Template Contamination & Domain Consistency Gate ─────────────────
     const contaminationChecker = new TemplateContaminationChecker(projectRoot);
     const domainCategoryName = domain?.domainName || contract?.applicationType || (contract as any)?.name || "general";
-    const contaminationReport = contaminationChecker.audit(domainCategoryName);
+    const contaminationReport = contaminationChecker.audit(domainCategoryName, contract);
     items.push({
       name: "Template Contamination",
       passed: contaminationReport.clean,
       message: contaminationReport.summary,
+      critical: true,
+      category: "CONTRACT",
+    });
+
+    // ── 13. Template Convergence & Architectural Diversity Gate ─────────────
+    let planForConvergence: any = null;
+    try {
+      const planPath = join(projectRoot, ".aegis", "product-experience-plan.json");
+      if (existsSync(planPath)) {
+        planForConvergence = JSON.parse(readFileSync(planPath, "utf8"));
+      }
+    } catch {}
+    const convergenceReport = TemplateConvergenceGate.audit(projectRoot, planForConvergence);
+    items.push({
+      name: "Template Convergence",
+      passed: convergenceReport.passed,
+      message: convergenceReport.summary,
+      critical: true,
+      category: "VISUAL",
+    });
+
+    // ── 13b. Page Experience Quality Gate (Route-by-Route Intentionality) ─────
+    const pageExpReport = PageExperienceQualityGate.audit(projectRoot, planForConvergence);
+    items.push({
+      name: "Page Experience Quality",
+      passed: pageExpReport.passed,
+      message: pageExpReport.summary,
+      critical: true,
+      category: "VISUAL",
+    });
+
+    // ── 14. Copy Quality Gate (Spelling, truncation, layout clipping) ─────────────
+    const copyReport = CopyQualityGate.audit(projectRoot, contract);
+    items.push({
+      name: "Copy Quality Gate",
+      passed: copyReport.passed,
+      message: copyReport.summary,
+      critical: true,
+      category: "VISUAL",
+    });
+
+    // ── 15. Interaction Provenance Gate (NIR & Native Handlers) ───────────────
+    const provenance = InteractionProvenanceTracker.loadReport(projectRoot) ||
+      InteractionProvenanceTracker.audit(projectRoot, {
+        nativeInteractionFailures: browserResult?.uncaughtExceptions?.length || 0,
+      });
+
+    const isStrictUnassisted = input.provenancePolicy === "STRICT_UNASSISTED";
+    const hasInjectedHandlers = (provenance.sanitizerInjectedHandlers || 0) > 0;
+    // pipelineNativeHandlers are from DESIGN_PIPELINE stage (GenericExperienceGenerator, etc.)
+    // These are post-baseline but intentionally generated — a separate policy concern from
+    // structural fixer injections. Under STRICT_UNASSISTED both categories block certification.
+    const hasPipelineHandlers = (provenance.pipelineNativeHandlers || 0) > 0;
+    const hasFailures = (provenance.nativeInteractionFailures || 0) > 0;
+
+    let nirPassed: boolean;
+    let nirMessage: string;
+
+    if (isStrictUnassisted) {
+      // STRICT_UNASSISTED: NIR must be 1.00, zero sanitizer injections, AND zero
+      // design-pipeline handlers. Every handler in the output must trace to the
+      // immutable CoderAgent baseline. This is an explicit policy decision: pages
+      // generated by the design pipeline after baseline capture are legitimate
+      // product pages, but they cannot receive an unassisted certification label
+      // because they were not authored at the CoderAgent boundary.
+      nirPassed = !hasFailures && !hasInjectedHandlers && !hasPipelineHandlers && provenance.nir === 1.0;
+
+      if (hasInjectedHandlers) {
+        nirMessage = `STRICT_POLICY_REJECTED: ${provenance.sanitizerInjectedHandlers} sanitizer-injected handler(s) detected (NIR: ${provenance.nir.toFixed(2)}). Unassisted autonomous baseline required.`;
+      } else if (hasPipelineHandlers) {
+        nirMessage = `DESIGN_PIPELINE_REJECTED: ${provenance.pipelineNativeHandlers} handler(s) from post-baseline design-pipeline pages detected. Under STRICT_UNASSISTED, all handlers must originate at the CoderAgent boundary. Move GenericExperienceGenerator calls before baseline capture, or accept STANDARD policy.`;
+      } else if (hasFailures) {
+        nirMessage = `Interaction failures detected: ${provenance.nativeInteractionFailures} runtime exception(s).`;
+      } else {
+        nirMessage = `Strict unassisted baseline verified: NIR 1.00 (Native: ${provenance.nativeHandlers}, Injected: 0, Design-Pipeline: 0).`;
+      }
+    } else {
+      // STANDARD: injected handlers are annotated but not blocking.
+      // They produce an ASSISTED_GENERATION tag in the report, but the project
+      // still passes. Only runtime interaction failures block under STANDARD.
+      nirPassed = !hasFailures;
+      if (hasInjectedHandlers) {
+        nirMessage = `[ASSISTED GENERATION: ${provenance.sanitizerInjectedHandlers} injected handler(s), NIR ${provenance.nir.toFixed(2)}] ${provenance.summary}`;
+      } else if (hasPipelineHandlers) {
+        nirMessage = `[DESIGN_PIPELINE: ${provenance.pipelineNativeHandlers} handler(s) from post-baseline design pages, NIR ${provenance.nir.toFixed(2)}] ${provenance.summary}`;
+      } else {
+        nirMessage = provenance.summary;
+      }
+    }
+
+    items.push({
+      name: "Interaction Provenance (NIR)",
+      passed: nirPassed,
+      message: nirMessage,
       critical: true,
       category: "CONTRACT",
     });
@@ -606,6 +746,9 @@ export class FinalSuccessGate {
       databaseStatus: dbStatus,
       codeStatus,
       runtimeStatus,
+      provenanceStatus: hasInjectedHandlers ? "ASSISTED_INJECTED" : "UNASSISTED_NATIVE",
+      nir: provenance.nir,
+      injectedHandlersCount: provenance.sanitizerInjectedHandlers,
       evidenceSummary,
     };
   }

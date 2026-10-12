@@ -49,6 +49,20 @@ export class ExecutionEngine {
     if (hint) (this.orchestrator as any).designModeHint = hint;
   }
 
+  /**
+   * Sets the generation mode and seed before calling execute().
+   * Called by the CLI when --generation-mode or --seed flag is passed.
+   */
+  setGenerationSeed(seed?: number | string, mode?: "creative" | "deterministic"): void {
+    if (seed !== undefined && seed !== null && seed !== "") {
+      const num = typeof seed === "number" ? seed : parseInt(seed, 10);
+      (this.orchestrator as any).generationSeed = isNaN(num) ? undefined : num;
+    }
+    if (mode) {
+      (this.orchestrator as any).generationMode = mode;
+    }
+  }
+
   async execute(
     request: string,
     imagePath?: string,
@@ -59,8 +73,15 @@ export class ExecutionEngine {
       skipApproval?: boolean;
       onFrontendReview?: (summary: any) => Promise<boolean | string>;
       seed?: string;
+      generationMode?: "creative" | "deterministic";
     }
   ) {
+    if (options?.seed !== undefined) {
+      this.setGenerationSeed(options.seed, options.generationMode);
+    } else if (options?.generationMode) {
+      this.setGenerationSeed(undefined, options.generationMode);
+    }
+
     const basePath = process.env.INIT_CWD || process.cwd();
     const projectPath = targetDir ? resolve(basePath, targetDir) : resolve(basePath, "./generated/project");
 
@@ -91,7 +112,7 @@ export class ExecutionEngine {
     console.log("Analyzing request...");
 
     // ── Step 1: generateProject — resolves architecture contract ────────────
-    const result = await this.orchestrator.generateProject(request, projectPath, imagePath, options);
+    const result = await this.orchestrator.generateProject(request, projectPath, imagePath);
 
     console.log(`[ExecutionEngine] generateProject result: framework=${result.framework}, tasks=${result.tasks?.length ?? 0}`);
 

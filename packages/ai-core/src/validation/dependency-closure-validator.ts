@@ -195,11 +195,11 @@ export class DependencyClosureValidator {
         // Strip extension — TypeScript imports don't use .ts/.tsx
         const relNoExt = relPath.replace(/\.(ts|tsx|js|jsx)$/, "");
 
-        const oldImport = `"${v.importPath}"`;
-        const newImport = `"${relNoExt}"`;
+        const escaped = v.importPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const quoteRegex = new RegExp(`(['"\`])${escaped}\\1`, "g");
 
-        if (content.includes(oldImport)) {
-          content = content.replace(oldImport, newImport);
+        if (quoteRegex.test(content)) {
+          content = content.replace(quoteRegex, `$1${relNoExt}$1`);
           writeFileSync(sourceAbs, content, "utf8");
           console.log(`[DependencyClosure] ✓ Auto-fixed import in ${v.sourceFile}: ${v.importPath} → ${relNoExt}`);
           fixed++;

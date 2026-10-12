@@ -89,7 +89,104 @@ export interface UserJourneyNode {
   intent: string;
 }
 
+export interface CompositionLayer {
+  id: string;
+  name: string;
+  depth: "background" | "midground" | "foreground" | "overlay" | "hud";
+  renderingTechnology: "webgl" | "canvas2d" | "svg" | "dom" | "audio";
+  contentRole: string;
+  description: string;
+}
+
+export interface CompositionScene {
+  id: string;
+  sceneIndex: number;
+  name: string;
+  intent: string;
+  focalSubject: string;
+  cameraOrViewBehavior?: {
+    perspective: "orbit" | "scroll_dolly" | "first_person" | "fixed_cinematic" | "top_down";
+    motionProfile: string;
+    targetFocus: string;
+  };
+  spatialElements?: string[];
+  hudElements?: string[];
+  interactiveControls?: string[];
+  audioAtmosphere?: string;
+  narrativeOrContent: string;
+}
+
+export interface CompositionTransition {
+  fromSceneId: string;
+  toSceneId: string;
+  trigger: "scroll" | "click" | "viewport_intersection" | "timer";
+  animationType: "spatial_dolly" | "fade_cross" | "reveal_unfold" | "camera_orbit";
+  durationMs: number;
+}
+
+export interface CompositionSection {
+  id: string;
+  order: number;
+  name: string;
+  focalElement: string;
+  layoutFamily: string;
+  gridStructure: string;
+  contentPurpose: string;
+  primaryAction?: { label: string; action: string };
+  secondaryElements: string[];
+}
+
+export interface SpatialPlan {
+  sceneType:
+    | "WORLD_EXPLORATION"
+    | "PRODUCT_REVEAL"
+    | "SPATIAL_EXHIBITION"
+    | "PRODUCT_STAGE"
+    | "NARRATIVE_JOURNEY"
+    | "PHYSICAL_SIMULATION"
+    | "NONE";
+  focalObject: string;
+  sceneEnvironment: string;
+  cameraStrategy: string;
+  lightingModel: string;
+  materialsAndShaders: string;
+  spatialHud: {
+    placement: "floating_overlay" | "perimeter_dock" | "minimal_compass" | "integrated_sidebar";
+    components: string[];
+  };
+  interactionTopology:
+    | "raycast_inspection"
+    | "scroll_driven_orbit"
+    | "poi_teleport"
+    | "direct_mesh_manipulation";
+}
+
+export interface MotionPlan {
+  motionLanguage: "gentle" | "snappy" | "playful" | "precise" | "cinematic" | "none";
+  transitionStrategy: string;
+  scrollCoupling: "tight_dolly" | "ambient_drift" | "discrete_steps" | "standard_flow";
+  easingCurve: string;
+}
+
 export interface CompositionGraph {
+  experienceIntent?: string;
+  focalElement?: string;
+  layoutTopology?: LayoutTopologyType;
+  spatialPlan?: SpatialPlan;
+  motionPlan?: MotionPlan;
+  navigationModel?: string;
+  interactionModel?: string;
+  layers?: CompositionLayer[];
+  scenes?: CompositionScene[];
+  transitions?: CompositionTransition[];
+  sections?: CompositionSection[];
+  cardDensityRatio?: number;
+  structuralFingerprint?: string;
+  forbiddenTemplates?: string[];
+  compositionStrategy?: string;
+  generationSeed?: number;
+
+  // Legacy & UI-Intelligence IR backward compatibility
   intent: UXIntentType;
   topology: {
     type: LayoutTopologyType;

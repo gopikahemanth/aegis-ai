@@ -84,6 +84,18 @@ export function getUser(): User {
       expect(validation.isValid).toBe(true);
       expect(validation.errors.length).toBe(0);
     });
+
+    it("should safely escape literal '<' in JSX child text", () => {
+      const brokenJsx = `
+export const TempDisplay = () => {
+  return <div>Within optimal limits (< 750°C)</div>;
+};
+`;
+      const result = ASTSafeTransformer.transformSource(brokenJsx, "TempDisplay.tsx");
+      expect(result.code).toContain("&lt; 750°C");
+      const validation = ASTSafeTransformer.validateSyntax(result.code, "TempDisplay.tsx");
+      expect(validation.isValid).toBe(true);
+    });
   });
 
   describe("DomainContaminationDetector", () => {

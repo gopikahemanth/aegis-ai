@@ -12,7 +12,7 @@
  * 7. Enforces New File Creation policy: only if permitted by contract, file graph, and task scope.
  */
 
-import { isAbsolute, normalize, resolve, relative } from "node:path";
+import { isAbsolute, normalize, resolve, relative, join } from "node:path";
 import { existsSync } from "node:fs";
 import { FileOwnershipRegistry, SubsystemRole } from "../governance/file-ownership.js";
 import { SemanticDuplicateDetector } from "../governance/semantic-duplicate-detector.js";
@@ -144,6 +144,17 @@ export class PathValidator {
 
       // Check SemanticDuplicateDetector
       const dupCheck = SemanticDuplicateDetector.checkBeforeWrite(relToRoot);
+      if (dupCheck.canonicalPath && dupCheck.canonicalPath !== relToRoot) {
+        const canonicalRel = dupCheck.canonicalPath.replace(/\\/g, "/");
+        const canonicalAbs = join(projectRoot, canonicalRel);
+        console.log(`[PathValidator] 🔀 Normalizing duplicate/alias "${relToRoot}" -> canonical "${canonicalRel}"`);
+        return {
+          valid: true,
+          normalizedRelativePath: canonicalRel,
+          absolutePath: canonicalAbs,
+          canCreateIfMissing: canCreate,
+        };
+      }
       if (dupCheck.action === "DELETE_ORPHAN" && !dupCheck.allowed) {
         return {
           valid: false,

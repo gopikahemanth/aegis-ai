@@ -24,6 +24,7 @@ import type { DomainContract } from "./domain-contract.js";
 import type { CanonicalFileEntry, FileCategory } from "./canonical-file-graph.js";
 import { ContractHashEngine } from "./contract-hash-engine.js";
 import type { ContractHashes } from "./contract-hash-engine.js";
+import { PromptConstraints } from "./prompt-constraints.js";
 
 // ─── Enriched Entry with Contract Tracking ──────────────────────────────────
 
@@ -425,8 +426,33 @@ export class DynamicCanonicalFileGraphBuilder {
       },
     );
 
+    const cleanedPrompt = PromptConstraints.stripNegativeConstraints(arch.prompt || "");
+    const cleanedPromptLower = cleanedPrompt.toLowerCase();
+    const is3D = cleanedPromptLower.includes("3d") ||
+                 cleanedPromptLower.includes("three.js") ||
+                 cleanedPromptLower.includes("webgl") ||
+                 (arch.requiredLibraries || []).includes("three");
+
+    const isObservatory = (arch as any).domain === "scientific-observatory" ||
+      (domain as any)?.category === "scientific-observatory" ||
+      /\b(observatory|astronomy|telescope|celestial|planetarium)\b/i.test(cleanedPrompt);
+
+    const isHospitality = (arch as any).domain === "luxury-hospitality" ||
+      (domain as any)?.category === "luxury-hospitality" ||
+      (/\b(hotel|resort|villa|hospitality)\b/i.test(cleanedPrompt) && !PromptConstraints.isForbiddenByPrompt(arch.prompt || "", "hotel"));
+
+    const isEditorial = !is3D && !isObservatory && !isHospitality &&
+      !PromptConstraints.isForbiddenByPrompt(arch.prompt || "", "magazine") &&
+      !PromptConstraints.isForbiddenByPrompt(arch.prompt || "", "editorial") &&
+      (
+        cleanedPromptLower.includes("magazine") ||
+        cleanedPromptLower.includes("journalism") ||
+        cleanedPromptLower.includes("photo essay") ||
+        (cleanedPromptLower.includes("editorial") && !cleanedPromptLower.includes("editorial visual") && !cleanedPromptLower.includes("editorial language"))
+      );
+
     // Auth pages
-    const hasAuth = (arch.authentication || "jwt") !== "none";
+    const hasAuth = (arch.authentication || "jwt") !== "none" && !is3D && !isEditorial && !isObservatory;
     if (hasAuth) {
       entries.push(
         {
@@ -458,19 +484,91 @@ export class DynamicCanonicalFileGraphBuilder {
       );
     }
 
-    // Dashboard page
-    entries.push({
-      canonicalPath: "src/pages/DashboardPage.tsx",
-      semanticRole: "Main Dashboard Page",
-      semanticAliases: ["src/pages/Dashboard.tsx", "src/pages/Home.tsx", "src/views/Dashboard.tsx"],
-      requiredExports: ["DashboardPage"],
-      allowedImports: ["src/services/api.ts", "src/components/", "src/hooks/"],
-      required: true,
-      category: "frontend-page",
-      layer: "frontend",
-      domain: "infrastructure",
-      status: "required",
-    });
+    // Primary Landing Page according to experience architecture (anti-template divergence)
+    if (is3D) {
+      entries.push({
+        canonicalPath: "src/pages/WorldStagePage.tsx",
+        semanticRole: "Interactive 3D WebGL World Stage",
+        semanticAliases: ["src/pages/WorldStage.tsx", "src/pages/Explore3dWorldPage.tsx", "src/features/world/WorldStagePage.tsx", "src/features/world-node/index.tsx", "src/pages/HomePage.tsx", "src/features/stage/StagePage.tsx", "src/features/immersive-3d/components/FlaconStage.tsx", "src/features/immersive-3d/FlaconStage.tsx", "src/pages/FlaconStage.tsx", "src/pages/BottlePage.tsx", "src/features/bottle/BottlePage.tsx"],
+        requiredExports: ["WorldStagePage"],
+        allowedImports: ["three", "src/services/api.ts", "src/components/", "src/hooks/"],
+        required: true,
+        category: "frontend-page",
+        layer: "frontend",
+        domain: "spatial",
+        status: "required",
+      });
+    } else if (isObservatory) {
+      entries.push({
+        canonicalPath: "src/pages/HomePage.tsx",
+        semanticRole: "Monumental Observatory Masthead & Live Sky Telemetry Stage",
+        semanticAliases: [
+          "src/pages/ObservatoryPage.tsx",
+          "src/pages/SkyObservationPage.tsx",
+          "src/features/observatory/ObservatoryPage.tsx",
+          "src/pages/MainPage.tsx",
+          "src/pages/LandingPage.tsx",
+          "src/features/telemetry/TelemetryStreamPage.tsx",
+          "src/features/observation/ObservationPage.tsx",
+          "src/features/observation/index.tsx",
+        ],
+        requiredExports: ["HomePage"],
+        allowedImports: ["src/services/api.ts", "src/components/", "src/hooks/"],
+        required: true,
+        category: "frontend-page",
+        layer: "frontend",
+        domain: "observatory",
+        status: "required",
+      });
+    } else if (isHospitality) {
+      entries.push({
+        canonicalPath: "src/pages/HomePage.tsx",
+        semanticRole: "Monumental Hotel Masthead & Sanctuary Showcase",
+        semanticAliases: [
+          "src/pages/HotelPage.tsx",
+          "src/pages/ResortPage.tsx",
+          "src/features/hotel/HotelPage.tsx",
+          "src/pages/MainPage.tsx",
+          "src/pages/LandingPage.tsx",
+        ],
+        requiredExports: ["HomePage"],
+        allowedImports: ["src/services/api.ts", "src/components/", "src/hooks/"],
+        required: true,
+        category: "frontend-page",
+        layer: "frontend",
+        domain: "hospitality",
+        status: "required",
+      });
+    } else if (isEditorial) {
+      entries.push({
+        canonicalPath: "src/pages/EditorialIssuePage.tsx",
+        semanticRole: "Typographic Editorial Monograph & Magazine Cover",
+        semanticAliases: ["src/pages/IssuePage.tsx", "src/pages/MonographPage.tsx", "src/pages/MagazinePage.tsx", "src/pages/HomePage.tsx"],
+        requiredExports: ["EditorialIssuePage"],
+        allowedImports: ["src/services/api.ts", "src/components/", "src/hooks/"],
+        required: true,
+        category: "frontend-page",
+        layer: "frontend",
+        domain: "editorial",
+        status: "required",
+      });
+    } else {
+      const isDashboardForbidden = PromptConstraints.isForbiddenByPrompt(arch.prompt || "", "dashboard");
+      const canonicalLandingPath = isDashboardForbidden ? "src/pages/HomePage.tsx" : "src/pages/DashboardPage.tsx";
+      const exportName = isDashboardForbidden ? "HomePage" : "DashboardPage";
+      entries.push({
+        canonicalPath: canonicalLandingPath,
+        semanticRole: isDashboardForbidden ? "Main Landing Page" : "Main Dashboard Page",
+        semanticAliases: ["src/pages/Dashboard.tsx", "src/pages/Home.tsx", "src/views/Dashboard.tsx", "src/pages/HomePage.tsx", "src/pages/LandingPage.tsx"],
+        requiredExports: [exportName],
+        allowedImports: ["src/services/api.ts", "src/components/", "src/hooks/"],
+        required: true,
+        category: "frontend-page",
+        layer: "frontend",
+        domain: "infrastructure",
+        status: "required",
+      });
+    }
 
     // Per-feature pages for domain entities
     for (const entity of domain.entities.filter(e => e.kind === "domain")) {

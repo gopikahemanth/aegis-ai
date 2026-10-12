@@ -76,8 +76,10 @@ export class DomainConsistencyValidator {
           if (content.includes(pattern) || rel.includes(pattern)) {
             forbiddenMatches.push(`${rel}: contains forbidden pattern '${pattern}'`);
 
-            // Unconditional Contamination Purge for components/layouts
-            if (rel.includes("src/")) {
+            // Unconditional Contamination Purge for components/layouts (only on generic projects without custom PageExperiencePlans)
+            const hasPagePlan = existsSync(join(outputDirectory, ".aegis", "page-experience-plans.json")) ||
+                                existsSync(join(outputDirectory, ".aegis", "product-experience-plan.json"));
+            if (rel.includes("src/") && !hasPagePlan) {
               const compName = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Component";
               const cleanContent = DomainAwareFallbackGenerator.generateFallbackComponent(spec, compName, rel);
               writeFileSync(file, cleanContent, "utf8");

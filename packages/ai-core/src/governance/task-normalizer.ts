@@ -129,7 +129,7 @@ export class TaskNormalizer {
       let semanticRole = "";
 
       // 1. Primary classification by task title (highest semantic intent)
-      if (/integration|validation|e2e|testing/i.test(titleOnly)) {
+      if (/\b(?:integration|e2e|testing|end-to-end)\b/i.test(titleOnly) || (/\bvalidation\b/i.test(titleOnly) && /\b(?:integration|test|qa|verify|verification)\b/i.test(titleOnly))) {
         semanticRole = "INTEGRATION_VALIDATION";
       } else if (/database|schema|prisma\s+model|data\s+model/i.test(titleOnly)) {
         semanticRole = "DB_SCHEMA";
@@ -142,9 +142,9 @@ export class TaskNormalizer {
       } else if (/domain\s+feature|feature\s+ui|feature\s+integration|domain\s+ui/i.test(titleOnly)) {
         const slug = titleOnly.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
         semanticRole = `DOMAIN_FEATURE_UI:${slug}`;
-      } else if (/shell|routing|navigation|router|scaffold|app\s+shell/i.test(titleOnly)) {
+      } else if (/\b(?:app\s+shell|global\s+shell|mission\s+control\s+shell|routing\s+scaffold|shell\s+scaffold|root\s+layout|layout\s+scaffold|navigation\s+shell|shell\s+and\s+navigation)\b/i.test(titleOnly) || (/\b(?:shell|scaffold)\b/i.test(titleOnly) && /\b(?:routing|navigation|router)\b/i.test(titleOnly))) {
         semanticRole = "FRONTEND_SHELL";
-      } else if (/frontend|react|vite|ui|dashboard|page|client|catalog|portal|selector|builder|customization|manager/i.test(titleOnly)) {
+      } else if (task.stage?.toLowerCase() === "frontend" || /frontend|react|vite|ui|dashboard|page|client|catalog|portal|selector|builder|customization|manager|deck|planner|stream|visualizer|tree|scheduler|feed|replay|registry|console|matrix|workspace|inspector|monitor|view|display|chart|graph|control/i.test(titleOnly)) {
         // Disambiguate frontend tasks by their distinct feature slug so multiple domain feature tasks are preserved
         const slug = titleOnly.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
         semanticRole = `FRONTEND_APPLICATION:${slug}`;
@@ -153,7 +153,7 @@ export class TaskNormalizer {
       } else {
         // 2. Fallback to combined title + description
         const combined = (titleOnly + " " + descOnly).toLowerCase();
-        if (/integration|validation|e2e|testing/i.test(combined)) {
+        if (/\b(?:integration\s+test|e2e\s+test|end-to-end\s+test|system\s+integration|testing\s+suite)\b/i.test(combined)) {
           semanticRole = "INTEGRATION_VALIDATION";
         } else if (/database|schema|prisma|model/i.test(combined)) {
           semanticRole = "DB_SCHEMA";
@@ -166,9 +166,9 @@ export class TaskNormalizer {
         } else if (/domain\s+feature|feature\s+ui|feature\s+integration|domain\s+ui|feature\s+view/i.test(combined)) {
           const slug = titleOnly.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
           semanticRole = `DOMAIN_FEATURE_UI:${slug}`;
-        } else if (/shell|routing|navigation|router|scaffold/i.test(combined)) {
+        } else if (/\b(?:app\s+shell|global\s+shell|routing\s+scaffold|shell\s+scaffold)\b/i.test(combined)) {
           semanticRole = "FRONTEND_SHELL";
-        } else if (/frontend|react|vite|ui|dashboard|component|page/i.test(combined)) {
+        } else if (task.stage?.toLowerCase() === "frontend" || /frontend|react|vite|ui|dashboard|component|page/i.test(combined)) {
           const slug = titleOnly.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
           semanticRole = `FRONTEND_APPLICATION:${slug}`;
         } else if (/api|route|controller|endpoint/i.test(combined)) {

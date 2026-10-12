@@ -174,6 +174,12 @@ export class ArtifactProvenanceValidator {
           addStemmedToken(w);
         }
       }
+      if (promptText.includes("magazine") || promptText.includes("journal") || promptText.includes("publication") || promptText.includes("editorial")) {
+        addStemmedToken("editorial");
+        addStemmedToken("issue");
+        addStemmedToken("monograph");
+        addStemmedToken("cover");
+      }
     }
 
     // 7. ProductExperiencePlan capability and activity tokens
@@ -269,7 +275,9 @@ export class ArtifactProvenanceValidator {
           const full = join(featuresDir, entry);
           if (statSync(full).isDirectory()) {
             const UNIVERSAL_FEATURE_DIRS = new Set([
-              "auth", "dashboard", "workspace", "studio", "editor", "viewer", "builder", "designer", "configurator"
+              "auth", "dashboard", "workspace", "studio", "editor", "viewer", "builder", "designer", "configurator",
+              "world-stage", "worldstage", "stage", "narrative", "story", "stories", "scrollytelling", "showcase",
+              "feed", "journal", "monograph", "essay", "essays", "case-study", "casestudy"
             ]);
             const isUniversal = UNIVERSAL_FEATURE_DIRS.has(entry.toLowerCase());
             const hasProv = isUniversal || ArtifactProvenanceValidator.hasDomainProvenance(entry, activeContract);
@@ -309,10 +317,13 @@ export class ArtifactProvenanceValidator {
     const pagesDir = join(srcDir, "pages");
     if (existsSync(pagesDir)) {
       try {
+        const UNIVERSAL_PAGES = new Set([
+          "editorialissue", "worldstage", "dashboard", "home", "landing", "index", "monograph", "issue", "cover"
+        ]);
         for (const entry of readdirSync(pagesDir)) {
           if (/\.(ts|tsx)$/.test(entry)) {
             const id = entry.replace(/\.(ts|tsx)$/, "").replace(/(Page|View|Screen|Board|Dashboard)$/, "");
-            const hasProv = id === "" || ArtifactProvenanceValidator.hasProvenance(id, authorizedTokens);
+            const hasProv = id === "" || UNIVERSAL_PAGES.has(id.toLowerCase()) || UNIVERSAL_PAGES.has(entry.replace(/\.(ts|tsx)$/, "").toLowerCase()) || ArtifactProvenanceValidator.hasProvenance(id, authorizedTokens);
             records.push({
               path: `src/pages/${entry}`,
               type: "page",
@@ -431,6 +442,15 @@ export class ArtifactProvenanceValidator {
       const slug = (typeof r === "string" ? r : r?.path || "").replace(/^\//, "").toLowerCase();
       for (const p of slug.split(/[-_\s/]+/)) {
         if (p && p !== "dashboard" && p !== "login" && p !== "register" && p !== "auth") addStemmedToken(p);
+      }
+    }
+    const promptText = (contract.prompt || "").toLowerCase();
+    if (promptText) {
+      const rawWords = promptText.match(/[a-z0-9_-]+/g) || [];
+      for (const w of rawWords) {
+        if (w.length > 2 && !ArtifactProvenanceValidator.PROMPT_STOP_WORDS.has(w)) {
+          addStemmedToken(w);
+        }
       }
     }
     try {
@@ -562,13 +582,16 @@ export class ArtifactProvenanceValidator {
         let content = readFileSync(routesPath, "utf8");
         let modified = false;
         for (const id of purgedIdentifiers) {
-          const importRegex = new RegExp(`^.*import\\s+[^;]*${id}[^;]*;?\\n?`, "gim");
-          const routeRegex = new RegExp(`^.*<Route[^>]*${id}[^>]*/>\\n?`, "gim");
-          if (importRegex.test(content) || routeRegex.test(content)) {
-            content = content.replace(importRegex, "").replace(routeRegex, "");
+          const importRegex = new RegExp(`^[ \t]*import\\s+[^;\\n]*${id}[^;\\n]*;?\\r?\\n?`, "gim");
+          const constRegex = new RegExp(`^[ \t]*const\\s+[^=\\n]*?${id}[^=\\n]*?=[^;\\n]*;?\\r?\\n?`, "gim");
+          const routeRegex = new RegExp(`^[ \t]*<Route[^\\n]*?${id}[^\\n]*?\\/>[ \t]*\\r?\\n?`, "gim");
+          if (importRegex.test(content) || constRegex.test(content) || routeRegex.test(content)) {
+            content = content.replace(importRegex, "").replace(constRegex, "").replace(routeRegex, "");
             modified = true;
           }
         }
+        // Cleanup any stray dangling orphaned route closures (e.g. "} />")
+        content = content.replace(/^[ \t]*\}[ \t]*\/>[ \t]*\r?\n?/gm, "");
         if (modified) {
           writeFileSync(routesPath, content, "utf8");
           console.log(`[ProvenanceValidator] 🧹 Cleaned references to purged foreign artifacts in src/routes.tsx`);

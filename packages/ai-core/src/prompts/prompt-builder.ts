@@ -62,6 +62,12 @@ DOMAIN VOCABULARY CONTRACT:
 • Domain Metrics Reference (for summary views only; compute dynamically from page data): ${dv.primaryMetrics.join(" | ")}
 • Primary Action Verbs: ${dv.actionVerbs.join(" | ")}
 
+EXPERIENTIAL COMPOSITION MANDATE:
+• If this project is an experiential product (editorial publication, 3D world, luxury showcase, or monograph):
+  - NEVER reduce pages to repetitive "search bar + filter buttons + card grid" or "CRUD list + Add Form".
+  - Build genuine experiential compositions: full-bleed photography, typographic essays, asymmetric monograph spreads, or 3D stages.
+  - Action buttons must trigger contextual experiences (e.g. "Read Monograph", "Inspect Blueprint", "Explore Biome"), NOT generic "+ Add [Entity]" forms.
+
 PLANNED CANONICAL FILES:
 ${projectContext.canonicalFiles.map((f) => `  - ${f}`).join("\n")}
 ═══════════════════════════════════════════════════════

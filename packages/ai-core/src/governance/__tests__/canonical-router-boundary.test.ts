@@ -356,4 +356,41 @@ export default AppRoutes;
     expect(routesFinal).toContain("<Routes>");
     expect(routesFinal).toContain("</Routes>");
   });
+
+  it("Test 8 (Route Closure Invariant): Authoritative requiredRoutes strictly bounds router table and rejects implicit disk aliases", () => {
+    const srcDir = join(testDir, "src");
+    mkdirSync(join(srcDir, "pages"), { recursive: true });
+    mkdirSync(join(srcDir, "features", "stay-plan"), { recursive: true });
+    mkdirSync(join(srcDir, "features", "guest-preference"), { recursive: true });
+    mkdirSync(join(srcDir, "features", "amenities"), { recursive: true });
+
+    writeFileSync(join(srcDir, "pages", "HomePage.tsx"), `export default function HomePage() { return <div>Home</div>; }`, "utf8");
+    writeFileSync(join(srcDir, "features", "stay-plan", "index.tsx"), `export default function StayPlanPage() { return <div>Stay Planner</div>; }`, "utf8");
+    writeFileSync(join(srcDir, "features", "guest-preference", "index.tsx"), `export default function GuestPreferencePage() { return <div>Preferences</div>; }`, "utf8");
+    writeFileSync(join(srcDir, "features", "amenities", "index.tsx"), `export default function AmenitiesPage() { return <div>Amenities</div>; }`, "utf8");
+
+    const mockContract: any = {
+      requiredRoutes: ["/", "/stay-planner", "/guest-preferences", "/amenities-and-spa"],
+      prompt: "Boutique hotel with stay planner, guest preferences, and spa amenities",
+    };
+
+    const routesContent = FastDeterministicSanitizer.generateRoutesFromExistingPages(testDir, mockContract);
+
+    // Extract all route paths declared in routes.tsx
+    const declaredRoutes = [...routesContent.matchAll(/path="([^"*]+)"/g)].map(m => m[1]);
+
+    // Invariant 1: Exactly the 4 canonical required routes are registered
+    expect(declaredRoutes).toContain("/");
+    expect(declaredRoutes).toContain("/stay-planner");
+    expect(declaredRoutes).toContain("/guest-preferences");
+    expect(declaredRoutes).toContain("/amenities-and-spa");
+
+    // Invariant 2: Zero implicit disk aliases invented
+    expect(declaredRoutes).not.toContain("/stay-plan");
+    expect(declaredRoutes).not.toContain("/guest-preference");
+    expect(declaredRoutes).not.toContain("/amenities");
+
+    // Invariant 3: actualRoutes - requiredRoutes = ∅ (Count is exactly 4)
+    expect(declaredRoutes.length).toBe(4);
+  });
 });

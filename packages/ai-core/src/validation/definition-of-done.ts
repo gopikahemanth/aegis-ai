@@ -45,7 +45,7 @@ import { ArchitectureAuditor } from "../governance/architecture-auditor.js";
 import { ArchitectureDiff } from "../governance/architecture-diff.js";
 
 export class DefinitionOfDone {
-  private readonly sourceExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".vue", ".svelte"]);
+  private readonly sourceExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".vue", ".svelte", ".prisma"]);
 
   validate(projectDirectory: string, inferredFeatures: string[] = [], buildSuccess?: boolean): DefinitionOfDoneResult {
     const valState = ValidationStateManager.getInstance().getState();
@@ -365,7 +365,12 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
     // Long list render without virtualization
     const hasBigList = /\.map\s*\(/i.test(source);
     const hasVirtualization = /react-window|react-virtual|FixedSizeList|VirtualList|useVirtual/i.test(source);
-    const hasExplicitLargeData = /\.length\s*[>]=?\s*[5-9]\d|\b[1-9]\d{2,}\s*items/i.test(source);
+    // Guard against Tailwind CSS classes like "border-stone-800 items-center" triggering false positives
+    const hasExplicitLargeData =
+      /(?<![-_a-z0-9])[5-9]\d\s*\.\.\s*[1-9]\d{2,}/i.test(source) ||
+      /(?<![-_a-z0-9])(?:over|total|showing)\s+[1-9]\d{2,}\s+items\b(?!-)/i.test(source) ||
+      /(?<![-_a-z0-9])\b[1-9]\d{2,}\s+items\b(?!-)/i.test(source) ||
+      /\.length\s*>\s*[5-9]\d\b/i.test(source);
     if (hasBigList && hasExplicitLargeData && !hasVirtualization) {
       issues.push("Large list detected without virtualization — use react-window for 50+ items");
     }
@@ -542,6 +547,23 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
         if (t.endsWith("ies") && t.length > 4) {
           searchTerms.add(t.slice(0, -3) + "y");
         }
+        if (t === "registry" || t === "register") {
+          searchTerms.add("register");
+          searchTerms.add("registry");
+          searchTerms.add("regist");
+        }
+        if (t === "fleet") {
+          searchTerms.add("aircraft");
+          searchTerms.add("plane");
+          searchTerms.add("hangar");
+        }
+        if (t === "notam" || t === "notices" || t === "notice") {
+          searchTerms.add("notam");
+          searchTerms.add("notice");
+          searchTerms.add("notamnotice");
+          searchTerms.add("alert");
+          searchTerms.add("advisory");
+        }
         if (t.startsWith("schedul")) {
           searchTerms.add("schedule");
           searchTerms.add("scheduling");
@@ -588,6 +610,51 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
           searchTerms.add("profile");
           searchTerms.add("session");
           searchTerms.add("timer");
+        }
+        if (t === "audioguide" || t === "audioguides" || t === "audiotour") {
+          searchTerms.add("audio");
+          searchTerms.add("guide");
+          searchTerms.add("audiotrack");
+          searchTerms.add("track");
+          searchTerms.add("listen");
+        }
+        if (t === "floorplan" || t === "floorplans") {
+          searchTerms.add("floor");
+          searchTerms.add("plan");
+          searchTerms.add("spatial");
+          searchTerms.add("map");
+          searchTerms.add("blueprint");
+        }
+        if (t === "favorites" || t === "favorite" || t === "favourite" || t === "favourites" || t === "savedcollection") {
+          searchTerms.add("saved");
+          searchTerms.add("bookmark");
+          searchTerms.add("collection");
+          searchTerms.add("savedartwork");
+          searchTerms.add("saved-artwork");
+          searchTerms.add("vault");
+        }
+        if (t === "visitorplanning" || t === "visitation" || t.includes("visitor") || t.includes("planning")) {
+          searchTerms.add("visitor");
+          searchTerms.add("visit");
+          searchTerms.add("planning");
+          searchTerms.add("plan");
+          searchTerms.add("visitplan");
+          searchTerms.add("visit-plan");
+          searchTerms.add("admission");
+          searchTerms.add("itinerary");
+          searchTerms.add("hours");
+        }
+        const compoundSplits: Record<string, string[]> = {
+          visitorplanning: ["visitor", "visit", "planning", "plan", "visitplan", "itinerary", "hours", "admission"],
+          savedcollection: ["saved", "collection", "vault", "savedartwork", "bookmark"],
+          savedartworks: ["saved", "artworks", "artwork", "vault"],
+          audioguide: ["audio", "guide", "audiotrack", "listen"],
+          audioguides: ["audio", "guides", "guide", "audiotrack", "listen"],
+          floorplan: ["floor", "plan", "spatial", "map"],
+          floorplans: ["floor", "plans", "plan", "spatial", "map"],
+        };
+        if (compoundSplits[t]) {
+          compoundSplits[t].forEach(s => searchTerms.add(s));
         }
         if (t === "analytics" || t === "telemetry" || t === "metrics" || t === "reporting") {
           searchTerms.add("metric");

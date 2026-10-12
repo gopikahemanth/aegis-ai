@@ -55,19 +55,41 @@ export class ArchitecturePlanner {
         ]
       });
 
-      if (spec.type === "website" || spec.type === "fullstack") {
-        databaseSchema.push({
-          name: "tasks",
-          columns: [
-            { name: "id", type: "SERIAL", constraints: "PRIMARY KEY" },
-            { name: "user_id", type: "INTEGER", constraints: "REFERENCES users(id)" },
-            { name: "title", type: "VARCHAR(255)", constraints: "NOT NULL" },
-            { name: "completed", type: "BOOLEAN", constraints: "DEFAULT FALSE" }
-          ],
-          relations: [
-            { from: "user_id", to: "users.id", type: "many-to-one" }
-          ]
-        });
+      if (spec.dataModels && spec.dataModels.length > 0) {
+        for (const model of spec.dataModels) {
+          const tableName = model.toLowerCase().endsWith("s") ? model.toLowerCase() : `${model.toLowerCase()}s`;
+          if (tableName === "users") continue;
+          databaseSchema.push({
+            name: tableName,
+            columns: [
+              { name: "id", type: "SERIAL", constraints: "PRIMARY KEY" },
+              { name: "user_id", type: "INTEGER", constraints: "REFERENCES users(id)" },
+              { name: "title", type: "VARCHAR(255)", constraints: "NOT NULL" },
+              { name: "data", type: "JSONB", constraints: "DEFAULT '{}'" },
+              { name: "created_at", type: "TIMESTAMP", constraints: "DEFAULT CURRENT_TIMESTAMP" }
+            ],
+            relations: [
+              { from: "user_id", to: "users.id", type: "many-to-one" }
+            ]
+          });
+        }
+      } else if (spec.type === "website" || spec.type === "fullstack") {
+        const isTasksDomain = (spec.features || []).some(f => /task|todo|sprint|scrum|ticket/i.test(f)) ||
+          /task|todo|sprint|jira|linear/i.test(spec.name || "");
+        if (isTasksDomain) {
+          databaseSchema.push({
+            name: "tasks",
+            columns: [
+              { name: "id", type: "SERIAL", constraints: "PRIMARY KEY" },
+              { name: "user_id", type: "INTEGER", constraints: "REFERENCES users(id)" },
+              { name: "title", type: "VARCHAR(255)", constraints: "NOT NULL" },
+              { name: "completed", type: "BOOLEAN", constraints: "DEFAULT FALSE" }
+            ],
+            relations: [
+              { from: "user_id", to: "users.id", type: "many-to-one" }
+            ]
+          });
+        }
       }
     }
 

@@ -22,6 +22,51 @@ export * from "./utils/audit-trail.js";
 export * from "./utils/security.js";
 export * from "./prompts/prompt-inference-engine.js";
 export * from "./design/design-system-generator.js";
+export {
+  GenerationSeedManager,
+  type GenerationMode as CreativeGenerationMode,
+  type GenerationProvenance,
+  type ResolvedGenerationIdentity,
+} from "./design/generation-seed.js";
+export * from "./design/experience-architect.js";
+export {
+  type CompositionGraph,
+  type CompositionSection,
+  type CompositionLayer,
+  type CompositionScene,
+  type CompositionTransition,
+  type SpatialPlan,
+  type MotionPlan,
+  type LayoutTopologyType,
+  type UXIntentType,
+  CompositionGraphSynthesizer,
+} from "./design/composition-graph.js";
+export * from "./design/experience-capability-plan.js";
+export * from "./design/product-experience-plan.js";
+export * from "./design/website-experience-identity.js";
+export * from "./design/page-experience-plan.js";
+export {
+  type NavigationItem,
+  type NavigationBrandTreatment,
+  type NavigationVisualTreatment,
+  type NavigationPosition,
+  type NavigationDesign,
+  type NavbarFingerprint,
+  NavigationDesignResolver,
+} from "./design/navigation-design.js";
+export { type NavigationModel as ProductNavigationModel } from "./design/navigation-design.js";
+export * from "./validation/copy-quality-gate.js";
+export * from "./validation/template-convergence-gate.js";
+export * from "./validation/page-experience-quality-gate.js";
+export * from "./validation/composition-convergence-gate.js";
+export * from "./design/composition-variant-resolver.js";
+export * from "./design/experience-generators/generic-experience-generator.js";
+export * from "./design/experience-generators/scroll-story-generator.js";
+export * from "./design/experience-generators/spatial-map-generator.js";
+export * from "./design/experience-generators/product-3d-generator.js";
+export * from "./design/experience-generators/audio-experience-generator.js";
+export { CharacterExperienceGenerator, type CharacterExperienceGeneratorOptions } from "./design/experience-generators/character-experience-generator.js";
+export * from "./design/experience-generators/workspace-experience-generator.js";
 export * from "./validation/definition-of-done.js";
 export * from "./validation/final-success-gate.js";
 export * from "./validation/api-workflow-verifier.js";

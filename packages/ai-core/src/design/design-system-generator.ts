@@ -784,7 +784,7 @@ export default {
       path: "src/design-system/components/Button.tsx",
       content: `import React from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'accent' | 'ghost' | 'danger' | 'outline' | 'default';
+export type ButtonVariant = 'primary' | 'secondary' | 'accent' | 'ghost' | 'danger' | 'outline' | 'default' | 'success' | 'warning' | (string & {});
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -856,7 +856,7 @@ export default GlassCard;
       content: `import React from 'react';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'primary' | 'live' | 'warning' | 'danger' | 'destructive' | 'secondary' | 'outline' | 'default';
+  variant?: 'primary' | 'live' | 'warning' | 'danger' | 'destructive' | 'secondary' | 'outline' | 'default' | 'success' | 'info' | (string & {});
   status?: string;
   dot?: boolean;
 }
@@ -866,11 +866,12 @@ const STATUS_VARIANT_MAP: Record<string, string> = {
   warning: 'warning', degraded: 'warning',
   offline: 'danger', error: 'danger', failed: 'danger',
   destructive: 'danger',
+  success: 'success', info: 'info', completed: 'success',
 };
 
 export const Badge: React.FC<BadgeProps> = ({ children, variant, status, dot = false, className = '', ...props }) => {
   const resolvedVariant = variant ?? (status ? STATUS_VARIANT_MAP[status.toLowerCase()] ?? 'primary' : 'primary');
-  const variantClass = resolvedVariant === 'live' ? 'badge-live' : resolvedVariant === 'warning' ? 'badge-warning' : resolvedVariant === 'danger' ? 'badge-danger' : 'badge';
+  const variantClass = resolvedVariant === 'live' ? 'badge-live' : resolvedVariant === 'warning' ? 'badge-warning' : resolvedVariant === 'danger' ? 'badge-danger' : resolvedVariant === 'success' ? 'badge-success' : resolvedVariant === 'info' ? 'badge-info' : 'badge';
   return (
     <span className={\`\${variantClass} \${className}\`} {...props}>
       {dot && <span className="live-dot mr-1" />}

@@ -44,7 +44,7 @@ export class Parser {
 
     // Format 1: === FILE: relative/path.ext === or ===FILE: relative/path.ext===
     // Must be preceded by line boundary and must specify a file path with an extension to prevent JS '===' operators from truncating code
-    const headerRegex = /(?:^|\r?\n)={3,}\s*(?:FILE:\s*)?([a-zA-Z0-9_.\-\/\\]+\.[a-zA-Z0-9]+)\s*={0,3}\r?\n([\s\S]*?)(?=(?:\r?\n={3,}\s*(?:FILE:\s*)?[a-zA-Z0-9_.\-\/\\]+\.[a-zA-Z0-9]+\s*={0,3}\r?\n)|(?:\r?\n={3,}\s*END\s*={0,3})|$)/gi;
+    const headerRegex = /(?:^|\r?\n)={3,}\s*(?:FILE:\s*)?([a-zA-Z0-9_.\-\/\\]+\.[a-zA-Z0-9]+)\s*={0,3}\r?\n([\s\S]*?)(?=(?:\r?\n={3,}\s*(?:FILE:\s*)?[a-zA-Z0-9_.\-\/\\]+\.[a-zA-Z0-9]+\s*={0,3}\r?\n)|(?:\r?\n={3,}\s*(?:PATCH:|END)\b)|$)/gi;
     let match: RegExpExecArray | null;
 
     const validFileExtRegex = /\.(ts|tsx|js|jsx|json|css|scss|html|prisma|md|env|yml|yaml|svg|png|jpg|jpeg|dockerfile|gitignore)$/i;
@@ -56,6 +56,7 @@ export class Parser {
 
       if (!rawPath || rawPath.length > 250 || rawPath.includes("\n")) continue;
       if (rawPath.toUpperCase().startsWith("PATCH:") || rawPath.toUpperCase() === "END") continue;
+      if (!content || content.length === 0) continue;
 
       // Reject JS ternary or equality operators mistaken for headers
       if (invalidPathChars.test(rawPath) && !rawPath.includes("/")) continue;
@@ -63,6 +64,19 @@ export class Parser {
 
       // Clean markdown code blocks from content
       content = content.replace(/^```[a-zA-Z0-9_-]*\r?\n?/, "").replace(/\r?\n?```$/, "").trim();
+      content = content
+        .replace(/^[ \t]*```[a-zA-Z0-9_-]*\r?$/gm, "")
+        .replace(/^[ \t]*(?:tsx|ts|jsx|js|typescript|javascript)\r?$/gm, "");
+
+      // If content has trailing ===PATCH: or search/replace markers that weren't split, strip them from this file
+      if (content.includes("===PATCH:")) {
+        const patchIdx = content.indexOf("===PATCH:");
+        content = content.substring(0, patchIdx).trim();
+      }
+      if (content.includes("<<<<<<< SEARCH")) {
+        const searchIdx = content.indexOf("<<<<<<< SEARCH");
+        content = content.substring(0, searchIdx).trim();
+      }
 
       if (rawPath.endsWith("lock.yaml") || rawPath.endsWith("lock.json") || rawPath === "yarn.lock") {
         console.log(`Skipping protected lockfile: ${rawPath}`);
@@ -90,7 +104,9 @@ export class Parser {
       while ((match = codeBlockRegex.exec(response)) !== null) {
         const rawPath = match[1].trim();
         const content = match[2].trim();
-        files.push({ path: rawPath, content });
+        if (rawPath && content) {
+          files.push({ path: rawPath, content });
+        }
       }
     }
 

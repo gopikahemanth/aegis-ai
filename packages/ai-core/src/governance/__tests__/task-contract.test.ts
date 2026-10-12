@@ -366,5 +366,39 @@ describe("SemanticDuplicateDetector & Task Governance Tests", () => {
     expect(task5.title).toContain("Roaster Reserve Club");
     expect(task5.description).toContain("Micro-lot access");
   });
+
+  it("TEST 10: Aeronautical telemetry and complex domain tasks are not misclassified as duplicate shells or integration validation", async () => {
+    const { TaskNormalizer } = await import("../task-normalizer.js");
+    const avionicsTasks: Task[] = [
+      makeCanonicalTask({
+        id: 1,
+        title: "Avionics Mission Control Shell, Navigation & Routing Scaffold",
+        description: "Application shell with top operational telemetry ribbon, navigation bar, and routing stubs.",
+        stage: "Frontend"
+      }),
+      makeCanonicalTask({
+        id: 2,
+        title: "Live Dual-Spool Turbine Telemetry Deck & Flight Trajectory Planner",
+        description: "Live dual-spool turbine telemetry simulation and multi-leg navigational flight trajectory planner.",
+        stage: "Frontend"
+      }),
+      makeCanonicalTask({
+        id: 3,
+        title: "Fleet Registry, Diagnostics Tree, Work Orders, NOTAMs & Incident Replay",
+        description: "Fleet Registry table, component diagnostics tree, Maintenance Work Order scheduler with parts validation form.",
+        stage: "Frontend"
+      }),
+      makeCanonicalTask({
+        id: 4,
+        title: "Tactical HUD Polish, Responsive Adaptation & System Edge States",
+        description: "Responsive layouts, radar ping animations, empty search states, and strict validation cues.",
+        stage: "Frontend"
+      }),
+    ];
+
+    const deduplicated = TaskNormalizer.deduplicateAndCapTasks(avionicsTasks, 6);
+    expect(deduplicated.length).toBe(4);
+    expect(deduplicated.map(t => t.id)).toEqual([1, 2, 3, 4]);
+  });
 });
 

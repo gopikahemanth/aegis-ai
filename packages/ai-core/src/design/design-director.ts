@@ -23,6 +23,7 @@ import {
   computeDeterministicHash,
   type VisualArtDirectionContract,
 } from "./visual-art-direction.js";
+import { NavigationDesignResolver } from "./navigation-design.js";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -33,6 +34,12 @@ export interface ProductDesignBrief {
   briefVersion: "1.0";
   seed: number;
   selectionMode: DesignSelectionMode;
+  rawPrompt?: string;
+  userPrompt?: string;
+  brand?: {
+    name: string;
+  };
+  brandName?: string;
 
   briefMetadata: {
     generationId: string;     // UUID — ties brief to one specific generation run
@@ -450,9 +457,11 @@ type CompositionFamily =
   | "CONSOLE"             // dense data terminal view
   | "STOREFRONT"          // retail marketplace with promo carousel, deals, product grid, cart drawer
   | "HOSPITALITY_PORTAL"  // luxury resort/hotel with immersive hero, booking bar, suite showcase
+  | "IMMERSIVE_WORLD"     // full 3D WebGL universe / interactive spatial stage
   | "TRACKER";            // personal tracker with streak/progress hero
 
 const COMPOSITION_FAMILY_MAP: Record<HeroElementType, CompositionFamily> = {
+  "immersive-canvas":       "IMMERSIVE_WORLD",
   "storefront-hero":        "STOREFRONT",
   "hospitality-hero":       "HOSPITALITY_PORTAL",
   "large-interaction":      "HERO_FIRST",
@@ -467,7 +476,8 @@ const COMPOSITION_FAMILY_MAP: Record<HeroElementType, CompositionFamily> = {
 };
 
 const FORBIDDEN_PATTERNS_BY_FAMILY: Record<CompositionFamily, string[]> = {
-  "STOREFRONT":     ["Internal engineering suite headers", "Telemetry metrics as primary hero", "Admin CRUD table as primary view", "Tabbed capability engine console", "Technical telemetry gauges"],
+  "IMMERSIVE_WORLD":    ["Flat 2D card grid without canvas", "Static image placeholder instead of 3D scene", "Administrative SaaS sidebar", "Corporate table"],
+  "STOREFRONT":         ["Internal engineering suite headers", "Telemetry metrics as primary hero", "Admin CRUD table as primary view", "Tabbed capability engine console", "Technical telemetry gauges"],
   "HOSPITALITY_PORTAL": ["Telemetry metrics", "Admin backoffice tables", "Tabbed console engine", "Technical parameter sliders", "System log viewer"],
   "TRACKER":        ["Generic KPI grid as hero", "Admin table as primary content", "Sidebar navigation for personal tracker"],
   "TIMELINE":       ["Card grid as hero", "Metric cluster without context", "Admin sidebar"],
@@ -480,6 +490,7 @@ const FORBIDDEN_PATTERNS_BY_FAMILY: Record<CompositionFamily, string[]> = {
 };
 
 const VISUAL_RHYTHM_BY_FAMILY: Record<CompositionFamily, string> = {
+  "IMMERSIVE_WORLD":    "3D WORLD canvas stage → floating HUD → biome explorer → soundboard mixer",
   "STOREFRONT":         "HERO carousel → categories row → deals banner → PRODUCT grid → cart drawer",
   "HOSPITALITY_PORTAL": "FULL-BLEED hero + booking bar → villa showcase → experiential carousel → reservation CTA",
   "TRACKER":            "LARGE interaction → compact summary → medium chart",
@@ -493,6 +504,7 @@ const VISUAL_RHYTHM_BY_FAMILY: Record<CompositionFamily, string> = {
 };
 
 const VOCABULARY_BY_FAMILY: Record<CompositionFamily, string[]> = {
+  "IMMERSIVE_WORLD":    ["Explore", "Universe", "World", "Camera", "Biomes", "Atmosphere", "Quests", "Sound"],
   "STOREFRONT":         ["Shop", "Category", "Add to Cart", "Deals", "Ratings", "Discount", "Cart", "Checkout"],
   "HOSPITALITY_PORTAL": ["Villas", "Suites", "Reserve", "Stay", "Amenities", "Dining", "Concierge", "Retreat"],
   "TRACKER":            ["Today", "Check in", "Streak", "Progress", "Reflect"],
@@ -754,11 +766,20 @@ export class DesignDirector {
     const canonicalSpecHash = sha256(JSON.stringify(canonicalSpec));
     const briefId = `brief_${seed.toString(16)}_${generationId.slice(0, 8)}`;
 
+    const extractedBrand = NavigationDesignResolver.extractBrandFromPrompt(rawPrompt) ||
+      (canonicalSpec as any)?.brandName ||
+      (canonicalSpec as any)?.name ||
+      "";
+
     return {
       briefId,
       briefVersion: "1.0",
       seed,
       selectionMode,
+      rawPrompt,
+      userPrompt: rawPrompt,
+      brand: extractedBrand ? { name: extractedBrand } : undefined,
+      brandName: extractedBrand,
       briefMetadata: {
         generationId,
         promptHash,

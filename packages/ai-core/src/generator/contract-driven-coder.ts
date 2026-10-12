@@ -23,6 +23,7 @@ import { SelfHealer } from "../healing/self-healer.js";
 import { FeatureCompletenessTracker } from "../governance/feature-completeness-tracker.js";
 import type { ArchitectureContractV1 } from "../governance/architecture-resolver.js";
 import type { DomainContract } from "../governance/domain-contract.js";
+import { ASTSafeTransformer } from "../governance/ast-safe-transformer.js";
 
 export interface CoderExecutionResult {
   success: boolean;
@@ -111,7 +112,7 @@ export class ContractDrivenCoder {
 
       // 7. Process and Validate Generated Files
       for (const item of codeResult.changedFiles) {
-        const normalizedRelPath = item.path.replace(/\\/g, "/");
+        let normalizedRelPath = item.path.replace(/\\/g, "/");
 
         // 7a. Path Validation
         const pathCheck = PathValidator.validatePath(normalizedRelPath, projectPath, {
@@ -127,7 +128,13 @@ export class ContractDrivenCoder {
         // 7b. Semantic Duplicate Check
         const dupCheck = SemanticDuplicateDetector.checkBeforeWrite(normalizedRelPath);
         if (!dupCheck.allowed) {
-          throw new Error(`SEMANTIC_DUPLICATE_ERROR: File "${normalizedRelPath}" is a duplicate alias for "${dupCheck.canonicalPath}".`);
+          if (dupCheck.canonicalPath && dupCheck.canonicalPath !== normalizedRelPath) {
+            console.warn(`[ContractDrivenCoder] 🔀 Normalizing duplicate alias "${normalizedRelPath}" -> canonical "${dupCheck.canonicalPath}"`);
+            normalizedRelPath = dupCheck.canonicalPath;
+            item.path = dupCheck.canonicalPath;
+          } else {
+            throw new Error(`SEMANTIC_DUPLICATE_ERROR: File "${normalizedRelPath}" is a duplicate alias for "${dupCheck.canonicalPath}".`);
+          }
         }
 
         // 7c. Stub & Fake Handler Check
@@ -162,11 +169,13 @@ export class ContractDrivenCoder {
         }
 
 
-        // Write validated file to disk
+        // Write validated and AST-safe transformed file to disk
         const fullPath = join(projectPath, normalizedRelPath);
         const parentDir = dirname(fullPath);
         if (!existsSync(parentDir)) mkdirSync(parentDir, { recursive: true });
-        writeFileSync(fullPath, item.content, "utf8");
+        const transformed = ASTSafeTransformer.transformSource(item.content, normalizedRelPath);
+        const finalContent = transformed.transformed ? transformed.code : item.content;
+        writeFileSync(fullPath, finalContent, "utf8");
         changedFiles.push(normalizedRelPath);
       }
 

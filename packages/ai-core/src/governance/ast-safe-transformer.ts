@@ -25,6 +25,18 @@ export class ASTSafeTransformer {
     const repairs: string[] = [];
     let currentCode = sourceCode;
 
+    // 0. Strip leaked patch blocks or search/replace markers from file content
+    if (currentCode.includes("===PATCH:")) {
+      const idx = currentCode.indexOf("===PATCH:");
+      currentCode = currentCode.substring(0, idx).trim();
+      repairs.push("Stripped trailing ===PATCH: block from file content");
+    }
+    if (currentCode.includes("<<<<<<< SEARCH")) {
+      const idx = currentCode.indexOf("<<<<<<< SEARCH");
+      currentCode = currentCode.substring(0, idx).trim();
+      repairs.push("Stripped trailing <<<<<<< SEARCH block from file content");
+    }
+
     // 1. Repair double generic brackets like React.FC<any>> -> React.FC<any>
     if (/React\.FC<[^>]+>>/.test(currentCode)) {
       currentCode = currentCode.replace(/(React\.FC<[^>]+)>>/g, "$1>");
@@ -75,11 +87,106 @@ export class ASTSafeTransformer {
       repairs.push("Normalized invalid hyphenated function identifier to camelCase");
     }
 
+    // 8. Auto-escape invalid unescaped '>' or '}' in JSX child text for .tsx and .jsx files
+    if (fileName.endsWith(".tsx") || fileName.endsWith(".jsx")) {
+      const repairedJsx = ASTSafeTransformer.repairJsxUnescapedCharacters(currentCode, fileName);
+      if (repairedJsx !== currentCode) {
+        currentCode = repairedJsx;
+        repairs.push("Auto-escaped invalid literal angle brackets or braces in JSX text");
+      }
+    }
+
+    // 9. Normalize illegal leading-zero decimal literals (TS1489: e.g. heading: 090 -> heading: 90)
+    const normalizedNumbers = ASTSafeTransformer.normalizeLeadingZeroLiterals(currentCode, fileName);
+    if (normalizedNumbers.normalizedCount > 0) {
+      currentCode = normalizedNumbers.code;
+      repairs.push(`Normalized ${normalizedNumbers.normalizedCount} leading-zero numeric literal(s) (TS1489)`);
+    }
+
+    // 10. Deduplicate redundant top-level declarations (e.g. duplicate App declarations)
+    const dedupedIdents = ASTSafeTransformer.deduplicateTopLevelIdentifiers(currentCode, fileName);
+    if (dedupedIdents.deduplicatedCount > 0) {
+      currentCode = dedupedIdents.code;
+      repairs.push(`Deduplicated ${dedupedIdents.deduplicatedCount} duplicate top-level identifier(s)`);
+    }
+
+    // 11. Normalize untyped ternary literal variable declarations to prevent TS2345 widening
+    const ternaryNormalized = ASTSafeTransformer.repairTernaryLiteralWidening(currentCode, fileName);
+    if (ternaryNormalized.repairedCount > 0) {
+      currentCode = ternaryNormalized.code;
+      repairs.push(`Normalized ${ternaryNormalized.repairedCount} untyped ternary literal variable(s) (TS2345)`);
+    }
+
     return {
       code: currentCode,
       transformed: repairs.length > 0,
       repairsApplied: repairs,
     };
+  }
+
+  /**
+   * Safely escapes literal '>' or '}' characters in JSX text nodes (e.g. <div>> {log}</div> -> <div>&gt; {log}</div>)
+   * while preserving valid HTML entities, JS comparison operators, and arrow functions.
+   */
+  public static repairJsxUnescapedCharacters(sourceCode: string, fileName: string): string {
+    if (!fileName.endsWith(".tsx") && !fileName.endsWith(".jsx")) {
+      return sourceCode;
+    }
+
+    let code = sourceCode;
+    try {
+      const sf = ts.createSourceFile(
+        fileName,
+        code,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TSX
+      );
+
+      const replacements: { start: number; end: number; text: string }[] = [];
+      const walk = (node: ts.Node) => {
+        if (ts.isJsxText(node)) {
+          const text = node.getText(sf);
+          let escaped = text;
+          if (/(?<!&[a-zA-Z0-9#]{1,10})>/.test(escaped)) {
+            escaped = escaped.replace(/(?<!&[a-zA-Z0-9#]{1,10})>/g, "&gt;");
+          }
+          if (/(?<!&#[0-9]{1,10})}/.test(escaped)) {
+            escaped = escaped.replace(/(?<!&#[0-9]{1,10})}/g, "&#125;");
+          }
+          if (escaped !== text) {
+            replacements.push({ start: node.getStart(sf), end: node.getEnd(), text: escaped });
+          }
+        }
+        ts.forEachChild(node, walk);
+      };
+      walk(sf);
+
+      if (replacements.length > 0) {
+        replacements.sort((a, b) => b.start - a.start);
+        for (const r of replacements) {
+          code = code.slice(0, r.start) + r.text + code.slice(r.end);
+        }
+      }
+    } catch {
+      // In case AST parsing threw an exception
+    }
+
+    // Secondary regex guard for unescaped angle brackets right after opening tags (e.g. <div>> {log}</div>)
+    if (/(<[A-Za-z0-9_.-]+(?:\s+[^>]*?)?>)\s*>+\s*(\{|\b|[a-zA-Z0-9])/.test(code)) {
+      code = code.replace(/(<[A-Za-z0-9_.-]+(?:\s+[^>]*?)?>)\s*>+\s*(\{|\b|[a-zA-Z0-9])/g, "$1&gt; $2");
+    }
+
+    // Secondary regex guard for unescaped less-than brackets in JSX text (e.g. <div>Within limits (< 750°C)</div> or <span>< 5 ms</span>)
+    // In JSX text, a literal '<' followed by whitespace, numbers, or comparison symbols is not a valid tag and breaks React Babel.
+    let prevCode = "";
+    while (prevCode !== code) {
+      prevCode = code;
+      code = code.replace(/(>[^<{]*?)<(\s*=?\s*[\d.]+[^<{]*?<\/[a-zA-Z0-9_.-]+>)/g, "$1&lt;$2");
+      code = code.replace(/(>[^<{]*?)<(\s+[^<{]*?<\/[a-zA-Z0-9_.-]+>)/g, "$1&lt;$2");
+    }
+
+    return code;
   }
 
   /**
@@ -226,6 +333,12 @@ export class ASTSafeTransformer {
       .replace(/\n+(?:FILE|file|path|filename|filepath):\s*[\w\/\\.]+\.(?:ts|tsx|js|jsx|json|prisma)\s*$/gm, "")
       .replace(/\n+===END===\s*$/gm, "")
       .replace(/\n+```\s*$/gm, "");
+
+    // Remove stray markdown code fences anywhere in the file (e.g. ```, ```tsx, ```ts)
+    cleaned = cleaned.replace(/^[ \t]*```[a-zA-Z0-9_-]*\r?$/gm, "");
+
+    // Remove stray language identifier lines orphaned by markdown stripping (e.g. 'tsx', 'ts', 'jsx', 'js')
+    cleaned = cleaned.replace(/^[ \t]*(?:tsx|ts|jsx|js|typescript|javascript)\r?$/gm, "");
 
     if (content.endsWith("\n") && !cleaned.endsWith("\n")) {
       cleaned += "\n";
@@ -409,4 +522,318 @@ export class ASTSafeTransformer {
 
     return content;
   }
+
+  /**
+   * Safely normalizes invalid leading-zero numeric literals (TS1489 / TS1121).
+   * E.g. heading: 090 -> heading: 90, bearing: 045 -> bearing: 45.
+   * Preserves:
+   * - String literals ("090", '090', `090`)
+   * - Decimals / floats (0.90, 0.05)
+   * - Standard ES6 hex (0x90), octal (0o70), binary (0b10)
+   * - Standalone 0
+   * - Identifiers and property names (item090, _090)
+   */
+  public static normalizeLeadingZeroLiterals(sourceCode: string, fileName = "file.tsx"): { code: string; normalizedCount: number } {
+    let code = sourceCode;
+    let normalizedCount = 0;
+
+    // 1. Primary AST traversal using TypeScript compiler API
+    try {
+      const isTsx = fileName.endsWith(".tsx") || fileName.endsWith(".jsx") || !fileName.includes(".");
+      const scriptKind = isTsx ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+      const sf = ts.createSourceFile(
+        fileName.endsWith(".tsx") || fileName.endsWith(".ts") ? fileName : `${fileName}.tsx`,
+        code,
+        ts.ScriptTarget.Latest,
+        true,
+        scriptKind
+      );
+
+      const replacements: { start: number; end: number; text: string }[] = [];
+      const walk = (node: ts.Node) => {
+        if (ts.isNumericLiteral(node)) {
+          const raw = node.getText(sf);
+          // Match invalid leading zero decimal/octal literals like 090, 045, 085, 012, 007, 00
+          // but NOT floats (0.90), hex (0x1F), octal (0o77), binary (0b10), or single 0
+          if (/^0[0-9]+$/.test(raw)) {
+            const normalized = raw.replace(/^0+/, "") || "0";
+            replacements.push({
+              start: node.getStart(sf),
+              end: node.getEnd(),
+              text: normalized,
+            });
+          }
+        }
+        ts.forEachChild(node, walk);
+      };
+      walk(sf);
+
+      if (replacements.length > 0) {
+        replacements.sort((a, b) => b.start - a.start);
+        for (const r of replacements) {
+          code = code.slice(0, r.start) + r.text + code.slice(r.end);
+        }
+        normalizedCount += replacements.length;
+      }
+    } catch {
+      // In case AST parsing failed
+    }
+
+    // 2. Secondary AST-safe regex pass for object properties and array items in case AST recovery missed partially unparsed expressions
+    // Matches patterns like `heading: 090`, `bearing: 045`, `[090, 045]`, `foo = 090`
+    // Negative lookbehind ensures we don't touch identifiers, floats, or hex/octal prefixes
+    const regex = /(?<=[:=,(\[]\s*(?:[-+]?\s*))\b0([0-9]+)\b(?![."'])/g;
+    const regexMatches = [...code.matchAll(regex)];
+    if (regexMatches.length > 0) {
+      code = code.replace(regex, (_match, digits) => {
+        normalizedCount++;
+        return digits.replace(/^0+/, "") || "0";
+      });
+    }
+
+    return { code, normalizedCount };
+  }
+
+  /**
+   * Detects duplicate top-level identifier declarations (TS2300: e.g. duplicate App).
+   */
+  public static detectDuplicateTopLevelIdentifiers(sourceCode: string, fileName = "file.tsx"): string[] {
+    const isTsx = fileName.endsWith(".tsx") || fileName.endsWith(".jsx") || !fileName.includes(".");
+    const scriptKind = isTsx ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+    try {
+      const sf = ts.createSourceFile(
+        fileName,
+        sourceCode,
+        ts.ScriptTarget.Latest,
+        true,
+        scriptKind
+      );
+
+      const declared = new Set<string>();
+      const duplicates = new Set<string>();
+
+      for (const stmt of sf.statements) {
+        if (ts.isFunctionDeclaration(stmt) && stmt.name) {
+          const name = stmt.name.text;
+          if (declared.has(name)) duplicates.add(name);
+          else declared.add(name);
+        } else if (ts.isVariableStatement(stmt)) {
+          for (const decl of stmt.declarationList.declarations) {
+            if (ts.isIdentifier(decl.name)) {
+              const name = decl.name.text;
+              if (declared.has(name)) duplicates.add(name);
+              else declared.add(name);
+            }
+          }
+        } else if (ts.isClassDeclaration(stmt) && stmt.name) {
+          const name = stmt.name.text;
+          if (declared.has(name)) duplicates.add(name);
+          else declared.add(name);
+        }
+      }
+
+      return Array.from(duplicates);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Safely deduplicates top-level identifier declarations, prioritizing default exports or canonical implementations.
+   */
+  public static deduplicateTopLevelIdentifiers(sourceCode: string, fileName = "file.tsx"): { code: string; deduplicatedCount: number } {
+    const isTsx = fileName.endsWith(".tsx") || fileName.endsWith(".jsx") || !fileName.includes(".");
+    const scriptKind = isTsx ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+
+    try {
+      const sf = ts.createSourceFile(
+        fileName,
+        sourceCode,
+        ts.ScriptTarget.Latest,
+        true,
+        scriptKind
+      );
+
+      interface DeclInfo {
+        name: string;
+        node: ts.Node;
+        isDefaultExport: boolean;
+        isExport: boolean;
+        hasBody: boolean;
+        start: number;
+        end: number;
+      }
+
+      const byName = new Map<string, DeclInfo[]>();
+
+      for (const stmt of sf.statements) {
+        if (ts.isFunctionDeclaration(stmt) && stmt.name) {
+          const name = stmt.name.text;
+          if (!byName.has(name)) byName.set(name, []);
+          byName.get(name)!.push({
+            name,
+            node: stmt,
+            isDefaultExport: Boolean(stmt.modifiers?.some(m => m.kind === ts.SyntaxKind.DefaultKeyword)),
+            isExport: Boolean(stmt.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)),
+            hasBody: Boolean(stmt.body),
+            start: stmt.getStart(sf),
+            end: stmt.getEnd(),
+          });
+        } else if (ts.isVariableStatement(stmt)) {
+          for (const decl of stmt.declarationList.declarations) {
+            if (ts.isIdentifier(decl.name)) {
+              const name = decl.name.text;
+              if (!byName.has(name)) byName.set(name, []);
+              byName.get(name)!.push({
+                name,
+                node: stmt,
+                isDefaultExport: false,
+                isExport: Boolean(stmt.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)),
+                hasBody: Boolean(decl.initializer),
+                start: stmt.getStart(sf),
+                end: stmt.getEnd(),
+              });
+            }
+          }
+        } else if (ts.isClassDeclaration(stmt) && stmt.name) {
+          const name = stmt.name.text;
+          if (!byName.has(name)) byName.set(name, []);
+          byName.get(name)!.push({
+            name,
+            node: stmt,
+            isDefaultExport: Boolean(stmt.modifiers?.some(m => m.kind === ts.SyntaxKind.DefaultKeyword)),
+            isExport: Boolean(stmt.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)),
+            hasBody: true,
+            start: stmt.getStart(sf),
+            end: stmt.getEnd(),
+          });
+        }
+      }
+
+      const toRemove: { start: number; end: number; name: string }[] = [];
+      let deduplicatedCount = 0;
+
+      for (const [name, decls] of byName.entries()) {
+        if (decls.length > 1) {
+          // Prioritize: 1) default export with body, 2) export with body, 3) longest implementation
+          let canonical = decls.find(d => d.isDefaultExport && d.hasBody);
+          if (!canonical) canonical = decls.find(d => d.isDefaultExport);
+          if (!canonical) canonical = decls.find(d => d.isExport && d.hasBody);
+          if (!canonical) canonical = decls.find(d => d.isExport);
+          if (!canonical) canonical = decls[decls.length - 1];
+
+          for (const d of decls) {
+            if (d !== canonical) {
+              toRemove.push({ start: d.start, end: d.end, name });
+              deduplicatedCount++;
+            }
+          }
+        }
+      }
+
+      if (toRemove.length === 0) {
+        return { code: sourceCode, deduplicatedCount: 0 };
+      }
+
+      toRemove.sort((a, b) => b.start - a.start);
+      let res = sourceCode;
+      for (const r of toRemove) {
+        res = res.slice(0, r.start) + `/* [ASTSafeTransformer] Removed duplicate declaration of '${r.name}' */` + res.slice(r.end);
+      }
+
+      return { code: res, deduplicatedCount };
+    } catch {
+      return { code: sourceCode, deduplicatedCount: 0 };
+    }
+  }
+
+  /**
+   * Safely repairs untyped variable declarations initialized with literal ternary expressions
+   * which would otherwise widen to 'string' and cause TS2345 type errors when passed to state setters.
+   * e.g. const nextStatus = n.status === 'Active' ? 'Acknowledged' : 'Active';
+   *   -> const nextStatus = (n.status === 'Active' ? 'Acknowledged' : 'Active') as const;
+   */
+  public static repairTernaryLiteralWidening(sourceCode: string, fileName = "file.tsx"): { code: string; repairedCount: number } {
+    if (!fileName.endsWith(".ts") && !fileName.endsWith(".tsx")) {
+      return { code: sourceCode, repairedCount: 0 };
+    }
+
+    let code = sourceCode;
+    let repairedCount = 0;
+
+    try {
+      const isTsx = fileName.endsWith(".tsx") || fileName.endsWith(".jsx");
+      const sf = ts.createSourceFile(
+        fileName,
+        code,
+        ts.ScriptTarget.Latest,
+        true,
+        isTsx ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+      );
+
+      const replacements: { start: number; end: number; text: string }[] = [];
+
+      const walk = (node: ts.Node) => {
+        if (ts.isVariableDeclaration(node) && !node.type && node.initializer) {
+          if (ts.isConditionalExpression(node.initializer)) {
+            const cond = node.initializer;
+            const whenTrue = cond.whenTrue;
+            const whenFalse = cond.whenFalse;
+
+            const isLiteral = (n: ts.Expression) =>
+              ts.isStringLiteral(n) ||
+              ts.isNumericLiteral(n) ||
+              n.kind === ts.SyntaxKind.TrueKeyword ||
+              n.kind === ts.SyntaxKind.FalseKeyword;
+
+            const trueText = whenTrue.getText(sf);
+            const falseText = whenFalse.getText(sf);
+
+            if (!trueText.includes(" as ") && !falseText.includes(" as ")) {
+              if (isLiteral(whenTrue)) {
+                replacements.push({
+                  start: whenTrue.getStart(sf),
+                  end: whenTrue.getEnd(),
+                  text: `(${trueText} as const)`,
+                });
+                repairedCount++;
+              }
+              if (isLiteral(whenFalse)) {
+                replacements.push({
+                  start: whenFalse.getStart(sf),
+                  end: whenFalse.getEnd(),
+                  text: `(${falseText} as const)`,
+                });
+                repairedCount++;
+              }
+            }
+          }
+        }
+        ts.forEachChild(node, walk);
+      };
+
+      walk(sf);
+
+      if (replacements.length > 0) {
+        replacements.sort((a, b) => b.start - a.start);
+        for (const r of replacements) {
+          code = code.slice(0, r.start) + r.text + code.slice(r.end);
+        }
+      }
+    } catch {
+      // In case AST parsing threw an exception
+    }
+
+    return { code, repairedCount };
+  }
+
+  /**
+   * Convenience transform method returning transformed code directly.
+   */
+  public static transform(sourceCode: string, fileName = "file.tsx"): string {
+    return this.transformSource(sourceCode, fileName).code;
+  }
 }
+
+export const AstSafeTransformer = ASTSafeTransformer;
+export type AstSafeTransformer = ASTSafeTransformer;

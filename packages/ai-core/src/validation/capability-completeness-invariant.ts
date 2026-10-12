@@ -12,6 +12,7 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
+import { ASTSafeTransformer } from "../governance/ast-safe-transformer.js";
 
 export interface CapabilityChainEvidence {
   capabilityId: string;
@@ -114,24 +115,26 @@ export class CapabilityCompletenessInvariant {
     }
 
     // Strip comments and string literals before checking parenthesis balance
-    // Uses a single unified regex so quotes inside strings (e.g. "Today's", 'say "hello"') do not corrupt parsing
     const strippedSyntax = trimmed
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/\/\/[^\r\n]*/g, "")
-      .replace(/>([^<]*)</g, (_, text) => `>${text.replace(/['"]/g, "")}<`)
       .replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`[\s\S]*?`/g, '""');
     const openParens = (strippedSyntax.match(/\(/g) || []).length;
     const closeParens = (strippedSyntax.match(/\)/g) || []).length;
     if (openParens !== closeParens) {
-      return {
-        complete: false,
-        score: 15,
-        totalCapabilities: 0,
-        satisfiedCapabilities: 0,
-        evidence: [],
-        reasons: ["Malformed JSX/TSX syntax: Unbalanced parentheses."],
-        earlyRejection: "UNBALANCED_SYNTAX",
-      };
+      // Validate via real TypeScript AST before rejecting (prevents false positives from quotes in JSX expressions or text)
+      const astCheck = ASTSafeTransformer.validateSyntax(trimmed, options.filePath || "Component.tsx");
+      if (!astCheck.valid) {
+        return {
+          complete: false,
+          score: 15,
+          totalCapabilities: 0,
+          satisfiedCapabilities: 0,
+          evidence: [],
+          reasons: ["Malformed JSX/TSX syntax: Unbalanced parentheses."],
+          earlyRejection: "UNBALANCED_SYNTAX",
+        };
+      }
     }
 
     // ── 0.1 Aggregate Modular Sub-components If Auditing File on Disk ──────────

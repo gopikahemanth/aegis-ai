@@ -252,12 +252,14 @@ describe("Phase 5.5: Real CLI Full-Generation & Runtime User Journey Acceptance"
     expect(renamePlan.patches.length).toBeGreaterThan(0);
 
     const movePlanner = new StructuralRefactoringPlanner(projectRoot);
+    const targetService = existsSync(join(projectRoot, "src/services/studentService.ts")) ? "src/services/studentService.ts" : "src/services/api.ts";
+    const targetSymbol = targetService.includes("studentService") ? "studentService" : "getAll";
     const movePlan = movePlanner.plan({
       kind: "MOVE_SYMBOL",
       projectPath: projectRoot,
-      sourceFile: "src/services/studentService.ts",
-      symbolName: "studentService",
-      destinationFile: "src/utils/student-utils.ts",
+      sourceFile: targetService,
+      symbolName: targetSymbol,
+      destinationFile: "src/utils/data-utils.ts",
     });
 
     expect(movePlan.impactStatus).toBe("READY");

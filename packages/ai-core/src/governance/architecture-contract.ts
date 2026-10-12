@@ -20,6 +20,31 @@ export interface RequirementContract {
   };
 }
 
+export interface PrimaryRouteCapabilityContract {
+  route: string;
+  capabilityId: string;
+  capabilityName: string;
+  trigger: {
+    labelPattern?: string;
+    selector?: string;
+    actionType: "click" | "input" | "select";
+  };
+  expectedStateChange: string;
+  observableResult: {
+    domTextPattern?: string;
+    badgeStatusPattern?: string;
+    selectedPattern?: string;
+    stateChangeType?: "CONTENT_STATE_MUTATION" | "TAB_OR_SELECTION_TRANSITION" | "BADGE_STATUS_TRANSITION";
+  };
+  requiresPersistence: boolean;
+  persistenceVerification?: {
+    endpoint: string;
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+    expectedStatus: number;
+    expectedDbMutation?: boolean;
+  };
+}
+
 export interface ArchitectureContractData {
   contractId: string;
   lockedAt: string;
@@ -37,6 +62,7 @@ export interface ArchitectureContractData {
   userFlows: string[];
   dataModels: string[];
   allowedRoutePrefixes: string[];
+  routeCapabilities?: PrimaryRouteCapabilityContract[];
 }
 
 export class ArchitectureContractManager {
@@ -134,5 +160,81 @@ export class ArchitectureContractManager {
       }
     }
     return { allowed: true };
+  }
+
+  public static ensureRouteCapabilities(
+    outputDirectory: string,
+    routes?: string[],
+    prompt?: string
+  ): PrimaryRouteCapabilityContract[] {
+    const aegisDir = join(outputDirectory, ".aegis");
+    const contractPath = join(aegisDir, "architecture-contract.json");
+    let contract = this.loadContract(outputDirectory);
+    if (!contract) return [];
+
+    const existingMap = new Map<string, PrimaryRouteCapabilityContract>();
+    if (Array.isArray(contract.routeCapabilities)) {
+      for (const cap of contract.routeCapabilities) {
+        if (cap.route) existingMap.set(cap.route, cap);
+      }
+    }
+
+    const routeList = new Set<string>();
+    if (routes) {
+      for (const r of routes) {
+        if (r && !r.includes(":") && !r.includes("*")) {
+          routeList.add(r.startsWith("/") ? r : `/${r}`);
+        }
+      }
+    }
+    for (const r of existingMap.keys()) {
+      routeList.add(r);
+    }
+    routeList.add("/");
+
+    for (const r of routeList) {
+      if (!existingMap.has(r)) {
+        const cleanName = r === "/" ? "Primary Operational Console" : r.replace(/^\//, "").replace(/[-_]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+        const capId = r === "/" ? "primary_console" : r.replace(/^\//, "").toLowerCase().replace(/[^a-z0-9]+/g, "_");
+        const isPersistent = Boolean(r.match(/\b(maintenance|schedule|booking|reserve|order|request|service)\b/i));
+
+        existingMap.set(r, {
+          route: r,
+          capabilityId: capId,
+          capabilityName: cleanName,
+          trigger: {
+            actionType: "click",
+          },
+          expectedStateChange: `Update operational state and view for ${cleanName}`,
+          observableResult: {
+            stateChangeType: "CONTENT_STATE_MUTATION",
+          },
+          requiresPersistence: isPersistent,
+        });
+      }
+    }
+
+    contract.routeCapabilities = Array.from(existingMap.values());
+    try {
+      if (existsSync(aegisDir)) {
+        writeFileSync(contractPath, JSON.stringify(contract, null, 2), "utf8");
+      }
+    } catch {}
+
+    return contract.routeCapabilities;
+  }
+
+  public static syncRouteCapabilitiesFromBrief(
+    outputDirectory: string,
+    brief: any,
+    prompt?: string
+  ): PrimaryRouteCapabilityContract[] {
+    const routes: string[] = [];
+    if (brief?.pageCompositions) {
+      for (const comp of brief.pageCompositions) {
+        if (comp.route) routes.push(comp.route);
+      }
+    }
+    return this.ensureRouteCapabilities(outputDirectory, routes, prompt);
   }
 }

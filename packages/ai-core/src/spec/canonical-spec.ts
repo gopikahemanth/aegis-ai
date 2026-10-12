@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ProjectSpecification, DomainVocabulary } from "../architect/specification.js";
 import { DomainContaminationDetector } from "../governance/domain-contamination-detector.js";
+import { PromptConstraints } from "../governance/prompt-constraints.js";
 
 export interface CanonicalProjectSpecification extends ProjectSpecification {
   domainCategory: string;
@@ -31,10 +32,23 @@ export class SpecificationNormalizer {
       } catch {}
     }
     const promptLower = combinedPrompt.toLowerCase();
+    const promptClean = PromptConstraints.stripNegativeConstraints(combinedPrompt);
+    const promptCleanLower = promptClean.toLowerCase();
 
     // 1. Detect Domain Category dynamically
     let domainCategory = "general-dashboard";
-    if (promptLower.includes("real estate") || promptLower.includes("real-estate") || promptLower.includes("realestate") || promptLower.includes("property") || promptLower.includes("realtor") || promptLower.includes("mortgage") || promptLower.includes("tour schedule") || promptLower.includes("tour booking") || promptLower.includes("listing")) {
+    if (/\b(observatory|astronomy|astrophysics|celestial|telescope|star\s*map|space\s*observation|sky\s*telemetry|deep\s*sky)\b/i.test(promptCleanLower)) {
+      domainCategory = "scientific-observatory";
+    } else if (
+      !promptLower.includes("solar") &&
+      (/\b(avionics|aeronautical|flight\s*operations|aircraft|flight-plan|flight\s*monitoring|waypoint|airframe|cockpit)\b/i.test(promptCleanLower) ||
+       (/\btelemetry\b/i.test(promptCleanLower) && /\b(flight|aircraft|avionics|airframe|squawk|stratos|airway)\b/i.test(promptCleanLower)))
+    ) {
+      domainCategory = "aeronautical-telemetry";
+    } else if (!PromptConstraints.isForbiddenByPrompt(combinedPrompt, "hotel") && !PromptConstraints.isForbiddenByPrompt(combinedPrompt, "hospitality") &&
+      (/\b(hotel|boutique hotel|resort|hospitality|luxury stay|luxury suites|villa resort)\b/i.test(promptCleanLower) || (promptCleanLower.includes("room reservation") || promptCleanLower.includes("room booking") || (promptCleanLower.includes("hotel") && promptCleanLower.includes("booking"))))) {
+      domainCategory = "luxury-hospitality";
+    } else if (promptLower.includes("real estate") || promptLower.includes("real-estate") || promptLower.includes("realestate") || promptLower.includes("realtor") || promptLower.includes("mortgage") || promptLower.includes("tour schedule") || promptLower.includes("tour booking") || promptLower.includes("listing") || (promptLower.includes("property") && !promptLower.includes("hotel") && !promptLower.includes("resort") && !promptLower.includes("boutique") && !promptLower.includes("suite"))) {
       domainCategory = "real-estate";
     } else if (promptLower.includes("pet") && (promptLower.includes("groom") || promptLower.includes("spa") || promptLower.includes("package") || promptLower.includes("booking") || promptLower.includes("service"))) {
       domainCategory = "pet-grooming";
@@ -188,6 +202,14 @@ export class SpecificationNormalizer {
             fallbackMetric3 = "System Throughput";
             fallbackMetric4 = "Operational Uptime";
             break;
+          case "scientific-observatory":
+            fallbackMetric3 = "Cataloged Celestial Objects";
+            fallbackMetric4 = "Published Discoveries";
+            break;
+          case "aeronautical-telemetry":
+            fallbackMetric3 = "Active Aircraft";
+            fallbackMetric4 = "Navigation Status";
+            break;
           case "edtech":
           case "music-school":
           case "student-management":
@@ -209,7 +231,7 @@ export class SpecificationNormalizer {
 
       const formatActionVerb = (verbOrSlug: string, model: string): string => {
         const clean = verbOrSlug.replace(/[-_]/g, " ").trim();
-        if (/^(add|create|log|record|update|view|check|schedule|manage|track|upload)\b/i.test(clean)) {
+        if (/^(add|create|log|record|update|view|check|schedule|manage|track|upload|read|explore|inspect|listen|interact|discover)\b/i.test(clean)) {
           return toNaturalTitle(clean);
         }
         if (/management$/i.test(clean)) {
@@ -218,10 +240,34 @@ export class SpecificationNormalizer {
         if (/schedules?$/i.test(clean)) {
           return `Schedule ${toNaturalTitle(clean.replace(/schedules?$/i, "").trim() || model)}`;
         }
-        if (/journal$/i.test(clean)) {
-          return `Log ${toNaturalTitle(clean)}`;
+        if (/(?:essay|article|monograph|story|narrative|dialogue)/i.test(clean)) {
+          return `Read ${toNaturalTitle(clean)}`;
         }
-        return `Add ${toNaturalTitle(clean)}`;
+        if (/(?:gallery|lightbox|photo|portfolio|exhibition)/i.test(clean)) {
+          return `View ${toNaturalTitle(clean)}`;
+        }
+        if (/(?:case-?study|project|blueprint|elevation)/i.test(clean)) {
+          return `Explore ${toNaturalTitle(clean)}`;
+        }
+        if (/(?:world|scene|stage|realm|biome|map)/i.test(clean)) {
+          return `Explore ${toNaturalTitle(clean)}`;
+        }
+        if (/(?:sound|audio|soundboard|music|track)/i.test(clean)) {
+          return `Play ${toNaturalTitle(clean)}`;
+        }
+        if (/(?:quest|journey|milestone)/i.test(clean)) {
+          return `Embark on ${toNaturalTitle(clean)}`;
+        }
+        if (/(?:journal)$/i.test(clean)) {
+          return `Read ${toNaturalTitle(clean)}`;
+        }
+        if (/(?:detail|spec|craft|movement|caliber)/i.test(clean)) {
+          return `Inspect ${toNaturalTitle(clean)}`;
+        }
+        if (/^(task|item|product|expense|patient|student|ticket|booking|order|invoice)\b/i.test(model)) {
+          return `Add ${toNaturalTitle(clean)}`;
+        }
+        return `Explore ${toNaturalTitle(clean)}`;
       };
 
       if (promptLower.includes("plant") || promptLower.includes("botanical") || promptLower.includes("houseplant")) {
@@ -312,14 +358,17 @@ export class SpecificationNormalizer {
         return ["User", "Customer", "Bicycle", "RepairJob", "Mechanic", "RepairService"];
       case "solar-telemetry":
         return ["User", "Inverter", "TelemetryPoint", "Alert", "Setpoint", "GridMetric"];
+      case "scientific-observatory":
+        return ["User", "Observation", "Telescope", "CelestialObject", "ResearchDiscovery", "Publication", "ObservationEvent", "Instrument"];
       case "museum-collection":
         return ["User", "Artifact", "Exhibition", "Artist", "ProvenanceRecord"];
       case "event-planning":
         return ["User", "Event", "Venue", "Attendee", "Vendor", "Budget"];
       case "restaurant-reservation":
         return ["User", "Reservation", "Table", "Guest", "MenuItem", "Order"];
+      case "luxury-hospitality":
       case "hotel-booking":
-        return ["User", "Room", "Booking", "Guest", "Payment"];
+        return ["User", "Suite", "Reservation", "GuestPreference", "StayPlan", "Amenity", "DiningVenue", "LocalExperience"];
       case "vehicle-service":
         return ["User", "Vehicle", "ServiceOrder", "Customer", "Part"];
       case "equipment-maintenance":
@@ -392,6 +441,16 @@ export class SpecificationNormalizer {
     domainCategory: string
   ): DomainVocabulary {
     switch (domainCategory) {
+      case "scientific-observatory": {
+        return {
+          entityName: "Observation",
+          entityPlural: "Observations",
+          primaryMetrics: ["Active Telescopes", "Cataloged Celestial Objects", "Live Sky Feeds", "Published Discoveries"],
+          actionVerbs: ["Log Observation", "Calibrate Instrument", "Explore Star Map", "Search Celestial Archive", "Schedule Observation Session"],
+          domainPrefix: "observatory"
+        };
+      }
+
       case "real-estate": {
         return {
           entityName: "Property",
@@ -532,13 +591,14 @@ export class SpecificationNormalizer {
         };
       }
 
+      case "luxury-hospitality":
       case "hotel-booking": {
         return {
-          entityName: "Booking",
-          entityPlural: "Bookings",
-          primaryMetrics: ["Total Rooms", "Occupied Rooms", "Check-ins Today", "Total Revenue"],
-          actionVerbs: ["Book Room", "Check In", "Check Out", "Manage Rooms"],
-          domainPrefix: "booking"
+          entityName: "Suite",
+          entityPlural: "Suites",
+          primaryMetrics: ["Available Suites", "Active Reservations", "Guest Satisfaction", "Curated Experiences"],
+          actionVerbs: ["Reserve Suite", "Explore Amenities", "Curate Stay", "Save Preferences"],
+          domainPrefix: "hotel"
         };
       }
 

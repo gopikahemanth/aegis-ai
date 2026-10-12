@@ -159,31 +159,53 @@ export class FeatureRealityValidator {
 
       // Check for inert <button> tags without onClick, type="submit", or parent form/link
       if (f.rel.startsWith("src/") && (f.rel.endsWith(".tsx") || f.rel.endsWith(".jsx"))) {
-        // Normalize: collapse JSX expression values {…} to a safe placeholder so that
-        // `>` characters inside arrow functions like `onClick={() => foo()}` don't
-        // terminate the [^>]* regex early and cause false-positive "inert button" failures.
-        let normalizedContent = f.content;
-        // Replace all {...} JSX expressions with a placeholder that has no `>` chars
-        normalizedContent = normalizedContent.replace(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)?\}/g, "{__EXPR__}");
-        const buttonMatches = normalizedContent.match(/<button\b([^>]*)>/g) || [];
-        for (const btn of buttonMatches) {
-          // Check against normalized btn string (placeholders preserve onClick= presence)
-          const hasOnClick = /onClick\s*=/i.test(btn);
-          const isSubmit = /type\s*=\s*["']submit["']/i.test(btn);
-          const isDisabled = /disabled/i.test(btn);
-          const isAriaDisabled = /aria-disabled\s*=\s*["']true["']/i.test(btn);
-          const isDecorative = /aria-hidden\s*=\s*["']true["']/i.test(btn);
-          const hasSpread = /\{\s*\.\.\./.test(btn);
-
-          if (!hasOnClick && !isSubmit && !isDisabled && !isAriaDisabled && !isDecorative && !hasSpread) {
-            violations.push({
-              feature: "Interactive Integrity",
-              file: f.rel,
-              line: 1,
-              violation: `Inert <button> element detected without onClick handler, submit action, or link wrapper: ${btn.slice(0, 80)}`,
-              severity: "error",
-            });
+        // Extract all <button ...> opening tags respecting quotes and nested braces so that
+        // `>` characters inside arrow functions like `onClick={() => foo()}` don't terminate the tag.
+        const source = f.content;
+        let idx = 0;
+        while ((idx = source.indexOf("<button", idx)) !== -1) {
+          const nextChar = source[idx + 7];
+          if (nextChar && !/[\s>]/.test(nextChar)) {
+            idx += 7;
+            continue;
           }
+          let j = idx + 7;
+          let inSingle = false;
+          let inDouble = false;
+          let braceDepth = 0;
+          while (j < source.length) {
+            const c = source[j];
+            if (c === "'" && !inDouble && braceDepth === 0) {
+              inSingle = !inSingle;
+            } else if (c === '"' && !inSingle && braceDepth === 0) {
+              inDouble = !inDouble;
+            } else if (c === '{' && !inSingle && !inDouble) {
+              braceDepth++;
+            } else if (c === '}' && !inSingle && !inDouble && braceDepth > 0) {
+              braceDepth--;
+            } else if (c === '>' && !inSingle && !inDouble && braceDepth === 0) {
+              const btn = source.slice(idx, j + 1);
+              const hasOnClick = /onClick\s*=/i.test(btn);
+              const isSubmit = /type\s*=\s*["']submit["']/i.test(btn);
+              const isDisabled = /disabled/i.test(btn);
+              const isAriaDisabled = /aria-disabled\s*=\s*["']true["']/i.test(btn);
+              const isDecorative = /aria-hidden\s*=\s*["']true["']/i.test(btn);
+              const hasSpread = /\{\s*\.\.\./.test(btn);
+
+              if (!hasOnClick && !isSubmit && !isDisabled && !isAriaDisabled && !isDecorative && !hasSpread) {
+                violations.push({
+                  feature: "Interactive Integrity",
+                  file: f.rel,
+                  line: 1,
+                  violation: `Inert <button> element detected without onClick handler, submit action, or link wrapper: ${btn.slice(0, 80)}`,
+                  severity: "error",
+                });
+              }
+              break;
+            }
+            j++;
+          }
+          idx = j + 1;
         }
       }
     }

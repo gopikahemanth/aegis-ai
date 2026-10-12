@@ -86,12 +86,14 @@ export class SelfHealer {
       }
     }
 
-    console.log(`[SelfHealer] Validated files to target: [${trueFilesToFix.join(", ")}]`);
+    // Prioritize and bound targets per attempt to fit model context and prevent MAX_TOKENS truncation
+    const targetFiles = trueFilesToFix.length > 3 ? trueFilesToFix.slice(0, 3) : trueFilesToFix;
+    console.log(`[SelfHealer] Validated files to target: [${targetFiles.join(", ")}]${trueFilesToFix.length > 3 ? ` (bounded from ${trueFilesToFix.length} total)` : ""}`);
 
     // ── Step 2: Check for Repeated Repair Failures ───────────────────────────
     const repeatedCheck = TransactionalRepairSystem.checkRepeatedRepair(
       rootCause.summary,
-      trueFilesToFix,
+      targetFiles,
       errorDetails
     );
 
@@ -105,14 +107,14 @@ export class SelfHealer {
     }
 
     // ── Step 3: Create Atomic Repair Checkpoint ──────────────────────────────
-    const checkpointId = TransactionalRepairSystem.createCheckpoint(projectPath, trueFilesToFix, {
+    const checkpointId = TransactionalRepairSystem.createCheckpoint(projectPath, targetFiles, {
       attemptNumber,
       taskId: opts.taskId,
       generationId: opts.generationId,
       failureType: classification.category,
       rootCause: rootCause.summary,
       strategy: `AI surgical fix (${escalationLevel})`,
-      affectedFiles: trueFilesToFix,
+      affectedFiles: targetFiles,
     });
 
 
@@ -121,11 +123,11 @@ export class SelfHealer {
     const projectContext = this.context.buildWithPriorityFiles(
       request,
       projectPath,
-      trueFilesToFix,
+      targetFiles,
     );
 
     // ── Step 5: Capture pre-repair line counts for Anti-Stub Guard ────────────
-    const originalLineCounts = this.captureLineCounts(projectPath, trueFilesToFix);
+    const originalLineCounts = this.captureLineCounts(projectPath, targetFiles);
 
     // ── Step 6: Call Fixer ───────────────────────────────────────────────────
     const primaryErrorClass = rootCause.errors[0]?.errorClass ?? "generic-ts-error";
@@ -177,7 +179,7 @@ export class SelfHealer {
     }
 
     // ── Step 8: Post-Patch Validation (Anti-Stub Guard & Targeted Verify) ────
-    const stubsDetected = this.detectStubs(projectPath, trueFilesToFix, originalLineCounts);
+    const stubsDetected = this.detectStubs(projectPath, targetFiles, originalLineCounts);
     if (stubsDetected.length > 0) {
       console.warn(`[AntiStub] ⚠️ Repair agent replaced file(s) with stubs — rolling back.`);
       TransactionalRepairSystem.rollback(projectPath, checkpointId, `AntiStub violation in: ${stubsDetected.join(", ")}`);

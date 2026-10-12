@@ -2,7 +2,7 @@
   "gate": "DeepProductCompletenessGate",
   "tier": 38,
   "status": "ACCEPTED",
-  "certificateId": "cert_deep_complete_1790945271396",
+  "certificateId": "cert_deep_complete_1791562368747",
   "product": "AegisPlatform",
   "requirements": {
     "total": 24,
@@ -20,6 +20,6 @@
     "verified": 18
   },
   "criticalDefects": 0,
-  "signature": "sha256_deep_cert_fq728ufphf",
-  "certifiedAt": "2026-10-02T12:47:51.397Z"
+  "signature": "sha256_deep_cert_wpn6h6fiot",
+  "certifiedAt": "2026-10-09T16:12:48.747Z"
 }

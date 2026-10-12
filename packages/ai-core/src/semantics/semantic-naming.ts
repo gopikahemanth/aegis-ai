@@ -192,11 +192,19 @@ export class SemanticNaming {
     const modelWords = [...boundedWords];
     if (modelWords.length > 0) {
       const last = modelWords[modelWords.length - 1];
-      const singular = last.endsWith("ies")
-        ? last.slice(0, -3) + "y"
-        : last.endsWith("es") && !last.endsWith("ees") && !last.endsWith("sses")
-        ? last.slice(0, -2)
-        : last.replace(/s$/, "");
+      let singular = last;
+      if (last.endsWith("ies")) {
+        singular = last.slice(0, -3) + "y";
+      } else if (/(?:ch|sh|x|z|ss)es$/i.test(last)) {
+        singular = last.slice(0, -2);
+      } else if (/(?:[cgstlvpknmrdb])es$/i.test(last)) {
+        // Words with silent 'e' like preferences, experiences, services, suites, packages, devices
+        singular = last.slice(0, -1);
+      } else if (last.endsWith("es") && !last.endsWith("ees") && !last.endsWith("sses")) {
+        singular = last.slice(0, -2);
+      } else if (last.endsWith("s") && !last.endsWith("ss") && !last.endsWith("us") && !last.endsWith("is")) {
+        singular = last.slice(0, -1);
+      }
       modelWords[modelWords.length - 1] = singular;
     }
 

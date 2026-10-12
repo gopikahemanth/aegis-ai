@@ -156,8 +156,39 @@ export class RepairConvergenceMonitor {
       };
     }
 
-    // 3. Clear Improvement: error count strictly decreased and no massive new errors
+    // Critical structural regression: introducing duplicate identifier (TS2300) must never be accepted
+    const hasDuplicateIdentifierError = newErrors.some(sig => sig.includes("TS2300") || /duplicate identifier/i.test(sig));
+    if (hasDuplicateIdentifierError) {
+      return {
+        verdict: "REGRESSION",
+        beforeCount: before.blockingErrorCount,
+        afterCount: after.blockingErrorCount,
+        resolvedErrors,
+        newErrors,
+        reason: `Repair candidate introduced duplicate identifier error (TS2300).`,
+      };
+    }
+
+    // 3. Clear Improvement: error count strictly decreased
     if (after.blockingErrorCount < before.blockingErrorCount) {
+      // Reject if it introduced critical syntax or duplicate identifier errors
+      const hasCriticalRegression = newErrors.some(sig =>
+        sig.includes("TS2300") ||
+        /duplicate identifier/i.test(sig) ||
+        sig.includes("TS1489") ||
+        sig.includes("TS1005") ||
+        /syntax error/i.test(sig)
+      );
+      if (hasCriticalRegression) {
+        return {
+          verdict: "REGRESSION",
+          beforeCount: before.blockingErrorCount,
+          afterCount: after.blockingErrorCount,
+          resolvedErrors,
+          newErrors,
+          reason: `Repair candidate introduced critical compilation error (duplicate identifier or syntax): ${newErrors.slice(0, 3).join(", ")}.`,
+        };
+      }
       return {
         verdict: "IMPROVED",
         beforeCount: before.blockingErrorCount,

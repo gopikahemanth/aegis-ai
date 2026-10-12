@@ -11,6 +11,8 @@
  * characteristics to archetypes.
  */
 
+import { PromptConstraints } from "../governance/prompt-constraints.js";
+
 export interface ProductCharacteristics {
   /**
    * WHO is using this product and in what context.
@@ -80,7 +82,9 @@ export interface ProductCharacteristics {
     | "showcase-landing"       // portfolio, brand, marketing site
     | "team-workspace"         // project management, team collaboration tools
     | "realtime-console"       // trading, telemetry, ops console
-    | "configurator-workspace";// interactive studio/engineering tools, configurators, calculators, estimators
+    | "immersive-3d"           // 3D worlds, WebGL, spatial adventures, claymation universes
+    | "configurator-workspace" // interactive studio/engineering tools, configurators, calculators, estimators
+    | "craft-editorial";       // independent publications, architectural journals, monograph magazines
 
   /** Flagged if activity detection had equal top scores, requesting LLM refinement */
   isAmbiguous?: boolean;
@@ -239,6 +243,8 @@ const REALTIME_MONITORING_SIGNALS = [
   "operations center", "logistics", "fleet", "delivery tracking",
   "supply chain", "ops", "real-time", "realtime", "live feed",
   "order book", "price feed",
+  "robotics", "robotic", "robot", "workcell", "kinematics", "industrial",
+  "automation", "actuator", "scada", "cnc", "plc", "torque", "calibration",
 ];
 
 // Emotional tone signals — entirely independent of domain
@@ -319,7 +325,12 @@ const VOCABULARY_MAP: Record<
 // ─────────────────────────────────────────────────────────────────────────────
 
 function countSignals(text: string, signals: string[]): number {
-  return signals.filter(s => text.includes(s)).length;
+  const lower = text.toLowerCase();
+  return signals.filter(s => {
+    const escaped = s.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(^|\\W)${escaped}(\\W|$)`, 'i');
+    return regex.test(lower);
+  }).length;
 }
 
 interface ActivityDetectionResult {
@@ -369,7 +380,11 @@ function detectPrimaryActivity(text: string): ActivityDetectionResult {
       "record-management": RECORD_MANAGEMENT_SIGNALS,
       "personal-tracking": PERSONAL_TRACKING_SIGNALS,
     };
-    const matched = (sigMap[act] || []).filter(s => text.includes(s));
+    const matched = (sigMap[act] || []).filter(s => {
+      const escaped = s.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(^|\\W)${escaped}(\\W|$)`, 'i');
+      return regex.test(text.toLowerCase());
+    });
     return `${act}(score=${bestScore}, matched=[${matched.join(", ")}])`;
   });
 
@@ -378,12 +393,12 @@ function detectPrimaryActivity(text: string): ActivityDetectionResult {
   // Sane, deterministic fallback tie-break for when LLM discovery does not run:
   // Domain-specific transactional/commercial/showcase activities take precedence over generic personal/record buckets
   const DOMAIN_SPECIFICITY_ORDER: ProductCharacteristics["primaryActivity"][] = [
+    "realtime-monitoring",
+    "data-analysis",
     "booking-ordering",
     "content-creation",
     "portfolio-showcase",
     "team-collaboration",
-    "data-analysis",
-    "realtime-monitoring",
     "content-browsing",
     "personal-tracking",
     "record-management",
@@ -408,6 +423,13 @@ function detectExperiencePattern(
 ): ProductCharacteristics["experiencePattern"] {
   const lower = (text || "").toLowerCase();
 
+  // 0. Immersive 3D / WebGL Universe detection (Pass 0)
+  const is3DWorld =
+    /\b(3d|webgl|three\.?js|react three fiber|r3f|claymation|volumetric|spatial world|virtual world|3d animated|3d fantasy adventure|3d adventure universe)\b/i.test(lower);
+  if (is3DWorld) {
+    return "immersive-3d";
+  }
+
   // 1. Retail storefront & e-commerce marketplace detection (Pass 1)
   const isStorefront =
     lower.includes("marketplace") ||
@@ -416,9 +438,9 @@ function detectExperiencePattern(
     lower.includes("ecommerce") ||
     lower.includes("shopping") ||
     lower.includes("online store") ||
-    (lower.includes("cart") && (lower.includes("product") || lower.includes("retail") || lower.includes("shop"))) ||
+    (/\b(?:cart|carts|shopping cart)\b/i.test(lower) && /\b(?:product|products|merchandise|retail|shop|items|goods)\b/i.test(lower)) ||
     ((lower.includes("bakery") || lower.includes("bread") || lower.includes("pastry") || lower.includes("cake") || lower.includes("cafe")) &&
-     (lower.includes("menu") || lower.includes("order") || lower.includes("ordering") || lower.includes("cart") || lower.includes("catalog")));
+     (lower.includes("menu") || lower.includes("order") || lower.includes("ordering") || /\bcart\b/i.test(lower) || lower.includes("catalog")));
 
   if (isStorefront) {
     return "storefront-commerce";
@@ -426,16 +448,28 @@ function detectExperiencePattern(
 
   // 2. Hospitality portal detection (Pass 1)
   const isHospitality =
-    lower.includes("resort") ||
+    !PromptConstraints.isForbiddenByPrompt(text || "", "hotel") &&
+    !PromptConstraints.isForbiddenByPrompt(text || "", "hospitality") &&
+    (lower.includes("resort") ||
     lower.includes("hotel") ||
     lower.includes("villas") ||
     lower.includes("vacation stay") ||
     lower.includes("luxury stay") ||
     lower.includes("retreat") ||
-    (lower.includes("hospitality") && !lower.includes("software"));
+    (lower.includes("hospitality") && !lower.includes("software")));
 
   if (isHospitality) {
     return "hospitality-portal";
+  }
+
+  // 2.5. Editorial publication, monograph, architectural journal, scientific observatory
+  const isEditorial =
+    (/\b(monograph|journal|dispatch|observatory|astronomy|astrophysics|celestial)\b/i.test(lower) ||
+     (/\beditorial\b/i.test(lower) && /\b(magazine|publication|gazette|chronicle|review|storytelling|journalism|instrumentation)\b/i.test(lower))) &&
+    !lower.includes("storefront") &&
+    !lower.includes("shop");
+  if (isEditorial) {
+    return "craft-editorial";
   }
 
   // 3. Primary tool / configurator detection
@@ -662,7 +696,8 @@ export class ProductUnderstanding {
     designInputOrTone?: string | NormalizedDesignInput | unknown
   ): ProductCharacteristics {
     const toneHint = normalizeToneHint(designInputOrTone);
-    const text = prompt.toLowerCase();
+    const cleanPrompt = PromptConstraints.stripNegativeConstraints(prompt || "");
+    const text = cleanPrompt.toLowerCase();
 
     // [1] Primary activity — drives everything else
     const activityResult = detectPrimaryActivity(text);
@@ -712,7 +747,7 @@ export class ProductUnderstanding {
     const primaryAction = derivePrimaryAction(text, primaryActivity);
     const secondaryActions = deriveSecondaryActions(text, primaryActivity);
     const visualPersonality = deriveVisualPersonality(emotionalTone, experiencePattern, text);
-    const contentHierarchy = deriveContentHierarchy(primaryActivity, experiencePattern);
+    const contentHierarchy = deriveContentHierarchy(primaryActivity, experiencePattern, text);
 
     return {
       audienceContext,
@@ -750,7 +785,31 @@ function deriveTargetAudience(text: string, audience: ProductCharacteristics["au
   return "Discerning end users seeking an intuitive, purposeful product experience";
 }
 
+function isOperationalOrConsole(text: string): boolean {
+  return /\b(avionics|aerospace|aircraft|flight|aviation|telemetry|scada|radar|defense|satellite|drone|uav|mission control|cockpit|subsystem|firmware|airframe)\b/i.test(text);
+}
+
+function isArchitecturalPublicationDomain(text: string): boolean {
+  if (isOperationalOrConsole(text)) return false;
+  if (/\b(software architecture|system architecture|data architecture|application architecture|required by the architecture|backend architecture|cloud architecture)\b/i.test(text)) {
+    return false;
+  }
+  return /\b(architectural\s+(?:monograph|journal|review|digest|firm|studio|practice|portfolio|criticism)|architecture\s+(?:firm|studio|monograph|journal|magazine|exhibition)|building\s+typolog(?:y|ies)|spatial\s+(?:monograph|essay)|tectonic\s+journal)\b/i.test(text);
+}
+
 function derivePrimaryAction(text: string, activity: ProductCharacteristics["primaryActivity"]): string {
+  if (isOperationalOrConsole(text)) {
+    return "Monitor real-time avionics telemetry, inspect subsystem bus health, and manage airspace fleet operations";
+  }
+  if (isArchitecturalPublicationDomain(text) || (!isOperationalOrConsole(text) && (text.includes("journal") || text.includes("monograph") || text.includes("editorial")))) {
+    return "Read immersive project essays, inspect architectural photography, and study structural monographs";
+  }
+  if (text.includes("watch") || text.includes("horology") || text.includes("timepiece")) {
+    return "Rotate handcrafted timepieces, inspect caliber complications, and schedule private viewing";
+  }
+  if (text.includes("kazzoo") || text.includes("fantasy") || text.includes("biome") || text.includes("world")) {
+    return "Explore 3D floating biomes, commune with companions, and compose realm chimes";
+  }
   if (text.includes("glaze") || text.includes("kiln") || text.includes("ceramic")) {
     return "Formulate glaze chemistry recipes and monitor kiln firing temperature schedules";
   }
@@ -758,21 +817,36 @@ function derivePrimaryAction(text: string, activity: ProductCharacteristics["pri
   if (activity === "personal-tracking") return "Record daily observations and track longitudinal progress";
   if (activity === "data-analysis") return "Inspect real-time telemetry metrics and operational trends";
   if (activity === "content-browsing") return "Discover and explore curated catalog entries";
-  return "Manage and interact with domain records and workflows";
+  return "Experience bespoke domain interactions and explore curated stories";
 }
 
 function deriveSecondaryActions(text: string, activity: ProductCharacteristics["primaryActivity"]): string[] {
   const actions: string[] = [];
-  if (text.includes("commission")) actions.push("Manage bespoke client commission requests and approvals");
-  if (text.includes("monitor") || text.includes("schedule")) actions.push("Review live execution logs and status alerts");
-  if (text.includes("calculator") || text.includes("formulat")) actions.push("Compute precision batch ingredient ratios and oxide limits");
+  if (isOperationalOrConsole(text)) {
+    actions.push("Analyze flight sensor parameters and trajectory vectors", "Inspect subsystem diagnostic logs and alarm thresholds");
+  } else if (isArchitecturalPublicationDomain(text) || ((text.includes("journal") || text.includes("monograph")) && !isOperationalOrConsole(text))) {
+    actions.push("Examine tectonic drawings & material specifications", "Explore scroll-driven visual photo essays");
+  } else if (text.includes("watch") || text.includes("horology")) {
+    actions.push("Inspect macro caliber anglage and black polish", "Compare case metallurgy and ergonomics");
+  } else if (text.includes("kazzoo") || text.includes("fantasy")) {
+    actions.push("Trace waypoint routes on cartographic map", "Trigger harmonious ambient chime pads");
+  } else if (text.includes("commission")) {
+    actions.push("Manage bespoke client commission requests and approvals");
+  } else if (text.includes("monitor") || text.includes("schedule")) {
+    actions.push("Review live execution logs and status alerts");
+  } else if (text.includes("calculator") || text.includes("formulat")) {
+    actions.push("Compute precision batch ingredient ratios and oxide limits");
+  }
   if (actions.length === 0) {
-    actions.push("Filter and inspect individual detail views", "Export and save operational summaries");
+    actions.push("Inspect detailed domain monographs", "Engage with interactive presentation tools");
   }
   return actions;
 }
 
 function deriveVisualPersonality(tone: ProductCharacteristics["emotionalTone"], pattern: ProductCharacteristics["experiencePattern"], text: string): string {
+  if (pattern === "immersive-3d" || text.includes("claymation") || text.includes("3d fantasy")) {
+    return "Tactile 3D claymation aesthetic with playful dimensional geometry, volumetric spatial depth, rich chromatic saturation, and floating interactive HUD overlays";
+  }
   if (text.includes("ceramic") || text.includes("pottery") || tone.primary === "calm" || tone.primary === "warm") {
     return "Tactile, warm artisanal aesthetics with organic earth tones, generous whitespace, subtle stone borders, and clean typography";
   }
@@ -785,19 +859,49 @@ function deriveVisualPersonality(tone: ProductCharacteristics["emotionalTone"], 
   return "Balanced modern interface with harmonious color tokens, deliberate typographic hierarchy, and responsive layout rhythms";
 }
 
-function deriveContentHierarchy(activity: ProductCharacteristics["primaryActivity"], pattern: ProductCharacteristics["experiencePattern"]): string[] {
+function deriveContentHierarchy(activity: ProductCharacteristics["primaryActivity"], pattern: ProductCharacteristics["experiencePattern"], text?: string): string[] {
+  const lower = (text || "").toLowerCase();
+  if (isOperationalOrConsole(lower)) {
+    return [
+      "Mission Telemetry Command & Avionics Flight Deck",
+      "Real-Time Telemetry Stream & Flight Data Recorder",
+      "Airspace Fleet Operations & Aircraft Roster Ledger",
+      "Flight Plan Routing & Waypoint Navigation Console",
+      "Subsystem Diagnostics & Bus Health",
+    ];
+  }
+  if (isArchitecturalPublicationDomain(lower) || ((lower.includes("journal") || lower.includes("monograph")) && !isOperationalOrConsole(lower)) || pattern === "craft-editorial") {
+    return [
+      "Editorial Monograph Cover & Manifesto",
+      "Scroll-Driven Visual Photo Essay",
+      "Deep Tectonic Case Study Monograph",
+      "Architect Curatorial Profiles",
+      "High-Resolution Archival Folio",
+    ];
+  }
+  if (lower.includes("watch") || lower.includes("horology") || lower.includes("timepiece")) {
+    return [
+      "Manufacture Timepiece Stage & Configurator",
+      "Caliber Architecture & Finissage Loupe",
+      "Metallurgy Comparison Plinth",
+      "Atelier Chronicle",
+      "Private Salon Concierge",
+    ];
+  }
   switch (pattern) {
+    case "immersive-3d":
+      return ["Interactive 3D World Stage Canvas", "Spatial Landmark & Biome Explorer", "3D Character Inspection & Animation Stage", "Atmospheric Audio & Sound Mixer", "Quest Log & Adventure HUD"];
     case "storefront-commerce":
       return ["Promotional Banner & Deals Carousel", "Top Category Navigation Row", "Product Catalog Grid with Ratings & Discounts", "Interactive Slide-out Cart Drawer", "Order & Delivery Summary"];
     case "hospitality-portal":
       return ["Immersive Editorial Hero & Availability Bar", "Villa & Suite Showcase", "Curated Retreat Experiences & Dining", "Guest Reviews & Provenance", "Reservation Intake Flow"];
     case "catalog-browser":
     case "booking-flow":
-      return ["Hero Showcase & Ethos", "Interactive Catalog / Grid", "Detail & Specification View", "Intake / Reservation Flow", "Operational Dashboard"];
+      return ["Hero Showcase & Ethos", "Interactive Showcase Stage", "Detail & Specification View", "Intake / Reservation Flow"];
     case "operations-dashboard":
     case "realtime-console":
       return ["Operational Overview KPIs", "Primary Telemetry / Monitoring Surface", "Detailed Formulation / Calculation Workbench", "Management & Records Queue"];
     default:
-      return ["Primary Focus Surface", "Interactive Discovery & Filters", "Detail Inspector Drawer", "Creation & Submission Form"];
+      return ["Primary Focus Surface", "Interactive Discovery Stage", "Detailed Monograph & Specifications", "Engagement & Inquiry Flow"];
   }
 }

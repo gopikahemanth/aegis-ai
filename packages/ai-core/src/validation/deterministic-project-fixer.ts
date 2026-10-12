@@ -712,6 +712,7 @@ export function Layout({ children }: LayoutProps) {
 }
 
 export default Layout;
+export { Layout };
 `;
       writeFileSync(layoutPath, layoutContent, "utf8");
       createdFiles.push("src/shared/components/Layout.tsx");
@@ -720,7 +721,7 @@ export default Layout;
     const altLayout = join(srcDir, "components", "Layout.tsx");
     if (!existsSync(altLayout)) {
       mkdirSync(join(srcDir, "components"), { recursive: true });
-      writeFileSync(altLayout, `export { default, Layout } from "../shared/components/Layout";\nexport * from "../shared/components/Layout";\n`, "utf8");
+      writeFileSync(altLayout, `export { default, default as Layout } from "../shared/components/Layout";\nexport * from "../shared/components/Layout";\n`, "utf8");
       createdFiles.push("src/components/Layout.tsx");
     }
 
@@ -1136,6 +1137,7 @@ export default Layout;
       features,
       navLinks,
       visualContract,
+      requiredRoutes: (contract?.requiredRoutes as string[] | undefined) || [],
     };
   }
 
@@ -1357,24 +1359,36 @@ export default Layout;
              existsSync(join(srcDir, "features", f.name.toLowerCase(), `${f.name}.tsx`));
     });
 
+    const homeComp = validFeaturePages.find(vf => /home|landing|journal|world|main|stage/i.test(vf.name))?.name ||
+                     validFeaturePages[0]?.name ||
+                     "DashboardPage";
+
+    const dashboardImport = homeComp === "DashboardPage" || uniqueFeatures.some(f => f.routePath === "/dashboard")
+      ? `import * as DashboardPageModule from "./features/dashboard/DashboardPage";\nconst DashboardPage = resolveComponent(DashboardPageModule, "Dashboard");\n`
+      : "";
+
     const imports = [
-      `import * as DashboardPageModule from "./features/dashboard/DashboardPage";\nconst DashboardPage = resolveComponent(DashboardPageModule, "Dashboard");`,
+      dashboardImport,
       ...validFeaturePages.map(f => `import * as ${f.name}Module from "./pages/${f.name}";\nconst ${f.name} = resolveComponent(${f.name}Module, "${f.navTitle}");`),
-    ].join("\n");
+    ].filter(Boolean).join("\n");
 
     const routeList: Array<{ path: string; component: string }> = [
-      { path: "/", component: "DashboardPage" },
-      { path: "/dashboard", component: "DashboardPage" },
+      { path: "/", component: homeComp },
     ];
+    if (uniqueFeatures.some(f => f.routePath === "/dashboard") || homeComp === "DashboardPage") {
+      routeList.push({ path: "/dashboard", component: "DashboardPage" });
+    }
 
     for (const f of uniqueFeatures) {
-      const comp = validFeaturePages.some(vf => vf.name === f.name) ? f.name : "DashboardPage";
+      const comp = validFeaturePages.some(vf => vf.name === f.name) ? f.name : homeComp;
       if (!routeList.some(r => r.path === f.routePath)) {
         routeList.push({ path: f.routePath, component: comp });
       }
-      for (const a of f.aliases) {
-        if (!routeList.some(r => r.path === a)) {
-          routeList.push({ path: a, component: comp });
+      if (!domainSpec?.requiredRoutes || domainSpec.requiredRoutes.length === 0) {
+        for (const a of f.aliases) {
+          if (!routeList.some(r => r.path === a)) {
+            routeList.push({ path: a, component: comp });
+          }
         }
       }
     }

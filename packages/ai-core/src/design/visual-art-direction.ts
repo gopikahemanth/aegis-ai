@@ -12,6 +12,8 @@
  * 4. No unconditional default blue dashboard dominates output.
  */
 
+import { PromptConstraints } from "../governance/prompt-constraints.js";
+
 export interface SemanticPersonality {
   tone: "playful" | "friendly" | "calm" | "warm" | "editorial" | "minimal" | "technical" | "luxurious" | "bold";
   compositionPreference: "EDITORIAL_LANDING" | "ASYMMETRIC_PRODUCT_DASHBOARD" | "SPLIT_SCREEN_WORKSPACE" | "VISUAL_ANALYTICS_CANVAS" | "PLAYFUL_WORKSPACE" | "MINIMAL_SAAS_CONSOLE";
@@ -939,7 +941,25 @@ const ARCHETYPES: Record<VisualArtDirectionContract["archetype"], ArchetypeDefin
  * without rigid hardcoded mappings.
  */
 export function extractSemanticPersonality(prompt: string, domainHint?: string): SemanticPersonality {
-  const text = `${prompt} ${domainHint || ""}`.toLowerCase();
+  const cleanPrompt = PromptConstraints.stripNegativeConstraints(prompt || "");
+  const text = `${cleanPrompt} ${domainHint || ""}`.toLowerCase();
+
+  // 0. Observatory, astronomy, astrophysics, telescope, celestial signals
+  if (
+    text.includes("observatory") ||
+    text.includes("astronomy") ||
+    text.includes("astrophysics") ||
+    text.includes("telescope") ||
+    text.includes("celestial") ||
+    text.includes("star map") ||
+    text.includes("starmap")
+  ) {
+    return {
+      tone: "technical",
+      compositionPreference: "EDITORIAL_LANDING",
+      cardEnclosureStyle: "structured_ruled",
+    };
+  }
 
   // 1. Playful, cute, friendly, approachable, educational, community signals
   if (
@@ -1122,7 +1142,9 @@ export function deriveArtDirection(prompt: string, domainHint?: string, explicit
   } else if (semanticPersonality.tone === "minimal") {
     compatibleArchetypes = ["RESTRAINED_PRODUCT", "MODERN_SWISS", "NORDIC_MINIMAL"];
   } else if (semanticPersonality.tone === "technical") {
-    if (promptLower.includes("clinical") || promptLower.includes("laboratory") || promptLower.includes("pathology") || promptLower.includes("diagnostic") || promptLower.includes("biospecimen") || promptLower.includes("hospital")) {
+    if (promptLower.includes("observatory") || promptLower.includes("astronomy") || promptLower.includes("astrophysics") || promptLower.includes("telescope") || promptLower.includes("celestial") || promptLower.includes("star map")) {
+      compatibleArchetypes = ["OBSIDIAN_PRECISION", "EDITORIAL_NARRATIVE", "MODERN_SWISS"];
+    } else if (promptLower.includes("clinical") || promptLower.includes("laboratory") || promptLower.includes("pathology") || promptLower.includes("diagnostic") || promptLower.includes("biospecimen") || promptLower.includes("hospital")) {
       compatibleArchetypes = ["CLINICAL_LABORATORY"];
     } else if (promptLower.includes("trading") || promptLower.includes("fintech") || promptLower.includes("var") || promptLower.includes("order routing")) {
       compatibleArchetypes = ["SOPHISTICATED_ELEGANT", "OBSIDIAN_PRECISION", "INDUSTRIAL_UTILITY"];

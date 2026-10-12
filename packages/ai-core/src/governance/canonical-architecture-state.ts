@@ -32,6 +32,10 @@ export class CanonicalArchitectureState {
     return CanonicalArchitectureState.instance;
   }
 
+  public reset(): void {
+    this.state = null;
+  }
+
   public initialize(contract: ArchitectureContractV1, outputDirectory?: string): CanonicalArchitecture {
     const hash = contract.architectureHash || createHash("sha256").update(JSON.stringify({
       frontend: contract.frontend.framework,

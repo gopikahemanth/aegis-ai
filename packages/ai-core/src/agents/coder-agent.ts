@@ -197,25 +197,179 @@ export class CoderAgent extends BaseAgent {
       - Expected User Interaction: ${c.testInteraction?.controlType || "button"} ${c.testInteraction?.action || "click"}`
         ).join("\n\n");
 
+        const expCap = plan.experienceCapability;
+        const experienceCapabilityDetails = expCap ? `
+- Experience Type: ${expCap.experienceType}
+- Rendering Mode: ${expCap.renderingMode}
+- Interaction Mode: ${expCap.interactionMode}
+- Composition Mode: ${expCap.compositionMode}
+- Motion Mode: ${expCap.motionMode}
+- Depth Model: ${expCap.depthModel}
+- Navigation Model: ${expCap.navigationModel}
+- REAL_3D_REQUIRED: ${expCap.real3dRequired ? "TRUE (MANDATORY WebGL / Three.js 3D implementation)" : "FALSE"}
+- Forbidden Substitutions: ${(expCap.forbiddenSubstitutions || []).join(", ") || "None"}
+` : "";
+
+        const real3dMandate = expCap?.real3dRequired ? `
+══════════════════════════════════════════════════════════════════════════════
+MANDATORY REAL 3D / WEBGL IMPLEMENTATION DIRECTIVE (HARD INVARIANT)
+══════════════════════════════════════════════════════════════════════════════
+The requested 3D experience is a FUNCTIONAL IMPLEMENTATION REQUIREMENT.
+CSS-only decoration, box shadows, gradients, and 2D cards are STRICTLY FORBIDDEN as substitutes.
+When the experience contract specifies IMMERSIVE_3D or REAL_3D_REQUIRED:
+1. You MUST implement an actual WebGL / 3D scene (using Three.js via 'import * as THREE from "three"' or a native WebGL canvas).
+2. The 3D scene MUST include:
+   - A WebGL canvas element marked with data-aegis-3d="true" (e.g. <canvas data-aegis-3d="true" ref={canvasRef} className="w-full h-full" />).
+   - An initialized Three.js Scene (new THREE.Scene()) or WebGL context.
+   - A PerspectiveCamera (new THREE.PerspectiveCamera(60, aspect, 0.1, 1000)).
+   - Lighting (e.g. THREE.AmbientLight and THREE.DirectionalLight or PointLight with shadows/highlights).
+   - Rendered 3D Mesh objects (geometric primitives, claymation shapes, spheres, cylinders, rounded terrain, interactive tokens, clouds). Group primitives with vibrant, tactile materials (MeshStandardMaterial with roughness ~0.6).
+   - An active requestAnimationFrame render loop with continuous rotation, floating motion, or orbit/scroll response.
+   - Pointer / mouse / scroll interaction with the 3D scene.
+3. RUNTIME EXPERIENCE CONTRACT INSTRUMENTATION:
+   The component MUST expose the runtime contract on window so Chromium can verify it:
+   (window as any).__AEGIS_EXPERIENCE__ = {
+     experienceType: "IMMERSIVE_3D",
+     renderingMode: "webgl",
+     ready: true,
+     sceneReady: true,
+     objectsRendered: 15,
+     interactiveObjects: 5,
+     scrollDriven: true,
+     animationActive: true
+   };
+4. ZERO DOWNGRADE POLICY:
+   If this page renders only 2D cards without a WebGL canvas and 3D scene, THE BUILD WILL BE REJECTED AT CHROMIUM REVIEW.
+5. PRIMARY LANDING VIEW (ROUTE '/') ENFORCEMENT:
+   - The primary landing view (mounted on route '/') MUST DIRECTLY render the active 3D WebGL canvas (<canvas data-aegis-3d="true">).
+   - NEVER delegate the 3D canvas to a sub-route or sub-component while putting a flat 2D card grid on route '/'.
+   - The 3D scene is the centerpiece stage. Auxiliary information (lore, notes, waypoints, stats) MUST be rendered as lightweight floating HUD overlays or dock pills over the 3D scene.
+   - Keep card containers on the 3D stage minimal (maximum 3-4 HUD pills/panels). Strictly NO card walls or 6+ card grids.
+══════════════════════════════════════════════════════════════════════════════` : "";
+
+        const isEditorial = expCap?.experienceType === "EDITORIAL" || experiencePattern === "craft-editorial" || (plan?.compositionGraph?.navigationModel === "minimal-top-masthead");
+        const editorialMandate = isEditorial ? `
+══════════════════════════════════════════════════════════════════════════════
+MANDATORY EDITORIAL / PUBLICATION ARCHITECTURE (ANTI-CONVERGENCE INVARIANT)
+══════════════════════════════════════════════════════════════════════════════
+This project is an EDITORIAL / MAGAZINE / MONOGRAPH publication.
+A standard SaaS/marketing template ('Hero -> 3 Cards -> 3 Cards -> CTA -> Footer') is STRICTLY FORBIDDEN.
+1. UNCONVENTIONAL TYPOGRAPHY & MASTHEAD:
+   - Use dramatic editorial typography: large serif/display headlines, issue volume marks, author monographs, and reading-time metadata.
+   - Navigation must be a minimal editorial masthead (publication title, issue number, article index toggle, curatorial credits).
+2. ASYMMETRIC STORYTELLING & PHOTO ESSAYS:
+   - Large full-bleed or split-column editorial imagery/photography paired with pull-quotes, italicized marginalia, and photo captions.
+   - Immersive article reading layout with dual columns, drop-caps, archival footnotes, or horizontal/experimental scrolling.
+3. ZERO CANNED CARD GRIDS:
+   - Do NOT render a generic grid of 3 identical SaaS cards or feature boxes.
+   - Present stories as curated issues, full-spread features, photo essays, and photographer profiles.
+══════════════════════════════════════════════════════════════════════════════` : "";
+
+        const identity = plan.experienceIdentity;
+        const identityContext = identity ? `
+══════════════════════════════════════════════════════════════════════════════
+WEBSITE EXPERIENCE IDENTITY (AUTHORITATIVE SYSTEM ARCHITECTURE)
+══════════════════════════════════════════════════════════════════════════════
+- Experience Genre: ${identity.genre}
+- Brand Identity: "${identity.brandIdentity.name}" — ${identity.brandIdentity.essence}
+- Tone & Voice: ${identity.brandIdentity.tone} | Voice: ${identity.brandIdentity.voice}
+- Surface & Material: ${identity.surfaceMaterialLanguage.philosophy}
+- Typography Language:
+  * Display: "${identity.typographyLanguage.displayFont}" | Body: "${identity.typographyLanguage.bodyFont}" | Scale: ${identity.typographyLanguage.scale}
+  ${identity.typographyLanguage.pullQuoteStyle ? `* Pull-Quote Style: "${identity.typographyLanguage.pullQuoteStyle}"` : ""}
+  ${identity.typographyLanguage.marginaliaStyle ? `* Marginalia Style: "${identity.typographyLanguage.marginaliaStyle}"` : ""}
+- Navigation Model (CONSISTENT ACROSS ENTIRE SITE):
+  * Model: ${identity.navigationDesign.model} (Position: ${identity.navigationDesign.position})
+  * Primary Routes: ${(identity.navigationDesign.primaryItems || []).map((i: any) => `${i.label} (${i.path})`).join(" • ")}
+  * RULE: The navbar shell is CONSISTENT across all routes of this site. Do NOT reinvent or replace the navbar on sub-pages.
+- Page Composition Language & Rhythm:
+  * Rhythm: ${identity.pageCompositionLanguage.rhythm} | Grid: ${identity.pageCompositionLanguage.gridSystem}
+  * Hero Philosophy: ${identity.pageCompositionLanguage.heroPhilosophy}
+  * Card Prohibition: ${identity.pageCompositionLanguage.cardProhibitionReason || "Controlled card density"}
+
+══════════════════════════════════════════════════════════════════════════════
+CRITICAL ANTI-CONVERGENCE MANDATE: NO SEARCH + FILTER + CARD-GRID REPETITION
+══════════════════════════════════════════════════════════════════════════════
+DO NOT FALL BACK TO:
+  [Heading] -> [Search input + Filter buttons] -> [Grid of 4-6 Cards with 'Read More / Detail'] -> [Modal]
+This pattern is STRICTLY FORBIDDEN on non-database/non-CRUD websites.
+Instead, compose each route according to its assigned architectural role:
+${(identity.pageCompositionLanguage.pageCompositionRules || []).map((r: any) => `  • Route "${r.route}" (${r.pageRole}):
+    - Structure: ${r.dominantStructure}
+    - Focal Element: ${r.primaryFocalElement}
+    - Banned Patterns: ${(r.bannedPatterns || []).join(", ")}
+    - Allowed Components: ${(r.allowedComponents || []).join(", ")}
+    - Layout: ${r.layoutDescription}`).join("\n\n")}
+══════════════════════════════════════════════════════════════════════════════` : "";
+
         productExperiencePlanContext = `
 ══════════════════════════════════════════════════════════════════════════════
 LOCKED PRODUCT EXPERIENCE PLAN (HIGHEST PRIORITY PRODUCT MANDATE)
 ══════════════════════════════════════════════════════════════════════════════
 - Experience Pattern: ${plan.experiencePattern}
 - Primary Activity: ${plan.primaryActivity}
-- Expected Home Route: '${plan.expectedHomeRoute}'
-  * CRITICAL: Route '${plan.expectedHomeRoute}' MUST DIRECTLY render the primary interactive domain workspace!
+${experienceCapabilityDetails}- Expected Home Route: '${plan.expectedHomeRoute}'
+  * CRITICAL: Route '${plan.expectedHomeRoute}' MUST DIRECTLY render the primary interactive domain workspace / 3D universe!
   * NEVER render a generic landing page, an unpopulated showcase dashboard, or a login wall at '${plan.expectedHomeRoute}'.
   * The root view ('/') must be fully interactive with live working domain tools immediately on initial page load.
 - Required Domain Capabilities (YOU MUST IMPLEMENT FULLY WORKING INTERACTIVE UI FOR EACH):
 ${capabilitiesList || "  (Defined by feature specs)"}
 - ZERO PLACEHOLDER POLICY:
   * Strictly NO "pending Three.js integration", NO "canvas placeholder", NO "coming soon", NO "TODO", NO "No records found".
-  * Every capability must render functional, working interactive controls (sliders, color pickers, material dropdowns, dimension inputs, live recalculating formulas/meters, and interactive SVG/Canvas charts).
+  * Every capability must render functional, working interactive controls (sliders, color pickers, material dropdowns, dimension inputs, live recalculating formulas/meters, and interactive 3D WebGL / Canvas charts).
 - AUTHENTICATION POLICY:
   * authWallAllowed: ${plan.authWallAllowed}
   * ${plan.authWallAllowed ? "Authentication is expected." : "NEVER redirect to or gate the home route with a login screen. The product tools must be directly usable on initial page load."}
 ══════════════════════════════════════════════════════════════════════════════
+${identityContext}
+${plan.compositionGraph ? `
+══════════════════════════════════════════════════════════════════════════════
+LOCKED COMPOSITION GRAPH & ARCHITECTURE (ANTI-TEMPLATE MANDATE)
+══════════════════════════════════════════════════════════════════════════════
+- Experience Intent: ${plan.compositionGraph.experienceIntent || plan.primaryActivity}
+- Focal Element:     ${plan.compositionGraph.focalElement || "Primary workspace stage"}
+- Layout Topology:   ${plan.compositionGraph.layoutTopology || "custom"}
+- Navigation Model:  ${plan.compositionGraph.navigationModel || "custom"}
+- Interaction Model: ${plan.compositionGraph.interactionModel || "direct"}
+- Motion Language:   ${plan.compositionGraph.motionPlan ? `${plan.compositionGraph.motionPlan.style} (${plan.compositionGraph.motionPlan.entryAnimation})` : "fluid micro-interactions"}
+- Card Density Limit:${plan.compositionGraph.cardDensityRatio !== undefined ? ` Max ${Math.round(plan.compositionGraph.cardDensityRatio * 100)}% cards` : " Controlled"}
+- Forbidden Layouts: ${(plan.compositionGraph.forbiddenTemplates || []).join(", ") || "Hero -> Cards -> CTA"}
+
+ARCHITECTURAL SECTIONS (IMPLEMENT IN THIS EXACT STRUCTURAL ORDER):
+${(plan.compositionGraph.sections || []).map((s: any, idx: number) => `  ${idx + 1}. [${s.type.toUpperCase()}] ${s.name} (layout: ${s.layoutRule || "custom"})\n     Focus: ${s.primaryFocus}\n     Components: ${(s.components || []).join(", ")}`).join("\n\n")}
+══════════════════════════════════════════════════════════════════════════════
+` : ""}
+${real3dMandate}
+${editorialMandate}
+${(plan.pagePlans && plan.pagePlans.length > 0) ? `
+══════════════════════════════════════════════════════════════════════════════
+PAGE EXPERIENCE PLANS (ROUTE-BY-ROUTE FIRST-CLASS DESIGNS)
+══════════════════════════════════════════════════════════════════════════════
+EVERY approved route is a first-class designed experience.
+The homepage must NOT receive privileged visual treatment while secondary routes collapse into generic cards, search/filter bars, or simple CRUD tables.
+
+For every route you build, you MUST implement its specific PageExperiencePlan:
+${plan.pagePlans.map((p: any) => `
+• ROUTE: "${p.route}" (${p.pageRole})
+  - Purpose: ${p.purpose}
+  - Experience Intent: ${p.experienceIntent}
+  - Primary Focal Element: ${p.focalElement}
+  - Dominant Structure: ${p.composition.dominantStructure} (Topology: ${p.composition.topology})
+  - Sections: ${(p.composition.sections || []).join(" -> ")}
+  - Primary Interactions: ${(p.interaction.primary || []).join("; ")}
+  - Content Presentation: ${p.contentPresentation}
+  - Required Capabilities: ${(p.requiredCapabilities || []).join(", ")}
+  - FORBIDDEN PATTERNS: ${(p.forbiddenPatterns || []).join(", ")}
+`).join("\n")}
+
+STRICT RULE FOR SECONDARY PAGES:
+- A page is INCOMPLETE if it merely renders search/filter bars, card grids, or a generic "+ Add [Item]" CRUD modal.
+- NEVER create state variables like [newTitle, setNewTitle], [records, setRecords] with "+ Add [Entity]" forms on experiential routes!
+- Characters page must be a character inspection stage with 3D avatars, personality dialogue selector, voice clips!
+- Quest page must be an interactive spatial map with landmark nodes and waypoint lore dossiers!
+- Soundboard page must be an audio synthesizer console with resonance pads and frequency visualizers!
+- Visual Essays page must be an editorial photo essay with full-bleed imagery, pull quotes, and chapter scrollytelling!
+══════════════════════════════════════════════════════════════════════════════` : ""}
 `;
       }
     } catch {}
@@ -343,7 +497,8 @@ You are implementing a FRONTEND-ONLY task: "${task.title}".
 - ALL interactive features, forms, filters, toggles, modals, and metric calculations MUST work immediately in the browser using React local state (useState, useReducer, or mock stores).
 - Prepopulate all state with realistic, rich domain seed data.
 - ANTI-AI-WEBSITE PRINCIPLE: Strictly adhere to design tokens in src/design-system/tokens.ts. Avoid random gradients, generic purple cards, and inconsistent border radii.
-- AUTHORITATIVE CONTENT CONTRACT: Import and render content from src/content/site-content.ts as-is. This copy is FINAL — do not rewrite, paraphrase, or regenerate it.`
+- AUTHORITATIVE CONTENT CONTRACT: Import and render content from src/content/site-content.ts as-is. This copy is FINAL — do not rewrite, paraphrase, or regenerate it.
+- ANTI-TEMPLATE INVARIANT: You are not given a canned website template. Implement each page composition from the locked ProductExperiencePlan and CompositionGraph. Shared primitives (Button, Input, Modal, Icons, AudioPlayer, WebGLCanvas) are implementation tools only. DO NOT reproduce the structure, section order, hero geometry, navigation pattern, card arrangement, or visual rhythm of previously generated projects or standard Hero -> Cards -> CTA patterns.`
       : `══════════════════════════════════════════════════════════════════════════════
 CURRENT ACTIVE STAGE: BACKEND & DATABASE (POST-APPROVAL)
 ══════════════════════════════════════════════════════════════════════════════
@@ -360,17 +515,271 @@ USER REQUIREMENT -> FRONTEND FEATURE -> REQUIRED DATA -> ENTITY -> RELATIONSHIP 
 Every backend API must trace to:
 FRONTEND ACTION -> API CONTRACT -> EXPRESS ROUTE -> CONTROLLER -> SERVICE -> PRISMA -> POSTGRESQL -> RESPONSE`;
 
+    // ── Task-to-Route PageExperiencePlan Matching ────────────────────────────
+    let taskPageExperienceContract = "";
+    let matchedPagePlans: any[] = [];
+    if (plan?.pagePlans && plan.pagePlans.length > 0) {
+      const taskText = (taskTitle + " " + taskDesc).toLowerCase();
+      matchedPagePlans = plan.pagePlans.filter((p: any) => {
+        const routeSlug = p.route.replace(/^\//, "").replace(/[-_]/g, " ").toLowerCase();
+        const roleLower = (p.pageRole || "").toLowerCase();
+        const routeWords = routeSlug.split(/\s+/).filter((w: string) => w.length > 2);
+        const roleWords = roleLower.split(/\s+/).filter((w: string) => w.length > 3 && !["stage", "view", "page", "feature"].includes(w));
+        const focalWords = (p.focalElement || "").toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+
+        const matchesOwned = (task.ownedFiles || []).some((of: string) => {
+          const ofLower = of.toLowerCase();
+          return routeWords.some((w: string) => ofLower.includes(w)) ||
+                 (p.route !== "/" && ofLower.includes(p.route.replace(/^\//, "")));
+        });
+
+        return matchesOwned ||
+               routeWords.some((w: string) => taskText.includes(w)) ||
+               roleWords.some((w: string) => taskText.includes(w)) ||
+               focalWords.some((w: string) => taskText.includes(w));
+      });
+
+      if (matchedPagePlans.length > 0 && !isShellTask) {
+        taskPageExperienceContract = `
+══════════════════════════════════════════════════════════════════════════════
+AUTHORITATIVE PAGE EXPERIENCE CONTRACT FOR THIS TASK (ROUTE-SPECIFIC MANDATE)
+══════════════════════════════════════════════════════════════════════════════
+This task is explicitly assigned to build the following intentional designed route(s):
+${matchedPagePlans.map((p: any) => `
+▶ ROUTE: "${p.route}" — ${p.pageRole.toUpperCase()}
+  • Purpose: ${p.purpose}
+  • Experience Intent: ${p.experienceIntent}
+  • Primary Focal Element: ${p.focalElement}
+  • Dominant Structure: ${p.composition.dominantStructure}
+  • Composition Topology: ${p.composition.topology}
+  • Structural Sections: ${(p.composition.sections || []).join(" -> ")}
+  • Primary Interactions to Implement:
+${(p.interaction.primary || []).map((i: string) => `    * ${i}`).join("\n")}
+  • Required Capabilities: ${(p.requiredCapabilities || []).join(", ")}
+  • Content Presentation: ${p.contentPresentation}
+  • Visual Hierarchy: Primary=${p.visualHierarchy?.primary || "Hero visual"}, Secondary=${(p.visualHierarchy?.secondary || []).join(", ")}
+
+  HARD NEGATIVE CONSTRAINTS (CRITICAL FAILURE AT PageExperienceQualityGate):
+  ${(p.forbiddenPatterns || []).map((f: string) => `  ✗ NO ${f.toUpperCase()}`).join("\n")}
+  ✗ DO NOT declare statusFilter or searchQuery state variables.
+  ✗ DO NOT render <input placeholder="Search..."> or search bars.
+  ✗ DO NOT render filter buttons (e.g. ['all', 'unlocked', 'dozing']).
+  ✗ DO NOT render a 3-column card grid (grid-cols-1 md:grid-cols-2 lg:grid-cols-3) with <div className="card">.
+  ✗ DO NOT render generic "+ Add [Item]" forms, CRUD modals, or [newTitle, setNewTitle] state.
+  ✗ Set root container attribute: data-workspace="${p.pageRole.toLowerCase().replace(/[^a-z0-9]/g, "_")}"
+`).join("\n\n")}
+══════════════════════════════════════════════════════════════════════════════`;
+      }
+    }
+
     let capabilityInstructions = "";
     if (isShellTask) {
+      const navDesign = plan?.navigationDesign;
+      const navGuidance = navDesign ? `
+MANDATORY NAVIGATION DESIGN (PRODUCT-LEVEL UNIQUE IDENTITY):
+- Navigation Model: "${navDesign.model}" (Position: ${navDesign.position})
+- Brand Treatment: "${navDesign.brandTreatment.name}"
+  * Typography: ${navDesign.brandTreatment.typography}
+  * Logo Type: ${navDesign.brandTreatment.logoType}
+  * STRICT RULE: Never truncate the brand name with ellipses (e.g. "Create an independent fa..."). Use clean brand "${navDesign.brandTreatment.name}".
+- Primary Navigation Items (Authoritative):
+${(navDesign.primaryItems || []).map((i: any) => `  * Route "${i.path}" -> Label: "${i.label}"`).join("\n")}
+- Visual & Surface Treatment:
+  * Surface: ${navDesign.visualTreatment?.surface || "bespoke"}
+  * Active state: ${navDesign.visualTreatment?.activeState || "underline/glow"}
+  * Container style: ${navDesign.visualTreatment?.containerClass || navDesign.visualTreatment?.geometry || "bespoke"}
+- STRICTLY FORBIDDEN:
+  * DO NOT insert a generic "More" dropdown menu.
+  * DO NOT generate generic items like "Bookmark", "Portfolio Item", or "Primary Workspace" in navigation.
+  * DO NOT use generic dark stone-900 / amber-pulse templates across different products.
+  * DO NOT make "Home" mandatory if the product contract uses domain-specific labels.` : "";
+
       capabilityInstructions = `SHELL & SCAFFOLD TASK INSTRUCTIONS:
 ====================================
 This task is strictly responsible for the Application Shell, Layout, and Routing Scaffold:
-- Implement sticky top navigation header (Navbar.tsx or Header.tsx) with brand identity, logo, navigation links, and theme styling.
+${navGuidance}
+- Implement navigation header (Navbar.tsx or Header.tsx) strictly adhering to the Navigation Design specification above.
 - Implement React Router configuration (routes.tsx or App.tsx) mapping all user flow routes.
 - Keep route pages as ultra-compact inline stubs within routes.tsx or simple placeholders. DO NOT create large multi-file feature implementations.
 - MAXIMUM 3-4 FILES TOTAL: Only output src/App.tsx, src/routes.tsx, and src/components/Navbar.tsx (plus Layout.tsx if used).
 - Detailed feature pages and capabilities MUST NOT be generated in this task; they are assigned to Tasks 2–4.
 - Keep output concise, modular, and focused on layout and navigation.`;
+    } else if (experiencePattern === "immersive-3d" || plan?.experienceCapability?.real3dRequired) {
+      const spatial = plan?.compositionGraph?.spatialPlan;
+      const isPerfume = promptLower.includes("perfume") || promptLower.includes("bottle") || promptLower.includes("luxury") || promptLower.includes("fragrance");
+      const isSpace = promptLower.includes("space") || promptLower.includes("planet") || promptLower.includes("museum") || promptLower.includes("solar");
+      const isSneaker = promptLower.includes("sneaker") || promptLower.includes("shoe") || promptLower.includes("apparel") || promptLower.includes("fashion");
+      const isFantasy = promptLower.includes("kazzoo") || promptLower.includes("fantasy") || promptLower.includes("character") || promptLower.includes("claymation") || promptLower.includes("magic");
+
+      const sceneType = spatial?.sceneType || (isPerfume ? "PRODUCT_REVEAL" : isSpace ? "SPATIAL_EXHIBITION" : isSneaker ? "PRODUCT_STAGE" : isFantasy ? "WORLD_EXPLORATION" : "SPATIAL_STAGE");
+      const focalObj = spatial?.focalObject || (isPerfume ? "Architectural crystal flacon bottle with liquid refraction" : isSpace ? "Interactive solar orrery with orbiting planetary bodies" : isSneaker ? "Deconstructed kinetic performance sneaker with dynamic materials" : isFantasy ? "Whimsical claymation character on floating island terrain" : "Interactive 3D focal subject");
+      const lighting = spatial?.lightingModel || (isPerfume ? "Studio rim lighting with caustic reflections and soft volumetric ambient" : isSpace ? "Deep void directional sun light with ambient starlight fill" : isSneaker ? "Cyberpunk neon key and fill lights with dynamic specular highlights" : isFantasy ? "Warm golden hour sunlight with soft diffuse ambient" : "Balanced three-point studio lighting");
+      const cameraDesc = spatial?.cameraStrategy || "Interactive pointer orbit with smooth damping";
+      const scenesList = spatial?.scenes && spatial.scenes.length > 0
+        ? spatial.scenes.map((s: any, i: number) => `      * Scene ${i + 1} ("${s.name}"): ${s.description} [Cam: ${s.cameraPosition.join(", ")}]`).join("\n")
+        : (isPerfume
+          ? `      * Scene 1 ("Bottle Reveal"): Hero crystal bottle with gentle turntable rotation\n      * Scene 2 ("Ingredient Atmosphere"): Botanical particles floating into view\n      * Scene 3 ("Fragrance Notes"): Interactive accord breakdown on click`
+          : isSpace
+          ? `      * Scene 1 ("Solar System Overview"): Full orbital system in perspective\n      * Scene 2 ("Planetary Focus"): Camera flies in close to selected celestial body\n      * Scene 3 ("Observation Deck"): Cockpit HUD view with stellar metrics`
+          : isSneaker
+          ? `      * Scene 1 ("Product Turntable"): 360-degree floating sneaker presentation\n      * Scene 2 ("Material Exploded"): Deconstructed components separate spatially\n      * Scene 3 ("Colorway Showcase"): Dynamic material color transition`
+          : `      * Scene 1 ("World Stage"): Procedural focal scene with interactive 3D elements\n      * Scene 2 ("Exploration"): Camera transition to interactive waypoints\n      * Scene 3 ("Atmosphere"): Ambient visual effects responding to user input`);
+
+      const isRootTask = matchedPagePlans.some((p: any) => p.route === "/") || taskTitle.toLowerCase().includes("world") || taskTitle.toLowerCase().includes("stage");
+      const isCharacterTask = matchedPagePlans.some((p: any) => p.route.includes("character")) || taskTitle.toLowerCase().includes("character");
+      const isQuestTask = matchedPagePlans.some((p: any) => p.route.includes("quest")) || taskTitle.toLowerCase().includes("quest");
+      const isSoundTask = matchedPagePlans.some((p: any) => p.route.includes("sound")) || taskTitle.toLowerCase().includes("sound");
+      const isJourneyTask =
+        matchedPagePlans.some((p: any) =>
+          p.route.includes("journey") || p.route.includes("chronicle") ||
+          (p.requiredCapabilities || []).some((cap: string) =>
+            cap === "scroll-chapter-controller" || cap === "scroll-driven-storytelling" || cap === "parallax-background"
+          )
+        ) ||
+        taskTitle.toLowerCase().includes("journey") ||
+        taskTitle.toLowerCase().includes("chronicle") ||
+        taskTitle.toLowerCase().includes("scroll") ||
+        matchedPagePlans.some((p: any) => (p.pageRole || "").toLowerCase().includes("scroll-driven") || (p.pageRole || "").toLowerCase().includes("narrative") || (p.pageRole || "").toLowerCase().includes("chronicle"));
+
+      if (isRootTask) {
+        capabilityInstructions = `MANDATORY IMMERSIVE 3D EXPERIENCE COMPOSITION (WEBGL / THREE.JS):
+================================================================================
+This view is the REAL IMMERSIVE 3D SPATIAL WORLD ENTRANCE [${sceneType}] — NOT a flat card grid, NOT a SaaS dashboard!
+Focal Subject: ${focalObj}
+
+1. ROOT ROUTE ('/') — THE 3D STAGE:
+   - Must mount a full-bleed interactive 3D WebGL Scene using Three.js:
+     import * as THREE from 'three';
+   - Mount a canvas element with: <canvas data-aegis-3d="true" ref={canvasRef} className="w-full h-full absolute inset-0" />
+   - 3D Scene Initialization:
+     * Scene: const scene = new THREE.Scene();
+     * Camera: const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+     * Renderer: const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+     * Lighting: ${lighting}
+     * Meshes: Procedural 3D geometry representing ${focalObj}. Group Three.js primitives (lathes, extrusions, cylinders, spheres, toruses, custom groups) with tactile MeshStandardMaterial / MeshPhysicalMaterial (metalness, roughness, transmission for glass/water).
+     * Render Loop: Active requestAnimationFrame loop rotating objects, animating particles/floating motion, and responding to pointer/mouse movement or scroll progress.
+     * Spatial Progression / Scenes:
+${scenesList}
+     * Camera Strategy: ${cameraDesc}
+   - INTERACTIVE HUD OVERLAY (Layered directly over 3D canvas):
+     * Navigation: Minimal HUD overlay with brand wordmark and scene controls (NO generic card grids floating over the canvas).
+     * Interactive Controls: View switcher pills or focal inspection buttons that orbit the camera or animate scene objects when clicked.
+     * Audio / Atmosphere: Ambient toggle or visual feedback element.
+
+2. RUNTIME EXPERIENCE CONTRACT INSTRUMENTATION:
+   The component MUST expose window.__AEGIS_EXPERIENCE__ on mount:
+   (window as any).__AEGIS_EXPERIENCE__ = {
+     experienceType: "IMMERSIVE_3D",
+     renderingMode: "webgl",
+     ready: true,
+     sceneReady: true,
+     objectsRendered: 15,
+     interactiveObjects: 5,
+     scrollDriven: true,
+     animationActive: true
+   };
+
+CRITICAL INVARIANTS:
+- ZERO downgrade to flat 2D cards. The canvas MUST be present and WebGL MUST render real 3D geometry.
+- ROOT CONTAINER ATTRIBUTE: The root container MUST have: data-workspace="immersive_3d_stage"`;
+      } else if (isCharacterTask) {
+        capabilityInstructions = `MANDATORY CHARACTER ENCOUNTER & DIALOGUE STAGE COMPOSITION:
+================================================================================
+This view is a CHARACTER-FOCUSED INTERACTIVE ENCOUNTER — NOT a directory of cards, NOT a search page!
+STRICTLY FORBIDDEN:
+- NO search bars (<input placeholder="Search...">) or searchQuery state
+- NO filter buttons (e.g. ['all', 'unlocked', 'dozing']) or statusFilter state
+- NO 3-column card grid (<div className="card">)
+- NO "+ Add Character" form or CRUD modals
+
+MANDATORY COMPOSITION:
+1. Two-Column Interactive Character Stage:
+   - Left Column: Character Avatar Plinth / Preview Stage with interactive expressions (idle, speaking, celebrating) using animated SVG avatars or tactile Three.js canvas plinth.
+   - Right Column: Interactive Character Console:
+     * Character switcher dock (Muffy, Rony, Pip, Bramblebark) with active selection state.
+     * Handcrafted personality dossier (voice tone, favorite snack, quirky backstory, bio).
+     * Interactive Voice Clip Simulator: Play button triggering Web Audio sound effect / oscillator tone + confetti animation ({ particleCount: 25, spread: 60 }).
+     * Branching dialogue prompt choices with reactive conversational responses.
+2. Root container MUST have: data-workspace="character_stage"`;
+      } else if (isQuestTask) {
+        capabilityInstructions = `MANDATORY SPATIAL QUEST TRAIL MAP COMPOSITION:
+================================================================================
+This view is an INTERACTIVE SPATIAL MAP & ROUTE PLOTTER — NOT a table, NOT a card grid!
+STRICTLY FORBIDDEN:
+- NO search inputs or filter button rows
+- NO 3-column card directories
+- NO "+ Add Quest" modal or CRUD form
+
+MANDATORY COMPOSITION:
+1. Spatial Map Canvas / Terrain Viewport:
+   - Interactive SVG or 2D canvas cartographic map showing floating island landmarks (Pastel Mushroom Circle, Bridge of Tortoise, Whispering Fern).
+   - Clickable landmark nodes/markers with coordinates, hover tooltips, and connection paths/trails drawn between them.
+   - Landmark selection state updating the active waypoint inspect panel.
+2. Waypoint Dossier & Progress Ledger (Slide-out or side panel):
+   - Selected landmark details, quest challenge lore, difficulty badge, and reward info.
+   - Interactive "Embark" or "Complete Waypoint" action with canvas-confetti celebration.
+   - Journey completion progress bar computed from unlocked nodes.
+3. Root container MUST have: data-workspace="spatial_quest_map"`;
+      } else if (isSoundTask) {
+        capabilityInstructions = `MANDATORY ATMOSPHERIC SOUNDBOARD & AUDIO CONSOLE COMPOSITION:
+================================================================================
+This view is an INTERACTIVE AUDIO ENVIRONMENT — NOT a flat card list!
+STRICTLY FORBIDDEN:
+- NO search inputs or filter button rows
+- NO 3-column card directories
+
+MANDATORY COMPOSITION:
+1. Audio Synthesizer Matrix & Resonance Pads:
+   - Interactive sound pads triggering real Web Audio API sounds (AudioContext with oscillators for gentle chimes, wind flutes, bubble pops, or ambient drone chords).
+   - Active playing visual state: waveform / frequency bar pulses when audio triggers.
+   - Ambient loop toggle (rain, meadow breeze, mystical chimes) with master volume and tempo sliders.
+2. Root container MUST have: data-workspace="tactile_soundboard"`;
+      } else if (isJourneyTask) {
+        // Derive chapter context from matched page plan for domain-agnostic scroll story
+        const scrollPlan = matchedPagePlans.find((p: any) =>
+          (p.requiredCapabilities || []).some((cap: string) =>
+            cap === "scroll-chapter-controller" || cap === "scroll-driven-storytelling"
+          ) || p.route.includes("journey") || p.route.includes("chronicle")
+        ) || matchedPagePlans[0];
+        const scrollPageRole = scrollPlan?.pageRole || "Narrative Scroll Experience";
+        const scrollFocalEl = scrollPlan?.focalElement || "Cinematic chapter progression";
+        const scrollInteractions = (scrollPlan?.interaction?.primary || []).slice(0, 3).join("; ") || "Scroll progression, chapter navigation, interactive details";
+        const scrollPurpose = scrollPlan?.purpose || "Immersive narrative storytelling experience";
+        const scrollWorkspace = (scrollPlan?.pageRole || "narrative_scroll").toLowerCase().replace(/[^a-z0-9]/g, "_");
+        capabilityInstructions = `MANDATORY SCROLL-DRIVEN NARRATIVE CHRONICLE COMPOSITION:
+================================================================================
+This view is a NARRATIVE SCROLL STORYTELLING EXPERIENCE — NOT a card directory, NOT a search page!
+Route Purpose: ${scrollPurpose}
+Focal Element: ${scrollFocalEl}
+Key Interactions: ${scrollInteractions}
+STRICTLY FORBIDDEN:
+- NO search inputs, filter button rows, or statusFilter state variables
+- NO 3-column card grids or generic card directories
+- NO "+Add" CRUD forms or newTitle/newContent state
+
+MANDATORY COMPOSITION:
+1. Continuous Immersive Scroll Chronicle derived from the domain above:
+   - Scroll-driven chapter progression that makes sense for this domain (derive 4 meaningful chapter titles from the route name, brand, and page role — e.g. for fashion: "I. Origins of the House", "II. Textile Provenance", "III. Atelier Craft", "IV. The Final Form").
+   - Each chapter section: large cinematic headline, rich editorial prose from siteContent, full-bleed or split imagery area, and an interactive detail/action element.
+   - scrollProgress state variable tracking scroll position via onScroll or IntersectionObserver.
+   - Interactive chapter navigation: floating pill nav or side-rail chapter markers that highlight the active chapter and allow smooth-scroll jump.
+   - Domain-appropriate interactive focal element per chapter (e.g. for fashion: material swatch selector; for astronomy: orbital detail panel; for architecture: floor plan toggle).
+2. REQUIRED scroll-story DOM markers (CRITICAL for quality gate):
+   - data-scene="scene-N" on each chapter section container
+   - data-chapter="chapter-N" on each chapter section container
+   - data-scroll-progress="true" on the root scroll container
+   - Root container MUST expose: (window as any).__AEGIS_EXPERIENCE__ = { experienceType: "SCROLL_STORY", renderingMode: "canvas2d", ready: true, scrollDriven: true, scrollProgress: 0, chaptersLoaded: 4 };
+3. Root container MUST have: data-workspace="${scrollWorkspace}"
+4. Import and use domain content from siteContent — DO NOT invent generic lorem ipsum prose.`;
+      } else {
+        capabilityInstructions = `MANDATORY BESPOKE EXPERIENTIAL ROUTE COMPOSITION:
+================================================================================
+This view is an intentional designed stage derived from the PageExperiencePlan.
+Build the assigned dominant structure and primary focal element.
+STRICTLY FORBIDDEN:
+- NO generic card grids, NO search/filter bars, NO "+ Add" CRUD forms.
+- Root container MUST have: data-workspace="${(matchedPagePlans[0]?.pageRole || 'bespoke_stage').toLowerCase().replace(/[^a-z0-9]/g, '_')}"`;
+      }
     } else if (experiencePattern === "storefront-commerce") {
       const isBakeryOrFood = promptLower.includes("bakery") || promptLower.includes("bread") || promptLower.includes("pastry") || promptLower.includes("cake") || promptLower.includes("food") || promptLower.includes("cafe");
       const hasCustomCake = (plan?.requiredCapabilities || []).some((c: any) => c.id === "custom-cake-builder") || promptLower.includes("cake");
@@ -633,36 +1042,29 @@ STRICTLY FORBIDDEN: "Active Service View", hardcoded stone-*/indigo-* classes.
    const [confirmed, setConfirmed] = useState(false)
 ROOT CONTAINER: data-workspace="booking_flow"`;
     } else {
-      capabilityInstructions = `MANDATORY VIEW COMPOSITION — CRITICAL DESIGN RULES:
+      capabilityInstructions = `MANDATORY BESPOKE VIEW COMPOSITION — ANTI-CONVERGENCE MANDATE:
 =====================================================
 STRICTLY FORBIDDEN IN ALL GENERATED VIEWS (violation = immediate rejection):
 - NEVER render "Active Service View" as any badge, label, or heading text
 - NEVER render "Manage and interact with [feature] services and features." as description text
 - NEVER render "Submit your inquiry or update configuration for [feature]."
-- NEVER render "Search resources..." as an input placeholder
+- NEVER render "Search resources..." or generic search inputs unless the PageExperiencePlan explicitly specifies search
+- NEVER render generic filter button rows (['all', 'active', 'completed']) unless explicitly an operations dashboard
+- NEVER render generic 3-column card grids (<div className="card">) as a substitute for rich feature composition
+- NEVER render "+ New [Entity]" or "+ Add [Item]" forms with [newTitle, setNewTitle] state
 - NEVER render "Service Status: Online", "Sync Mode: Automatic", or "Availability: Online" info panels
-- NEVER use a 2-column layout with a generic form (left) + a "Service Status" card (right)
-- NEVER use hardcoded Tailwind color classes: stone-50, stone-100, stone-200, stone-900, indigo-600, indigo-700
-  USE ONLY CSS variable tokens: style={{background:'var(--color-surface)'}} or className="text-[var(--color-text-primary)]"
+- NEVER use hardcoded Tailwind color classes (stone-*, indigo-*); use CSS tokens or Tailwind utility tokens.
 
-For catalog, inventory, and record management views:
-  1. Navigation header with brand identity using site-content.ts brand name.
-  2. Direct entry into domain items, catalog grid, or record list — DO NOT render a top row of stat cards or KPI metrics unless this specific view is a designated summary/overview page.
-  3. Interactive Data Table / List with 4-8 realistic domain seed records. NEVER empty.
-  4. Live search input & multi-tab status filters.
-  5. Interactive "+ New [Entity]" creation modal.
-  6. Interactive Selection & Detail Inspector:
-     - const [selectedItem, setSelectedItem] = useState<any>(null);
-     - Every row/card: onClick={() => setSelectedItem(item)}
-     - Detail panel: {selectedItem && <div>...</div>} with close button.
-  7. Interactive Status Filtering:
-     - const [statusFilter, setStatusFilter] = useState('all');
-     - const filteredItems = records.filter(r => statusFilter === 'all' || r.status === statusFilter);
-  8. data-workspace attribute on root container.`;
+EVERY ROUTE IS A FIRST-CLASS DESIGNED EXPERIENCE:
+1. Adhere strictly to the PageExperiencePlan for each route being generated in this task.
+2. Build the exact focal element specified in the plan (e.g. 3D plinth, spatial map, soundboard console, editorial spread).
+3. Provide meaningful, observable interactive state (working sliders, selectors, audio players, waypoints) with rich seed data.
+4. Set the root container attribute data-workspace to the route's specific workspace identifier (e.g. data-workspace="character_stage", "spatial_quest_map", "soundboard_console").`;
     }
 
     const CANONICAL_CODER_CONTEXT_HEADER = `
 ${STAGE_SPECIFIC_CODER_INSTRUCTION}
+${taskPageExperienceContract}
 ${contentContractContext}
 
 ══════════════════════════════════════════════════════════════════════════════

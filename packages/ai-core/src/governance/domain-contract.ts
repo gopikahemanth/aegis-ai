@@ -16,6 +16,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { ArchitectureContractV1 } from "./architecture-resolver.js";
+import { NavigationDesignResolver } from "../design/navigation-design.js";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,10 @@ export interface DomainContract {
   architectureHash: string;
   /** Human label for the domain e.g. "AI Security Code Reviewer" */
   domainName: string;
+  /** Authoritative product brand name */
+  brandName?: string;
+  /** Alias for brandName / domainName for downstream consumer compatibility */
+  name?: string;
   /** Short description of what the application does */
   domainDescription: string;
   /** All business entities in this domain */
@@ -129,11 +134,15 @@ export class DomainContractDeriver {
       .digest("hex")
       .slice(0, 12);
 
+    const authoritativeBrand = NavigationDesignResolver.extractBrandFromPrompt(contract.prompt) || domainName;
+
     return {
       version: 1,
       domainHash,
       architectureHash,
       domainName,
+      brandName: authoritativeBrand,
+      name: authoritativeBrand,
       domainDescription,
       entities,
       features,
@@ -247,6 +256,12 @@ export class DomainContractDeriver {
       const features = contract.requiredFeatures || [];
       if (features.length > 0) return `${features[0]} Application`;
       return "Custom Application";
+    }
+
+    // Check for explicit brand name: "called SAVORLINE", "named SAVORLINE", "SAVORLINE: ..."
+    const explicitBrand = NavigationDesignResolver.extractBrandFromPrompt(prompt);
+    if (explicitBrand) {
+      return explicitBrand;
     }
 
     // Use the first ~60 chars of the prompt as domain name

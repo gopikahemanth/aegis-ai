@@ -7,6 +7,7 @@ import { TechnologyContractBuilder, TechnologyContract } from "./technology-cont
 import { DependencyContractManager, DependencyContract } from "./dependency-contract.js";
 import { ArchitectureDecisionManager } from "./architecture-decision-record.js";
 import { SemanticNaming } from "../semantics/semantic-naming.js";
+import { PromptConstraints } from "./prompt-constraints.js";
 
 export type ProvenanceSource = "user" | "default" | "inferred" | "existing_project";
 
@@ -84,6 +85,8 @@ export class ArchitectureResolver {
     const raw = rawSpec || ({} as ProjectSpecification);
     const canonical = canonicalSpec || ({ lockedStack: {}, features: [], userFlows: [], dataModels: [], inferredLibraries: [] } as unknown as CanonicalProjectSpecification);
     const promptLower = (userPrompt || "").toLowerCase();
+    const cleanPrompt = PromptConstraints.stripNegativeConstraints(userPrompt || "");
+    const cleanPromptLower = cleanPrompt.toLowerCase();
 
     // ── Priority 2: Existing Project Architecture Preservation ────────────────
     // If outputDirectory contains an existing project or locked contract, PRESERVE IT
@@ -124,17 +127,19 @@ export class ArchitectureResolver {
 
     // ── Priority 3: Simple Project Rule (Static Site minimalism) ─────────────
     const isStaticRequest =
-      (promptLower.includes("static") && (promptLower.includes("landing") || promptLower.includes("page") || promptLower.includes("site") || promptLower.includes("html"))) ||
-      (promptLower.includes("simple") && promptLower.includes("landing page") && !promptLower.includes("database") && !promptLower.includes("auth"));
+      (cleanPromptLower.includes("static") && (cleanPromptLower.includes("landing") || cleanPromptLower.includes("page") || cleanPromptLower.includes("site") || cleanPromptLower.includes("html"))) ||
+      (cleanPromptLower.includes("simple") && cleanPromptLower.includes("landing page") && !cleanPromptLower.includes("database") && !cleanPromptLower.includes("auth"));
 
-    const isCliRequest = promptLower.includes("cli") || promptLower.includes("command line tool") || promptLower.includes("terminal app");
-    const isPythonRequest = promptLower.includes("fastapi") || promptLower.includes("django") || promptLower.includes("python");
+    const isCliRequest = cleanPromptLower.includes("cli") || cleanPromptLower.includes("command line tool") || cleanPromptLower.includes("terminal app");
+    const isPythonRequest = cleanPromptLower.includes("fastapi") || cleanPromptLower.includes("django") || cleanPromptLower.includes("python");
 
     let applicationType: ApplicationCategory = "FULLSTACK_WEB_APPLICATION";
     if (isStaticRequest) applicationType = "STATIC_SITE";
     else if (isCliRequest) applicationType = "CLI_APPLICATION";
-    else if (promptLower.includes("api") && !promptLower.includes("ui") && !promptLower.includes("frontend")) applicationType = "API_SERVICE";
-    else if (promptLower.includes("saas")) applicationType = "SAAS_APPLICATION";
+    else if (cleanPromptLower.includes("api") && !cleanPromptLower.includes("ui") && !cleanPromptLower.includes("frontend")) applicationType = "API_SERVICE";
+    else if (!PromptConstraints.isForbiddenByPrompt(userPrompt, "hotel") && /\b(hotel|boutique hotel|resort|hospitality|luxury stay)\b/i.test(cleanPromptLower)) applicationType = "FULLSTACK_WEB_APPLICATION";
+    else if (/\b(observatory|astronomy|astrophysics|telescope|celestial)\b/i.test(cleanPromptLower)) applicationType = "FULLSTACK_WEB_APPLICATION";
+    else if (cleanPromptLower.includes("saas") && !cleanPromptLower.includes("avoid saas") && !cleanPromptLower.includes("no saas") && !cleanPromptLower.includes("not saas")) applicationType = "SAAS_APPLICATION";
 
     // ── Priority 1: FRONTEND resolution ──────────────────────────────────────
     let frontendFramework = isStaticRequest ? "HTML5/Vanilla" : "React-Vite";
@@ -304,9 +309,104 @@ export class ArchitectureResolver {
       }
     }
 
-    // Natural Language Entity Extraction from prose prompts (e.g. "explore handcrafted pendant lights, compare ceramic finishes, view maker profiles, ...")
+    // Domain-specific rich product routes extraction (e.g. Culinary Travel Magazine / Savorline)
+    if (!PromptConstraints.isForbiddenByPrompt(userPrompt, "culinary") &&
+        /\b(culinary|food travel|gastronom|food journey|recipe collection|chef stories|culinary travel|taste atlas|terroir|savorline)\b/i.test(cleanPrompt)) {
+      const culinaryRoutes = ["/", "/editorial-stories", "/explore-culinary-destinations", "/and-filter-recipes", "/saved-discoveries", "/build-custom-itinerary"];
+      for (const cr of culinaryRoutes) {
+        if (!explicitRoutes.includes(cr)) {
+          explicitRoutes.push(cr);
+        }
+      }
+      const culinaryModels = ["CulinaryStory", "CulinaryDestination", "Recipe", "SavedDiscovery", "CulinaryItinerary"];
+      for (const cm of culinaryModels) {
+        if (!explicitModels.includes(cm)) {
+          explicitModels.push(cm);
+        }
+      }
+    }
+
+    // Domain-specific rich product routes extraction (e.g. Contemporary Art Museum / Lumen House)
+    if (!PromptConstraints.isForbiddenByPrompt(userPrompt, "museum") && !PromptConstraints.isForbiddenByPrompt(userPrompt, "art") &&
+        /\b(museum|art museum|contemporary art|gallery|curatorial|exhibitions|artwork collection)\b/i.test(cleanPrompt)) {
+      const museumRoutes = [
+        "/",
+        "/rotating-exhibitions",
+        "/explore-artist-profiles",
+        "/search-semantic-artworks",
+        "/navigate-interactive-floor-plan",
+        "/listen-to-audio-guide",
+        "/plan-museum-visit",
+        "/saved-artworks",
+      ];
+      for (const mr of museumRoutes) {
+        if (!explicitRoutes.includes(mr)) {
+          explicitRoutes.push(mr);
+        }
+      }
+      const museumModels = ["Exhibition", "Artist", "Artwork", "AudioTrack", "VisitPlan", "SavedArtwork"];
+      for (const mm of museumModels) {
+        if (!explicitModels.includes(mm)) {
+          explicitModels.push(mm);
+        }
+      }
+    }
+
+    // Domain-specific rich product routes extraction (e.g. Luxury Boutique Hotel & Hospitality / Velora House)
+    if (!PromptConstraints.isForbiddenByPrompt(userPrompt, "hotel") && !PromptConstraints.isForbiddenByPrompt(userPrompt, "hospitality") && !PromptConstraints.isForbiddenByPrompt(userPrompt, "booking") &&
+        /\b(hotel|boutique hotel|resort|hospitality|luxury stay|luxury suites|villa resort)\b/i.test(cleanPrompt)) {
+      const hotelRoutes = [
+        "/",
+        "/suites",
+        "/booking",
+        "/stay-planner",
+        "/guest-preferences",
+        "/amenities-and-spa",
+        "/dining",
+        "/local-experiences",
+      ];
+      for (const hr of hotelRoutes) {
+        if (!explicitRoutes.includes(hr)) {
+          explicitRoutes.push(hr);
+        }
+      }
+      const hotelModels = ["Suite", "Reservation", "GuestPreference", "StayPlan", "Amenity", "DiningVenue", "LocalExperience"];
+      for (const hm of hotelModels) {
+        if (!explicitModels.includes(hm)) {
+          explicitModels.push(hm);
+        }
+      }
+    }
+
+    // Domain-specific rich product routes extraction (e.g. Scientific Observatory / Orbitallis)
+    if (/\b(observatory|astronomy|astrophysics|telescope|celestial|sky observation|star map)\b/i.test(cleanPrompt)) {
+      const observatoryRoutes = [
+        "/",
+        "/sky-observations",
+        "/telescope-instruments",
+        "/observation-schedules",
+        "/research-discoveries",
+        "/celestial-archives",
+        "/research-publications",
+        "/facility-info",
+        "/observation-events",
+      ];
+      for (const or of observatoryRoutes) {
+        if (!explicitRoutes.includes(or)) {
+          explicitRoutes.push(or);
+        }
+      }
+      const observatoryModels = ["Observation", "Telescope", "CelestialObject", "ResearchDiscovery", "Publication", "ObservationEvent", "Instrument"];
+      for (const om of observatoryModels) {
+        if (!explicitModels.includes(om)) {
+          explicitModels.push(om);
+        }
+      }
+    }
+
+    // Natural Language Entity Extraction fallback from prose prompts (e.g. "explore handcrafted pendant lights, compare ceramic finishes, view maker profiles, ...")
     if (explicitModels.length === 0) {
-      const manageMatch = userPrompt.match(/(?:manage|manages|track|tracking|monitor|monitoring|explore|exploring|browse|browsing|compare|comparing|inspect|inspecting|view|viewing|discover|discovering|purchase|purchasing|order|ordering|book|booking|reserve|reserving|submit|submitting|handling|coordinates|supporting|adjust|adjusting)\s+([a-zA-Z0-9_,\s]+?)(?:\.|\n|The dashboard|Create appropriate|with persistent|Do not|Make the)/i);
+      const manageMatch = cleanPrompt.match(/(?:show|shows|present|presents|display|displays|feature|featuring|manage|manages|track|tracking|monitor|monitoring|explore|exploring|browse|browsing|compare|comparing|inspect|inspecting|view|viewing|discover|discovering|purchase|purchasing|order|ordering|book|booking|reserve|reserving|submit|submitting|handling|coordinates|supporting|adjust|adjusting)\s+([a-zA-Z0-9_,\s]+?)(?:\.|\n|The dashboard|Create appropriate|with persistent|Do not|Make the)/i);
       if (manageMatch && manageMatch[1]) {
         const words = manageMatch[1].split(/,| and |\s+and\s+/).map(w => w.trim()).filter(Boolean);
         for (const w of words) {

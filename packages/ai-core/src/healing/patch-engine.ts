@@ -1,10 +1,12 @@
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { Parser } from "../generator/parser.js";
 import { FileWriter } from "../writer/writer.js";
 import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
 import { SemanticDuplicateDetector } from "../governance/semantic-duplicate-detector.js";
 import { PathValidator } from "./path-validator.js";
+import { ASTSafeTransformer } from "../governance/ast-safe-transformer.js";
+import { InteractionProvenanceTracker } from "../governance/interaction-provenance-tracker.js";
 
 export class PatchEngine {
   private readonly parser = new Parser();
@@ -26,7 +28,10 @@ export class PatchEngine {
 
       // Check semantic duplicates and path authorization
       const check = SemanticDuplicateDetector.checkBeforeWrite(f.path);
-      if (check.action === "REDIRECT_TO_CANONICAL" && check.canonicalPath) {
+      if (check.canonicalPath && check.canonicalPath !== f.path) {
+        console.log(`[PatchEngine] 🔀 Redirecting patch for alias "${f.path}" to canonical "${check.canonicalPath}"`);
+        f.path = check.canonicalPath;
+      } else if (check.action === "REDIRECT_TO_CANONICAL" && check.canonicalPath) {
         f.path = check.canonicalPath;
       } else if (check.action === "DELETE_ORPHAN" && !check.allowed) {
         console.warn(`[PatchEngine] ⛔ Skipping unauthorized file: ${f.path}`);
@@ -40,26 +45,29 @@ export class PatchEngine {
         continue;
       }
 
-      // Protect approved frontend UI files from post-approval overwrite (ONLY when status is APPROVED)
+      // Protect approved frontend UI files from post-approval overwrite
       const reviewPath = join(projectPath, ".aegis", "frontend-review.json");
+      let isFrontendProtected = false;
       if (existsSync(reviewPath)) {
         try {
           const reviewData = JSON.parse(readFileSync(reviewPath, "utf8"));
-          if (reviewData.status === "APPROVED") {
-            const isProtectedFrontend =
-              norm.startsWith("src/features/") ||
-              norm.startsWith("src/pages/") ||
-              norm.startsWith("src/design-system/") ||
-              norm.startsWith("src/components/") ||
-              norm === "src/App.tsx" ||
-              norm === "src/routes.tsx";
-            if (isProtectedFrontend) {
-              console.warn(`[PatchEngine] 🛡️ Protecting approved frontend file from post-approval overwrite: ${f.path}`);
-              continue;
-            }
-          }
-        } catch {
-          // If JSON parse fails, allow write
+          if (reviewData.status === "APPROVED") isFrontendProtected = true;
+        } catch {}
+      }
+      if (!isFrontendProtected && InteractionProvenanceTracker.hasBaseline(projectPath)) {
+        isFrontendProtected = true;
+      }
+      if (isFrontendProtected) {
+        const isProtectedFrontend =
+          norm.startsWith("src/features/") ||
+          norm.startsWith("src/pages/") ||
+          norm.startsWith("src/design-system/") ||
+          norm.startsWith("src/components/") ||
+          norm === "src/App.tsx" ||
+          norm === "src/routes.tsx";
+        if (isProtectedFrontend) {
+          console.warn(`[PatchEngine] 🛡️ Protecting approved frontend file from post-approval overwrite: ${f.path}`);
+          continue;
         }
       }
 
@@ -110,24 +118,29 @@ export class PatchEngine {
       const safeRelPath = pathCheck.normalizedRelativePath || filePath;
 
       const reviewPathForPatch = join(projectPath, ".aegis", "frontend-review.json");
+      let isPatchProtected = false;
       if (existsSync(reviewPathForPatch)) {
         try {
           const reviewData = JSON.parse(readFileSync(reviewPathForPatch, "utf8"));
-          if (reviewData.status === "APPROVED") {
-            const norm = safeRelPath.replace(/\\/g, "/");
-            const isProtectedFrontend =
-              norm.startsWith("src/features/") ||
-              norm.startsWith("src/pages/") ||
-              norm.startsWith("src/design-system/") ||
-              norm.startsWith("src/components/") ||
-              norm === "src/App.tsx" ||
-              norm === "src/routes.tsx";
-            if (isProtectedFrontend) {
-              console.warn(`[PatchEngine] 🛡️ Protecting approved frontend file from post-approval patch: ${safeRelPath}`);
-              continue;
-            }
-          }
+          if (reviewData.status === "APPROVED") isPatchProtected = true;
         } catch {}
+      }
+      if (!isPatchProtected && InteractionProvenanceTracker.hasBaseline(projectPath)) {
+        isPatchProtected = true;
+      }
+      if (isPatchProtected) {
+        const norm = safeRelPath.replace(/\\/g, "/");
+        const isProtectedFrontend =
+          norm.startsWith("src/features/") ||
+          norm.startsWith("src/pages/") ||
+          norm.startsWith("src/design-system/") ||
+          norm.startsWith("src/components/") ||
+          norm === "src/App.tsx" ||
+          norm === "src/routes.tsx";
+        if (isProtectedFrontend) {
+          console.warn(`[PatchEngine] 🛡️ Protecting approved frontend file from post-approval patch: ${safeRelPath}`);
+          continue;
+        }
       }
 
       const fullPath = join(projectPath, safeRelPath);
@@ -170,5 +183,75 @@ export class PatchEngine {
     }
 
     return validFiles.length + patchedCount;
+  }
+}
+
+export interface PatchFile {
+  path: string;
+  content: string;
+}
+
+export interface PatchPayload {
+  files: PatchFile[];
+}
+
+export interface SelfHealingPatchResult {
+  success: boolean;
+  error?: string;
+  appliedCount?: number;
+}
+
+export class SelfHealingPatchEngine {
+  public static async applyPatch(projectPath: string, patch: PatchPayload): Promise<SelfHealingPatchResult> {
+    // 1. Pre-validation phase: Check for duplicate declarations and TS1489 in candidate files
+    for (const f of patch.files) {
+      if (f.path.endsWith(".ts") || f.path.endsWith(".tsx")) {
+        const duplicates = ASTSafeTransformer.detectDuplicateTopLevelIdentifiers(f.content, f.path);
+        if (duplicates.length > 0) {
+          return {
+            success: false,
+            error: `Duplicate declaration of identifier(s): ${duplicates.join(", ")} in ${f.path}`,
+          };
+        }
+
+        const invalidLeadingZeroRegex = /(?<=[:=,(\[]\s*(?:[-+]?\s*))\b0([0-9]+)\b(?![."'])/;
+        if (invalidLeadingZeroRegex.test(f.content)) {
+          return {
+            success: false,
+            error: `TS1489: Invalid leading-zero numeric literal detected in ${f.path}`,
+          };
+        }
+      }
+    }
+
+    // 2. Snapshot existing files for rollback
+    const backups = new Map<string, string | null>();
+    for (const f of patch.files) {
+      const fullPath = join(projectPath, f.path);
+      if (existsSync(fullPath)) {
+        backups.set(fullPath, readFileSync(fullPath, "utf-8"));
+      } else {
+        backups.set(fullPath, null);
+      }
+    }
+
+    // 3. Apply changes
+    try {
+      for (const f of patch.files) {
+        const fullPath = join(projectPath, f.path);
+        writeFileSync(fullPath, f.content, "utf-8");
+      }
+      return { success: true, appliedCount: patch.files.length };
+    } catch (err: any) {
+      // Rollback
+      for (const [fullPath, originalContent] of backups.entries()) {
+        if (originalContent !== null) {
+          writeFileSync(fullPath, originalContent, "utf-8");
+        } else if (existsSync(fullPath)) {
+          rmSync(fullPath, { force: true });
+        }
+      }
+      return { success: false, error: err?.message || "Failed to apply patch" };
+    }
   }
 }

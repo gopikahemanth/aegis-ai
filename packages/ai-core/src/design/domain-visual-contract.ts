@@ -93,7 +93,7 @@ export interface DomainVisualDesignContract {
       icon: string;
     };
     alerts: string[];
-    primaryWidget: "TIMELINE" | "KANBAN" | "TELEMETRY" | "CALENDAR" | "SHOWCASE" | "WORKSPACE" | "ANALYTICS" | "EDITORIAL_STORY" | "PLAYFUL_PROGRESS" | "ASYMMETRIC_DESK";
+    primaryWidget: "TIMELINE" | "KANBAN" | "TELEMETRY" | "CALENDAR" | "SHOWCASE" | "WORKSPACE" | "ANALYTICS" | "EDITORIAL_STORY" | "PLAYFUL_PROGRESS" | "ASYMMETRIC_DESK" | "CANVAS";
   };
 
   composition?: {
@@ -105,7 +105,7 @@ export interface DomainVisualDesignContract {
       cta: { label: string; targetRoute: string; icon?: string };
     };
     primaryWorkspace: {
-      type: "availability_matrix" | "master_detail" | "live_stage_matrix" | "telemetry_grid" | "kanban_board" | "timeline_pipeline" | "document_workspace" | "catalog_grid" | "session_schedule" | "workflow_board";
+      type: "availability_matrix" | "master_detail" | "live_stage_matrix" | "telemetry_grid" | "kanban_board" | "timeline_pipeline" | "document_workspace" | "catalog_grid" | "session_schedule" | "workflow_board" | "canvas_stage";
       title: string;
       description: string;
       density?: "compact" | "balanced" | "spacious";
@@ -119,7 +119,7 @@ export interface DomainVisualDesignContract {
       type: "metric_cluster" | "gauge_dial" | "venue_capacity" | "document_locker" | "telemetry_monitor" | "sector_heatmap" | "telescope_equipment" | "astronomer_roster";
       title: string;
     }>;
-    interactionModel: "reservation_flow" | "case_dossier" | "live_dispatch" | "telemetry_command" | "general_operations" | "session_reservation_flow" | "state_machine_execution";
+    interactionModel: "reservation_flow" | "case_dossier" | "live_dispatch" | "telemetry_command" | "general_operations" | "session_reservation_flow" | "state_machine_execution" | "spatial_exploration";
   };
 
   antiPatterns: string[];
@@ -434,18 +434,18 @@ export class DomainVisualContractGenerator {
     let bodyStyle = artDirection.typography.bodyStyle;
     let emphasis = artDirection.typography.emphasis;
 
-    // Dashboard defaults
-    let headline = "Executive Operational Overview";
-    let primaryMetric = { label: "Active Throughput", value: "98.4%", trend: "+2.6% this cycle", icon: "Activity" };
+    // Dashboard defaults (clean, product-neutral, zero telemetry/SaaS jargon)
+    let headline = "Curated Product Experience";
+    let primaryMetric = { label: "Active Items", value: "24", trend: "Curated collection", icon: "Layers" };
     let secondaryMetrics = [
-      { label: "Total Managed Entities", value: "1,248", trend: "+12 new today", icon: "Layers" },
-      { label: "Pending Actions", value: "14", trend: "Normal velocity", icon: "Clock" },
-      { label: "System Health Score", value: "99.9%", trend: "Optimal uptime", icon: "ShieldCheck" },
+      { label: "Featured Work", value: "12", trend: "Curated highlight", icon: "Sparkles" },
+      { label: "Archival Records", value: "148", trend: "Indexed archives", icon: "Compass" },
+      { label: "Community Members", value: "840", trend: "Active readers", icon: "Users" },
     ];
-    let heroAction = { label: "+ Create New Record", targetRoute: "/inventory", icon: "PlusCircle" };
-    let alerts = ["All operational pipelines reporting normal baseline telemetry."];
-    let primaryWidget: DomainVisualDesignContract["dashboardComposition"]["primaryWidget"] = "TELEMETRY";
-    let components: string[] = ["TelemetryGrid", "StatusPipeline", "ActivityStream"];
+    let heroAction = { label: "Explore Collection", targetRoute: "/", icon: "ArrowRight" };
+    let alerts = ["Curated collection and seasonal archives are now active."];
+    let primaryWidget: DomainVisualDesignContract["dashboardComposition"]["primaryWidget"] = "SHOWCASE";
+    let components: string[] = ["ShowcaseGrid", "Timeline", "StatusPipeline"];
     let antiPatterns: string[] = [
       "Generic SaaS blue buttons",
       "Generic 4-box card template",
@@ -455,8 +455,76 @@ export class DomainVisualContractGenerator {
 
     // ── 2. Domain-Specific Visual Adaptation ──────────────────────────────────
 
-    // Plant Care / Houseplant / Botanical Companion
-    if (rawText.includes("plant") || rawText.includes("botanical") || rawText.includes("houseplant") || rawText.includes("garden") || rawText.includes("foliage") || (rawText.includes("watering") && !rawText.includes("vehicle"))) {
+    // Architecture Journal / Spatial Monograph / Built Form Publication
+    if (
+      !rawText.includes("synthesizer") &&
+      !rawText.includes("sound lab") &&
+      !rawText.includes("oscillator") &&
+      !rawText.includes("culinary") &&
+      !rawText.includes("recipe") &&
+      !rawText.includes("food") &&
+      ((rawText.includes("architecture") || rawText.includes("architect")) ||
+       (rawText.includes("spatial") && (rawText.includes("built") || rawText.includes("monograph") || rawText.includes("journal"))) ||
+       (rawText.includes("monograph") && (rawText.includes("tectonic") || rawText.includes("built form") || rawText.includes("spatial") || rawText.includes("structure"))))
+    ) {
+      domain = "Architecture Journal & Spatial Monograph";
+      productType = "Independent Architecture Publication";
+      layoutFamily = "EDITORIAL_CATALOG";
+      navStrategy = "TOPBAR_PILL";
+      density = "spacious";
+      formality = "luxury";
+      const archBrand = spec?.name && !spec.name.toLowerCase().includes("app") && !spec.name.toLowerCase().includes("project")
+        ? spec.name
+        : (prompt.match(/(?:called|named)\s+["']?([A-Za-z0-9&'-]+)["']?/i)?.[1] || "MONUMENT");
+      headline = `${archBrand} — Journal of Spatial Ideas & Built Form`;
+      primaryMetric = { label: "Curated Issues", value: "Vol. XXIV", trend: "Autumn Edition", icon: "BookOpen" };
+      secondaryMetrics = [
+        { label: "Monograph Features", value: "48", trend: "In-depth criticism", icon: "Layers" },
+        { label: "Studio Dialogues", value: "32", trend: "Practitioner profiles", icon: "Users" },
+        { label: "Typology Index", value: "120+", trend: "Material archive", icon: "Compass" },
+      ];
+      heroAction = { label: "Read Curated Essays", targetRoute: "/editorial-articles", icon: "BookOpen" };
+      alerts = ["Autumn Monograph folio published. Featuring critical spatial studies and practitioner dialogues."];
+      primaryWidget = "EDITORIAL_STORY";
+      components = ["ShowcaseGrid", "Timeline", "StatusPipeline"];
+    } else if (rawText.includes("culinary") || rawText.includes("recipe") || rawText.includes("food journey") || rawText.includes("gastronom") || (rawText.includes("travel") && (rawText.includes("food") || rawText.includes("culinary") || rawText.includes("chef") || rawText.includes("restaurant"))) || rawText.includes("savorline")) {
+      domain = "Culinary Travel & Gastronomy Magazine";
+      productType = "Interactive Culinary Travel Magazine";
+      layoutFamily = "EDITORIAL_CATALOG";
+      navStrategy = "TOPBAR_PILL";
+      density = "spacious";
+      formality = "luxury";
+      mood = "Warm terracotta, sun-drenched olive, editorial serif typography, rich culinary terroir imagery, and immersive journey narratives";
+      mode = "warm_dark";
+      bgClass = "bg-[#0F0D0B]";
+      surfaceClass = "bg-[#1A1612]/85 border-[#2E261F]";
+      cardClass = "bg-[#211C17]/90 border border-[#3A3027]/80 shadow-2xl backdrop-blur-md";
+      primary = "amber";
+      secondary = "stone";
+      accent = "from-amber-600 via-orange-600 to-emerald-700";
+      textPrimary = "text-[#FAF6F0]";
+      textMuted = "text-[#A89E92]";
+      badgeStyle = "bg-amber-500/15 text-amber-300 border border-amber-500/30";
+      activeNavStyle = "bg-amber-500/20 text-amber-200 border-b-2 border-amber-400";
+      fontFamily = "Playfair Display, Plus Jakarta Sans, serif";
+      headingStyle = "font-serif tracking-tight font-medium text-[#FAF6F0]";
+      bodyStyle = "text-sm text-[#D4C9BC] font-light";
+      emphasis = "font-medium text-amber-400";
+      const culinaryBrand = spec?.name && !spec.name.toLowerCase().includes("app") && !spec.name.toLowerCase().includes("project")
+        ? spec.name
+        : (prompt.match(/(?:called|named)\s+["']?([A-Za-z0-9&'-]+)["']?/i)?.[1] || "SAVORLINE");
+      headline = `${culinaryBrand} — Curated Culinary Travel & Terroir Chronicles`;
+      primaryMetric = { label: "Regional Journeys", value: "24 Terroirs", trend: "Curated itineraries", icon: "Compass" };
+      secondaryMetrics = [
+        { label: "Chef Stories", value: "42 Profiles", trend: "Master culinary voices", icon: "Users" },
+        { label: "Kitchen Tested Recipes", value: "118 Dishes", trend: "Seasonal techniques", icon: "BookOpen" },
+        { label: "Curated Discoveries", value: "350+ Venues", trend: "Hand-vetted dining", icon: "Bookmark" },
+      ];
+      heroAction = { label: "Explore Terroirs", targetRoute: "/destinations", icon: "Compass" };
+      alerts = ["Autumn Culinary Folio is live: Discover the volcanic terroirs of Sicily and Hokkaido."];
+      primaryWidget = "EDITORIAL_STORY";
+      components = ["ShowcaseGrid", "Timeline", "StatusPipeline"];
+    } else if (rawText.includes("plant") || rawText.includes("botanical") || rawText.includes("houseplant") || rawText.includes("garden") || rawText.includes("foliage") || (rawText.includes("watering") && !rawText.includes("vehicle"))) {
       domain = "Houseplant Care & Botanical Companion";
       productType = "Plant Care & Growth Companion";
       layoutFamily = "EDITORIAL_CATALOG";
@@ -493,6 +561,46 @@ export class DomainVisualContractGenerator {
       primaryWidget = "SHOWCASE";
       components = ["PlantShelf", "WateringScheduleTable", "SunlightCard"];
       antiPatterns.push("Corporate slate dark modes", "Generic SaaS blue", "Dense administrative tables", "Raw unstyled tables");
+    }
+
+    // 3D Animated Universe / Fantasy Adventure / WebGL World / Claymation
+    else if (rawText.includes("3d") || rawText.includes("claymation") || rawText.includes("fantasy adventure") || (rawText.includes("world explorer") && (rawText.includes("quest") || rawText.includes("whimsical")))) {
+      domain = "3D Fantasy Adventure Universe";
+      productType = "Interactive 3D World Stage";
+      layoutFamily = "VISUAL_ANALYTICS_CANVAS";
+      navStrategy = "TOPBAR_PILL";
+      density = "spacious";
+      formality = "expressive";
+      mood = "Playful, tactile 3D claymation fantasy universe with volumetric clouds, rich lighting, and floating spatial HUD";
+
+      mode = "dark";
+      bgClass = "bg-[#090d16]";
+      surfaceClass = "bg-[#131b2e]/85 border-[rgba(255,255,255,0.08)]";
+      cardClass = "bg-[#162035]/90 border border-indigo-500/20 shadow-xl backdrop-blur-md rounded-2xl";
+      primary = "amber";
+      secondary = "sky";
+      accent = "from-amber-400 via-rose-500 to-indigo-500";
+      textPrimary = "text-amber-50";
+      textMuted = "text-slate-400";
+      badgeStyle = "bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded-full font-medium";
+      activeNavStyle = "bg-gradient-to-r from-amber-500/30 to-indigo-500/20 text-amber-200 border-b-2 border-amber-400";
+      fontFamily = "Outfit, Plus Jakarta Sans, sans-serif";
+      headingStyle = "font-black tracking-tight text-amber-100";
+      bodyStyle = "text-sm text-slate-300";
+      emphasis = "font-bold text-amber-400";
+
+      headline = "Interactive 3D Universe World Stage";
+      primaryMetric = { label: "Discovered Biomes", value: "8 Realms", trend: "3 Quests active", icon: "Compass" };
+      secondaryMetrics = [
+        { label: "Active Companions", value: "6 Characters", trend: "Ready to explore", icon: "Users" },
+        { label: "Quest Progress", value: "72% Complete", trend: "+1 Milestone today", icon: "Award" },
+        { label: "Atmosphere & Sound", value: "Enchanted Grove", trend: "Ambient active", icon: "Music" },
+      ];
+      heroAction = { label: "Launch 3D Explorer", targetRoute: "/world", icon: "Play" };
+      alerts = ["Welcome to the Kazzoo 3D Universe: WebGL spatial stage ready."];
+      primaryWidget = "CANVAS";
+      components = ["ThreeJsWorldStage", "CameraControls", "QuestHUD", "SoundboardMixer"];
+      antiPatterns.push("Flat 2D card grid without canvas", "Static image placeholders", "Generic administrative dashboard");
     }
 
     // A. Music Festival / Live Production / Entertainment / Tour
@@ -1239,6 +1347,29 @@ export class DomainVisualContractGenerator {
           { type: "metric_cluster", title: "Readiness Index" },
         ],
         interactionModel: "state_machine_execution",
+      } : (layoutFamily === "VISUAL_ANALYTICS_CANVAS" || rawText.includes("3d") || rawText.includes("claymation")) ? {
+        hero: {
+          type: "sanctuary_showcase",
+          title: headline,
+          subtitle: "Explore interactive biomes, discover mythical companions, and embark on quests in an immersive 3D world.",
+          badge: "3D Spatial Stage Active",
+          cta: heroAction,
+        },
+        primaryWorkspace: {
+          type: "canvas_stage",
+          title: "Interactive 3D World Stage",
+          description: "Full-bleed Three.js WebGL canvas stage with orbit camera, interactive biome exploration, and claymation subjects.",
+          density: "spacious",
+        },
+        secondaryWorkspace: {
+          type: "status_pipeline",
+          title: "Active Quests & Journey Log",
+        },
+        supportingWidgets: [
+          { type: "telemetry_monitor", title: "Ambient Soundboard & Atmosphere" },
+          { type: "metric_cluster", title: "Explorer Milestones" },
+        ],
+        interactionModel: "spatial_exploration",
       } : (layoutFamily === "ANALYTICS_CONSOLE" || primaryWidget === "TELEMETRY" || primaryWidget === "ANALYTICS") ? {
         hero: {
           type: "telemetry_banner",

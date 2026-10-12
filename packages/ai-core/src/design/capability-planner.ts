@@ -27,6 +27,7 @@ export type DataShape =
   | "media-grid";        // photo, video, or card grid
 
 export type HeroElementType =
+  | "immersive-canvas"         // full-bleed 3D WebGL / interactive canvas stage
   | "storefront-hero"          // retail carousel, deals banner, category bar
   | "hospitality-hero"         // full-bleed hero with date/guest booking bar
   | "large-interaction"        // the core daily action (check-in, compose, book)
@@ -109,6 +110,41 @@ type PageTemplate = {
 };
 
 const PAGE_TEMPLATES: Record<ProductCharacteristics["experiencePattern"], PageTemplate> = {
+  "immersive-3d": {
+    primaryInteraction: "Explore 3D spatial world, navigate interactive points of interest, trigger animations and audio",
+    navigationDepth: "shallow",
+    pages: [
+      {
+        route: "/",
+        name: "World Stage",
+        primaryFocus: "Immersive 3D interactive universe with WebGL canvas, camera controller, floating HUD, and world explorer",
+        heroElement: "immersive-canvas",
+        supportingElements: ["3D scene canvas", "camera controls", "quest map overlay", "soundboard controls", "character showcase"],
+      },
+      {
+        route: "/world",
+        name: "World Explorer",
+        primaryFocus: "Interactive 3D map with discoverable biomes, landmarks, and spatial navigation",
+        heroElement: "immersive-canvas",
+        supportingElements: ["spatial landmark markers", "biome selector", "orbit camera", "quest journal"],
+      },
+      {
+        route: "/characters",
+        name: "Characters",
+        primaryFocus: "3D character inspection stage with animation controls and lore",
+        heroElement: "showcase-grid",
+        supportingElements: ["3D character stage", "animation toggles", "lore cards", "voice clips"],
+      },
+      {
+        route: "/soundboard",
+        name: "Sound & Atmosphere",
+        primaryFocus: "Interactive atmospheric soundboard and ambient audio mixer",
+        heroElement: "timeline-scroll",
+        supportingElements: ["ambient track mixer", "playful sound effects", "visualizer", "volume sliders"],
+      },
+    ],
+  },
+
   "storefront-commerce": {
     primaryInteraction: "Browse promotional deals, explore categories, add items to cart, and checkout",
     navigationDepth: "shallow",
@@ -563,6 +599,48 @@ const PAGE_TEMPLATES: Record<ProductCharacteristics["experiencePattern"], PageTe
       },
     ],
   },
+
+  "craft-editorial": {
+    primaryInteraction: "Read immersive monographs, explore visual spreads, and view high-resolution architectural documentation",
+    navigationDepth: "shallow",
+    pages: [
+      {
+        route: "/",
+        name: "Journal Opening",
+        primaryFocus: "Curated editorial visual essay with full-bleed monograph imagery, pull quotes, and chapter essays",
+        heroElement: "editorial-hero",
+        supportingElements: ["editorial masthead", "project monograph essay", "asymmetric photo grid", "architect manifesto quote"],
+      },
+      {
+        route: "/projects",
+        name: "Monograph Spreads",
+        primaryFocus: "In-depth project case studies with architectural drawings, spatial essays, and technical specifications",
+        heroElement: "editorial-hero",
+        supportingElements: ["editorial spread layout", "architectural elevations", "materials index", "monograph narrative"],
+      },
+      {
+        route: "/essays",
+        name: "Critical Essays",
+        primaryFocus: "Theoretical critique, architectural manifestos, and urban discourse",
+        heroElement: "editorial-hero",
+        supportingElements: ["long-form typography", "marginalia annotations", "author biography", "citation notes"],
+      },
+      {
+        route: "/dialogues",
+        name: "Architect Dialogues",
+        primaryFocus: "In-depth conversations with visionary architects and spatial practitioners",
+        heroElement: "showcase-grid",
+        supportingElements: ["portrait studies", "curated dialogue transcript", "studio photography"],
+      },
+      {
+        route: "/archive",
+        name: "Publication Archive",
+        primaryFocus: "Chronological edition catalog and back-issue folio",
+        heroElement: "showcase-grid",
+        supportingElements: ["issue index", "curatorial themes", "folio preview"],
+      },
+    ],
+  },
 };
 
 // ─── Hero element calendar override ──────────────────────────────────────────
@@ -676,7 +754,7 @@ export class CapabilityPlanner {
    * @param characteristics  ProductCharacteristics from ProductUnderstanding.analyze()
    * @param spec             Optional project specification (for feature extraction)
    */
-  static plan(characteristics: ProductCharacteristics, spec?: any): FeaturePriority {
+  static plan(characteristics: ProductCharacteristics, spec?: any, compositionGraph?: any): FeaturePriority {
     const featureNames = extractFeatureNames(spec);
     const experiencePattern = characteristics.experiencePattern;
 
@@ -687,9 +765,28 @@ export class CapabilityPlanner {
 
     for (const name of featureNames) {
       const { priority, frequency, dataShape } = scoreFeature(name);
+      const lowerName = name.toLowerCase();
+      let verb = "Explore and interact with";
+      if (lowerName.includes("story") || lowerName.includes("essay") || lowerName.includes("journal") || lowerName.includes("monograph") || lowerName.includes("article")) {
+        verb = "Read and immerse in";
+      } else if (lowerName.includes("gallery") || lowerName.includes("photo") || lowerName.includes("image")) {
+        verb = "View high-resolution photography of";
+      } else if (lowerName.includes("craft") || lowerName.includes("material") || lowerName.includes("spec") || lowerName.includes("case-stud")) {
+        verb = "Inspect tactile details and specifications of";
+      } else if (lowerName.includes("companion") || lowerName.includes("character") || lowerName.includes("creature")) {
+        verb = "Commune with and discover lore for";
+      } else if (lowerName.includes("sound") || lowerName.includes("chime") || lowerName.includes("audio")) {
+        verb = "Trigger and compose harmonic frequencies with";
+      } else if (lowerName.includes("quest") || lowerName.includes("map") || lowerName.includes("journey")) {
+        verb = "Navigate waypoints and cartography for";
+      } else if (lowerName.includes("submission") || lowerName.includes("submit") || lowerName.includes("propose")) {
+        verb = "Propose and submit project curation for";
+      } else if (experiencePattern === "operations-dashboard" || experiencePattern === "realtime-console") {
+        verb = "Monitor and track";
+      }
       const node: FeatureNode = {
         name,
-        userIntent: `Manage and track ${name.toLowerCase()}`,
+        userIntent: `${verb} ${name.toLowerCase()}`,
         dataShape,
         estimatedUsageFrequency: frequency,
         visualPriority: priority,
@@ -708,27 +805,66 @@ export class CapabilityPlanner {
       insights.push(...defaults.insights);
     }
 
-    // Build page IA from template
-    const template = PAGE_TEMPLATES[experiencePattern];
-    const pages: PageNode[] = template.pages.map(p => {
-      const hero = resolveHeroElement(p.heroElement, featureNames);
-      const isSummary = Boolean(
-        p.isSummaryOverview ??
-        (hero === "metric-cluster" ||
-         p.primaryFocus?.toLowerCase().includes("kpi summary") ||
-         p.primaryFocus?.toLowerCase().includes("high-level kpi") ||
-         p.primaryFocus?.toLowerCase().includes("critical metrics") ||
-         p.primaryFocus?.toLowerCase().includes("analytics and metrics"))
-      );
-      return {
-        ...p,
-        heroElement: hero,
-        isSummaryOverview: isSummary,
-        requiredDataShapes: core
-          .filter(f => !f.suggestedPage || f.suggestedPage === p.route)
-          .map(f => f.dataShape),
-      };
-    });
+    // Build page IA: Prioritize authoritative required routes from spec/contract, avoiding invented section routes
+    let pages: PageNode[];
+    let primaryInteraction: string;
+    let navigationDepth: "shallow" | "deep";
+
+    const authoritativeRoutes: string[] = [
+      ...(spec?.requiredRoutes || []),
+      ...(spec?.architectureContract?.requiredRoutes || []),
+      ...(spec?.contractRoutes || []),
+      ...(spec?.domainContract?.requiredRoutes || [])
+    ].map((r: any) => typeof r === "string" ? r : r?.path).filter(Boolean);
+    const uniqueAuthoritativeRoutes = Array.from(new Set(authoritativeRoutes.map(r => r.startsWith("/") ? r : "/" + r)));
+
+    if (uniqueAuthoritativeRoutes.length > 0) {
+      primaryInteraction = compositionGraph?.experienceIntent || characteristics.primaryActivity || "Explore";
+      navigationDepth = uniqueAuthoritativeRoutes.length > 3 ? "deep" : "shallow";
+      pages = uniqueAuthoritativeRoutes.map((route: string, idx: number) => {
+        let name = "Home";
+        if (route !== "/") {
+          const rawSlug = route.replace(/^\//, "").replace(/[-_]+/g, " ");
+          name = rawSlug.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        } else if (compositionGraph?.sections?.[0]?.name) {
+          name = compositionGraph.sections[0].name;
+        }
+        return {
+          route,
+          name,
+          primaryFocus: `Explore and interact with ${name}`,
+          heroElement: idx === 0
+            ? (compositionGraph?.sections?.[0]?.layoutFamily === "EDITORIAL" ? "editorial-hero" : "showcase-grid")
+            : "large-interaction",
+          supportingElements: [],
+          requiredDataShapes: ["list" as const],
+          isSummaryOverview: false,
+        };
+      });
+    } else {
+      const template = PAGE_TEMPLATES[experiencePattern] || PAGE_TEMPLATES["operations-dashboard"];
+      primaryInteraction = compositionGraph?.experienceIntent || template.primaryInteraction;
+      navigationDepth = template.navigationDepth;
+      pages = template.pages.map(p => {
+        const hero = resolveHeroElement(p.heroElement, featureNames);
+        const isSummary = Boolean(
+          p.isSummaryOverview ??
+          (hero === "metric-cluster" ||
+           p.primaryFocus?.toLowerCase().includes("kpi summary") ||
+           p.primaryFocus?.toLowerCase().includes("high-level kpi") ||
+           p.primaryFocus?.toLowerCase().includes("critical metrics") ||
+           p.primaryFocus?.toLowerCase().includes("analytics and metrics"))
+        );
+        return {
+          ...p,
+          heroElement: hero,
+          isSummaryOverview: isSummary,
+          requiredDataShapes: core
+            .filter(f => !f.suggestedPage || f.suggestedPage === p.route)
+            .map(f => f.dataShape),
+        };
+      });
+    }
 
     // Enforce diversity rule: no more than 2 consecutive pages with same heroElement
     for (let i = 2; i < pages.length; i++) {
@@ -747,7 +883,11 @@ export class CapabilityPlanner {
       }
     }
 
-    const primaryLandingFeature = core[0]?.name || template.pages[0]?.name || "Home";
+    const primaryLandingFeature =
+      compositionGraph?.focalElement ||
+      core[0]?.name ||
+      pages[0]?.name ||
+      "Home";
 
     return {
       features: [...core, ...secondary, ...insights],
@@ -757,8 +897,8 @@ export class CapabilityPlanner {
       primaryLandingFeature,
       informationArchitecture: {
         pages,
-        primaryInteraction: template.primaryInteraction,
-        navigationDepth: template.navigationDepth,
+        primaryInteraction,
+        navigationDepth,
       },
     };
   }
@@ -866,6 +1006,20 @@ export class CapabilityPlanner {
       secondary: FeatureNode[];
       insights: FeatureNode[];
     }> = {
+      "immersive-3d": {
+        core: [
+          { name: "Interactive 3D Universe World Stage", userIntent: "Explore 3D claymation world with camera and spatial lighting", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
+          { name: "Spatial World Explorer", userIntent: "Navigate biomes, quest landmarks, and floating points of interest", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
+          { name: "Interactive Character Stage", userIntent: "Inspect 3D characters and trigger interactive animations", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
+        ],
+        secondary: [
+          { name: "Atmospheric Soundboard", userIntent: "Mix ambient sounds and playful audio clips", dataShape: "list", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
+          { name: "Quest & Journey Log", userIntent: "Track discovery milestones and unlocked secrets", dataShape: "timeline", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
+        ],
+        insights: [
+          { name: "World Explorer Telemetry", userIntent: "View discovered secrets, biomes explored, and journey completion", dataShape: "comparison", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
+        ],
+      },
       "storefront-commerce": {
         core: [
           { name: "Product Catalog Grid", userIntent: "Browse products with ratings and discount badges", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
@@ -1007,6 +1161,19 @@ export class CapabilityPlanner {
         ],
         insights: [
           { name: "Historical analysis", userIntent: "Understand trends", dataShape: "comparison", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
+        ],
+      },
+      "craft-editorial": {
+        core: [
+          { name: "Editorial Visual Essay", userIntent: "Read immersive monograph and architectural essays", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
+          { name: "Monograph Case Studies", userIntent: "Explore architectural drawings and materiality", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
+        ],
+        secondary: [
+          { name: "Architect Dialogues", userIntent: "Read theoretical discourse and interviews", dataShape: "timeline", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
+          { name: "Publication Folio Archive", userIntent: "Explore curated back-issues and editions", dataShape: "list", estimatedUsageFrequency: "occasional", visualPriority: "secondary" },
+        ],
+        insights: [
+          { name: "Curatorial Index", userIntent: "Review material lineage and building chronologies", dataShape: "comparison", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
         ],
       },
     };

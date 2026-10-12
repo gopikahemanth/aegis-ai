@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { ASTSafeTransformer } from "../governance/ast-safe-transformer.js";
 
 export interface GeneratedFile {
   path: string;
@@ -61,7 +62,9 @@ export class FileWriter {
         recursive: true,
       });
 
-      writeFileSync(fullPath, file.content, "utf8");
+      const transformed = ASTSafeTransformer.transformSource(file.content, cleanRelativePath);
+      const finalContent = transformed.transformed ? transformed.code : file.content;
+      writeFileSync(fullPath, finalContent, "utf8");
     }
   }
 }

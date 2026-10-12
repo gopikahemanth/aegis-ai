@@ -77,6 +77,19 @@ export class InProjectTestRunner {
     let stderr = "";
     let exitCode = 0;
 
+    // Ensure Prisma Client is generated if prisma schema exists
+    const prismaSchema = join(projectRoot, "prisma", "schema.prisma");
+    if (existsSync(prismaSchema)) {
+      try {
+        const prismaBin = join(projectRoot, "node_modules", "prisma", "build", "index.js");
+        if (existsSync(prismaBin)) {
+          execSync(`node "${prismaBin}" generate`, { cwd: projectRoot, stdio: "ignore" });
+        } else {
+          execSync(`npx prisma generate`, { cwd: projectRoot, stdio: "ignore" });
+        }
+      } catch {}
+    }
+
     const localVitest = resolve(projectRoot, "node_modules", "vitest", "vitest.mjs");
     const runCmd = existsSync(localVitest)
       ? `node "${localVitest}" run`

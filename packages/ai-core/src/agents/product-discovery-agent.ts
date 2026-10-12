@@ -81,7 +81,7 @@ Return ONLY a valid, parseable JSON object matching the requested schema. No mar
         }
       ], {
         temperature: 0.4,
-        maxTokens: 3000,
+        maxTokens: 8192,
         agentType: "discovery",
         complexity: 8,
       } as any);
@@ -198,8 +198,8 @@ SCHEMA SPECIFICATION (JSON ONLY):
    * Deterministically select differentiator features from a category pool using the seed hash.
    * Guarantees 2-3 distinct features per run and variation across different seeds.
    */
-  private selectDifferentiators(pool: FeatureSpec[], seed: string, count: number = 2): FeatureSpec[] {
-    const hashHex = createHash("sha256").update(seed || "default_seed").digest("hex");
+  private selectDifferentiators(pool: FeatureSpec[], seed: string | number, count: number = 2): FeatureSpec[] {
+    const hashHex = createHash("sha256").update(String(seed ?? "default_seed")).digest("hex");
     const val1 = parseInt(hashHex.slice(0, 4), 16);
     const val2 = parseInt(hashHex.slice(4, 8), 16);
     const val3 = parseInt(hashHex.slice(8, 12), 16);
@@ -219,9 +219,379 @@ SCHEMA SPECIFICATION (JSON ONLY):
   /**
    * Deterministic domain fallback ensuring the pipeline never blocks if the LLM call fails.
    */
-  public fallback(prompt: string, characteristics: ProductCharacteristics, seed: string): FeatureMatrix {
+  public fallback(prompt: string, characteristics: ProductCharacteristics, seed: string | number): FeatureMatrix {
     const p = prompt.toLowerCase();
-    const s = seed || prompt;
+    const s = String(seed ?? prompt);
+
+    // 0a. Whimsical 3D Fantasy Adventure Universe (Kazzoo)
+    if (/\b(kazzoo|claymation|fantasy adventure|world explorer|quest map|soundboard|family adventure)\b/i.test(p)) {
+      const fantasyDifferentiators: FeatureSpec[] = [
+        {
+          name: "Whimsical 3D World Explorer Stage",
+          description: "Tactile Three.js WebGL terrain with mossy hills, pastel spheres, and interactive companion raycasting.",
+          requiredComponents: ["WorldStage", "BiomeDock", "LandmarkTracker"],
+          requiredDataFields: ["biomeName", "landmarkCount", "activeAvatar"],
+        },
+        {
+          name: "Interactive Magical Soundboard",
+          description: "Tactile sound pads triggering fantasy chime frequencies, creature greetings, and spell audio.",
+          requiredComponents: ["SoundboardPadGrid", "AudioWaveform", "VolumeToggle"],
+          requiredDataFields: ["soundTitle", "frequencyHz", "audioCategory"],
+        },
+        {
+          name: "Generative Journey Narrative Scroll",
+          description: "Synchronized family journey scroll documenting discovered landmarks and solved puzzles.",
+          requiredComponents: ["JourneyScrollUnfold", "MilestoneBadge", "ParchmentExporter"],
+          requiredDataFields: ["chapterTitle", "unlockedSecret", "completionDate"],
+        },
+      ];
+
+      return {
+        category: "Whimsical 3D Fantasy Universe",
+        experiencePattern: "immersive-3d",
+        primaryLandingFeature: "World Explorer",
+        corePages: ["/", "/characters", "/quest-map", "/soundboard", "/journey-scroll"],
+        standardFeatures: [
+          {
+            name: "World Explorer",
+            description: "Full-bleed interactive 3D WebGL realm with procedural mossy hills and clickable landmarks.",
+            requiredComponents: ["WorldStage", "RealmTelemetryDock", "SphereRaycaster"],
+            requiredDataFields: ["realmName", "discoveredLandmarks", "companionAvatar"],
+          },
+          {
+            name: "Interactive Quest Map",
+            description: "Dynamic fantasy quest ledger with milestone progress and confetti unlocks.",
+            requiredComponents: ["QuestNodeMap", "ProgressTrack", "RewardModal"],
+            requiredDataFields: ["questTitle", "difficulty", "rewardBadge", "isComplete"],
+          },
+          {
+            name: "Character Bio Cards & Voice Clips",
+            description: "Claymation companion bio cards with audio voice clip simulators and lore traits.",
+            requiredComponents: ["CharacterCard", "VoiceClipPlayer", "CompanionStats"],
+            requiredDataFields: ["name", "species", "realmOrigin", "voiceClipUrl", "loreSnippet"],
+          },
+        ],
+        differentiatorFeatures: this.selectDifferentiators(fantasyDifferentiators, s, 2),
+        dataModels: [
+          { name: "WorldLocation", fields: ["id", "name", "region", "coordinates", "status"] },
+          { name: "Quest", fields: ["id", "title", "description", "progress", "reward", "isCompleted"] },
+          { name: "Character", fields: ["id", "name", "species", "realm", "voiceClip", "ability"] },
+          { name: "SoundItem", fields: ["id", "title", "category", "durationSeconds", "hotkey"] },
+          { name: "ScrollChapter", fields: ["id", "chapterNumber", "title", "storyContent", "isUnlocked"] },
+        ],
+      };
+    }
+
+    // 0b. Luxury Artisan Watch Studio / Horology Atelier
+    if (/\b(watch|watches|horology|timepiece|timepieces|watchmaker|artisan watch)\b/i.test(p)) {
+      const watchDifferentiators: FeatureSpec[] = [
+        {
+          name: "Interactive 3D Complication Loupe",
+          description: "360-degree high-precision movement rotator with exploded tourbillon view and escapement animation.",
+          requiredComponents: ["CaliberLoupeViewer", "MaterialSelector", "ExplodedViewToggle"],
+          requiredDataFields: ["caliberReference", "jewelCount", "vibrationsPerHour"],
+        },
+        {
+          name: "Metiers d'Art Finishing Chronicles",
+          description: "Tactile documentation of black polish, anglage, and grand feu vitrified enamel dials.",
+          requiredComponents: ["FinishingGallery", "CraftsmanshipInspector"],
+          requiredDataFields: ["techniqueName", "artisanHours", "materialGrade"],
+        },
+      ];
+
+      return {
+        category: "Luxury Artisan Horology Studio",
+        experiencePattern: "immersive-3d",
+        primaryLandingFeature: "Product Showcase & Timepiece Configurator",
+        corePages: ["/", "/craftsmanship", "/calibers", "/atelier", "/viewing"],
+        standardFeatures: [
+          {
+            name: "Product Showcase & Timepiece Configurator",
+            description: "Rotatable 3D timepiece display with titanium, rose gold, and platinum material toggles.",
+            requiredComponents: ["WatchStage", "MaterialPalette", "SpecificationDrawer"],
+            requiredDataFields: ["modelName", "caseMaterial", "diameterMm", "powerReserveHours", "price"],
+          },
+          {
+            name: "Private Viewing Atelier Concierge",
+            description: "Private salon appointment request with concierge date selection in Geneva.",
+            requiredComponents: ["ViewingScheduler", "SalonSelector", "ConfirmationNotice"],
+            requiredDataFields: ["clientName", "requestedTimepiece", "appointmentDate", "salonLocation"],
+          },
+        ],
+        differentiatorFeatures: this.selectDifferentiators(watchDifferentiators, s, 2),
+        dataModels: [
+          { name: "Timepiece", fields: ["id", "name", "reference", "caseMaterial", "diameter", "price", "powerReserve"] },
+          { name: "Caliber", fields: ["id", "caliberNumber", "complications", "finishingDetails", "jewels"] },
+          { name: "ViewingRequest", fields: ["id", "clientName", "email", "timepieceId", "preferredDate", "status"] },
+        ],
+      };
+    }
+
+    // 0b2. Contemporary Art Museum / Curated Gallery Collection
+    if (/\b(museum|art museum|contemporary art|gallery|curatorial|exhibitions|artworks|artwork collection)\b/i.test(p)) {
+      const museumDifferentiators: FeatureSpec[] = [
+        {
+          name: "Curatorial Audio Guide & Commentary",
+          description: "Curator voices, artist interviews, and immersive commentary walkthroughs for exhibitions.",
+          requiredComponents: ["AudioGuidePlayer", "CuratorNotesDrawer", "TrackTimeline"],
+          requiredDataFields: ["trackTitle", "narrator", "durationSeconds", "roomLocation", "curatorialNotes"],
+        },
+        {
+          name: "Interactive Spatial Floor Plan",
+          description: "Multi-level museum wing exploration, exhibition zones, and artwork waypoints.",
+          requiredComponents: ["FloorPlanViewer", "WingSelector", "ArtworkWaypointMarker"],
+          requiredDataFields: ["wingName", "floorLevel", "currentExhibition", "galleries"],
+        },
+      ];
+
+      return {
+        category: "Contemporary Art Museum",
+        experiencePattern: "craft-editorial",
+        primaryLandingFeature: "Rotating Exhibitions & Collection Showcase",
+        corePages: [
+          "/",
+          "/rotating-exhibitions",
+          "/explore-artist-profiles",
+          "/search-semantic-artworks",
+          "/navigate-interactive-floor-plan",
+          "/listen-to-audio-guide",
+          "/plan-museum-visit",
+          "/saved-artworks",
+        ],
+        standardFeatures: [
+          {
+            name: "Rotating Exhibitions",
+            description: "Curated contemporary exhibitions with gallery imagery, curatorial essays, and dates.",
+            requiredComponents: ["ExhibitionHero", "CuratorialEssay", "ArtistRoster"],
+            requiredDataFields: ["title", "curator", "startDate", "endDate", "galleryWing"],
+          },
+          {
+            name: "Searchable Artwork Collection",
+            description: "Deep collection exploration with medium, period, artist, and semantic search.",
+            requiredComponents: ["ArtworkGrid", "MediumFilter", "CuratorialDetailModal"],
+            requiredDataFields: ["title", "artist", "year", "medium", "dimensions", "galleryLocation"],
+          },
+          {
+            name: "Artist Profiles & Monograph Folios",
+            description: "Comprehensive artist biographies, monographs, and featured works.",
+            requiredComponents: ["ArtistProfileHero", "ArtworkFolio", "CuratorialBio"],
+            requiredDataFields: ["name", "nationality", "movement", "biography", "notableWorks"],
+          },
+          {
+            name: "Museum Visit Planner & Hours",
+            description: "Ticketing tiers, gallery hours, admissions, and personal itinerary planning.",
+            requiredComponents: ["VisitPlanner", "HoursCalendar", "AdmissionTierSelector"],
+            requiredDataFields: ["visitDate", "entrySlot", "selectedWings", "attendees"],
+          },
+          {
+            name: "Personal Saved Artworks Collection",
+            description: "Curated personal collection vault with private notes and saved pieces.",
+            requiredComponents: ["SavedArtworksGrid", "CollectionNotes", "ShareFolioButton"],
+            requiredDataFields: ["artworkId", "savedAt", "personalNotes"],
+          },
+        ],
+        differentiatorFeatures: this.selectDifferentiators(museumDifferentiators, s, 2),
+        dataModels: [
+          { name: "Exhibition", fields: ["id", "title", "curator", "description", "startDate", "endDate", "wing"] },
+          { name: "Artist", fields: ["id", "name", "bio", "nationality", "movement", "birthYear"] },
+          { name: "Artwork", fields: ["id", "title", "artistId", "year", "medium", "dimensions", "imageUrl", "description"] },
+          { name: "AudioTrack", fields: ["id", "title", "narrator", "durationSeconds", "artworkId", "exhibitionId", "audioUrl"] },
+          { name: "VisitPlan", fields: ["id", "visitDate", "timeSlot", "partySize", "notes"] },
+          { name: "SavedArtwork", fields: ["id", "artworkId", "notes", "savedAt"] },
+        ],
+      };
+    }
+
+    // 0b3. Luxury Boutique Hotel & Hospitality Experience (Velora House)
+    if (/\b(hotel|boutique hotel|resort|hospitality|luxury stay|luxury suites|villa resort)\b/i.test(p)) {
+      const hotelDifferentiators: FeatureSpec[] = [
+        {
+          name: "Sommelier Cellar Tasting & Private Dining",
+          description: "Curated sommelier tastings, private wine vault dinners, and bespoke pairing menus.",
+          requiredComponents: ["CellarReservationModal", "WineTastingMenu", "SommelierNotes"],
+          requiredDataFields: ["tastingTier", "sommelierName", "cellarVintage", "reserveDate"],
+        },
+        {
+          name: "Bespoke Sunset Excursions & Local Concierge",
+          description: "Private yacht charters, cultural village excursions, and bespoke regional day trips.",
+          requiredComponents: ["ExcursionScheduler", "CharterDetailDrawer", "ConciergeContactModal"],
+          requiredDataFields: ["excursionTitle", "durationHours", "capacityGuests", "departureTime"],
+        },
+        {
+          name: "Virtual Concierge Chat & Instant Services",
+          description: "Interactive concierge assistant coordinating in-suite dining, pillow selections, and spa reservations.",
+          requiredComponents: ["VirtualConciergeChat", "ServiceRequestModal", "StayPreferenceSelector"],
+          requiredDataFields: ["guestName", "serviceCategory", "requestDetails", "preferredTime"],
+        },
+      ];
+
+      return {
+        category: "Luxury Hospitality & Boutique Hotel",
+        experiencePattern: "hospitality-portal",
+        primaryLandingFeature: "Curated Suites Showcase",
+        corePages: [
+          "/",
+          "/suites",
+          "/booking",
+          "/stay-planner",
+          "/guest-preferences",
+          "/amenities-and-spa",
+          "/dining",
+          "/local-experiences",
+        ],
+        standardFeatures: [
+          {
+            name: "Curated Suites & Villas Showcase",
+            description: "Cinematic photography, immersive room storytelling, floorplans, and suite appointments.",
+            requiredComponents: ["SuiteHeroGallery", "SuiteCardGrid", "FloorplanDrawer"],
+            requiredDataFields: ["suiteName", "tier", "capacity", "sqft", "nightlyRate", "amenities"],
+          },
+          {
+            name: "Interactive Room Availability & Booking Engine",
+            description: "Date-driven booking engine with real-time suite availability checks and rate calculations.",
+            requiredComponents: ["DateRangePicker", "AvailabilityCalendar", "BookingSummaryModal"],
+            requiredDataFields: ["checkInDate", "checkOutDate", "guests", "selectedSuiteId", "totalCost"],
+          },
+          {
+            name: "Personalized Stay Planner & Itinerary Concierge",
+            description: "Curated itinerary builder coordinating dining, spa treatments, and local excursions.",
+            requiredComponents: ["StayPlannerTimeline", "ItineraryDaySelector", "AddExperienceDrawer"],
+            requiredDataFields: ["stayDays", "scheduledActivities", "diningReservations", "specialRequests"],
+          },
+          {
+            name: "Bespoke Guest Preferences & In-Suite Curation",
+            description: "Pillow menu, arrival climate, beverage stocking, and personalized wellness requests.",
+            requiredComponents: ["PreferenceSelector", "PillowMenuGrid", "ArrivalNoteInput"],
+            requiredDataFields: ["pillowType", "temperatureTarget", "dietaryNeeds", "arrivalRequests"],
+          },
+          {
+            name: "Property Amenities & Wellness Spa Sanctuary",
+            description: "Thermal suites, infinity pool, spa ritual menus, and wellness retreat programming.",
+            requiredComponents: ["AmenityShowcaseGrid", "SpaTreatmentMenu", "WellnessSchedule"],
+            requiredDataFields: ["treatmentName", "durationMinutes", "treatmentPrice", "venueName"],
+          },
+        ],
+        differentiatorFeatures: this.selectDifferentiators(hotelDifferentiators, s, 2),
+        dataModels: [
+          { name: "Suite", fields: ["id", "name", "category", "pricePerNight", "maxGuests", "sqm", "description", "isAvailable"] },
+          { name: "Reservation", fields: ["id", "guestName", "guestEmail", "suiteId", "checkIn", "checkOut", "totalAmount", "status"] },
+          { name: "GuestPreference", fields: ["id", "guestEmail", "pillowType", "temperatureTarget", "dietaryNeeds", "arrivalNotes"] },
+          { name: "StayPlan", fields: ["id", "reservationId", "dayNumber", "activityTitle", "scheduledTime", "category"] },
+          { name: "Amenity", fields: ["id", "name", "category", "openingHours", "location", "isComplimentary"] },
+        ],
+      };
+    }
+
+    // 0c. Critical Architecture Journal / Spatial Monograph
+    if (/\b(architecture|architectural|architect|monograph|architecture journal)\b/i.test(p)) {
+      const archDifferentiators: FeatureSpec[] = [
+        {
+          name: "Full-Bleed Spatial Case Study Monograph",
+          description: "Uncompressed medium-format structural photography, tectonic sections, and critical spatial narrative.",
+          requiredComponents: ["MonographViewer", "TectonicSectionDrawer", "MaterialLegend"],
+          requiredDataFields: ["projectName", "architect", "typology", "completionYear", "location"],
+        },
+        {
+          name: "Architectural Discourse & Critical Essays",
+          description: "Longform critical essays examining contemporary urbanism, monolithic concrete, and structural timber.",
+          requiredComponents: ["EssayReader", "CitationList", "ReadingProgress"],
+          requiredDataFields: ["title", "author", "readTimeMinutes", "publicationDate", "abstract"],
+        },
+      ];
+
+      return {
+        category: "Critical Architecture Journal",
+        experiencePattern: "craft-editorial",
+        primaryLandingFeature: "Spatial Monograph",
+        corePages: ["/", "/essays", "/case-studies", "/architects", "/archive"],
+        standardFeatures: [
+          {
+            name: "Spatial Monograph",
+            description: "Curated longform visual essays with asymmetric layout, oversized display typography, and full-screen imagery.",
+            requiredComponents: ["MonographHero", "VisualEssayFlow", "ArchitectProfileBadge"],
+            requiredDataFields: ["monographTitle", "leadArchitect", "photographerCredit", "curatorialNotes"],
+          },
+          {
+            name: "Architectural Typology Archive",
+            description: "Searchable spatial registry organized by material, geography, and structural system.",
+            requiredComponents: ["FolioArchiveGrid", "TypologyFilter", "DrawingInspector"],
+            requiredDataFields: ["structuralSystem", "primaryMaterial", "climateZone"],
+          },
+        ],
+        differentiatorFeatures: this.selectDifferentiators(archDifferentiators, s, 2),
+        dataModels: [
+          { name: "Monograph", fields: ["id", "title", "subtitle", "leadImage", "essayBody", "publishedDate"] },
+          { name: "CaseStudy", fields: ["id", "projectName", "architect", "typology", "location", "year"] },
+          { name: "ArchitectProfile", fields: ["id", "name", "studioName", "city", "bio", "notableWorks"] },
+        ],
+      };
+    }
+
+    // 0d. Culinary Travel Magazine / Gastronomy Journal
+    if (/\b(culinary|food travel|gastronom|food journey|recipe collection|chef stories|culinary travel|taste atlas|terroir)\b/i.test(p)) {
+      const culinaryDifferentiators: FeatureSpec[] = [
+        {
+          name: "Terroir Soil & Microclimate Produce Matrix",
+          description: "Regional soil composition, harvest calendars, and indigenous ingredient profiles.",
+          requiredComponents: ["TerroirAtlasMap", "HarvestCalendarMatrix", "SoilProfileDrawer"],
+          requiredDataFields: ["regionName", "soilType", "seasonalIngredients", "elevationMeters"],
+        },
+        {
+          name: "Artisan Fermentation & Technique Chronicle",
+          description: "Step-by-step masterclass documentation of heritage wood-fire and subterranean aging techniques.",
+          requiredComponents: ["TechniqueGuideSpread", "FermentationTimeline", "ChefQuoteCallout"],
+          requiredDataFields: ["techniqueName", "artisanName", "agingMonths", "culturalOrigin"],
+        },
+      ];
+
+      return {
+        category: "Culinary Travel Magazine & Gastronomic Journal",
+        experiencePattern: "craft-editorial",
+        primaryLandingFeature: "Editorial Monograph & Regional Food Stories",
+        corePages: ["/", "/editorial-stories", "/explore-culinary-destinations", "/and-filter-recipes", "/saved-discoveries", "/build-custom-itinerary"],
+        standardFeatures: [
+          {
+            name: "Editorial Monograph & Regional Food Stories",
+            description: "Immersive food-story cover with longform photo essays, author monographs, and pull quotes.",
+            requiredComponents: ["EditorialCoverHero", "PhotoEssaySpread", "DropCapNarrative"],
+            requiredDataFields: ["storyTitle", "leadChef", "regionOrigin", "readTimeMinutes"],
+          },
+          {
+            name: "Culinary Destination Explorer",
+            description: "Interactive regional destination atlas featuring terroir profiles, local markets, and dining spots.",
+            requiredComponents: ["DestinationAtlasGrid", "RegionFilterBar", "TerroirNotesDrawer"],
+            requiredDataFields: ["destinationName", "country", "primaryIngredients", "marketHighlights"],
+          },
+          {
+            name: "Curated Recipe Collection & Kitchen Companion",
+            description: "Tactile recipe collection with serving scaler and step-by-step masterclass cooking mode.",
+            requiredComponents: ["RecipeCardGrid", "ServingScaler", "StepCookingModeModal"],
+            requiredDataFields: ["recipeTitle", "prepTimeMinutes", "difficulty", "ingredients", "instructions"],
+          },
+          {
+            name: "Personal Saved Discoveries Hub",
+            description: "Curated bookmarking hub organizing favorite stories, recipes, and travel spots into custom folders.",
+            requiredComponents: ["SavedCollectionsHub", "FolderFilterTabs", "DiscoveryBookmarkCard"],
+            requiredDataFields: ["savedTitle", "itemType", "folderName", "savedDate"],
+          },
+          {
+            name: "Custom Culinary Itinerary Planner",
+            description: "Multi-day culinary journey planner scheduling dining reservations, food markets, and cooking classes.",
+            requiredComponents: ["ItineraryTimeline", "DayScheduleTabs", "CulinaryStopCard"],
+            requiredDataFields: ["itineraryDay", "stopTime", "stopTitle", "stopType", "notes"],
+          },
+        ],
+        differentiatorFeatures: this.selectDifferentiators(culinaryDifferentiators, s, 2),
+        dataModels: [
+          { name: "Article", fields: ["id", "title", "excerpt", "body", "author", "readTime", "heroImage", "publishedAt"] },
+          { name: "Destination", fields: ["id", "name", "region", "country", "description", "terroirNotes", "bestSeason"] },
+          { name: "Recipe", fields: ["id", "title", "prepTime", "cookTime", "difficulty", "servings", "ingredients", "instructions", "category"] },
+          { name: "SavedItem", fields: ["id", "title", "itemType", "itemId", "folder", "notes", "savedAt"] },
+          { name: "ItineraryDay", fields: ["id", "dayNumber", "date", "theme"] },
+          { name: "ItineraryItem", fields: ["id", "dayId", "time", "title", "type", "notes"] },
+        ],
+      };
+    }
 
     // 1. Hospitality / Resort / Hotel
     if (p.includes("resort") || p.includes("hotel") || p.includes("hospitality") || p.includes("villa") || p.includes("vacation")) {
@@ -287,7 +657,7 @@ SCHEMA SPECIFICATION (JSON ONLY):
     }
 
     // 2. Automotive / Car Wash / Detailing
-    if (p.includes("wash") || p.includes("car") || p.includes("detail") || p.includes("auto") || p.includes("vehicle")) {
+    if (/\b(car wash|auto spa|detailing|auto detail|car detail|wash bay)\b/i.test(p)) {
       const carWashDifferentiators: FeatureSpec[] = [
         {
           name: "Live Bay Progress Tracker",
@@ -356,7 +726,8 @@ SCHEMA SPECIFICATION (JSON ONLY):
     }
 
     // 3. SaaS / Project Management / Engineering
-    if (p.includes("saas") || p.includes("project") || p.includes("task") || p.includes("sprint") || p.includes("board")) {
+    const isExplicitlyAntiSaas = /\b(avoid|no|not|without|never)\s+(?:any\s+)?(?:saas|dashboard)/i.test(p);
+    if (!isExplicitlyAntiSaas && /\b(saas|sprint backlog|scrum board|kanban board|jira|linear|engineering sprint)\b/i.test(p) && !p.includes("soundboard") && !p.includes("fantasy")) {
       const saasDifferentiators: FeatureSpec[] = [
         {
           name: "Automated PR Blast-Radius Risk Score",
@@ -476,7 +847,7 @@ SCHEMA SPECIFICATION (JSON ONLY):
     }
 
     // 5. Retail / E-Commerce / Marketplace
-    if (p.includes("retail") || p.includes("shop") || p.includes("market") || p.includes("ecommerce") || p.includes("e-commerce") || p.includes("store")) {
+    if (/\b(retail|ecommerce|e-commerce|marketplace|storefront|online store)\b/i.test(p) || (/\bshop\b/i.test(p) && !p.includes("workshop"))) {
       const retailDifferentiators: FeatureSpec[] = [
         {
           name: "Lightning Flash Deal Countdown & Stock Meter",

@@ -318,7 +318,12 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
   {
     canonicalPath: "server/middleware/auth.middleware.ts",
     semanticRole: "JWT Auth Middleware",
-    semanticAliases: ["server/middleware/authenticate.ts", "server/middleware/jwtMiddleware.ts"],
+    semanticAliases: [
+      "server/middleware/auth.ts",
+      "server/middleware/auth",
+      "server/middleware/authenticate.ts",
+      "server/middleware/jwtMiddleware.ts"
+    ],
     requiredExports: ["authMiddleware"],
     allowedImports: ["server/lib/prisma"],
     required: true,
@@ -1263,6 +1268,15 @@ export class CanonicalFileGraph {
       const isEntryBackend = entry.canonicalPath.startsWith("server/") || entry.canonicalPath.startsWith("prisma/");
       const crossesBoundary = (isProposedFrontend && isEntryBackend) || (isProposedBackend && isEntryFrontend);
 
+      // Check if proposed and entry belong to different architectural backend layers (routes vs middleware vs services vs controllers)
+      const getBackendLayer = (p: string) => {
+        const m = p.match(/^server\/(routes|middleware|services|controllers|lib|models)\//);
+        return m ? m[1] : null;
+      };
+      const proposedLayer = getBackendLayer(normalized);
+      const entryLayer = getBackendLayer(entry.canonicalPath);
+      const differentBackendLayers = Boolean(proposedLayer && entryLayer && proposedLayer !== entryLayer);
+
       // Check if proposedPath is a known alias
       for (const alias of entry.semanticAliases) {
         const aliasNorm = alias.replace(/\\/g, "/");
@@ -1273,8 +1287,8 @@ export class CanonicalFileGraph {
             reason: `"${proposedPath}" is a registered alias for canonical file "${entry.canonicalPath}" (role: ${entry.semanticRole})`,
           };
         }
-        // Stem-only alias check (no path prefix) — skip for generic stems like "index" and cross-boundary pairs
-        if (!isGenericStem && !crossesBoundary) {
+        // Stem-only alias check (no path prefix) — skip for generic stems like "index", cross-boundary pairs, and distinct backend layers
+        if (!isGenericStem && !crossesBoundary && !differentBackendLayers) {
           const aliasStem = aliasNorm.split("/").pop()?.replace(/\.(ts|tsx|js|jsx)$/, "").toLowerCase();
           if (aliasStem && aliasStem === proposedStem) {
             return {
@@ -1285,8 +1299,8 @@ export class CanonicalFileGraph {
           }
         }
       }
-      // Check if stem matches the canonical path stem — skip for generic stems like "index" and cross-boundary pairs
-      if (!isGenericStem && !crossesBoundary) {
+      // Check if stem matches the canonical path stem — skip for generic stems, cross-boundary pairs, and distinct backend layers
+      if (!isGenericStem && !crossesBoundary && !differentBackendLayers) {
         const canonStem = entry.canonicalPath.split("/").pop()?.replace(/\.(ts|tsx|js|jsx)$/, "").toLowerCase();
         if (canonStem && canonStem === proposedStem && entry.canonicalPath !== normalized) {
           return {

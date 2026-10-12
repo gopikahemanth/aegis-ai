@@ -78,7 +78,7 @@ describe("Aegis V2.1 Fix 10 — Multimodal Visual Reviewer & Failover Optimizati
 
   it("Test 3 — Unsupported visual capability: fails over immediately without retrying text provider", async () => {
     const textOnlyProvider: AIProvider = {
-      name: "groq",
+      name: "deepseek",
       chat: vi.fn().mockRejectedValue(new Error("Model does not support vision modality")),
     };
 

@@ -482,8 +482,87 @@ SCHEMA SPECIFICATION (JSON ONLY):
       };
     }
 
+    // 0b4. Renewable Energy Operations & Grid Telemetry (GreenPulse Energy)
+    if (/\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(p)) {
+      const cleanEnergyDifferentiators: FeatureSpec[] = [
+        {
+          name: "Real-Time Generation Telemetry & Power Curve",
+          description: "Live generation meters tracking utility-scale photovoltaic arrays, wind turbine yield, and transmission export.",
+          requiredComponents: ["TelemetryStreamGrid", "PowerCurveCanvas", "GridFrequencyIndicator"],
+          requiredDataFields: ["totalMegawatts", "solarYield", "windOutput", "gridFrequencyHz"],
+        },
+        {
+          name: "Predictive Maintenance Dispatch & Inverter Health",
+          description: "Field technician dispatch roster coordinating preventive work orders, turbine yaw overhauls, and inverter diagnostics.",
+          requiredComponents: ["WorkOrderQueue", "TechnicianDispatchRoster", "MaintenanceTimeline"],
+          requiredDataFields: ["workOrderId", "assignedTechnician", "priorityTier", "scheduledDate"],
+        },
+        {
+          name: "Critical Grid Fault & Incident Triage Console",
+          description: "Mission-critical incident triage queue with severity badges, alarm acknowledgment, and emergency curtailment.",
+          requiredComponents: ["IncidentTriageQueue", "AlarmAcknowledgmentModal", "EscalationLog"],
+          requiredDataFields: ["incidentId", "severity", "substationName", "tripTimestamp"],
+        },
+      ];
+
+      return {
+        category: "Renewable Energy Operations",
+        experiencePattern: "operations-dashboard",
+        primaryLandingFeature: "Operations Overview",
+        corePages: ["/operations", "/assets", "/analytics", "/maintenance", "/incidents", "/reports"],
+        standardFeatures: [
+          {
+            name: "Operations Overview",
+            description: "Central command dashboard with renewable energy generation trends and operational status metrics.",
+            requiredComponents: ["OperationsDashboard", "GenerationMetricsCard", "LiveGridStatus"],
+            requiredDataFields: ["generationMw", "capacityFactor", "activeTurbines", "inverterStatus"],
+          },
+          {
+            name: "Solar Farm & Wind Turbine Asset Inventory",
+            description: "Asset inventory ledger tracking solar inverters, wind turbines, nameplate capacity, and operating status.",
+            requiredComponents: ["AssetInventoryTable", "CapacityFilter", "AssetTelemetryDrawer"],
+            requiredDataFields: ["assetId", "name", "type", "capacityRating", "operatingStatus"],
+          },
+          {
+            name: "Grid Telemetry & Environmental Analytics",
+            description: "High-frequency telemetry analysis, curtailment metrics, and emissions abatement trends.",
+            requiredComponents: ["TelemetryAnalysisCanvas", "CarbonOffsetCounter", "CurtailmentMetrics"],
+            requiredDataFields: ["carbonOffsetTonnes", "curtailmentMwh", "reactivePowerMvar"],
+          },
+          {
+            name: "Maintenance Dispatch & Work Orders",
+            description: "Preventive maintenance scheduling and technician work order management.",
+            requiredComponents: ["MaintenanceWorkOrderList", "TechnicianAssignmentModal", "PreventiveSchedule"],
+            requiredDataFields: ["orderNumber", "assetTarget", "technicianName", "dueDate"],
+          },
+          {
+            name: "Critical Operational Alerts & Incidents",
+            description: "Real-time fault monitoring, grid trip alerts, and emergency escalation workflows.",
+            requiredComponents: ["IncidentAlertBanner", "FaultSeverityBadge", "ResolutionActions"],
+            requiredDataFields: ["alertId", "faultCode", "affectedAsset", "status"],
+          },
+          {
+            name: "Generation Compliance & Executive Reports",
+            description: "Regulatory generation compliance records, utility settlement logs, and exportable executive summaries.",
+            requiredComponents: ["ComplianceReportMatrix", "SettlementSummary", "ExportActionToolbar"],
+            requiredDataFields: ["reportPeriod", "ppaDeliveredMwh", "complianceStatus"],
+          },
+        ],
+        differentiatorFeatures: this.selectDifferentiators(cleanEnergyDifferentiators, s, 2),
+        dataModels: [
+          { name: "Asset", fields: ["id", "name", "type", "capacityMw", "status", "location", "lastInspected"] },
+          { name: "TelemetryPoint", fields: ["id", "assetId", "metric", "value", "unit", "timestamp"] },
+          { name: "Alert", fields: ["id", "assetId", "severity", "code", "message", "acknowledged", "createdAt"] },
+          { name: "WorkOrder", fields: ["id", "assetId", "technician", "priority", "description", "status", "dueDate"] },
+          { name: "GenerationReport", fields: ["id", "period", "totalOutputMwh", "carbonAvoidedTonnes", "complianceStatus"] },
+        ],
+      };
+    }
+
     // 0c. Critical Architecture Journal / Spatial Monograph
-    if (/\b(architecture|architectural|architect|monograph|architecture journal)\b/i.test(p)) {
+    const isSoftwareOrSystemArch = /\b(software architecture|system architecture|data architecture|application architecture|required by the architecture|backend architecture|cloud architecture|architecture and engineering|architecture requirements)\b/i.test(p);
+    const isActualArchitectureJournal = !isSoftwareOrSystemArch && /\b(architectural\s+(?:monograph|journal|review|digest|firm|studio|practice|portfolio|criticism)|architecture\s+(?:firm|studio|monograph|journal|magazine|exhibition)|building\s+typolog(?:y|ies)|spatial\s+(?:monograph|essay)|tectonic\s+journal)\b/i.test(p);
+    if (isActualArchitectureJournal) {
       const archDifferentiators: FeatureSpec[] = [
         {
           name: "Full-Bleed Spatial Case Study Monograph",

@@ -521,8 +521,55 @@ export class DomainVocabularySynthesizer {
       ];
     }
 
+    const isCleanEnergy = /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(combined);
+    if (isCleanEnergy) {
+      return [
+        {
+          id: 1,
+          title: "Renewable Generation & Dispatch Baseline",
+          scene: "scene-1",
+          color: palette[0],
+          emoji: "⚡",
+          lore: `${brandName} synchronizes multi-gigawatt photovoltaic arrays and offshore wind corridors feeding regional utility grids.`,
+          milestone: "Grid Synchronization Active",
+          scrollPct: 0,
+        },
+        {
+          id: 2,
+          title: "Turbine Aerodynamics & Inverter Efficiency",
+          scene: "scene-2",
+          color: palette[1],
+          emoji: "💨",
+          lore: "Dynamic blade pitch controls and maximum power point tracking optimize kinetic and solar energy conversion in real time.",
+          milestone: "Yield Optimization Peak",
+          scrollPct: 33,
+        },
+        {
+          id: 3,
+          title: "Battery Storage Buffer & Grid Frequency Response",
+          scene: "scene-3",
+          color: palette[2],
+          emoji: "🔋",
+          lore: "Utility-scale BESS reserves absorb peak solar generation and discharge during evening peak demand to guarantee 50Hz/60Hz grid stability.",
+          milestone: "Transmission Stability Locked",
+          scrollPct: 66,
+        },
+        {
+          id: 4,
+          title: "Carbon Offset Verification & Zero-Emission Settlement",
+          scene: "scene-4",
+          color: palette[3],
+          emoji: "🌱",
+          lore: "Verified telemetry ledgers certify gigawatt-hours delivered under long-term power purchase agreements.",
+          milestone: "Clean Energy Dispatched",
+          scrollPct: 100,
+        },
+      ];
+    }
+
     // 5. Architecture / Journal / Monograph / Tectonic Ideas
-    if (/\b(architecture|architectural|architect|monograph|tectonic|built form)\b/i.test(combined)) {
+    const isSoftwareOrSystemArch = /\b(software architecture|system architecture|data architecture|application architecture|required by the architecture|backend architecture|cloud architecture|architecture and engineering|architecture requirements)\b/i.test(combined);
+    if (!isSoftwareOrSystemArch && /\b(architectural\s+(?:monograph|journal|review|digest|firm|studio|practice|portfolio|criticism)|architecture\s+(?:firm|studio|monograph|journal|magazine|exhibition)|building\s+typolog(?:y|ies)|spatial\s+(?:monograph|essay)|tectonic\s+journal)\b/i.test(combined)) {
       return [
         {
           id: 1,

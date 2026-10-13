@@ -97,11 +97,11 @@ export class GeminiProvider implements AIProvider {
           const finishReason = response.candidates?.[0]?.finishReason;
           if (finishReason === "MAX_TOKENS") {
             const text = response.text ?? "";
-            const lastFileIdx = text.lastIndexOf("===FILE:");
             const lastEndIdx = text.lastIndexOf("===END===");
-            if (lastFileIdx !== -1 && lastEndIdx > lastFileIdx) {
-              console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS but all files cleanly ended with ===END=== (${text.length} chars). Returning for parser...`);
-              return text;
+            if (lastEndIdx !== -1) {
+              const salvagedText = text.substring(0, lastEndIdx + 9);
+              console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars). Salvaging completed files up to last ===END=== (${salvagedText.length} chars)...`);
+              return salvagedText;
             }
             throw new ProviderError(
               "Gemini response was truncated (MAX_TOKENS) — output incomplete.",

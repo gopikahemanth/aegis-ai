@@ -1792,8 +1792,9 @@ export default DashboardPage;
     }
 
     let needsAuth = Boolean(
-      contract?.features?.some(f => /auth|login|session|user/i.test(f.name || f.description || "")) ||
-      contract?.models?.some(m => /user|account|session/i.test(m.name || ""))
+      (contract?.authentication && contract.authentication.toLowerCase() !== "none") ||
+      (contract as any)?.features?.some((f: any) => /auth|login|session|user/i.test(f.name || f.description || "")) ||
+      (contract as any)?.models?.some((m: any) => /user|account|session/i.test(m.name || ""))
     );
 
     if (!needsAuth) {

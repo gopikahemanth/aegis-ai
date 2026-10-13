@@ -3519,8 +3519,10 @@ export default router;
           const cp = join(controllersDir, cf);
           let cCode = readFileSync(cp, "utf8");
           let cMod = false;
+          // Strip illegal type annotations or duplicate : any in catch clauses
+          cCode = cCode.replace(/catch\s*\(([^):]+)(?::\s*any)+\)/g, "catch ($1)");
           if (cCode.includes("res.json([]);") || cCode.includes("res.json([])")) {
-            cCode = cCode.replace(/catch\s*\(([^)]+)\)\s*\{\s*res\.json\(\[\]\);?\s*\}/g, "catch ($1: any) { res.status(500).json({ success: false, error: ($1?.message || 'Internal error') }); }");
+            cCode = cCode.replace(/catch\s*\(([^):]+)(?::[^)]+)?\)\s*\{\s*res\.json\(\[\]\);?\s*\}/g, "catch ($1) { res.status(500).json({ success: false, error: 'Internal error' }); }");
             cMod = true;
           }
           if (cMod) {

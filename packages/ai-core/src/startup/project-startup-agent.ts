@@ -2668,10 +2668,10 @@ export default DataTable;\n`;
           changed = true;
         }
 
-        // Fix 16: Safe Express API route error handling — return empty array or mock object on DB error instead of unhandled 500
+        // Fix 16: Safe Express API route error handling — normalize catch blocks
         if (rel.includes("server/") || rel.includes("controllers/") || rel.includes("routes/")) {
-          if (content.includes("res.status(500)") && !content.includes("res.json([])")) {
-            content = content.replace(/res\.status\(500\)\.json\(\{[^}]*\}\)/g, "res.json([])");
+          if (/catch\s*\([^):]+(?::\s*any)+\)/.test(content)) {
+            content = content.replace(/catch\s*\(([^):]+)(?::\s*any)+\)/g, "catch ($1)");
             changed = true;
           }
         }

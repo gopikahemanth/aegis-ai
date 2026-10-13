@@ -2709,7 +2709,15 @@ export default useAuth;
           } else {
             // When authoritative routes are locked, bind directly to the canonical route
             if (hasAuthoritativeRoutes) {
-              normalizedMatch.routePath = cleanPath;
+              const oldSlug = normalizedMatch.routePath;
+              if (oldSlug && oldSlug !== cleanPath && !extraRoutes.some(r => r.path === oldSlug)) {
+                if (requiredRoutes.includes(oldSlug) || explicitAliases[oldSlug]) {
+                  extraRoutes.push({ path: oldSlug, pageName: normalizedMatch.name });
+                }
+              }
+              if (!extraRoutes.some(r => r.path === cleanPath)) {
+                extraRoutes.push({ path: cleanPath, pageName: normalizedMatch.name });
+              }
             } else {
               // Singular/plural alias: register cleanPath as alias without renaming original route
               if (!extraRoutes.some(r => r.path === cleanPath)) {

@@ -859,9 +859,9 @@ ${itemsCode}
       <div>
         <Link to="/" className="flex items-center gap-2.5 mb-8">
           <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center text-slate-950 font-bold text-xs">
-            SP
+            \${badgeInitials}
           </div>
-          <span className="font-bold tracking-tight text-white text-base">${brand}</span>
+          <span className="font-bold tracking-tight text-white text-base">\${brand}</span>
         </Link>
         <nav className="flex flex-col gap-1.5">
           {navItems.map((item) => {

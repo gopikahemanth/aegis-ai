@@ -374,50 +374,65 @@ export class PageExperienceQualityGate {
     const cleanRoute = route === "/" ? "home" : route.replace(/^\//, "").toLowerCase();
     const routeParts = cleanRoute.split(/[-_/]+/);
 
-    // 1. Direct exact match by file name in pages/ (e.g. JourneyProgressScrollPage for /journey-progress-scroll)
-    for (const f of files) {
-      const base = f.toLowerCase();
-      if (!base.includes("/pages/") && !base.includes("\\pages\\") && !base.includes("/features/") && !base.includes("\\features\\")) {
-        continue;
-      }
-      if (route === "/" && (base.includes("homepage") || base.includes("home.") || base.includes("journalentriespage") || base.includes("worldstage"))) {
-        return f;
-      }
-      if (cleanRoute.length > 2 && base.includes(cleanRoute)) {
-        return f;
-      }
-    }
-
-    // 2. Authoritative check in routes.tsx mapping (prioritize routes.tsx over App.tsx)
+    // 1. Authoritative check in routes.tsx mapping (prioritize routes.tsx over App.tsx)
     const routesFile =
       files.find(f => f.replace(/\\/g, "/").endsWith("/routes.tsx") || f.replace(/\\/g, "/").endsWith("/routes.jsx")) ||
       files.find(f => f.replace(/\\/g, "/").endsWith("/App.tsx"));
     if (routesFile) {
       try {
         const routesContent = readFileSync(routesFile, "utf8");
-        // Look for path="..." element={<Comp />}
-        const routeRegex = new RegExp(`path=["']${route}["'][^>]*element={<([A-Za-z0-9]+)`, "i");
-        const match = routesContent.match(routeRegex);
-        if (match && match[1]) {
-          const compIdentifier = match[1];
-          const compName = compIdentifier.toLowerCase();
-          const cleanComp = compName.replace(/page$/, "");
+        // Look for path="..." element={<Comp />} with exact match or singular/plural stem
+        const singularRoute = route.endsWith("s") ? route.slice(0, -1) : route + "s";
+        const routeRegexes = [
+          new RegExp(`path=["']${route}["'][^>]*element={<([A-Za-z0-9]+)`, "i"),
+          new RegExp(`path=["']${singularRoute}["'][^>]*element={<([A-Za-z0-9]+)`, "i")
+        ];
 
-          // Check direct import path in routesFile (e.g., import * as QuestPageModule from "./features/quest/index")
-          const importMatch = routesContent.match(new RegExp(`import\\s+(?:\\*\\s+as\\s+)?(?:${compIdentifier}|${compIdentifier}Module)\\s+from\\s+["']([^"']+)["']`, "i"));
-          if (importMatch && importMatch[1]) {
-            const rawImport = importMatch[1].replace(/^\.\//, "").replace(/\.[jt]sx?$/, "").toLowerCase();
-            const targetByImport = files.find(f => f.replace(/\\/g, "/").toLowerCase().includes(rawImport));
-            if (targetByImport) return targetByImport;
+        for (const rx of routeRegexes) {
+          const match = routesContent.match(rx);
+          if (match && match[1]) {
+            const compIdentifier = match[1];
+            const compName = compIdentifier.toLowerCase();
+            const cleanComp = compName.replace(/page$/, "");
+
+            // Check direct import path in routesFile (e.g., import * as QuestPageModule from "./pages/QuestPage")
+            const importMatch = routesContent.match(new RegExp(`import\\s+(?:\\*\\s+as\\s+)?(?:${compIdentifier}|${compIdentifier}Module)\\s+from\\s+["']([^"']+)["']`, "i"));
+            if (importMatch && importMatch[1]) {
+              const rawImport = importMatch[1].replace(/^\.\//, "").replace(/\.[jt]sx?$/, "").toLowerCase();
+              const targetByImport = files.find(f => f.replace(/\\/g, "/").toLowerCase().includes(rawImport));
+              if (targetByImport) return targetByImport;
+            }
+
+            // Prioritize target in pages/ over features/
+            const targetInPages = files.find(f => {
+              const norm = f.replace(/\\/g, "/").toLowerCase();
+              return (norm.includes("/pages/") || norm.includes("\\pages\\")) && (norm.includes(compName) || (cleanComp.length > 2 && norm.includes(cleanComp)));
+            });
+            if (targetInPages) return targetInPages;
+
+            const target = files.find(f => {
+              const norm = f.replace(/\\/g, "/").toLowerCase();
+              return norm.includes(compName) || (cleanComp.length > 2 && (norm.includes("/" + cleanComp + "/") || norm.includes("/" + cleanComp + ".")));
+            });
+            if (target) return target;
           }
-
-          const target = files.find(f => {
-            const norm = f.replace(/\\/g, "/").toLowerCase();
-            return norm.includes(compName) || (cleanComp.length > 2 && (norm.includes("/" + cleanComp + "/") || norm.includes("/" + cleanComp + ".")));
-          });
-          if (target) return target;
         }
       } catch {}
+    }
+
+    // 2. Direct exact match by file name (pages/ first, then features/)
+    const searchDirs = ["/pages/", "/features/"];
+    for (const dirPrefix of searchDirs) {
+      for (const f of files) {
+        const norm = f.replace(/\\/g, "/").toLowerCase();
+        if (!norm.includes(dirPrefix)) continue;
+        if (route === "/" && (norm.includes("homepage") || norm.includes("home.") || norm.includes("journalentriespage") || norm.includes("worldstage"))) {
+          return f;
+        }
+        if (cleanRoute.length > 2 && norm.includes(cleanRoute)) {
+          return f;
+        }
+      }
     }
 
     // 3. Fallback: significant token match (e.g. "characters", "soundboard", "quest")
@@ -436,7 +451,7 @@ export class PageExperienceQualityGate {
       if (score > 0) {
         // Boost page components and penalize index CRUD forms
         if (base.endsWith("page.tsx") || base.endsWith("page.jsx")) score += 20;
-        if (base.includes("/pages/") || base.includes("\\pages\\")) score += 15;
+        if (base.includes("/pages/") || base.includes("\\pages\\")) score += 25;
         if (base.endsWith("/index.tsx") || base.endsWith("\\index.tsx")) score -= 10;
         candidates.push({ file: f, score });
       }
@@ -445,7 +460,6 @@ export class PageExperienceQualityGate {
       candidates.sort((a, b) => b.score - a.score);
       return candidates[0].file;
     }
-
 
     return null;
   }

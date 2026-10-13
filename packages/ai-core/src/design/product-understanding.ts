@@ -462,10 +462,21 @@ function detectExperiencePattern(
     return "hospitality-portal";
   }
 
+  // 2.3. Operational console & clean energy / grid monitoring detection
+  const isOperational =
+    isCleanEnergy(lower) ||
+    (/\b(operations|operations platform|telemetry|grid|scada|inverter|turbine|renewable|clean energy|power plant|fleet operations|maintenance dispatch)\b/i.test(lower) &&
+     !lower.includes("monograph") &&
+     !lower.includes("magazine"));
+
+  if (isOperational) {
+    return "operations-dashboard";
+  }
+
   // 2.5. Editorial publication, monograph, architectural journal, scientific observatory
   const isEditorial =
-    (/\b(monograph|journal|dispatch|observatory|astronomy|astrophysics|celestial)\b/i.test(lower) ||
-     (/\beditorial\b/i.test(lower) && /\b(magazine|publication|gazette|chronicle|review|storytelling|journalism|instrumentation)\b/i.test(lower))) &&
+    (/\b(monograph|journal|observatory|astronomy|astrophysics|celestial)\b/i.test(lower) ||
+     (/\beditorial\b/i.test(lower) && /\b(magazine|publication|gazette|chronicle|review|storytelling|journalism)\b/i.test(lower))) &&
     !lower.includes("storefront") &&
     !lower.includes("shop");
   if (isEditorial) {

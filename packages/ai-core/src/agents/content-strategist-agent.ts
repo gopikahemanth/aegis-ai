@@ -576,7 +576,48 @@ export default siteContent;
       };
     }
 
-    const isOperationalDomain = /\b(avionics|aerospace|aircraft|flight|aviation|telemetry|scada|radar|defense|satellite|drone|uav|mission control|cockpit|subsystem|firmware|airframe)\b/i.test(promptLower);
+    const isCleanEnergy = /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(promptLower);
+    if (isCleanEnergy) {
+      const brand = NavigationDesignResolver.extractBrandFromPrompt(promptLower) || "GreenPulse Energy";
+      return {
+        brand: {
+          name: brand,
+          tagline: "Renewable Generation & Real-Time Grid Telemetry",
+          valueProposition: "Utility-scale solar and wind operations, real-time grid telemetry, and automated maintenance dispatch.",
+          contact: { phone: "+1 (800) 555-0199", email: "ops@greenpulse.io", hours: "24/7 Grid Control Center", address: "100 Clean Power Way, Austin, TX" }
+        },
+        navigationLabels: { "/": "Operations", "/operations": "Operations", "/assets": "Asset Roster", "/analytics": "Grid Analytics", "/maintenance": "Maintenance", "/incidents": "Incidents", "/reports": "Reports" },
+        pages: {
+          "/": {
+            title: `${brand} | Operations Command`,
+            headline: "Renewable Generation & Grid Telemetry",
+            subheadline: "Real-time photovoltaic irradiance, wind turbine yield, and transmission dispatch.",
+            primaryCta: "Inspect Assets",
+            secondaryCta: "Triage Alerts",
+            highlights: [
+              { label: "Utility-Scale Generation", description: "Real-time MW output across solar arrays and wind farms." },
+              { label: "Grid Stability", description: "Continuous frequency regulation and battery storage dispatch." }
+            ]
+          }
+        },
+        mockRecords: [
+          { id: "ast-101", name: "Solara-Alpha PV Array", type: "Solar", capacity: "125 MW", output: "118.4 MW", status: "Active", location: "Mojave Basin" },
+          { id: "ast-102", name: "Vortex-Boreas Turbine 04", type: "Wind", capacity: "6.2 MW", output: "5.8 MW", status: "Active", location: "Columbia Gorge" },
+          { id: "ast-103", name: "Helios-Beta Inverter Bank", type: "Solar", capacity: "80 MW", output: "0.0 MW", status: "Maintenance", location: "Sonoran Desert" }
+        ],
+        testimonials: [
+          { author: "Dr. Sarah Chen", role: "VP of Grid Operations", location: "Austin, TX", quote: "Real-time telemetry and predictive inverter analytics reduced curtailment losses by 14% across our entire portfolio.", rating: 5, isPlaceholder: true, isSampleData: true },
+          { author: "Marcus Lindqvist", role: "Chief Wind Operations Engineer", location: "Copenhagen", quote: "Immediate yaw alert triage prevented gearbox wear during severe wind gusts, ensuring uninterrupted generation.", rating: 5, isPlaceholder: true, isSampleData: true }
+        ],
+        imageKeywords: {
+          hero: "utility scale solar farm wind turbines blue sky clean energy sunset aerial view",
+          features: ["solar photovoltaic panels modern renewable power plant", "wind turbine generator blades engineering close up"],
+          gallery: ["modern renewable grid control center operators screens", "clean energy solar farm landscape hills morning"]
+        }
+      };
+    }
+
+    const isOperationalDomain = !isCleanEnergy && /\b(avionics|aerospace|aircraft|flight|aviation|cockpit|airframe|airspace|transponder|squawk|rnav|airway)\b/i.test(promptLower);
     if (isOperationalDomain) {
       const brand = promptLower.includes("stratos") ? "Stratos Avionics" : "Aero Telemetry";
       return {

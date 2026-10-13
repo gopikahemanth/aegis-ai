@@ -64,7 +64,7 @@ export class SpecificationNormalizer {
       domainCategory = "bicycle-rental";
     } else if ((promptLower.includes("bicycle") || promptLower.includes("bike")) && (promptLower.includes("repair") || promptLower.includes("mechanic") || promptLower.includes("fix") || promptLower.includes("tune-up") || promptLower.includes("shop") || promptLower.includes("service"))) {
       domainCategory = "bicycle-repair";
-    } else if (promptLower.includes("solar") || promptLower.includes("photovoltaic") || promptLower.includes("inverter") || (promptLower.includes("telemetry") && (promptLower.includes("sensor") || promptLower.includes("power") || promptLower.includes("grid") || promptLower.includes("kilowatt") || promptLower.includes("megawatt") || promptLower.includes("array")))) {
+    } else if (promptLower.includes("solar") || promptLower.includes("wind") || promptLower.includes("renewable") || promptLower.includes("greenpulse") || promptLower.includes("clean energy") || promptLower.includes("photovoltaic") || promptLower.includes("inverter") || (promptLower.includes("telemetry") && (promptLower.includes("sensor") || promptLower.includes("power") || promptLower.includes("grid") || promptLower.includes("kilowatt") || promptLower.includes("megawatt") || promptLower.includes("array")))) {
       domainCategory = "solar-telemetry";
     } else if (promptLower.includes("museum") || (promptLower.includes("exhibition") && (promptLower.includes("curat") || promptLower.includes("artifact") || promptLower.includes("provenance") || promptLower.includes("collection")))) {
       domainCategory = "museum-collection";
@@ -197,6 +197,9 @@ export class SpecificationNormalizer {
             fallbackMetric4 = "Milestones Reached";
             break;
           case "solar-telemetry":
+            fallbackMetric3 = "Total Clean Generation";
+            fallbackMetric4 = "Grid Stability Index";
+            break;
           case "operations-dashboard":
           case "equipment-maintenance":
             fallbackMetric3 = "System Throughput";
@@ -441,6 +444,16 @@ export class SpecificationNormalizer {
     domainCategory: string
   ): DomainVocabulary {
     switch (domainCategory) {
+      case "solar-telemetry": {
+        return {
+          entityName: "Asset",
+          entityPlural: "Assets",
+          primaryMetrics: ["Total Generation", "Active Inverters", "Wind Turbine Fleet", "Grid Stability Index"],
+          actionVerbs: ["Deploy Asset", "Triage Incident", "Schedule Maintenance", "Log Telemetry", "Export Report"],
+          domainPrefix: "energy"
+        };
+      }
+
       case "scientific-observatory": {
         return {
           entityName: "Observation",

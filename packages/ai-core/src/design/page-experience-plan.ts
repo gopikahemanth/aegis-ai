@@ -1333,9 +1333,246 @@ export class PageExperiencePlanner {
     }
 
     // =========================================================================
+    // GENRE: CLEAN ENERGY & RENEWABLE OPERATIONS
+    // =========================================================================
+    const isCleanEnergy = /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(promptLower);
+
+    if (isCleanEnergy) {
+      if (route === "/" || slug === "operations" || slug === "home" || slug === "overview" || slug === "dashboard" || slug === "console") {
+        return {
+          route,
+          pageRole: "Renewable Energy Generation & Operational Command Console",
+          purpose: `Central real-time operational command console for ${brandName} featuring live renewable generation telemetry, grid export trends, and turbine status`,
+          experienceIntent: `Monitor utility-scale solar and wind generation, inspect grid export megawatt output, and review operational alerts`,
+          focalElement: "High-density generation telemetry canvas with solar irradiance curve, wind generation capacity, and live grid power factor",
+          composition: {
+            topology: "FULL_BLEED_STAGE",
+            layers: ["Generation Telemetry Surface", "Power Curve HUD", "Grid Feed Telemetry Strip"],
+            sections: ["Real-Time Generation Telemetry & Grid Export", "Asset Fleet Overview & Generation Status", "Active Grid Alerts & Curtailment"],
+            dominantStructure: "DENSE_TELEMETRY_GRID",
+          },
+          interaction: {
+            primary: ["Inspect live solar/wind generation meters and grid feed channels", "Toggle generation frequency and power factor telemetry"],
+            secondary: ["Acknowledge operational grid alerts", "Switch telemetry sampling intervals"],
+          },
+          motion: {
+            entrance: "rapid generation grid calibration and live telemetry lock",
+            scroll: "fixed command console layout with high-density metric scroll",
+            transitions: ["instant telemetry stream modulation without layout shift"],
+          },
+          contentPresentation: "High-density clean-energy operational command interface with monospace numeric megawatts, status annunciators, and live power curves",
+          visualHierarchy: {
+            primary: "Real-Time Generation Telemetry & Grid Export",
+            secondary: ["Asset Fleet Readouts", "Active Substation Diagnostics"],
+          },
+          responsiveStrategy: "Responsive command grid with collapsible telemetry rails on smaller screens",
+          requiredCapabilities: ["generation-telemetry-grid", "power-curve-canvas", "grid-diagnostics"],
+          forbiddenPatterns: ["monograph", "editorial publication", "building typology", "timber stone", "curatorial index", "crud forms"],
+        };
+      }
+
+      if (slug.includes("asset") || slug.includes("turbine") || slug.includes("solar") || slug.includes("inventory") || slug.includes("fleet")) {
+        return {
+          route,
+          pageRole: "Solar & Wind Asset Directory & Capacity Roster",
+          purpose: `Asset inventory ledger for ${brandName} tracking solar inverters, wind turbines, nameplate capacity, and operating status`,
+          experienceIntent: `Filter and inspect renewable assets by farm type, operating state, capacity rating, and telemetry readouts`,
+          focalElement: "Asset inventory ledger with generation telemetry metrics, turbine yaw health, inverter temperatures, and status pills",
+          composition: {
+            topology: "FULL_BLEED_STAGE",
+            layers: ["Asset Fleet Canvas", "Asset Registry Ledger", "Subsystem Diagnostic HUD"],
+            sections: ["Solar & Wind Asset Fleet Matrix", "Asset Capacity & Nameplate Ledger", "Inverter & Turbine Diagnostic Stream"],
+            dominantStructure: "DENSE_TELEMETRY_GRID",
+          },
+          interaction: {
+            primary: ["Select renewable asset to inspect live telemetry and capacity metrics", "Filter assets by operational status (Active, Maintenance, Curtailed)"],
+            secondary: ["Review lifetime megawatt-hours and operating temperatures", "Track preventive maintenance intervals"],
+          },
+          motion: {
+            entrance: "staggered asset telemetry lock and inventory ledger draw-in",
+            scroll: "smooth high-density ledger scrolling",
+            transitions: ["asset telemetry inspector drawer reveal"],
+          },
+          contentPresentation: "Precision renewable asset operations ledger with monospace asset IDs, status badges, and capacity ratings",
+          visualHierarchy: {
+            primary: "Active Asset Tracking Ledger",
+            secondary: ["Selected Asset Telemetry Metrics", "Fleet Availability Summary"],
+          },
+          responsiveStrategy: "Stacked asset card stream on mobile viewports with quick-filter chips",
+          requiredCapabilities: ["asset-telemetry-ledger", "fleet-capacity-matrix"],
+          forbiddenPatterns: ["monograph", "editorial publication", "building typology", "timber stone", "curatorial index", "crud forms"],
+        };
+      }
+
+      if (slug.includes("analytic") || slug.includes("grid") || slug.includes("performance") || slug.includes("telemetry") || slug.includes("stream")) {
+        return {
+          route,
+          pageRole: "Grid Telemetry Analytics & Environmental Impact Console",
+          purpose: `Advanced grid performance telemetry, renewable penetration metrics, and carbon offset analytics for ${brandName}`,
+          experienceIntent: `Analyze historical generation curves, grid curtailment metrics, and emissions abatement trends`,
+          focalElement: "Multi-channel grid performance waveform canvas with irradiance correlation and carbon displacement counters",
+          composition: {
+            topology: "FULL_BLEED_STAGE",
+            layers: ["Performance Waveform Surface", "Grid Metric HUD", "Environmental Abatement Strip"],
+            sections: ["Grid Generation Performance Curve", "Carbon Offset & Emission Abatement", "Curtailment & Substation Diagnostics"],
+            dominantStructure: "DENSE_TELEMETRY_GRID",
+          },
+          interaction: {
+            primary: ["Switch telemetry sensor channels (Grid Frequency, Reactive Power, Solar Irradiance, Wind Velocity)", "Tune analysis window and resolution"],
+            secondary: ["Export generation data stream", "Inspect curtailment events"],
+          },
+          motion: {
+            entrance: "high-frequency waveform sweep and live ticker lock",
+            scroll: "fixed telemetry console view",
+            transitions: ["instant channel modulation with zero layout jump"],
+          },
+          contentPresentation: "Precision telemetry visualization display with green/amber/red threshold status and monospace energy readouts",
+          visualHierarchy: {
+            primary: "Live Generation Waveform Canvas",
+            secondary: ["Grid Parameter Table", "Active Abatement Strip"],
+          },
+          responsiveStrategy: "Compact parameter grid with swipeable metric channels on mobile",
+          requiredCapabilities: ["waveform-stream-canvas", "telemetry-parameter-grid"],
+          forbiddenPatterns: ["monograph", "editorial publication", "building typology", "timber stone", "curatorial index", "crud forms"],
+        };
+      }
+
+      if (slug.includes("maintenance") || slug.includes("work-order") || slug.includes("dispatch") || slug.includes("technician") || slug.includes("repair")) {
+        return {
+          route,
+          pageRole: "Maintenance Dispatch & Technician Work Order Console",
+          purpose: `Field dispatch console for ${brandName} coordinating preventive maintenance work orders, technician crews, and equipment spares`,
+          experienceIntent: `Schedule turbine overhauls, assign technician work orders, and track mean time to repair`,
+          focalElement: "Interactive technician dispatch roster with active work orders, priority tiers, and maintenance timelines",
+          composition: {
+            topology: "FULL_BLEED_STAGE",
+            layers: ["Maintenance Dispatch Canvas", "Work Order Queue", "Technician Availability HUD"],
+            sections: ["Preventive Maintenance Schedule", "Field Technician Dispatch Queue", "Component Spares & MTTR Diagnostics"],
+            dominantStructure: "DENSE_TELEMETRY_GRID",
+          },
+          interaction: {
+            primary: ["Assign technician crew to open work order", "Filter work orders by priority and asset category"],
+            secondary: ["Update work order status and log parts replaced", "Track technician dispatch SLA"],
+          },
+          motion: {
+            entrance: "staggered work order card draw-in and schedule calibration",
+            scroll: "smooth dispatch timeline scroll",
+            transitions: ["work order details drawer expansion"],
+          },
+          contentPresentation: "Field engineering maintenance ledger with priority badges, technician badges, and execution timers",
+          visualHierarchy: {
+            primary: "Active Work Order Queue",
+            secondary: ["Technician Crew Roster", "Spares Inventory Level"],
+          },
+          responsiveStrategy: "Stacked work order cards on mobile with swipe-to-update status",
+          requiredCapabilities: ["work-order-queue", "technician-dispatch-grid"],
+          forbiddenPatterns: ["monograph", "editorial publication", "building typology", "timber stone", "curatorial index", "crud forms"],
+        };
+      }
+
+      if (slug.includes("incident") || slug.includes("alert") || slug.includes("triage") || slug.includes("alarm")) {
+        return {
+          route,
+          pageRole: "Operational Incident Triage & Emergency Escalation Console",
+          purpose: `Real-time fault monitoring, grid trip alerts, and incident triage for ${brandName}`,
+          experienceIntent: `Triage inverter trip alarms, investigate turbine vibrations, and execute emergency curtailment workflows`,
+          focalElement: "Critical alert triage queue with severity badges, alarm acknowledgment controls, and escalation logs",
+          composition: {
+            topology: "FULL_BLEED_STAGE",
+            layers: ["Alarm Triage Canvas", "Incident Escalation Ledger", "Fault Diagnostics HUD"],
+            sections: ["Active Fault & Grid Incident Queue", "Alarm Severity Triage & Sequence of Events", "Emergency Curtailment Protocols"],
+            dominantStructure: "DENSE_TELEMETRY_GRID",
+          },
+          interaction: {
+            primary: ["Acknowledge and triage critical inverter and grid fault alarms", "Initiate incident escalation protocol to on-call engineer"],
+            secondary: ["Inspect root cause telemetry logs", "Record incident mitigation notes"],
+          },
+          motion: {
+            entrance: "rapid high-contrast alert pulse and queue stabilization",
+            scroll: "fixed alert console view",
+            transitions: ["alarm state transition animation"],
+          },
+          contentPresentation: "Mission-critical incident triage desk with color-coded severity indicators, countdown timers, and acknowledgment triggers",
+          visualHierarchy: {
+            primary: "Active Incident Triage Stream",
+            secondary: ["Alarm Acknowledgment Console", "Escalation Audit Trail"],
+          },
+          responsiveStrategy: "High-priority alert banner with collapsible incident cards on mobile",
+          requiredCapabilities: ["incident-triage-queue", "alert-acknowledgment-engine"],
+          forbiddenPatterns: ["monograph", "editorial publication", "building typology", "timber stone", "curatorial index", "crud forms"],
+        };
+      }
+
+      if (slug.includes("report") || slug.includes("compliance") || slug.includes("log") || slug.includes("audit")) {
+        return {
+          route,
+          pageRole: "Generation Compliance & Environmental Impact Reports",
+          purpose: `Regulatory generation compliance records, utility settlement logs, and exportable executive reports for ${brandName}`,
+          experienceIntent: `Generate compliance audits, review monthly power purchase agreement deliveries, and export executive logs`,
+          focalElement: "Exportable generation audit matrix with PPA delivery targets, capacity factors, and export tools",
+          composition: {
+            topology: "FULL_BLEED_STAGE",
+            layers: ["Compliance Audit Surface", "Executive Summary HUD", "Export Ledger"],
+            sections: ["Monthly Generation & PPA Settlement Ledger", "Environmental Compliance Verification", "Export Executive Generation Summary"],
+            dominantStructure: "DENSE_TELEMETRY_GRID",
+          },
+          interaction: {
+            primary: ["Generate PPA delivery compliance export", "Filter generation logs by reporting period and jurisdiction"],
+            secondary: ["Download CSV/PDF audit package", "Verify grid interconnection certificate"],
+          },
+          motion: {
+            entrance: "clean report matrix draw-in with verified checksum lock",
+            scroll: "structured document ledger scroll",
+            transitions: ["instant export parameter toggle"],
+          },
+          contentPresentation: "Regulatory and executive reporting matrix with compliance verification seals, generation tables, and export action bars",
+          visualHierarchy: {
+            primary: "PPA Generation Settlement Table",
+            secondary: ["Compliance Metric Cards", "Export Options Toolbar"],
+          },
+          responsiveStrategy: "Condensed executive summary cards on mobile viewports",
+          requiredCapabilities: ["compliance-report-matrix", "export-generation-engine"],
+          forbiddenPatterns: ["monograph", "editorial publication", "building typology", "timber stone", "curatorial index", "crud forms"],
+        };
+      }
+
+      const naturalTitle = titleHint || slug.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+      return {
+        route,
+        pageRole: `${naturalTitle} Renewable Operations Console`,
+        purpose: `Dedicated operational console for ${naturalTitle} at ${brandName}`,
+        experienceIntent: `Inspect renewable generation metrics and operational workflows for ${naturalTitle}`,
+        focalElement: `Interactive ${naturalTitle} operations console and generation telemetry instrumentation`,
+        composition: {
+          topology: "FULL_BLEED_STAGE",
+          layers: ["Operations Telemetry Canvas", "Instrumentation HUD", "Diagnostics Data Strip"],
+          sections: [`${naturalTitle} Header & Core Telemetry`, `${naturalTitle} Subsystem Diagnostics`, "Operational Event Log"],
+          dominantStructure: "DENSE_TELEMETRY_GRID",
+        },
+        interaction: {
+          primary: [`Inspect ${naturalTitle} telemetry parameters`, `Adjust ${naturalTitle} operational filters`],
+          secondary: ["Export diagnostics log", "View linked operational events"],
+        },
+        motion: {
+          entrance: "rapid precision grid reveal and telemetry lock",
+          scroll: "fixed command layout with high-density data scroll",
+          transitions: ["instant view state transition"],
+        },
+        contentPresentation: `High-density clean energy console layout for ${naturalTitle} with monospace data indicators and status badges`,
+        visualHierarchy: {
+          primary: `${naturalTitle} Core Instrumentation`,
+          secondary: ["Subsystem Readouts", "Diagnostics Log"],
+        },
+        responsiveStrategy: "Responsive command grid collapsing gracefully to single-column telemetry cards",
+        requiredCapabilities: [`${slug}-telemetry-console`],
+        forbiddenPatterns: ["monograph", "editorial publication", "building typology", "timber stone", "curatorial index", "crud forms"],
+      };
+    }
+
+    // =========================================================================
     // GENRE: HIGH_DENSITY_CONSOLE & OPERATIONAL AEROSPACE / TELEMETRY
     // =========================================================================
-    const isOperationalDomain = /\b(avionics|aerospace|aircraft|flight|aviation|telemetry|scada|radar|defense|satellite|drone|uav|mission control|cockpit|subsystem|firmware|airframe)\b/i.test(promptLower);
+    const isOperationalDomain = /\b(avionics|aerospace|aircraft|flight|aviation|cockpit|airframe|airspace|transponder|squawk|rnav|airway)\b/i.test(promptLower);
 
     if (genre === "HIGH_DENSITY_CONSOLE" || isOperationalDomain) {
       if (route === "/" || slug === "home" || slug === "overview" || slug === "dashboard" || slug === "console") {

@@ -275,7 +275,16 @@ export class NavigationDesignResolver {
       return prefixMatch[1].trim().toUpperCase();
     }
 
-    // 2. "called <Name>" or "named <Name>" or "titled <Name>" or "known as <Name>"
+    // 2. Leading command with explicit product name: e.g. "Build GREENPULSE ENERGY, a ...", "Create ORBITALIS, a ..."
+    const verbLeadMatch = cleanPrompt.match(/^(?:build|create|make|design|generate|develop)\s+["']?([A-Za-z0-9&'’\-]+(?:\s+[A-Za-z0-9&'’\-]+){0,3})["']?(?:,\s+|\s+-\s+|\s+a\b|\s+an\b|\s+the\b|\s+for\b)/i);
+    if (verbLeadMatch) {
+      const candidate = verbLeadMatch[1].trim();
+      if (!/^(a|an|the|this|that|an?y|our|my|one|new|modern|production|full-stack|full\s+stack|web|application|platform)\b/i.test(candidate)) {
+        return candidate.toUpperCase();
+      }
+    }
+
+    // 3. "called <Name>" or "named <Name>" or "titled <Name>" or "known as <Name>"
     const quotedCalledMatch = cleanPrompt.match(/\b(?:called|named|titled|known as)\s+["']([^"']{2,36})["']/i);
     if (quotedCalledMatch) {
       const candidate = quotedCalledMatch[1].trim();
@@ -301,13 +310,13 @@ export class NavigationDesignResolver {
       }
     }
 
-    // 3. "for <Name>, a/an ..."
+    // 4. "for <Name>, a/an ..."
     const forMatch = cleanPrompt.match(/\bfor\s+["']?([A-Za-z0-9&'-]{2,24})["']?,\s+(?:a|an)\b/i);
     if (forMatch && !/^(the|a|an|all|each|every)\b/i.test(forMatch[1])) {
       return forMatch[1].trim().toUpperCase();
     }
 
-    // 4. "brand <Name>" or "branded <Name>"
+    // 5. "brand <Name>" or "branded <Name>"
     const brandMatch = cleanPrompt.match(/\bbrand(?:ed)?\s+["']?([A-Za-z0-9&'-]{2,24})["']?/i);
     if (brandMatch && !/^(identity|guidelines|colors|assets|voice|tone|strategy|book)\b/i.test(brandMatch[1])) {
       return brandMatch[1].trim().toUpperCase();
@@ -353,6 +362,14 @@ export class NavigationDesignResolver {
     }
 
     const lower = prompt.toLowerCase();
+    const isCleanEnergy = /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(lower);
+    if (isCleanEnergy) {
+      return "GREENPULSE ENERGY";
+    }
+    const isObservatory = /\b(observatory|orbitalis|astronomy|celestial|telescope|deep sky)\b/i.test(lower);
+    if (isObservatory) {
+      return "ORBITALIS";
+    }
     if (lower.includes("culinary") || lower.includes("food journey") || lower.includes("recipe") || lower.includes("gastronom")) {
       return "SAVORLINE";
     }
@@ -368,15 +385,15 @@ export class NavigationDesignResolver {
     if (lower.includes("museum") || lower.includes("contemporary art") || lower.includes("gallery") || lower.includes("curatorial") || lower.includes("exhibition")) {
       return "LUMEN HOUSE";
     }
-    const isOperationalDomain = /\b(avionics|aerospace|aircraft|flight|aviation|telemetry|scada|radar|defense|satellite|drone|uav|mission control|cockpit|subsystem|firmware|airframe)\b/i.test(lower);
-    if (!isOperationalDomain && /\b(architectural\s+(?:monograph|journal|review|digest|firm|studio|practice|portfolio)|architecture\s+(?:firm|studio|monograph|journal|magazine|exhibition)|building\s+typolog(?:y|ies))\b/i.test(lower)) {
+    const isAviation = /\b(avionics|aerospace|aircraft|flight|aviation|cockpit|airframe|airspace|transponder|squawk)\b/i.test(lower);
+    if (!isAviation && /\b(architectural\s+(?:monograph|journal|review|digest|firm|studio|practice|portfolio)|architecture\s+(?:firm|studio|monograph|journal|magazine|exhibition)|building\s+typolog(?:y|ies))\b/i.test(lower)) {
       return "TECTONIC JOURNAL";
     }
     if (lower.includes("kazzoo") || lower.includes("claymation") || lower.includes("fantasy")) {
       return "KAZZOO";
     }
-    if (lower.includes("solar") || lower.includes("telemetry") || lower.includes("pulse") || isOperationalDomain) {
-      return lower.includes("stratos") ? "STRATOS AVIONICS" : "SOLARPULSE";
+    if (isAviation) {
+      return lower.includes("stratos") ? "STRATOS AVIONICS" : "AERO TELEMETRY";
     }
     if (lower.includes("plant") || lower.includes("botanical")) {
       return "LEAF SANCTUARY";

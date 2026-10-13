@@ -601,8 +601,35 @@ export default ${componentName};
     const isOcean = /\b(underwater|marine|ocean|submersible|hadal|bathymetr|hydrophone|benthic|abyss)\b/i.test(promptLower);
     const isFurniture = /furniture|chair|table|sofa|wood|interior|design|configurator/i.test(promptLower);
     const isMusic = /music|sound|audio|synthesizer|frequency|melody|harmonic/i.test(promptLower);
-    const isClimate = /climate|weather|atmosphere|carbon|emissions|energy|planet/i.test(promptLower);
+    const isCleanEnergy = /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(promptLower);
+    const isClimate = !isCleanEnergy && /climate|weather|atmosphere|carbon|emissions|planet/i.test(promptLower);
     const isSpace = /\b(space|celestial|orbit|orbital|satellite|planetary|astro|astronomy|observatory|telescope|starmap|star map)\b/i.test(promptLower);
+
+    if (isCleanEnergy) {
+      return {
+        workspaceCategory: "Renewable Generation & Dispatch Console",
+        title: "Solar & Wind Dispatch Telemetry Workbench",
+        subtitle: "Monitor active solar irradiance, wind turbine yaw telemetry, inverter efficiency, and grid transmission dispatch.",
+        summaryHeader: "Grid Generation & Capacity Status",
+        summaryDescription: "Real-time dispatch across utility-scale photovoltaic arrays and offshore wind farms feeding the regional transmission grid.",
+        params: [
+          { id: "gridFrequency", label: "Grid Dispatch Target", min: 45, max: 65, step: 0.1, unit: "Hz", defaultValue: 50.0, description: "Synchronized transmission frequency baseline." },
+          { id: "batteryReserve", label: "BESS Storage Buffer", min: 10, max: 100, step: 5, unit: "%", defaultValue: 82, description: "Battery Energy Storage System reserve dispatch readiness." },
+          { id: "curtailmentThreshold", label: "Turbine Pitch Curtailment", min: 0, max: 25, step: 1, unit: "MW", defaultValue: 5, description: "Dynamic curtailment ceiling during peak generation." },
+        ],
+        quickActions: [
+          { name: "Optimize Inverter Banks", desc: "Maximize MPPT efficiency across solar arrays", effect: "PV output boosted by +3.4%" },
+          { name: "Wind Turbine Yaw Align", desc: "Vector nacelles toward prevailing wind corridor", effect: "Aerodynamic yield optimized +5.1%" },
+          { name: "Dispatch BESS Storage", desc: "Discharge 50MW storage into peak evening grid", effect: "Peak grid congestion mitigated" },
+        ],
+        telemetryStreams: [
+          { label: "Total Generation", value: "842.6 MW", status: "Nominal Export" },
+          { label: "Solar Inverter Yield", value: "520.4 MW", status: "Peak Irradiance" },
+          { label: "Wind Farm Fleet", value: "322.2 MW", status: "Optimal Yaw" },
+          { label: "Grid Carbon Offset", value: "1,240 tCO₂e", status: "Active Abatement" },
+        ],
+      };
+    }
 
     if (isClimate) {
       return {
@@ -661,7 +688,7 @@ export default ${componentName};
         workspaceCategory: "Submersible Telemetry Console",
         title: "Benthic Depth & Telemetry Workbench",
         subtitle: "Fine-tune hydrostatic ballast, sonar array frequency, and deep-sea specimen illumination.",
-        summaryHeader: "Atmospheric & Pressure Status",
+        summaryHeader: "Benthic & Hydrostatic Status",
         summaryDescription: "Ballast tanks calibrated for abyssal descent. Sonar arrays scanning benthic trench contours in real-time.",
         params: [
           { id: "ballast", label: "Hydrostatic Ballast Level", min: 0, max: 100, step: 1, unit: "%", defaultValue: 65, description: "Controls negative buoyancy rate during trench descent." },

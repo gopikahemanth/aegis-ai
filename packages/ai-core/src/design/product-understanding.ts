@@ -785,8 +785,12 @@ function deriveTargetAudience(text: string, audience: ProductCharacteristics["au
   return "Discerning end users seeking an intuitive, purposeful product experience";
 }
 
+function isCleanEnergy(text: string): boolean {
+  return /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(text);
+}
+
 function isOperationalOrConsole(text: string): boolean {
-  return /\b(avionics|aerospace|aircraft|flight|aviation|telemetry|scada|radar|defense|satellite|drone|uav|mission control|cockpit|subsystem|firmware|airframe)\b/i.test(text);
+  return !isCleanEnergy(text) && /\b(avionics|aerospace|aircraft|flight|aviation|cockpit|airframe|airspace|transponder|squawk|rnav|airway)\b/i.test(text);
 }
 
 function isArchitecturalPublicationDomain(text: string): boolean {
@@ -798,6 +802,9 @@ function isArchitecturalPublicationDomain(text: string): boolean {
 }
 
 function derivePrimaryAction(text: string, activity: ProductCharacteristics["primaryActivity"]): string {
+  if (isCleanEnergy(text)) {
+    return "Monitor renewable generation telemetry, inspect wind and solar assets, and triage grid incidents";
+  }
   if (isOperationalOrConsole(text)) {
     return "Monitor real-time avionics telemetry, inspect subsystem bus health, and manage airspace fleet operations";
   }
@@ -822,7 +829,9 @@ function derivePrimaryAction(text: string, activity: ProductCharacteristics["pri
 
 function deriveSecondaryActions(text: string, activity: ProductCharacteristics["primaryActivity"]): string[] {
   const actions: string[] = [];
-  if (isOperationalOrConsole(text)) {
+  if (isCleanEnergy(text)) {
+    actions.push("Analyze inverter waveforms and turbine yaw telemetry", "Review preventive maintenance schedules and dispatch work orders");
+  } else if (isOperationalOrConsole(text)) {
     actions.push("Analyze flight sensor parameters and trajectory vectors", "Inspect subsystem diagnostic logs and alarm thresholds");
   } else if (isArchitecturalPublicationDomain(text) || ((text.includes("journal") || text.includes("monograph")) && !isOperationalOrConsole(text))) {
     actions.push("Examine tectonic drawings & material specifications", "Explore scroll-driven visual photo essays");
@@ -861,6 +870,15 @@ function deriveVisualPersonality(tone: ProductCharacteristics["emotionalTone"], 
 
 function deriveContentHierarchy(activity: ProductCharacteristics["primaryActivity"], pattern: ProductCharacteristics["experiencePattern"], text?: string): string[] {
   const lower = (text || "").toLowerCase();
+  if (isCleanEnergy(lower)) {
+    return [
+      "Renewable Energy Generation & Grid Telemetry Deck",
+      "Solar Farm & Wind Turbine Asset Inventory",
+      "Grid Performance & Environmental Analytics",
+      "Technician Dispatch & Preventive Maintenance",
+      "Operational Incident Triage & Emergency Escalation",
+    ];
+  }
   if (isOperationalOrConsole(lower)) {
     return [
       "Mission Telemetry Command & Avionics Flight Deck",

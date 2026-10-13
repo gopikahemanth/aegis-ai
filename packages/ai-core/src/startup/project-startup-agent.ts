@@ -426,16 +426,47 @@ export interface ScanHistoryItem {
 export default {};
 `, "utf8");
       } else {
+        let entityExports = "";
+        const entitiesDir = join(dir, "src/entities");
+        if (existsSync(entitiesDir)) {
+          try {
+            const files = readdirSync(entitiesDir).filter((f: string) => f.endsWith(".ts") && !f.endsWith(".d.ts"));
+            for (const f of files) {
+              const mod = f.replace(/\.ts$/, "");
+              entityExports += `\nexport * from "../entities/${mod}";`;
+            }
+          } catch {}
+        }
         writeFileSync(typesPath, `export interface User {
   id: string;
   email: string;
   createdAt?: string;
 }
-
+${entityExports}
 export default {};
 `, "utf8");
       }
       patches.push("Created canonical src/types/index.ts");
+    } else {
+      const entitiesDir = join(dir, "src/entities");
+      if (existsSync(entitiesDir)) {
+        try {
+          let content = readFileSync(typesPath, "utf8");
+          const files = readdirSync(entitiesDir).filter((f: string) => f.endsWith(".ts") && !f.endsWith(".d.ts"));
+          let updated = false;
+          for (const f of files) {
+            const mod = f.replace(/\.ts$/, "");
+            if (!content.includes(`../entities/${mod}`) && !content.includes(`@/entities/${mod}`)) {
+              content += `\nexport * from "../entities/${mod}";\n`;
+              updated = true;
+            }
+          }
+          if (updated) {
+            writeFileSync(typesPath, content, "utf8");
+            patches.push("Synchronized entity re-exports in src/types/index.ts");
+          }
+        } catch {}
+      }
     }
 
     // 1d. server/controllers/scan.controller.ts (ATS ONLY)
@@ -1965,8 +1996,13 @@ ${routerClose}    </QueryClientProvider>
 
         // Fix 1.75: Stray invalid type import paths pointing to non-existent entity paths
         if (content.includes("entities/") || content.includes(".types") || content.includes("property.types")) {
-          if (/import\s+(?:\{[^}]+\}|\w+)\s+from\s+["'][^"']*(?:entities\/|\.types)[^"']*["']/.test(content)) {
-            content = content.replace(/import\s+(?:\{([^}]+)\}|(\w+))\s+from\s+["'][^"']*(?:entities\/|\.types)[^"']*["']/g, (match, named, defaultName) => {
+          const entitiesDir = join(dir, "src/entities");
+          if (/import\s+(?:type\s+)?(?:\{[^}]+\}|\w+)\s+from\s+["'][^"']*(?:entities\/|\.types)[^"']*["']/.test(content)) {
+            content = content.replace(/import\s+(?:type\s+)?(?:\{([^}]+)\}|(\w+))\s+from\s+["']([^"']*(?:entities\/|\.types)[^"']*)["']/g, (match, named, defaultName, importPath) => {
+              const m = importPath.match(/entities\/([a-zA-Z0-9_\-]+)/);
+              if (m && (existsSync(join(entitiesDir, `${m[1]}.ts`)) || existsSync(join(entitiesDir, `${m[1]}.tsx`)))) {
+                return match;
+              }
               const sym = named ? named.trim() : defaultName ? defaultName.trim() : "Property";
               return `import type { ${sym} } from "@/types"`;
             });

@@ -65,7 +65,7 @@ export class TsSymbolRepairEngine {
     const lines = (text || "").split(/\r?\n/);
     const results: TsErrorParsed[] = [];
 
-    const cleanQuotes = (s: string) => (s || "").replace(/^['"]+|['"]+$/g, "").replace(/^['"]+|['"]+$/g, "").trim();
+    const cleanQuotes = (s: string) => (s || "").replace(/['"]/g, "").trim();
 
     for (const line of lines) {
       // TS2724: '"../hooks/use-kanban-dnd"' has no exported member named 'useKanbanDnd'. Did you mean 'use_kanban_dnd'?
@@ -352,8 +352,8 @@ export class TsSymbolRepairEngine {
     const symbol = err.requestedSymbol!;
     const mod = err.moduleSpecifier!;
 
-    // Find import { Symbol } from "mod" -> import Symbol from "mod"
-    const namedImportRegex = new RegExp(`import\\s*\\{\\s*${symbol}\\s*\\}\\s*from\\s*['"]${this.escapeRegex(mod)}['"]`, "g");
+    // Find import { Symbol } from "mod" or import type { Symbol } from "mod" -> import Symbol from "mod"
+    const namedImportRegex = new RegExp(`import\\s*(?:type\\s+)?\\{\\s*${symbol}\\s*\\}\\s*from\\s*['"]${this.escapeRegex(mod)}['"]`, "g");
     if (namedImportRegex.test(content)) {
       const newContent = content.replace(namedImportRegex, `import ${symbol} from "${mod}"`);
       writeFileSync(absImporter, newContent, "utf8");

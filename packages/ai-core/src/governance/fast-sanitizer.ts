@@ -51,6 +51,53 @@ export class FastDeterministicSanitizer {
   }
 
   /**
+   * Normalizes component exports in a directory to ensure both default and named exports exist.
+   * Prevents Vite/esbuild import errors when components are imported with { Name } or default Name.
+   */
+  public static normalizeComponentExports(compDir: string): void {
+    if (!existsSync(compDir)) return;
+    try {
+      const files = readdirSync(compDir);
+      for (const file of files) {
+        if (!file.endsWith(".tsx") && !file.endsWith(".jsx")) continue;
+        const filePath = join(compDir, file);
+        if (statSync(filePath).isDirectory()) continue;
+        let code = readFileSync(filePath, "utf8");
+        const compName = file.replace(/\.(tsx|jsx)$/, "");
+        let modified = false;
+
+        const hasDefault = /export\s+default\b/.test(code) || /export\s*\{[^}]*\bdefault\b[^}]*\}/.test(code);
+        const hasNamed = new RegExp(`export\\s+(?:function|const|class|let|var)\\s+${compName}\\b`).test(code) ||
+                         new RegExp(`export\\s*\\{[^}]*\\b(?:${compName}|default\\s+as\\s+${compName})\\b[^}]*\\}`).test(code) ||
+                         /export\s*\*\s*from/.test(code);
+
+        const definesComponent = new RegExp(`(?:function|const|class|let|var)\\s+${compName}\\b`).test(code);
+        const isReExportBridge = /export\s*(\*|\{[^}]*\})\s*from/.test(code);
+
+        if (isReExportBridge) {
+          // If bridge file already has export { default, ... }, clean up any trailing export default
+          if (/export\s*\{[^}]*\bdefault\b[^}]*\}\s*from/.test(code) && /export\s+default\s+\w+;?/.test(code)) {
+            code = code.replace(/\nexport\s+default\s+\w+;?\n?/g, "\n");
+            modified = true;
+          }
+        } else {
+          if (hasDefault && !hasNamed && definesComponent) {
+            code += `\nexport { ${compName} };\n`;
+            modified = true;
+          } else if (hasNamed && !hasDefault && definesComponent) {
+            code += `\nexport default ${compName};\n`;
+            modified = true;
+          }
+        }
+
+        if (modified) {
+          writeFileSync(filePath, code, "utf8");
+        }
+      }
+    } catch {}
+  }
+
+  /**
    * Sanitizes a specific file on disk using AST-safe transformations.
    */
   public static sanitizeFile(filePath: string): void {
@@ -104,6 +151,10 @@ export class FastDeterministicSanitizer {
     // 5. Enforce canonical structure for generic UI components (CircularProgress, LoadingSpinner)
     this.enforceGenericComponents(outputDirectory);
     this.ensureSharedComponentBridges(outputDirectory);
+    this.normalizeComponentExports(join(outputDirectory, "src", "components"));
+    this.normalizeComponentExports(join(outputDirectory, "src", "shared", "components"));
+    this.normalizeComponentExports(join(outputDirectory, "src", "design-system", "components"));
+    this.normalizeComponentExports(join(outputDirectory, "src", "pages"));
 
     // 6. Sanitize React Router nesting (prevent duplicate <BrowserRouter>)
     this.sanitizeRouterNesting(outputDirectory);
@@ -116,6 +167,7 @@ export class FastDeterministicSanitizer {
 
     // 7c. Enforce canonical server/index.ts for Express backend
     this.ensureServerIndexEntry(outputDirectory, contract);
+    this.reconcilePrismaIncludes(outputDirectory);
 
     // 7d. Ensure frontend resource API connectivity to PostgreSQL backend
     this.ensureResourceApiConnectivity(outputDirectory);
@@ -1147,12 +1199,31 @@ export default siteContent;
             }
           } catch {}
         } else if ((existsSync(compNav) || existsSync(sharedNav)) && !appContent.includes("<Navbar") && !appContent.includes("<Layout")) {
-          const navImport = existsSync(compNav) ? `import { Navbar } from "./components/Navbar";` : `import { Navbar } from "./shared/components/Navbar";`;
           const targetNavPath = existsSync(compNav) ? compNav : sharedNav;
+          const navRel = existsSync(compNav) ? "./components/Navbar" : "./shared/components/Navbar";
           let isSidebar = false;
+          let navImport = `import { Navbar } from "${navRel}";`;
           try {
-            const navSrc = readFileSync(targetNavPath, "utf8");
-            isSidebar = navSrc.includes("<aside") || navSrc.includes("w-64");
+            let navSrc = readFileSync(targetNavPath, "utf8");
+            let changed = false;
+            if (navSrc.includes("export default function Navbar") || navSrc.includes("export default Navbar")) {
+              if (!navSrc.includes("export { Navbar") && !navSrc.includes("export function Navbar") && !navSrc.includes("export const Navbar")) {
+                navSrc += "\nexport { Navbar };\n";
+                changed = true;
+              }
+            } else if ((navSrc.includes("export function Navbar") || navSrc.includes("export const Navbar")) && !navSrc.includes("export default")) {
+              navSrc += "\nexport default Navbar;\n";
+              changed = true;
+            }
+            if (changed) {
+              writeFileSync(targetNavPath, navSrc, "utf8");
+            }
+            const hasDefault = navSrc.includes("export default");
+            const hasNamed = /export\s+(?:function|const|class)\s+Navbar\b/.test(navSrc) || navSrc.includes("export { Navbar");
+            if (hasDefault && !hasNamed) {
+              navImport = `import Navbar from "${navRel}";`;
+            }
+            isSidebar = navSrc.includes("<aside") || navSrc.includes("w-64") || navSrc.includes("w-72");
           } catch {}
 
           if (!appContent.includes("Navbar")) {
@@ -1223,10 +1294,28 @@ export { App };
           } else {
             const targetNavPath = existsSync(compNav) ? compNav : (existsSync(sharedNav) ? sharedNav : null);
             let isSidebar = false;
+            let navImport = `import { Navbar } from "./components/Navbar";`;
             if (targetNavPath) {
               try {
-                const navSrc = readFileSync(targetNavPath, "utf8");
-                isSidebar = navSrc.includes("<aside") || navSrc.includes("w-64");
+                let navSrc = readFileSync(targetNavPath, "utf8");
+                let changed = false;
+                if (navSrc.includes("export default function Navbar") || navSrc.includes("export default Navbar")) {
+                  if (!navSrc.includes("export { Navbar") && !navSrc.includes("export function Navbar") && !navSrc.includes("export const Navbar")) {
+                    navSrc += "\nexport { Navbar };\n";
+                    changed = true;
+                  }
+                } else if ((navSrc.includes("export function Navbar") || navSrc.includes("export const Navbar")) && !navSrc.includes("export default")) {
+                  navSrc += "\nexport default Navbar;\n";
+                  changed = true;
+                }
+                if (changed) {
+                  writeFileSync(targetNavPath, navSrc, "utf8");
+                }
+                const hasDefault = navSrc.includes("export default");
+                const hasNamed = /export\s+(?:function|const|class)\s+Navbar\b/.test(navSrc) || navSrc.includes("export { Navbar");
+                const relImport = existsSync(compNav) ? "./components/Navbar" : "./shared/components/Navbar";
+                navImport = (hasDefault && !hasNamed) ? `import Navbar from "${relImport}";` : `import { Navbar } from "${relImport}";`;
+                isSidebar = navSrc.includes("<aside") || navSrc.includes("w-64") || navSrc.includes("w-72");
               } catch {}
             }
             const shellFlex = isSidebar ? "flex flex-row" : "flex flex-col";
@@ -1235,7 +1324,7 @@ export { App };
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppRoutes from "./routes";
-import { Navbar } from "./components/Navbar";
+${navImport}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -3143,6 +3232,21 @@ export default useAuth;
           sharedContent = sharedContent.replace(/(from\s+['"])\.\.\/([^'"]+['"])/g, "$1../../$2");
         }
 
+        if (compContent.includes("export default function Navbar") || compContent.includes("export default Navbar")) {
+          if (!compContent.includes("export { Navbar") && !compContent.includes("export function Navbar") && !compContent.includes("export const Navbar")) {
+            compContent += "\nexport { Navbar };\n";
+          }
+        } else if ((compContent.includes("export function Navbar") || compContent.includes("export const Navbar")) && !compContent.includes("export default")) {
+          compContent += "\nexport default Navbar;\n";
+        }
+        if (sharedContent.includes("export default function Navbar") || sharedContent.includes("export default Navbar")) {
+          if (!sharedContent.includes("export { Navbar") && !sharedContent.includes("export function Navbar") && !sharedContent.includes("export const Navbar")) {
+            sharedContent += "\nexport { Navbar };\n";
+          }
+        } else if ((sharedContent.includes("export function Navbar") || sharedContent.includes("export const Navbar")) && !sharedContent.includes("export default")) {
+          sharedContent += "\nexport default Navbar;\n";
+        }
+
         writeFileSync(sharedNav, sharedContent, "utf8");
         writeFileSync(compNav, compContent, "utf8");
       } else {
@@ -3184,7 +3288,13 @@ export default useAuth;
           );
         }
 
-        const navbarCode = NavigationDesignResolver.generateNavbarCode(navigationDesign);
+        let navbarCode = NavigationDesignResolver.generateNavbarCode(navigationDesign);
+        if (!navbarCode.includes("export default")) {
+          navbarCode += "\nexport default Navbar;\n";
+        }
+        if (!navbarCode.includes("export { Navbar") && !navbarCode.includes("export function Navbar") && !navbarCode.includes("export const Navbar")) {
+          navbarCode += "\nexport { Navbar };\n";
+        }
 
         if (!existsSync(join(srcDir, "shared", "components"))) mkdirSync(join(srcDir, "shared", "components"), { recursive: true });
         if (!existsSync(join(srcDir, "components"))) mkdirSync(join(srcDir, "components"), { recursive: true });
@@ -3240,9 +3350,27 @@ export { App };
           } else {
             let isSidebarNav = false;
             const navCandidate = existsSync(compNav) ? compNav : (existsSync(sharedNav) ? sharedNav : null);
+            let navImport = `import { Navbar } from "./components/Navbar";`;
             if (navCandidate) {
               try {
-                const navCode = readFileSync(navCandidate, "utf8");
+                let navCode = readFileSync(navCandidate, "utf8");
+                let changed = false;
+                if (navCode.includes("export default function Navbar") || navCode.includes("export default Navbar")) {
+                  if (!navCode.includes("export { Navbar") && !navCode.includes("export function Navbar") && !navCode.includes("export const Navbar")) {
+                    navCode += "\nexport { Navbar };\n";
+                    changed = true;
+                  }
+                } else if ((navCode.includes("export function Navbar") || navCode.includes("export const Navbar")) && !navCode.includes("export default")) {
+                  navCode += "\nexport default Navbar;\n";
+                  changed = true;
+                }
+                if (changed) {
+                  writeFileSync(navCandidate, navCode, "utf8");
+                }
+                const hasDefault = navCode.includes("export default");
+                const hasNamed = /export\s+(?:function|const|class)\s+Navbar\b/.test(navCode) || navCode.includes("export { Navbar");
+                const relImport = existsSync(compNav) ? "./components/Navbar" : "./shared/components/Navbar";
+                navImport = (hasDefault && !hasNamed) ? `import Navbar from "${relImport}";` : `import { Navbar } from "${relImport}";`;
                 isSidebarNav = navCode.includes("<aside") || navCode.includes("w-64") || navCode.includes("w-72");
               } catch {}
             }
@@ -3252,7 +3380,7 @@ export { App };
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppRoutes from "./routes";
-import { Navbar } from "./components/Navbar";
+${navImport}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -3297,16 +3425,34 @@ export { App };
           } else {
             let isSidebarNav = false;
             const navCandidate = existsSync(compNav) ? compNav : (existsSync(sharedNav) ? sharedNav : null);
+            let navImport = `import { Navbar } from "./components/Navbar";`;
             if (navCandidate) {
               try {
-                const navCode = readFileSync(navCandidate, "utf8");
+                let navCode = readFileSync(navCandidate, "utf8");
+                let changed = false;
+                if (navCode.includes("export default function Navbar") || navCode.includes("export default Navbar")) {
+                  if (!navCode.includes("export { Navbar") && !navCode.includes("export function Navbar") && !navCode.includes("export const Navbar")) {
+                    navCode += "\nexport { Navbar };\n";
+                    changed = true;
+                  }
+                } else if ((navCode.includes("export function Navbar") || navCode.includes("export const Navbar")) && !navCode.includes("export default")) {
+                  navCode += "\nexport default Navbar;\n";
+                  changed = true;
+                }
+                if (changed) {
+                  writeFileSync(navCandidate, navCode, "utf8");
+                }
+                const hasDefault = navCode.includes("export default");
+                const hasNamed = /export\s+(?:function|const|class)\s+Navbar\b/.test(navCode) || navCode.includes("export { Navbar");
+                const relImport = existsSync(compNav) ? "./components/Navbar" : "./shared/components/Navbar";
+                navImport = (hasDefault && !hasNamed) ? `import Navbar from "${relImport}";` : `import { Navbar } from "${relImport}";`;
                 isSidebarNav = navCode.includes("<aside") || navCode.includes("w-64") || navCode.includes("w-72");
               } catch {}
             }
             const shellFlex = isSidebarNav ? "flex flex-row" : "flex flex-col";
             const mainClass = isSidebarNav ? "flex-1 overflow-auto" : "flex-1";
             if (!appContent.includes('import { Navbar }') && !appContent.includes('import Navbar')) {
-              appContent = `import { Navbar } from "./components/Navbar";\n` + appContent;
+              appContent = `${navImport}\n` + appContent;
             }
             if (appContent.includes("<AppRoutes />") || appContent.includes("<AppRoutes/>")) {
               appContent = appContent.replace(
@@ -3886,6 +4032,51 @@ export default app;
     } catch (err: any) {
       console.warn(`[FastSanitizer] Failed to write server/index.ts:`, err.message);
     }
+  }
+
+  /**
+   * Reconciles Prisma include relation names in server files against schema.prisma definitions.
+   * Prevents runtime errors like: Unknown field `telemetry` for include statement on model `Asset`.
+   */
+  private static reconcilePrismaIncludes(outputDirectory: string): void {
+    const schemaPath = join(outputDirectory, "prisma", "schema.prisma");
+    if (!existsSync(schemaPath)) return;
+    try {
+      const schema = readFileSync(schemaPath, "utf8");
+      const relationPlurals = new Map<string, string>();
+      const lines = schema.split("\n");
+      for (const line of lines) {
+        const m = line.trim().match(/^([a-zA-Z0-9_]+)\s+([a-zA-Z0-9_]+)\[\]/);
+        if (m) {
+          const pluralName = m[1];
+          const singularName = pluralName.replace(/ies$/, "y").replace(/s$/, "");
+          if (singularName !== pluralName) {
+            relationPlurals.set(singularName, pluralName);
+          }
+        }
+      }
+
+      const serverDir = join(outputDirectory, "server");
+      if (existsSync(serverDir)) {
+        const files = this.getAllFiles(serverDir).filter(f => f.endsWith(".ts") || f.endsWith(".js"));
+        for (const file of files) {
+          const filePath = join(serverDir, file);
+          let code = readFileSync(filePath, "utf8");
+          let modified = false;
+          for (const [sing, plur] of relationPlurals.entries()) {
+            const reg = new RegExp(`(\\binclude\\s*:\\s*\\{[^}]*?\\b)${sing}(\\s*:)`, "g");
+            if (reg.test(code)) {
+              code = code.replace(reg, `$1${plur}$2`);
+              modified = true;
+            }
+          }
+          if (modified) {
+            writeFileSync(filePath, code, "utf8");
+            console.log(`[FastSanitizer] 🔧 Normalized Prisma include relation in server/${file}`);
+          }
+        }
+      }
+    } catch {}
   }
 
   /**

@@ -81,10 +81,10 @@ export class GenericExperienceGenerator {
     if (/workspace_tool|workspace|workbench|telemetry|configurator|tuning|console/i.test(combined)) return "WORKSPACE_TOOL";
 
     // 2. Route & Purpose semantic match
-    if (/(saved|bookmarks?|favorites?|collections?|saved-discoveries|saved-artworks)/i.test(combined)) {
+    if (/(saved|bookmarks?|favorites?|collections?|saved-discoveries|saved-artworks|roster|inventory|archive|reports?|compliance|matrix|ledger)/i.test(combined)) {
       return "COLLECTION_HUB";
     }
-    if (/(itinerary|itineraries|planner|journey-builder|trip-planner|schedule-builder|visit-plan)/i.test(combined)) {
+    if (/(itinerary|itineraries|planner|journey-builder|trip-planner|schedule-builder|visit-plan|work-orders?|technician-dispatch|shift-schedule|preventive-schedule)/i.test(combined)) {
       return "ITINERARY_PLANNER";
     }
     if (/(quest|map|zones|waypoints|dive-sites|coordinates|biomes|atlas|trails|cartography|floor-plan|floorplan)/i.test(combined)) {

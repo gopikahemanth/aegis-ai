@@ -242,8 +242,58 @@ export class TemplateConvergenceGate {
       );
     }
 
+    // Check 6: Duplicate Shell Navigation Invariant
+    const appTsxFile = files.find(f => f.endsWith("App.tsx"));
+    if (appTsxFile) {
+      try {
+        const appContent = readFileSync(appTsxFile, "utf8");
+        if (appContent.includes("<Navbar") && appContent.includes("<Layout")) {
+          violations.push(
+            "DUPLICATE_SHELL_NAVIGATION_DETECTED: App.tsx mounts both <Navbar /> and <Layout />. A project must have exactly one navigation shell."
+          );
+        }
+      } catch {}
+    }
+
+    // Check 7: Cross-Route Template & Parameter Convergence
+    // Detects when multiple distinct routes across a project share identical calibration controls or quick actions
+    const pageSignatures: Array<{ file: string; paramIds: string[]; actionNames: string[] }> = [];
+    for (const pFile of pageFiles) {
+      try {
+        const pContent = readFileSync(pFile, "utf8");
+        const paramMatches = Array.from(pContent.matchAll(/"id":\s*"([^"]+)"/g)).map(m => m[1]);
+        const actionMatches = Array.from(pContent.matchAll(/"name":\s*"([^"]+)"/g)).map(m => m[1]);
+        if (paramMatches.length >= 2 || actionMatches.length >= 2) {
+          pageSignatures.push({
+            file: relative(projectRoot, pFile).replace(/\\/g, "/"),
+            paramIds: paramMatches.sort(),
+            actionNames: actionMatches.sort(),
+          });
+        }
+      } catch {}
+    }
+
+    const identicalPairs: string[] = [];
+    for (let i = 0; i < pageSignatures.length; i++) {
+      for (let j = i + 1; j < pageSignatures.length; j++) {
+        const a = pageSignatures[i];
+        const b = pageSignatures[j];
+        const sameParams = a.paramIds.length > 0 && a.paramIds.length === b.paramIds.length && a.paramIds.every((id, idx) => id === b.paramIds[idx]);
+        const sameActions = a.actionNames.length > 0 && a.actionNames.length === b.actionNames.length && a.actionNames.every((act, idx) => act === b.actionNames[idx]);
+        if (sameParams && sameActions) {
+          identicalPairs.push(`${a.file} & ${b.file}`);
+        }
+      }
+    }
+
+    if (identicalPairs.length > 0) {
+      violations.push(
+        `CROSS_ROUTE_STRUCTURAL_CONVERGENCE_DETECTED: Detected identical parameter controls and actions across distinct routes (${identicalPairs.slice(0, 2).join(", ")}). Each route must provide domain-pure, route-specific interactive controls.`
+      );
+    }
+
     const websiteIdentity: WebsiteIdentityReport = {
-      navigation: violations.some(v => v.includes("NAVBAR")) ? "FAIL" : "PASS",
+      navigation: violations.some(v => v.includes("NAVBAR") || v.includes("NAVIGATION")) ? "FAIL" : "PASS",
       composition: violations.some(v => v.includes("CONVERGENCE") || v.includes("DOWNGRADE")) ? "FAIL" : "PASS",
       visualLanguage: "PASS",
       interactionModel: "PASS",

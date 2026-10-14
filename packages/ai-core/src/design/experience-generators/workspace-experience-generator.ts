@@ -48,10 +48,10 @@ export interface WorkspaceExperienceGeneratorOptions {
 
 export class WorkspaceExperienceGenerator {
   public static generate(options: WorkspaceExperienceGeneratorOptions): string {
-    const { componentName, brandName, prompt, seed = 42, route } = options;
+    const { componentName, brandName, prompt, seed = 42, route, pageRole, purpose } = options;
     const promptLower = prompt.toLowerCase();
 
-    const config = this.deriveConfig(promptLower, seed, route);
+    const config = this.deriveConfig(promptLower, seed, route, pageRole, purpose);
     const theme = options.theme || this.deriveTheme(promptLower);
 
     return `import React from "react";
@@ -597,7 +597,7 @@ export default ${componentName};
 `;
   }
 
-  private static deriveConfig(promptLower: string, seed: number, route: string) {
+  private static deriveConfig(promptLower: string, seed: number, route?: string, pageRole?: string, purpose?: string) {
     const isOcean = /\b(underwater|marine|ocean|submersible|hadal|bathymetr|hydrophone|benthic|abyss)\b/i.test(promptLower);
     const isFurniture = /furniture|chair|table|sofa|wood|interior|design|configurator/i.test(promptLower);
     const isMusic = /music|sound|audio|synthesizer|frequency|melody|harmonic/i.test(promptLower);
@@ -605,7 +605,117 @@ export default ${componentName};
     const isClimate = !isCleanEnergy && /climate|weather|atmosphere|carbon|emissions|planet/i.test(promptLower);
     const isSpace = /\b(space|celestial|orbit|orbital|satellite|planetary|astro|astronomy|observatory|telescope|starmap|star map)\b/i.test(promptLower);
 
+    const routeContext = `${route || ""} ${pageRole || ""} ${purpose || ""}`.toLowerCase();
+    const isAnalyticsRoute = /analytic|trend|telemetry|waveform|performance|metric|spectral|photometry/i.test(routeContext);
+    const isIncidentsRoute = /incident|alert|triage|escalation|fault|alarm|safety|emergency/i.test(routeContext);
+    const isMaintenanceRoute = /maintenance|technician|work-order|schedule|dispatch|service|preventive/i.test(routeContext);
+    const isReportsRoute = /report|compliance|audit|summary|export|log|regulatory/i.test(routeContext);
+
     if (isCleanEnergy) {
+      if (isAnalyticsRoute) {
+        return {
+          workspaceCategory: "Grid Performance & Telemetry Analysis",
+          title: "Harmonic Distortion & Transmission Telemetry Workbench",
+          subtitle: "Analyze power factor harmonics, degradation curves, and real-time solar/wind generation efficiency.",
+          summaryHeader: "Grid Stability & Spectral Purity Status",
+          summaryDescription: "Continuous telemetry ingestion measuring phase angle, grid frequency variance, and transmission losses across substations.",
+          params: [
+            { id: "sampleWindow", label: "Telemetry Sample Window", min: 1, max: 72, step: 1, unit: "hrs", defaultValue: 24, description: "Historical telemetry integration buffer." },
+            { id: "harmonicFilter", label: "Harmonic Distortion Ceiling", min: 0.5, max: 5.0, step: 0.1, unit: "% THD", defaultValue: 1.5, description: "Total harmonic distortion tolerance across feeder lines." },
+            { id: "degradationFactor", label: "PV Degradation Model Rate", min: 0.1, max: 2.0, step: 0.05, unit: "%/yr", defaultValue: 0.5, description: "Annualized photovoltaic module efficiency decay curve." },
+          ],
+          quickActions: [
+            { name: "Run Spectral FFT Analysis", desc: "Decompose grid transmission harmonics", effect: "FFT completed: 1.18% THD nominal" },
+            { name: "Simulate Heatwave Degradation", desc: "Model elevated ambient cell temperature", effect: "Efficiency adjusted: -1.2% delta" },
+            { name: "Export Telemetry Dataset", desc: "Compile multi-channel time-series telemetry", effect: "Dataset staged for export" },
+          ],
+          telemetryStreams: [
+            { label: "Grid Frequency Jitter", value: "±0.02 Hz", status: "Sub-Cycle Synchronized" },
+            { label: "Power Factor", value: "0.992 pf", status: "High Efficiency Nominal" },
+            { label: "Telemetry Ingestion", value: "48.2k pts/s", status: "Zero Loss Buffer" },
+            { label: "Lifetime Generation", value: "142.8 GWh", status: "Certified Production" },
+          ],
+        };
+      }
+
+      if (isIncidentsRoute) {
+        return {
+          workspaceCategory: "Operational Incident Triage & Emergency Protocols",
+          title: "Grid Fault Isolation & Alert Triage Console",
+          subtitle: "Manage critical substation trips, inverter ground faults, emergency islanding, and escalation queues.",
+          summaryHeader: "Active Incident & Safety Triage Status",
+          summaryDescription: "Automated protection relays armed. Real-time telemetry monitoring arc fault detection and breaker trips.",
+          params: [
+            { id: "tripSensitivity", label: "Protection Relay Sensitivity", min: 10, max: 100, step: 5, unit: "A", defaultValue: 35, description: "Ground fault breaker trip current threshold." },
+            { id: "escalationTimeout", label: "Incident Escalation Timeout", min: 5, max: 60, step: 5, unit: "min", defaultValue: 15, description: "Maximum duration before unresolved alert escalates to grid operator." },
+            { id: "islandingBuffer", label: "Emergency Islanding Delay", min: 10, max: 200, step: 10, unit: "ms", defaultValue: 40, description: "Microgrid disconnect delay upon loss of transmission feed." },
+          ],
+          quickActions: [
+            { name: "Acknowledge Active Alarms", desc: "Silence audible SCADA chimes for current alerts", effect: "All pending alarms acknowledged" },
+            { name: "Isolate Feeder Circuit", desc: "Open high-voltage breaker on compromised feeder", effect: "Feeder B-12 safely isolated" },
+            { name: "Trigger Emergency Dispatch", desc: "Notify nearest high-voltage certified crew", effect: "Emergency ticket dispatched" },
+          ],
+          telemetryStreams: [
+            { label: "Active Critical Alarms", value: "0 Critical", status: "All Circuits Clear" },
+            { label: "Advisory Notifications", value: "2 Advisory", status: "Review Scheduled" },
+            { label: "Mean Time to Triage", value: "48 sec", status: "Well Within SLA" },
+            { label: "Isolation Relay Health", value: "100%", status: "Self-Test Passed" },
+          ],
+        };
+      }
+
+      if (isMaintenanceRoute) {
+        return {
+          workspaceCategory: "Preventive Maintenance & Field Technician Dispatch",
+          title: "Work Order Scheduling & Field Service Workbench",
+          subtitle: "Coordinate turbine gearbox lubrication, inverter replacements, thermographic drone scans, and crew schedules.",
+          summaryHeader: "Fleet Maintenance & Crew Readiness",
+          summaryDescription: "Field service logistics console tracking scheduled preventative maintenance across renewable generation assets.",
+          params: [
+            { id: "inspectionInterval", label: "Drone Thermography Cycle", min: 30, max: 180, step: 15, unit: "days", defaultValue: 90, description: "Recurrence window for aerial infrared inspection of solar arrays." },
+            { id: "crewShiftCapacity", label: "Active Technician Capacity", min: 2, max: 24, step: 1, unit: "crews", defaultValue: 8, description: "Certified high-voltage field technician teams on active duty." },
+            { id: "sparePartBuffer", label: "Inverter Module Buffer", min: 5, max: 50, step: 5, unit: "units", defaultValue: 20, description: "Critical replacement components stored at regional depot." },
+          ],
+          quickActions: [
+            { name: "Dispatch Thermography Drone", desc: "Launch autonomous IR inspection across Array 4", effect: "Drone flight path uploaded" },
+            { name: "Schedule Nacelle Service", desc: "Book crane and technician team for Turbine W-08", effect: "Work order WO-8841 generated" },
+            { name: "Reorder Spare Inverters", desc: "Replenish 250kW central inverter inventory", effect: "Procurement request submitted" },
+          ],
+          telemetryStreams: [
+            { label: "Scheduled Work Orders", value: "14 Planned", status: "On Track This Week" },
+            { label: "Completed This Month", value: "42 Orders", status: "98% First-Time Fix" },
+            { label: "Mean Time Between Faults", value: "1,420 hrs", status: "Optimal Asset Health" },
+            { label: "Field Crews Deployed", value: "6 / 8 Active", status: "Nominal Staffing" },
+          ],
+        };
+      }
+
+      if (isReportsRoute) {
+        return {
+          workspaceCategory: "Regulatory Compliance & ESG Generation Reports",
+          title: "Executive Compliance & Generation Audit Workbench",
+          subtitle: "Generate grid interconnection reports, clean energy tax credit manifests, carbon offsets, and executive summaries.",
+          summaryHeader: "Regulatory Audit & Environmental Accounting",
+          summaryDescription: "Audited time-stamped generation logs certified for renewable portfolio standard (RPS) compliance.",
+          params: [
+            { id: "reportingPeriod", label: "Audit Aggregation Window", min: 7, max: 365, step: 7, unit: "days", defaultValue: 30, description: "Timeframe for compiled generation and compliance summaries." },
+            { id: "carbonCreditRate", label: "Emissions Abatement Baseline", min: 0.4, max: 1.2, step: 0.05, unit: "tCO₂/MWh", defaultValue: 0.82, description: "Regional grid emissions displacement factor." },
+            { id: "gridCodeTolerance", label: "Frequency Compliance Margin", min: 95, max: 100, step: 0.5, unit: "%", defaultValue: 99.5, description: "Required percentage of generation within tight frequency limits." },
+          ],
+          quickActions: [
+            { name: "Export ESG Compliance Pack", desc: "Compile certified audit pack with cryptographic hash", effect: "ESG_Report_2026.pdf staged" },
+            { name: "Audit Interconnection Log", desc: "Cross-reference hourly generation with grid meter", effect: "Audit variance: 0.01% (PASS)" },
+            { name: "Generate Carbon Manifest", desc: "Calculate total displaced carbon emissions", effect: "Manifest signed: 1,240 tCO₂e" },
+          ],
+          telemetryStreams: [
+            { label: "RPS Compliance Index", value: "100%", status: "Fully Certified" },
+            { label: "Audited Net Export", value: "24.6 GWh", status: "Grid Operator Verified" },
+            { label: "Total Carbon Abated", value: "20,172 tCO₂", status: "Third-Party Validated" },
+            { label: "Report Delivery Status", value: "Up to Date", status: "Next Audit in 16 Days" },
+          ],
+        };
+      }
+
       return {
         workspaceCategory: "Renewable Generation & Dispatch Console",
         title: "Solar & Wind Dispatch Telemetry Workbench",
@@ -632,6 +742,32 @@ export default ${componentName};
     }
 
     if (isClimate) {
+      if (isAnalyticsRoute) {
+        return {
+          workspaceCategory: "Global Emissions & Trajectory Console",
+          title: "Carbon Budget & Emissions Analysis Workbench",
+          subtitle: "Analyze greenhouse gas flux trajectories, sectoral emissions breakdowns, and mitigation scenarios.",
+          summaryHeader: "Global Emissions Ledger Status",
+          summaryDescription: "Multi-sector emissions accounting modeling carbon capture scalability and anthropogenic reductions.",
+          params: [
+            { id: "carbonPrice", label: "Effective Carbon Pricing", min: 20, max: 200, step: 5, unit: "$/t", defaultValue: 85, description: "Global economic carbon pricing benchmark." },
+            { id: "methaneAbate", label: "Methane Abatement Rate", min: 10, max: 80, step: 5, unit: "%", defaultValue: 45, description: "Targeted fugitive emissions mitigation across industry." },
+            { id: "dacCapacity", label: "Direct Air Capture Capacity", min: 1, max: 30, step: 1, unit: "Mt/yr", defaultValue: 12, description: "Industrial DAC modular deployment throughput." },
+          ],
+          quickActions: [
+            { name: "Run 1.5°C Scenario", desc: "Compute net-zero emissions curve", effect: "Net-zero target aligned for 2045" },
+            { name: "Evaluate Methane Cap", desc: "Model flaring elimination across wells", effect: "Global cooling delta: -0.08°C" },
+            { name: "Export Emissions Report", desc: "Generate UNFCCC carbon audit log", effect: "Emissions manifest exported" },
+          ],
+          telemetryStreams: [
+            { label: "Atmospheric CO₂", value: "392 ppm", status: "Stabilization Trajectory" },
+            { label: "Methane Intensity", value: "1,840 ppb", status: "Declining Curve" },
+            { label: "Global Temp Delta", value: "+1.32°C", status: "Sub-1.5°C Paris Target" },
+            { label: "Carbon Budget Remaining", value: "240 Gt", status: "Monitored Reserve" },
+          ],
+        };
+      }
+
       return {
         workspaceCategory: "Atmospheric Simulation Console",
         title: "Planetary Carbon & Flux Workbench",
@@ -658,6 +794,32 @@ export default ${componentName};
     }
 
     if (isSpace) {
+      if (isAnalyticsRoute) {
+        return {
+          workspaceCategory: "Spectral Absorption & Photometry Workbench",
+          title: "Multi-Band Spectrogram & Radiometry Console",
+          subtitle: "Analyze celestial absorption lines, stellar radial velocity, and exoplanet transit dips.",
+          summaryHeader: "Spectral Ingestion & Signal Quality",
+          summaryDescription: "Echelle spectrograph online. Calibrated thorium-argon laser frequency comb providing sub-m/s precision.",
+          params: [
+            { id: "spectralBandwidth", label: "Dispersion Bandwidth", min: 380, max: 920, step: 10, unit: "nm", defaultValue: 550, description: "Optical dispersion window across echelle grating." },
+            { id: "snrThreshold", label: "Signal-to-Noise Floor", min: 10, max: 150, step: 5, unit: "SNR", defaultValue: 65, description: "Minimum detection significance for absorption line fitting." },
+            { id: "velocityOffset", label: "Radial Velocity Correction", min: -100, max: 100, step: 1, unit: "km/s", defaultValue: 12, description: "Barycentric velocity adjustment accounting for Earth orbit." },
+          ],
+          quickActions: [
+            { name: "Calibrate Laser Comb", desc: "Fire wavelength calibration laser comb", effect: "Instrument drift zeroed: < 0.1 m/s" },
+            { name: "Exoplanet Transit Fit", desc: "Fold light curve to Kepler orbital model", effect: "Transit depth: 1.24% detected" },
+            { name: "Export FITS Spectrum", desc: "Compress and sign scientific FITS data", effect: "FITS manifest written to storage" },
+          ],
+          telemetryStreams: [
+            { label: "Radial Velocity", value: "+12.42 m/s", status: "Barycentric Compensated" },
+            { label: "Spectral Resolution", value: "R ~ 115,000", status: "Ultra-High Precision" },
+            { label: "Detector Quantum Eff.", value: "94.2%", status: "Cryo-CCD Optimal" },
+            { label: "Processed Spectra", value: "1,840 Frames", status: "Fully Calibrated" },
+          ],
+        };
+      }
+
       return {
         workspaceCategory: "Observatory Instrumentation & Telemetry Console",
         title: "Celestial Telemetry & Telescope Instrumentation Workbench",

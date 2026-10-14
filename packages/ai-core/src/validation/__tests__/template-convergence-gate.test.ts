@@ -271,4 +271,65 @@ export default function HomePage() {
     expect(report.passed).toBe(true);
     expect(report.violations.length).toBe(0);
   });
+
+  it("fails when App.tsx mounts both <Navbar /> and <Layout /> (duplicate shell navigation)", () => {
+    writeFileSync(
+      join(testProjectDir, "src", "App.tsx"),
+      `import React from "react";
+import { Navbar } from "./components/Navbar";
+import { Layout } from "./components/Layout";
+import AppRoutes from "./routes";
+
+export default function App() {
+  return (
+    <div className="flex flex-col">
+      <Navbar />
+      <Layout>
+        <AppRoutes />
+      </Layout>
+    </div>
+  );
+}`
+    );
+
+    const report = TemplateConvergenceGate.audit(testProjectDir);
+    expect(report.passed).toBe(false);
+    expect(report.violations.some(v => v.includes("DUPLICATE_SHELL_NAVIGATION_DETECTED"))).toBe(true);
+  });
+
+  it("fails when distinct routes repeat identical parameter control IDs and action names (cross-route convergence)", () => {
+    writeFileSync(
+      join(testProjectDir, "src", "pages", "RouteAPage.tsx"),
+      `export default function RouteAPage() {
+        const params = [
+          { "id": "gridFrequency", "label": "Frequency" },
+          { "id": "batteryReserve", "label": "Reserve" }
+        ];
+        const actions = [
+          { "name": "Optimize Inverters" },
+          { "name": "Align Turbines" }
+        ];
+        return <div>Route A</div>;
+      }`
+    );
+
+    writeFileSync(
+      join(testProjectDir, "src", "pages", "RouteBPage.tsx"),
+      `export default function RouteBPage() {
+        const params = [
+          { "id": "gridFrequency", "label": "Frequency" },
+          { "id": "batteryReserve", "label": "Reserve" }
+        ];
+        const actions = [
+          { "name": "Optimize Inverters" },
+          { "name": "Align Turbines" }
+        ];
+        return <div>Route B</div>;
+      }`
+    );
+
+    const report = TemplateConvergenceGate.audit(testProjectDir);
+    expect(report.passed).toBe(false);
+    expect(report.violations.some(v => v.includes("CROSS_ROUTE_STRUCTURAL_CONVERGENCE_DETECTED"))).toBe(true);
+  });
 });

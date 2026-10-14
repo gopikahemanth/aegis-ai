@@ -117,6 +117,9 @@ export class FastDeterministicSanitizer {
     // 7c. Enforce canonical server/index.ts for Express backend
     this.ensureServerIndexEntry(outputDirectory, contract);
 
+    // 7d. Ensure frontend resource API connectivity to PostgreSQL backend
+    this.ensureResourceApiConnectivity(outputDirectory);
+
     // 8. Database URL validation in .env
     report.databaseUrlValid = this.validateDatabaseUrl(outputDirectory);
 
@@ -1072,20 +1075,35 @@ export default siteContent;
         const compNav = join(srcDir, "components", "Navbar.tsx");
         const sharedNav = join(srcDir, "shared", "components", "Navbar.tsx");
 
-        if ((existsSync(compLayout) || existsSync(sharedLayout)) && !appContent.includes("<Layout")) {
-          const layoutImport = existsSync(compLayout)
-            ? `import { Layout } from "./components/Layout";`
-            : `import { Layout } from "./shared/components/Layout";`;
-          if (!appContent.includes("Layout")) {
-            appContent = `${layoutImport}\n` + appContent;
+        const hasLayoutComponent = existsSync(compLayout) || existsSync(sharedLayout);
+        const layoutImport = existsSync(compLayout)
+          ? `import { Layout } from "./components/Layout";`
+          : `import { Layout } from "./shared/components/Layout";`;
+
+        if (hasLayoutComponent) {
+          let appModified = false;
+          // Strip any redundant <Navbar /> from App.tsx when Layout provides the layout shell
+          if (appContent.includes("<Navbar") || appContent.includes("Navbar")) {
+            appContent = appContent
+              .replace(/<Navbar\s*\/>\s*/g, "")
+              .replace(/import\s+(?:{\s*Navbar\s*}|Navbar)\s+from\s+['"][^'"]+Navbar['"];?\n?/g, "");
+            appModified = true;
           }
-          if (appContent.includes("<AppRoutes />") || appContent.includes("<AppRoutes/>")) {
-            appContent = appContent.replace(
-              /<AppRoutes\s*\/>/,
-              `<Layout><AppRoutes /></Layout>`
-            );
+          if (!appContent.includes("<Layout")) {
+            if (!appContent.includes("Layout")) {
+              appContent = `${layoutImport}\n` + appContent;
+            }
+            if (appContent.includes("<AppRoutes />") || appContent.includes("<AppRoutes/>")) {
+              appContent = appContent.replace(
+                /<AppRoutes\s*\/>/,
+                `<Layout><AppRoutes /></Layout>`
+              );
+              appModified = true;
+            }
+          }
+          if (appModified) {
             writeFileSync(appPath, appContent, "utf8");
-            console.log("[FastSanitizer] 🔧 Integrated <Layout /> into App.tsx layout");
+            console.log("[FastSanitizer] 🔧 Integrated singular <Layout /> shell into App.tsx (deduplicated <Navbar />)");
           }
         }
 
@@ -1130,16 +1148,25 @@ export default siteContent;
           } catch {}
         } else if ((existsSync(compNav) || existsSync(sharedNav)) && !appContent.includes("<Navbar") && !appContent.includes("<Layout")) {
           const navImport = existsSync(compNav) ? `import { Navbar } from "./components/Navbar";` : `import { Navbar } from "./shared/components/Navbar";`;
+          const targetNavPath = existsSync(compNav) ? compNav : sharedNav;
+          let isSidebar = false;
+          try {
+            const navSrc = readFileSync(targetNavPath, "utf8");
+            isSidebar = navSrc.includes("<aside") || navSrc.includes("w-64");
+          } catch {}
+
           if (!appContent.includes("Navbar")) {
             appContent = `${navImport}\n` + appContent;
           }
           if (appContent.includes("<AppRoutes />") || appContent.includes("<AppRoutes/>")) {
+            const shellFlex = isSidebar ? "flex flex-row" : "flex flex-col";
+            const mainClass = isSidebar ? "flex-1 overflow-auto" : "flex-1";
             appContent = appContent.replace(
               /<AppRoutes\s*\/>/,
-              `<div className="min-h-screen flex flex-col"><Navbar /><main className="flex-1"><AppRoutes /></main></div>`
+              `<div className="min-h-screen ${shellFlex}"><Navbar /><main className="${mainClass}"><AppRoutes /></main></div>`
             );
             writeFileSync(appPath, appContent, "utf8");
-            console.log("[FastSanitizer] 🔧 Integrated <Navbar /> into App.tsx layout");
+            console.log(`[FastSanitizer] 🔧 Integrated <Navbar /> (${isSidebar ? "sidebar flex-row" : "topbar flex-col"}) into App.tsx layout`);
           }
         }
 
@@ -1163,7 +1190,48 @@ export default siteContent;
           (hasMissingImports || appContent.includes("<Routes") || appContent.includes("React.lazy"));
 
         if (hasBrokenRouter) {
-          appContent = `import React from "react";
+          if (hasLayoutComponent) {
+            appContent = `import React from "react";
+import { BrowserRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import AppRoutes from "./routes";
+${layoutImport}
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Layout>
+          <AppRoutes />
+        </Layout>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
+
+export { App };
+`;
+          } else {
+            const targetNavPath = existsSync(compNav) ? compNav : (existsSync(sharedNav) ? sharedNav : null);
+            let isSidebar = false;
+            if (targetNavPath) {
+              try {
+                const navSrc = readFileSync(targetNavPath, "utf8");
+                isSidebar = navSrc.includes("<aside") || navSrc.includes("w-64");
+              } catch {}
+            }
+            const shellFlex = isSidebar ? "flex flex-row" : "flex flex-col";
+            const mainClass = isSidebar ? "flex-1 overflow-auto" : "flex-1";
+            appContent = `import React from "react";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppRoutes from "./routes";
@@ -1182,9 +1250,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans">
+        <div className="min-h-screen ${shellFlex} bg-slate-950 text-slate-100 font-sans">
           <Navbar />
-          <main className="flex-1">
+          <main className="${mainClass}">
             <AppRoutes />
           </main>
         </div>
@@ -1195,8 +1263,18 @@ export default function App() {
 
 export { App };
 `;
+          }
           writeFileSync(appPath, appContent, "utf8");
-          console.log("[FastSanitizer] 🔧 Repaired App.tsx to canonical router boundary (<AppRoutes /> from ./routes with <Navbar />)");
+          console.log("[FastSanitizer] 🔧 Repaired App.tsx to canonical router boundary (<AppRoutes /> from ./routes)");
+        }
+
+        // Layout Invariant Final Gate: Ensure App.tsx NEVER mounts both <Navbar /> and <Layout />
+        if (appContent.includes("<Layout") && appContent.includes("<Navbar")) {
+          appContent = appContent
+            .replace(/<Navbar\s*\/>\s*/g, "")
+            .replace(/import\s+(?:{\s*Navbar\s*}|Navbar)\s+from\s+['"][^'"]+Navbar['"];?\n?/g, "");
+          writeFileSync(appPath, appContent, "utf8");
+          console.log("[FastSanitizer] 🔧 Deduplicated shell navigation: removed redundant <Navbar /> in favor of <Layout />");
         }
       } catch {}
     }
@@ -3114,15 +3192,63 @@ export default useAuth;
         writeFileSync(compNav, navbarCode, "utf8");
       }
 
-      // Ensure App.tsx renders Navbar and mounts canonical AppRoutes so all views are reachable and visible to BrowserValidator
+      // Ensure App.tsx renders Layout or Navbar and mounts canonical AppRoutes so all views are reachable
       const appTsxPath = join(srcDir, "App.tsx");
+      const compLayoutPath = join(srcDir, "components", "Layout.tsx");
+      const sharedLayoutPath = join(srcDir, "shared", "components", "Layout.tsx");
+      const hasLayoutComp = existsSync(compLayoutPath) || existsSync(sharedLayoutPath);
+      const layoutImportStr = existsSync(compLayoutPath)
+        ? `import { Layout } from "./components/Layout";`
+        : `import { Layout } from "./shared/components/Layout";`;
+
       if (existsSync(appTsxPath)) {
         let appContent = readFileSync(appTsxPath, "utf8");
         const hasAppRoutes = appContent.includes("AppRoutes");
         const hasBrokenImports = appContent.includes("./content/site-content") || (appContent.includes("lazy(") && !hasAppRoutes);
+
         if (!hasAppRoutes || hasBrokenImports) {
-          const shellClasses = "min-h-screen font-sans flex flex-col";
-          appContent = `import React from "react";
+          if (hasLayoutComp) {
+            appContent = `import React from "react";
+import { BrowserRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import AppRoutes from "./routes";
+${layoutImportStr}
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Layout>
+          <AppRoutes />
+        </Layout>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
+
+export { App };
+`;
+          } else {
+            let isSidebarNav = false;
+            const navCandidate = existsSync(compNav) ? compNav : (existsSync(sharedNav) ? sharedNav : null);
+            if (navCandidate) {
+              try {
+                const navCode = readFileSync(navCandidate, "utf8");
+                isSidebarNav = navCode.includes("<aside") || navCode.includes("w-64") || navCode.includes("w-72");
+              } catch {}
+            }
+            const shellFlex = isSidebarNav ? "flex flex-row" : "flex flex-col";
+            const mainClass = isSidebarNav ? "flex-1 overflow-auto" : "flex-1";
+            appContent = `import React from "react";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppRoutes from "./routes";
@@ -3141,9 +3267,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="${shellClasses}">
+        <div className="min-h-screen font-sans ${shellFlex}">
           <Navbar />
-          <main className="flex-1">
+          <main className="${mainClass}">
             <AppRoutes />
           </main>
         </div>
@@ -3151,19 +3277,54 @@ export default function App() {
     </QueryClientProvider>
   );
 }
+
+export { App };
 `;
+          }
           writeFileSync(appTsxPath, appContent, "utf8");
         } else if (!appContent.includes("<Navbar") && !appContent.includes("<Layout")) {
-          if (!appContent.includes('import { Navbar }') && !appContent.includes('import Navbar')) {
-            appContent = `import { Navbar } from "./components/Navbar";\n` + appContent;
+          if (hasLayoutComp) {
+            if (!appContent.includes("Layout")) {
+              appContent = `${layoutImportStr}\n` + appContent;
+            }
+            if (appContent.includes("<AppRoutes />") || appContent.includes("<AppRoutes/>")) {
+              appContent = appContent.replace(
+                /<AppRoutes\s*\/>/,
+                `<Layout><AppRoutes /></Layout>`
+              );
+              writeFileSync(appTsxPath, appContent, "utf8");
+            }
+          } else {
+            let isSidebarNav = false;
+            const navCandidate = existsSync(compNav) ? compNav : (existsSync(sharedNav) ? sharedNav : null);
+            if (navCandidate) {
+              try {
+                const navCode = readFileSync(navCandidate, "utf8");
+                isSidebarNav = navCode.includes("<aside") || navCode.includes("w-64") || navCode.includes("w-72");
+              } catch {}
+            }
+            const shellFlex = isSidebarNav ? "flex flex-row" : "flex flex-col";
+            const mainClass = isSidebarNav ? "flex-1 overflow-auto" : "flex-1";
+            if (!appContent.includes('import { Navbar }') && !appContent.includes('import Navbar')) {
+              appContent = `import { Navbar } from "./components/Navbar";\n` + appContent;
+            }
+            if (appContent.includes("<AppRoutes />") || appContent.includes("<AppRoutes/>")) {
+              appContent = appContent.replace(
+                /<AppRoutes\s*\/>/,
+                `<div className="min-h-screen font-sans ${shellFlex}"><Navbar /><main className="${mainClass}"><AppRoutes /></main></div>`
+              );
+              writeFileSync(appTsxPath, appContent, "utf8");
+            }
           }
-          if (appContent.includes("<AppRoutes />") || appContent.includes("<AppRoutes/>")) {
-            appContent = appContent.replace(
-              /<AppRoutes\s*\/>/,
-              `<div className="min-h-screen flex flex-col"><Navbar /><main className="flex-1"><AppRoutes /></main></div>`
-            );
-            writeFileSync(appTsxPath, appContent, "utf8");
-          }
+        }
+
+        // Deduplication Invariant: Strip redundant <Navbar /> if <Layout /> is mounted
+        if (appContent.includes("<Layout") && appContent.includes("<Navbar")) {
+          appContent = appContent
+            .replace(/<Navbar\s*\/>\s*/g, "")
+            .replace(/import\s+(?:{\s*Navbar\s*}|Navbar)\s+from\s+['"][^'"]+Navbar['"];?\n?/g, "");
+          writeFileSync(appTsxPath, appContent, "utf8");
+          console.log("[FastSanitizer] 🔧 Deduplicated shell navigation in App.tsx (removed <Navbar /> in favor of <Layout />)");
         }
       }
 
@@ -3454,13 +3615,44 @@ npm run dev
       const models = contract?.requiredModels || ["Item", "User"];
       for (const model of models.slice(0, 4)) {
         const slug = model.toLowerCase().replace(/s$/, "") + "s";
+        const modelCamel = model.charAt(0).toLowerCase() + model.slice(1);
         const routeFile = `${slug}.routes.ts`;
         const routePath = join(routesDir, routeFile);
         if (!existsSync(routePath)) {
           writeFileSync(routePath, `import { Router } from "express";
+import { prisma } from "../index";
+
 const router = Router();
-router.get("/", (_req, res) => res.json([]));
-router.post("/", (req, res) => res.status(201).json({ id: Date.now().toString(), ...req.body }));
+let memoryStore: any[] = [];
+
+router.get("/", async (_req: any, res: any) => {
+  try {
+    const p = prisma as any;
+    if (p && p["${modelCamel}"] && typeof p["${modelCamel}"].findMany === "function") {
+      const items = await p["${modelCamel}"].findMany({ orderBy: { createdAt: "desc" } });
+      if (Array.isArray(items)) return res.json(items);
+    }
+  } catch (err: any) {
+    console.warn("[Prisma GET error]", err.message);
+  }
+  return res.json(memoryStore);
+});
+
+router.post("/", async (req: any, res: any) => {
+  try {
+    const p = prisma as any;
+    if (p && p["${modelCamel}"] && typeof p["${modelCamel}"].create === "function") {
+      const created = await p["${modelCamel}"].create({ data: req.body });
+      return res.status(201).json(created);
+    }
+  } catch (err: any) {
+    console.warn("[Prisma POST error]", err.message);
+  }
+  const newItem = { id: Date.now().toString(), ...req.body, createdAt: new Date().toISOString() };
+  memoryStore.unshift(newItem);
+  return res.status(201).json(newItem);
+});
+
 export default router;
 `, "utf8");
           routeFiles.push(routeFile);
@@ -3629,6 +3821,34 @@ export default router;
           modified = true;
           console.log(`[FastSanitizer] 🔧 Aliased /status route to /api/status in ${targetPath}`);
         }
+        // Ensure all routes in server/routes are mounted in server/index.ts
+        for (let i = 0; i < routeFiles.length; i++) {
+          const f = routeFiles[i];
+          const base = f.replace(/\.(ts|js)$/, "");
+          const cleanSlug = base.replace(/\.routes$/, "").replace(/Routes$/, "").toLowerCase();
+          const mountRegex = new RegExp(`app\\.use\\(\\s*['"]\\/api\\/${cleanSlug}['"]`, "i");
+          if (!mountRegex.test(existing)) {
+            const varName = `${cleanSlug}Router_${i}`;
+            const importStmt = `import ${varName} from "./routes/${base}";\n`;
+            const mountStmt = `app.use("/api/${cleanSlug}", ${varName});\n`;
+            existing = importStmt + existing;
+            if (existing.includes("app.use('/api/auth'") || existing.includes('app.use("/api/auth"')) {
+              existing = existing.replace(/(app\.use\(['"]\/api\/auth['"][^;]+;)/, `$1\n${mountStmt}`);
+            } else if (existing.includes("const app = express();")) {
+              existing = existing.replace("const app = express();", `const app = express();\n${mountStmt}`);
+            } else {
+              existing += `\n${mountStmt}`;
+            }
+            modified = true;
+            console.log(`[FastSanitizer] 🔧 Auto-mounted domain route /api/${cleanSlug} into ${targetPath}`);
+          }
+        }
+
+        if (existing.includes("PORT || 3001") || existing.includes("PORT = 3001")) {
+          existing = existing.replace(/PORT\s*\|\|\s*3001/g, "PORT || 5000").replace(/PORT\s*=\s*3001/g, "PORT = 5000");
+          modified = true;
+        }
+
         if (modified) {
           writeFileSync(targetPath, existing, "utf8");
         }
@@ -3650,7 +3870,7 @@ app.get("/api/health", (_req, res) => {
 
 ${routeMounts.join("\n")}
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
     console.log(\`Server listening on port \${PORT}\`);
@@ -3665,6 +3885,107 @@ export default app;
       console.log(`[FastSanitizer] ✓ Created canonical backend server entry: server/index.ts`);
     } catch (err: any) {
       console.warn(`[FastSanitizer] Failed to write server/index.ts:`, err.message);
+    }
+  }
+
+  /**
+   * Ensures frontend resource pages connect to backend PostgreSQL API endpoints via fetch/useEffect.
+   * If static mock arrays exist, hooks them into state and hydrates with live API data on mount.
+   */
+  private static ensureResourceApiConnectivity(outputDirectory: string): void {
+    const srcDir = join(outputDirectory, "src");
+    const pagesDir = join(srcDir, "pages");
+    if (!existsSync(pagesDir)) return;
+
+    try {
+      const availableEndpoints = new Set<string>();
+      const routesDir = join(outputDirectory, "server", "routes");
+      if (existsSync(routesDir)) {
+        try {
+          const rFiles = readdirSync(routesDir).filter(f => f.endsWith(".routes.ts") || f.endsWith(".routes.js"));
+          for (const rf of rFiles) {
+            const slug = rf.replace(/\.routes\.(ts|js)$/, "").toLowerCase();
+            availableEndpoints.add(slug);
+          }
+        } catch {}
+      }
+
+      const prismaSchema = join(outputDirectory, "prisma", "schema.prisma");
+      if (existsSync(prismaSchema)) {
+        try {
+          const pContent = readFileSync(prismaSchema, "utf8");
+          const models = Array.from(pContent.matchAll(/model\s+([A-Za-z0-9_]+)\s*\{/g)).map(m => m[1]);
+          for (const m of models) {
+            const slug = m.toLowerCase().replace(/s$/, "") + "s";
+            availableEndpoints.add(slug);
+          }
+        } catch {}
+      }
+
+      if (availableEndpoints.size === 0) {
+        availableEndpoints.add("assets");
+        availableEndpoints.add("items");
+      }
+
+      const pageFiles = readdirSync(pagesDir).filter(f => f.endsWith(".tsx") || f.endsWith(".jsx"));
+      for (const pf of pageFiles) {
+        const fullPath = join(pagesDir, pf);
+        let content = readFileSync(fullPath, "utf8");
+        let modified = false;
+
+        const baseName = pf.replace(/\.(tsx|jsx)$/, "").replace(/Page$/, "").toLowerCase();
+        let targetEndpoint: string | null = null;
+        for (const ep of availableEndpoints) {
+          if (ep.toLowerCase() === baseName || ep.toLowerCase() === baseName + "s" || (baseName.endsWith("s") && ep.toLowerCase() === baseName.slice(0, -1))) {
+            targetEndpoint = ep;
+            break;
+          }
+        }
+        if (!targetEndpoint && (baseName.includes("asset") || baseName.includes("inventory") || baseName.includes("equipment") || baseName.includes("solar") || baseName.includes("wind") || baseName.includes("turbine"))) {
+          targetEndpoint = availableEndpoints.has("assets") ? "assets" : Array.from(availableEndpoints)[0];
+        }
+
+        if (targetEndpoint && !content.includes(`/api/${targetEndpoint}`)) {
+          // Check for static array that needs state lifting (e.g. const companions = [...], const MOCK_ASSETS = [...])
+          const mockArrayMatch = content.match(/const\s+([a-zA-Z0-9_$]+)\s*=\s*\[\s*\{/);
+          if (mockArrayMatch && !content.includes(`useState(${mockArrayMatch[1]}`) && !content.includes(`useState<`)) {
+            const varName = mockArrayMatch[1];
+            const setterName = "set" + varName.charAt(0).toUpperCase() + varName.slice(1);
+            content = content.replace(
+              new RegExp(`const\\s+${varName}\\s*=\\s*(\\[[\\s\\S]*?\\n\\s*\\]);`),
+              `const [${varName}, ${setterName}] = React.useState<any[]>($1);`
+            );
+            const effectSnippet = `\n  React.useEffect(() => {\n    fetch("/api/${targetEndpoint}")\n      .then(res => res.ok ? res.json() : null)\n      .then(data => {\n        if (Array.isArray(data) && data.length > 0) {\n          ${setterName}(data);\n        }\n      })\n      .catch(() => {});\n  }, []);\n`;
+            
+            const stateIdx = content.indexOf(`const [${varName}`);
+            if (stateIdx !== -1) {
+              const lineEnd = content.indexOf("\n", content.indexOf(");", stateIdx));
+              if (lineEnd !== -1) {
+                content = content.slice(0, lineEnd + 1) + effectSnippet + content.slice(lineEnd + 1);
+                modified = true;
+                console.log(`[FastSanitizer] 🔌 Wired resource API /api/${targetEndpoint} to state ${varName} in ${pf}`);
+              }
+            }
+          } else if (content.includes("const [items, setItems] = useState") || content.includes("const [items, setItems] = React.useState")) {
+            if (!content.includes("fetch(")) {
+              const effectSnippet = `\n  React.useEffect(() => {\n    fetch("/api/${targetEndpoint}")\n      .then(res => res.ok ? res.json() : null)\n      .then(data => {\n        if (Array.isArray(data) && data.length > 0) {\n          setItems(data.map((d: any, idx: number) => ({\n            id: d.id || \`item-\${idx}\`,\n            title: d.name || d.title || d.label || \`Item \${idx + 1}\`,\n            subtitle: d.subtitle || d.type || d.status || "",\n            folder: d.folder || d.category || "General",\n            category: d.category || "General",\n            savedDate: d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "Active",\n            notes: d.notes || d.description || "",\n            tags: Array.isArray(d.tags) ? d.tags : [d.status || "Active"],\n            ...d\n          })));\n        }\n      })\n      .catch(() => {});\n  }, []);\n`;
+              const pos = content.indexOf("const [items, setItems]");
+              if (pos !== -1) {
+                const lineEnd = content.indexOf("\n", pos);
+                content = content.slice(0, lineEnd + 1) + effectSnippet + content.slice(lineEnd + 1);
+                modified = true;
+                console.log(`[FastSanitizer] 🔌 Injected live /api/${targetEndpoint} hydration into items state in ${pf}`);
+              }
+            }
+          }
+        }
+
+        if (modified) {
+          writeFileSync(fullPath, content, "utf8");
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[FastSanitizer] ensureResourceApiConnectivity warning:`, err.message);
     }
   }
 
@@ -3981,13 +4302,17 @@ export default defineConfig({
     // 2. Resolve capability from plan requiredCapabilities
     const reqCaps: string[] = matchedPlan?.requiredCapabilities || [];
     let expCapability: any = undefined;
-    if (reqCaps.some((c: string) => c.includes("folder") || c.includes("bookmark") || c.includes("collection") || c.includes("saved"))) {
+    const routeSemanticText = `${routePath} ${pageTitle} ${matchedPlan?.pageRole || ""} ${matchedPlan?.purpose || ""}`.toLowerCase();
+    if (reqCaps.some((c: string) => c.includes("folder") || c.includes("bookmark") || c.includes("collection") || c.includes("saved") || c.includes("ledger") || c.includes("matrix") || c.includes("roster") || c.includes("inventory")) ||
+        /collection|bookmark|folder|saved|roster|inventory|archive|matrix|compliance|reports/i.test(routeSemanticText)) {
       expCapability = "COLLECTION_HUB";
-    } else if (reqCaps.some((c: string) => c.includes("itinerary") || c.includes("schedule") || c.includes("timeline") || c.includes("day-"))) {
+    } else if (reqCaps.some((c: string) => c.includes("itinerary") || c.includes("schedule") || c.includes("timeline") || c.includes("day-") || c.includes("work-order") || c.includes("dispatch")) ||
+        /itinerary|schedule|timeline|shift|work-order|technician-dispatch|preventive/i.test(routeSemanticText)) {
       expCapability = "ITINERARY_PLANNER";
     } else if (reqCaps.some((c: string) => c.includes("scroll") || c.includes("narrative") || c.includes("chapter") || c.includes("storytelling"))) {
       expCapability = "SCROLL_STORY";
-    } else if (reqCaps.some((c: string) => c.includes("map") || c.includes("waypoint") || c.includes("bathymetry"))) {
+    } else if (reqCaps.some((c: string) => c.includes("map") || c.includes("waypoint") || c.includes("bathymetry")) ||
+        /spatial-map|cartographic|biome-map|waypoint|geospatial|site-map|farm-map/i.test(routeSemanticText)) {
       expCapability = "SPATIAL_MAP";
     } else if (reqCaps.some((c: string) => c.includes("audio") || c.includes("synth") || c.includes("sound") || c.includes("hydrophone"))) {
       expCapability = "AUDIO_SYNTH";

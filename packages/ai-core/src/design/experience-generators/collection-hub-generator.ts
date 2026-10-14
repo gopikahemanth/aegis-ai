@@ -82,7 +82,7 @@ export class CollectionHubExperienceGenerator {
 
     const countLabel = isMuseum ? "Artworks" : "Items";
 
-    return `import React, { useState } from "react";
+    return `import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 export function ${componentName}() {
@@ -97,6 +97,35 @@ export function ${componentName}() {
   const [isCreatingFolder, setIsCreatingFolder] = useState<boolean>(false);
   const [newFolderName, setNewFolderName] = useState<string>("");
   const [selectedItemDetail, setSelectedItemDetail] = useState<any | null>(null);
+
+  useEffect(() => {
+    const fetchLiveItems = async () => {
+      const candidates = ["${options.route ? options.route.replace(/^\//, '').replace(/[^a-zA-Z0-9]/g, '') : 'assets'}", "assets", "items"].filter(Boolean);
+      for (const ep of candidates) {
+        try {
+          const res = await fetch(\`/api/\${ep}\`);
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+              setItems(data.map((d: any, idx: number) => ({
+                id: d.id || \`item-\${idx}\`,
+                title: d.name || d.title || d.label || \`Item \${idx + 1}\`,
+                subtitle: d.subtitle || d.type || d.status || "",
+                folder: d.folder || d.category || "General",
+                category: d.category || "General",
+                savedDate: d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "Active",
+                notes: d.notes || d.description || "",
+                tags: Array.isArray(d.tags) ? d.tags : [d.status || "Active"],
+                ...d
+              })));
+              break;
+            }
+          }
+        } catch {}
+      }
+    };
+    fetchLiveItems();
+  }, []);
 
   const filteredItems = activeFolder === "All"
     ? items

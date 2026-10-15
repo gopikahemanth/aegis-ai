@@ -1,0 +1,384 @@
+[
+  {
+    "id": "test5-saas-analytics",
+    "name": "Stratum Analytics",
+    "domain": "SaaS Sales & Revenue Analytics Platform",
+    "targetDir": "projects/fresh-saas-analytics-20261015",
+    "timestamp": "2026-10-15T14:42:31.738Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 10268
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "RENDERED",
+        "buttons": 4,
+        "inputs": 0,
+        "selects": 0,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/analyze-mrr-arr-growth",
+        "status": "RENDERED",
+        "buttons": 4,
+        "inputs": 0,
+        "selects": 0,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/explore-cohort-retention",
+        "status": "RENDERED",
+        "buttons": 6,
+        "inputs": 0,
+        "selects": 2,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/dashboard",
+        "status": "RENDERED",
+        "buttons": 4,
+        "inputs": 0,
+        "selects": 0,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/export-reports-pdf-csv",
+        "status": "RENDERED",
+        "buttons": 11,
+        "inputs": 0,
+        "selects": 0,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/financial-kpis",
+        "status": "RENDERED",
+        "buttons": 4,
+        "inputs": 0,
+        "selects": 0,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/geo-performance",
+        "status": "RENDERED",
+        "buttons": 7,
+        "inputs": 0,
+        "selects": 1,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/pipeline-deal",
+        "status": "RENDERED",
+        "buttons": 7,
+        "inputs": 0,
+        "selects": 1,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/revenue-record",
+        "status": "RENDERED",
+        "buttons": 5,
+        "inputs": 0,
+        "selects": 1,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/sales-pipeline",
+        "status": "RENDERED",
+        "buttons": 4,
+        "inputs": 0,
+        "selects": 0,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/switch-currency-and-periods",
+        "status": "RENDERED",
+        "buttons": 4,
+        "inputs": 0,
+        "selects": 0,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/user-roles",
+        "status": "RENDERED",
+        "buttons": 4,
+        "inputs": 0,
+        "selects": 0,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/login",
+        "status": "RENDERED",
+        "buttons": 1,
+        "inputs": 2,
+        "selects": 0,
+        "title": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/geo-regional-metrics",
+        "status": "RENDERED",
+        "buttons": 4,
+        "inputs": 0,
+        "selects": 0,
+        "title": "STRATUM ANALYTICS"
+      }
+    ],
+    "interactiveElements": {
+      "buttons": 69,
+      "inputs": 2,
+      "forms": 1,
+      "selects": 5
+    },
+    "viewports": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "visualQuality": {
+      "duplicateShells": false,
+      "layoutClippings": 0
+    },
+    "domainConsistency": {
+      "status": "PASS",
+      "leakedBrands": []
+    },
+    "dodScore": 93,
+    "dodPassed": true,
+    "dodSummary": "✅ Definition of Done: PASSED (93/100). All required criteria satisfied. 2 warning(s) noted.",
+    "dodCriteria": {
+      "total": 28,
+      "passed": 26,
+      "failed": 2,
+      "blockers": 0,
+      "warnings": 2
+    }
+  },
+  {
+    "id": "test6-restaurant-ordering",
+    "name": "Savoria Kitchen",
+    "domain": "Restaurant Food Ordering & Menu Platform",
+    "targetDir": "projects/fresh-restaurant-ordering-20261015",
+    "timestamp": "2026-10-15T14:43:11.106Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 10027
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "RENDERED",
+        "buttons": 1,
+        "inputs": 0,
+        "selects": 0,
+        "title": "SAVORIA KITCHEN"
+      },
+      {
+        "route": "/and-filter-recipes",
+        "status": "RENDERED",
+        "buttons": 16,
+        "inputs": 0,
+        "selects": 0,
+        "title": "SAVORIA KITCHEN"
+      },
+      {
+        "route": "/build-custom-itinerary",
+        "status": "RENDERED",
+        "buttons": 7,
+        "inputs": 0,
+        "selects": 0,
+        "title": "SAVORIA KITCHEN"
+      },
+      {
+        "route": "/dashboard",
+        "status": "RENDERED",
+        "buttons": 4,
+        "inputs": 0,
+        "selects": 0,
+        "title": "SAVORIA KITCHEN"
+      },
+      {
+        "route": "/editorial-stories",
+        "status": "RENDERED",
+        "buttons": 4,
+        "inputs": 0,
+        "selects": 0,
+        "title": "SAVORIA KITCHEN"
+      },
+      {
+        "route": "/explore-culinary-destinations",
+        "status": "RENDERED",
+        "buttons": 1,
+        "inputs": 0,
+        "selects": 0,
+        "title": "SAVORIA KITCHEN"
+      },
+      {
+        "route": "/saved-discoveries",
+        "status": "RENDERED",
+        "buttons": 16,
+        "inputs": 0,
+        "selects": 0,
+        "title": "SAVORIA KITCHEN"
+      }
+    ],
+    "interactiveElements": {
+      "buttons": 49,
+      "inputs": 0,
+      "forms": 0,
+      "selects": 0
+    },
+    "viewports": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "visualQuality": {
+      "duplicateShells": false,
+      "layoutClippings": 0
+    },
+    "domainConsistency": {
+      "status": "PASS",
+      "leakedBrands": []
+    },
+    "dodScore": 86,
+    "dodPassed": false,
+    "dodSummary": "🔴 Definition of Done: FAILED (86/100). 2 required criterion/criteria not met:\n  ✗ Prisma Models Verification: prisma/schema.prisma does not exist on disk\n  ✗ Backend Endpoints Verification: Missing backend server entry (server/index.ts) or API route handlers",
+    "dodCriteria": {
+      "total": 28,
+      "passed": 24,
+      "failed": 4,
+      "blockers": 2,
+      "warnings": 2
+    }
+  },
+  {
+    "id": "test7-property-marketplace",
+    "name": "Dwellio Realty",
+    "domain": "Real Estate Property Marketplace",
+    "targetDir": "projects/fresh-property-marketplace-20261015",
+    "timestamp": "2026-10-15T14:43:42.661Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 10856
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "RENDERED",
+        "buttons": 1,
+        "inputs": 0,
+        "selects": 0,
+        "title": "DWELLIO REALTY"
+      },
+      {
+        "route": "/dashboard",
+        "status": "RENDERED",
+        "buttons": 4,
+        "inputs": 0,
+        "selects": 0,
+        "title": "DWELLIO REALTY"
+      },
+      {
+        "route": "/favorite",
+        "status": "RENDERED",
+        "buttons": 3,
+        "inputs": 0,
+        "selects": 0,
+        "title": "DWELLIO REALTY"
+      },
+      {
+        "route": "/inquiry",
+        "status": "RENDERED",
+        "buttons": 1,
+        "inputs": 3,
+        "selects": 3,
+        "title": "DWELLIO REALTY"
+      },
+      {
+        "route": "/search-properties-by-criteria",
+        "status": "RENDERED",
+        "buttons": 24,
+        "inputs": 5,
+        "selects": 8,
+        "title": "DWELLIO REALTY"
+      },
+      {
+        "route": "/saved-listings",
+        "status": "RENDERED",
+        "buttons": 11,
+        "inputs": 0,
+        "selects": 0,
+        "title": "DWELLIO REALTY"
+      },
+      {
+        "route": "/save-property-to-favorites",
+        "status": "RENDERED",
+        "buttons": 11,
+        "inputs": 0,
+        "selects": 0,
+        "title": "DWELLIO REALTY"
+      },
+      {
+        "route": "/submit-agent-inquiry",
+        "status": "RENDERED",
+        "buttons": 4,
+        "inputs": 0,
+        "selects": 0,
+        "title": "DWELLIO REALTY"
+      },
+      {
+        "route": "/tour",
+        "status": "RENDERED",
+        "buttons": 1,
+        "inputs": 3,
+        "selects": 3,
+        "title": "DWELLIO REALTY"
+      },
+      {
+        "route": "/property-gallery-and-details",
+        "status": "RENDERED",
+        "buttons": 24,
+        "inputs": 5,
+        "selects": 8,
+        "title": "DWELLIO REALTY"
+      },
+      {
+        "route": "/schedule-property-tour",
+        "status": "RENDERED",
+        "buttons": 24,
+        "inputs": 5,
+        "selects": 8,
+        "title": "DWELLIO REALTY"
+      }
+    ],
+    "interactiveElements": {
+      "buttons": 108,
+      "inputs": 21,
+      "forms": 8,
+      "selects": 30
+    },
+    "viewports": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "visualQuality": {
+      "duplicateShells": false,
+      "layoutClippings": 0
+    },
+    "domainConsistency": {
+      "status": "PASS",
+      "leakedBrands": []
+    },
+    "dodScore": 86,
+    "dodPassed": false,
+    "dodSummary": "🔴 Definition of Done: FAILED (86/100). 2 required criterion/criteria not met:\n  ✗ Prisma Models Verification: prisma/schema.prisma does not exist on disk\n  ✗ Backend Endpoints Verification: Missing backend server entry (server/index.ts) or API route handlers",
+    "dodCriteria": {
+      "total": 28,
+      "passed": 24,
+      "failed": 4,
+      "blockers": 2,
+      "warnings": 2
+    }
+  }
+]

@@ -1408,6 +1408,41 @@ export { Layout };
       .map(r => `        <Route path="${r.path}" element={<${r.component} />} />`)
       .join("\n");
 
+    const discoveredCallbacks = new Set<string>();
+    if (srcDir && existsSync(srcDir)) {
+      try {
+        const allSrcFiles = readdirSync(srcDir, { recursive: true });
+        for (const f of allSrcFiles) {
+          if (typeof f === "string" && (f.endsWith(".tsx") || f.endsWith(".ts")) && !f.includes(".test.") && !f.endsWith(".d.ts")) {
+            const content = readFileSync(join(srcDir, f), "utf8");
+            const cbMatches = content.match(/\b(on[A-Z][a-zA-Z0-9_]*|handle[A-Z][a-zA-Z0-9_]*)\b/g);
+            if (cbMatches) {
+              for (const cb of cbMatches) {
+                if (cb.length < 40) discoveredCallbacks.add(cb);
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+
+    const knownKeys = new Set([
+      "appointments", "providers", "items", "data", "courses", "lessons", "records",
+      "users", "products", "orders", "properties", "listings", "favorites", "savedListings",
+      "cart", "cartItems", "categories", "recipes", "destinations", "stories", "tours",
+      "deals", "metrics", "onAddToCart", "onRemoveFromCart", "onUpdateQuantity",
+      "onCheckout", "onSave", "onSaveProperty", "onFavorite", "onToggleFavorite",
+      "onSchedule", "onScheduleTour", "onBook", "onBookDirect", "onSearch", "onFilter",
+      "onSubmit", "onSubmitInquiry", "onContactAgent", "onSelectProvider",
+      "onCancelAppointment", "onRescheduleAppointment", "onUpdateStatus", "onClose",
+      "onOpen", "onDelete", "onEdit", "onSelect", "onNavigate", "onChange", "onClick"
+    ]);
+
+    const discoveredLines = Array.from(discoveredCallbacks)
+      .filter(cb => !knownKeys.has(cb))
+      .map(cb => `      ${cb}: () => {},`)
+      .join("\n");
+
     return `import React, { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
@@ -1443,12 +1478,49 @@ function resolveComponent(mod: any, fallbackTitle: string): React.ComponentType<
       users: [],
       products: [],
       orders: [],
-      onSelectProvider: () => {},
+      properties: [],
+      listings: [],
+      favorites: [],
+      savedListings: [],
+      cart: [],
+      cartItems: [],
+      categories: [],
+      recipes: [],
+      destinations: [],
+      stories: [],
+      tours: [],
+      deals: [],
+      metrics: [],
+      onAddToCart: () => {},
+      onRemoveFromCart: () => {},
+      onUpdateQuantity: () => {},
+      onCheckout: () => {},
+      onSave: () => {},
+      onSaveProperty: () => {},
+      onFavorite: () => {},
+      onToggleFavorite: () => {},
+      onSchedule: () => {},
+      onScheduleTour: () => {},
+      onBook: () => {},
       onBookDirect: () => {},
+      onSearch: () => {},
+      onFilter: () => {},
+      onSubmit: () => {},
+      onSubmitInquiry: () => {},
+      onContactAgent: () => {},
+      onSelectProvider: () => {},
       onCancelAppointment: () => {},
       onRescheduleAppointment: () => {},
       onUpdateStatus: () => {},
-      ...props
+      onClose: () => {},
+      onOpen: () => {},
+      onDelete: () => {},
+      onEdit: () => {},
+      onSelect: () => {},
+      onNavigate: () => {},
+      onChange: () => {},
+      onClick: () => {},
+${discoveredLines ? discoveredLines + "\n" : ""}      ...props
     };
     return <Comp {...safeProps} />;
   };

@@ -107,4 +107,21 @@ model AuditLog {
     expect(repaired).toContain("userId String");
     expect(repaired).toMatch(/model\s+AuditLog\s*\{[\s\S]*userId\s+String[\s\S]*\}/);
   });
+
+  it("injects canonical action callback and collection fallbacks into SafeRouteWrapper in routes.tsx", () => {
+    mkdirSync(join(TEST_DIR, "src", "pages"), { recursive: true });
+    // Write a sample component expecting onAddToCart and onScheduleTour
+    writeFileSync(
+      join(TEST_DIR, "src", "pages", "CatalogPage.tsx"),
+      `import React from "react";\nexport default function CatalogPage({ onAddToCart, onScheduleTour }: any) { return <button onClick={() => onAddToCart && onAddToCart({})}>Add</button>; }`
+    );
+
+    const routesCode = FastDeterministicSanitizer.generateRoutesFromExistingPages(TEST_DIR);
+    expect(routesCode).toContain("onAddToCart: () => {}");
+    expect(routesCode).toContain("onScheduleTour: () => {}");
+    expect(routesCode).toContain("onSaveProperty: () => {}");
+    expect(routesCode).toContain("properties: []");
+    expect(routesCode).toContain("cart: []");
+    expect(routesCode).toContain("function SafeRouteWrapper");
+  });
 });

@@ -189,10 +189,12 @@ export class PageExperiencePlanner {
     const cleanPromptLower = PromptConstraints.stripNegativeConstraints(promptLower);
     const isHotelOrHospitality = !PromptConstraints.isForbiddenByPrompt(promptLower, "hotel") && !PromptConstraints.isForbiddenByPrompt(promptLower, "hospitality") &&
       /\b(hotel|boutique hotel|resort|hospitality|luxury stay|luxury suites|villa resort)\b/i.test(cleanPromptLower + " " + brandName.toLowerCase());
-    const isCulinary = !isHotelOrHospitality && !PromptConstraints.isForbiddenByPrompt(promptLower, "culinary") &&
-      /culinary|food|recipe|gastronomy|cuisine|chef|flavor|terroir|savor|taste|kitchen/i.test(cleanPromptLower + " " + brandName.toLowerCase());
-    const isMuseum = !PromptConstraints.isForbiddenByPrompt(promptLower, "museum") && !PromptConstraints.isForbiddenByPrompt(promptLower, "art") &&
-      /\b(museum|contemporary art|art gallery|artwork|artist profile|exhibition|curator|sculpture park|curatorial)\b/i.test(cleanPromptLower + " " + brandName.toLowerCase());
+    const isCommercialStoreOrFurniture = /\b(furniture|furnishing|furnishings|store|retail|e-commerce|ecommerce|shop|cart|checkout)\b/i.test(cleanPromptLower);
+    const isRestaurantOrdering = /\b(ordering|takeout|delivery|cart|checkout|reservation)\b/i.test(cleanPromptLower);
+    const isCulinary = !isRestaurantOrdering && !isHotelOrHospitality && !PromptConstraints.isForbiddenByPrompt(promptLower, "culinary") &&
+      /(?:culinary\s+travel|food\s+journey|recipe\s+collection|gastronomy\s+journal|chef\s+stories|terroir|savorline)/i.test(cleanPromptLower + " " + brandName.toLowerCase());
+    const isMuseum = !isCommercialStoreOrFurniture && !PromptConstraints.isForbiddenByPrompt(promptLower, "museum") && !PromptConstraints.isForbiddenByPrompt(promptLower, "art") &&
+      /\b(museum|contemporary art|art gallery|artwork|artist profile|curator|sculpture park|curatorial)\b/i.test(cleanPromptLower + " " + brandName.toLowerCase());
     const isObservatory = /\b(observatory|astronomy|astrophysics|telescope|celestial|starmap|star map|sky observation)\b/i.test(cleanPromptLower + " " + brandName.toLowerCase());
 
     // =========================================================================

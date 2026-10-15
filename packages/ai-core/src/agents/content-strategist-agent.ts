@@ -392,13 +392,63 @@ export default siteContent;
     const promptLower = (((brief as any).rawPrompt || (brief as any).userPrompt || "") + " " + cat).toLowerCase();
 
     // 0. Culinary Travel Magazine & Gastronomic Journal
+    const isRestaurantOrdering = /\b(food ordering|restaurant ordering|ordering platform|table reservation|restaurant menu|takeout|delivery|dish details)\b/i.test(promptLower) ||
+      (/\b(restaurant|kitchen)\b/i.test(promptLower) && /\b(menu|ordering|reservation|cart|checkout)\b/i.test(promptLower));
+
+    if (isRestaurantOrdering) {
+      const restaurantBrand = authoritativeBrand || "SAVORIA KITCHEN";
+      return {
+        brand: {
+          name: restaurantBrand,
+          tagline: "Artisan Culinary Dining & Fresh Chef Creations",
+          valueProposition: "Seasonal chef specials, handcrafted appetizers, wood-fired mains, and seamless online ordering with doorstep delivery.",
+          contact: { phone: "+1 (415) 555-8291", email: `orders@${restaurantBrand.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`, hours: "Tue–Sun 11:30–22:00", address: "742 Montgomery St, San Francisco, CA" }
+        },
+        navigationLabels: {
+          "/": "Home",
+          "/menu": "Menu",
+          "/dish-details": "Dishes",
+          "/cart": "Cart",
+          "/checkout": "Checkout",
+          "/order-history": "Orders",
+          "/table-reservation": "Reservations"
+        },
+        pages: {
+          "/": {
+            title: `${restaurantBrand} | Artisan Restaurant & Online Ordering`,
+            headline: "Artisanal Wood-Fired Kitchen & Seasonal Gastronomy",
+            subheadline: "Explore chef curated menus, filter by dietary requirements, customize preparations, and order with instant delivery tracking.",
+            primaryCta: "Explore Menu",
+            secondaryCta: "Book a Table",
+            highlights: [
+              { label: "Wood-Fired Hearth", description: "Seasonal mains and slow-braised cuts prepared over white oak and applewood embers." },
+              { label: "Dietary Dietary Filters", description: "Certified Gluten-Free, Vegan, and Halal tags with complete allergen transparency." }
+            ]
+          }
+        },
+        mockRecords: [
+          { id: "dish-1", name: "Black Truffle & Wild Chanterelle Risotto", course: "Chef's Specials", price: 34, dietaryTags: ["Gluten-Free", "Vegetarian"], calories: 580 },
+          { id: "dish-2", name: "Wood-Fired Dry-Aged Wagyu Ribeye", course: "Main Courses", price: 68, dietaryTags: ["Halal"], calories: 820 },
+          { id: "dish-3", name: "Heirloom Burrata with Charred Mission Figs", course: "Appetizers", price: 22, dietaryTags: ["Vegetarian", "Gluten-Free"], calories: 420 },
+          { id: "dish-4", name: "Valrhona Dark Chocolate Lava Soufflé", course: "Desserts", price: 18, dietaryTags: ["Vegetarian"], calories: 510 }
+        ],
+        testimonials: [
+          { author: "Marcus Vance", role: "Food & Wine Critic", location: "San Francisco", quote: "The precision of flavors and seamless checkout experience make Savoria a gold standard in modern dining.", rating: 5, isPlaceholder: true, isSampleData: true }
+        ],
+        imageKeywords: {
+          hero: "luxury restaurant food plating wood fired gourmet kitchen",
+          features: ["chef plating artisan pasta chanterelles", "dry aged wagyu steak searing fire"],
+          gallery: ["elegant candlelit restaurant dining room table", "sommelier pouring natural wine glass"]
+        }
+      };
+    }
+
     if (
-      promptLower.includes("culinary") ||
+      !isRestaurantOrdering &&
+      (promptLower.includes("culinary travel") ||
       promptLower.includes("food journey") ||
-      promptLower.includes("recipe") ||
-      promptLower.includes("gastronom") ||
       promptLower.includes("savorline") ||
-      authoritativeBrand.toLowerCase().includes("savorline")
+      authoritativeBrand.toLowerCase().includes("savorline"))
     ) {
       const brandName = authoritativeBrand || "SAVORLINE";
       return {
@@ -526,8 +576,104 @@ export default siteContent;
       };
     }
 
+    // 2a. Furniture Store & E-Commerce Interior Furnishings Retail
+    if (/\b(furniture|furnishing|furnishings|interior furnishings|furniture store|handcrafted furniture|timber joinery)\b/i.test(promptLower)) {
+      const furnitureBrand = authoritativeBrand || "VELORA LIVING";
+      return {
+        brand: {
+          name: furnitureBrand,
+          tagline: "Architectural Interior Furnishings & Bespoke Timber Craft",
+          valueProposition: "Heirloom handcrafted furniture, sustainable timber joinery, dimensional specs, and seamless home delivery.",
+          contact: { phone: "+1 (800) 555-8830", email: `concierge@${furnitureBrand.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`, hours: "Mon–Sat 10:00–19:00", address: "120 Wooster St, SoHo, New York, NY" }
+        },
+        navigationLabels: {
+          "/": "Home",
+          "/products": "Products",
+          "/categories": "Categories",
+          "/product-details": "Details",
+          "/dimension-specs": "Dimensions",
+          "/cart": "Cart",
+          "/order-summary": "Summary"
+        },
+        pages: {
+          "/": {
+            title: `${furnitureBrand} | Architectural Furniture & Interior Living`,
+            headline: "Sculptural Living, Authentic Materiality & Generational Joinery",
+            subheadline: "Explore architectural furniture collections, filter by timber species, inspect dimension tolerances, and curate your living spaces.",
+            primaryCta: "Shop Collection",
+            secondaryCta: "Explore Dimensions",
+            highlights: [
+              { label: "Sustainable Timber", description: "Old-growth European oak, American walnut, and kiln-cured ash from certified reserves." },
+              { label: "Mortise & Tenon Joinery", description: "Precision interlock wood architecture without synthetic binders or veneer laminates." }
+            ]
+          }
+        },
+        mockRecords: [
+          { id: "furn-1", title: "Koto Solid White Oak Credenza", category: "Storage & Credenzas", price: 4200, material: "European White Oak", dimensions: "210cm W × 48cm D × 74cm H", inStock: true },
+          { id: "furn-2", title: "Solstice Architectural Lounge Chair", category: "Seating", price: 2850, material: "American Walnut & Aniline Leather", dimensions: "86cm W × 92cm D × 78cm H", inStock: true },
+          { id: "furn-3", title: "Meridian Monolithic Dining Table", category: "Dining", price: 5600, material: "Charred Ash & Brushed Brass", dimensions: "260cm W × 100cm D × 75cm H", inStock: true }
+        ],
+        testimonials: [
+          { author: "Clara Moreau", role: "Principal Interior Architect", location: "New York", quote: "Velora pieces possess rare tectonic gravity. The joinery tolerances and finish feel like museum-grade craft built for everyday life.", rating: 5, isPlaceholder: true, isSampleData: true }
+        ],
+        imageKeywords: {
+          hero: "luxury architectural furniture living room walnut sofa oak credenza",
+          features: ["handcrafted mortise tenon wood joinery detail", "minimalist dining table sculptural wood chairs"],
+          gallery: ["modern apartment interior design warm sunlight wood furniture", "artisan applying natural oil finish timber chair"]
+        }
+      };
+    }
+
+    // 2c. Healthcare Appointment Booking Platform
+    if (/\b(healthcare|medical appointment|doctor booking|patient scheduling|clinic booking|appointment booking)\b/i.test(promptLower)) {
+      const healthBrand = authoritativeBrand || "AURA HEALTH";
+      return {
+        brand: {
+          name: healthBrand,
+          tagline: "Accessible Clinical Care & Patient-Centric Scheduling",
+          valueProposition: "Board-certified medical specialists, real-time clinic availability, instant slot booking, and secure health management.",
+          contact: { phone: "+1 (800) 555-7110", email: `care@${healthBrand.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`, hours: "Mon–Fri 8:00–20:00 (Sat 9:00–17:00)", address: "500 Medical Center Way, Suite 400, Boston, MA" }
+        },
+        navigationLabels: {
+          "/": "Home",
+          "/providers": "Doctors",
+          "/clinic-calendar": "Calendar",
+          "/book-appointment": "Book",
+          "/my-appointments": "Appointments",
+          "/patient-management": "Patients"
+        },
+        pages: {
+          "/": {
+            title: `${healthBrand} | Healthcare Appointment Booking`,
+            headline: "Compassionate Medical Care on Your Schedule",
+            subheadline: "Search certified doctors by specialty, check live clinic schedules, book in-person or telehealth consultations, and manage your health records.",
+            primaryCta: "Find a Doctor",
+            secondaryCta: "Book Consultation",
+            highlights: [
+              { label: "Board-Certified Specialists", description: "Top-rated physicians across Cardiology, Dermatology, Neurology, and Pediatrics." },
+              { label: "Instant Time-Slot Booking", description: "Confirm clinic visits in seconds with automated reminders and calendar sync." }
+            ]
+          }
+        },
+        mockRecords: [
+          { id: "doc-1", name: "Dr. Elena Rostova, MD", specialty: "Cardiology", rating: 4.9, nextAvailable: "Today, 2:30 PM", clinic: "Aura Downtown Clinic" },
+          { id: "doc-2", name: "Dr. Marcus Vance, DO", specialty: "Dermatology", rating: 4.8, nextAvailable: "Tomorrow, 10:15 AM", clinic: "Aura Westside Pavilion" },
+          { id: "doc-3", name: "Dr. Sophia Chen, MD", specialty: "Pediatrics & Family Care", rating: 5.0, nextAvailable: "Friday, 11:00 AM", clinic: "Aura Health Center" }
+        ],
+        testimonials: [
+          { author: "David Miller", role: "Patient", location: "Boston", quote: "Booking with Aura took less than a minute. Dr. Rostova was punctual, attentive, and the clinic experience was exceptionally calm.", rating: 5, isPlaceholder: true, isSampleData: true }
+        ],
+        imageKeywords: {
+          hero: "modern medical clinic doctor consultation compassionate healthcare",
+          features: ["physician reviewing tablet with patient", "clean modern clinical waiting room sunlight"],
+          gallery: ["doctor stethoscope listening patient heartbeat", "digital healthcare scheduling app calendar"]
+        }
+      };
+    }
+
     // 2b. Contemporary Art Museum / Gallery
-    if (promptLower.includes("museum") || promptLower.includes("art museum") || promptLower.includes("contemporary art") || promptLower.includes("gallery") || promptLower.includes("curatorial") || promptLower.includes("exhibition")) {
+    const isCommercialFurnitureOrStore = /\b(furniture|furnishing|furnishings|store|retail|e-commerce|ecommerce|shop|cart|checkout)\b/i.test(promptLower);
+    if (!isCommercialFurnitureOrStore && (promptLower.includes("museum") || promptLower.includes("art museum") || promptLower.includes("contemporary art") || promptLower.includes("art gallery") || promptLower.includes("curatorial") || (promptLower.includes("exhibition") && !promptLower.includes("furniture")))) {
       const museumBrand = authoritativeBrand || "LUMEN HOUSE";
       return {
         brand: {

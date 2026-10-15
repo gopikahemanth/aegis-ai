@@ -124,4 +124,78 @@ model AuditLog {
     expect(routesCode).toContain("cart: []");
     expect(routesCode).toContain("function SafeRouteWrapper");
   });
+
+  it("TEST 4: Velora Living furniture e-commerce prompt is never hijacked by museum/gallery rules", async () => {
+    const { ArchitectureResolver } = await import("../architecture-resolver.js");
+    const veloraPrompt = "Build a premium furniture store and e-commerce website named VELORA LIVING. Create a distinctive, high-end interior furnishings retail platform featuring product listings, material and category filters, interactive product details with dimension specs, and a functional shopping cart with order summary. Requirements: - Distinctive product gallery, interactive cart drawer/page, and item details.";
+    const contract = ArchitectureResolver.resolve(veloraPrompt);
+
+    expect(contract.requiredRoutes).not.toContain("/rotating-exhibitions");
+    expect(contract.requiredRoutes).not.toContain("/explore-artist-profiles");
+    expect(contract.requiredRoutes).not.toContain("/plan-museum-visit");
+    expect(contract.requiredRoutes).toContain("/products");
+    expect(contract.requiredRoutes).toContain("/cart");
+    expect(contract.requiredRoutes).toContain("/order-summary");
+
+    expect(contract.requiredModels).not.toContain("Exhibition");
+    expect(contract.requiredModels).not.toContain("Artist");
+    expect(contract.requiredModels).not.toContain("Artwork");
+    expect(contract.requiredModels).toContain("Product");
+    expect(contract.requiredModels).toContain("CartItem");
+    expect(contract.requiredModels).toContain("Order");
+  });
+
+  it("TEST 5: Savoria Kitchen restaurant food ordering prompt is never hijacked by culinary travel magazine", async () => {
+    const { ArchitectureResolver } = await import("../architecture-resolver.js");
+    const savoriaPrompt = "Build a modern food ordering and table reservation website named SAVORIA KITCHEN. Create an enticing, high-end culinary ordering platform featuring categorized menus (Appetizers, Chef's Specials, Main Courses, Desserts, Artisan Beverages), dietary filter tags (Gluten-Free, Vegan, Halal), interactive dish details with allergen information, a dynamic cart drawer with quantity increments, special instructions input, order checkout with delivery/pickup selection, and order history persistence.";
+    const contract = ArchitectureResolver.resolve(savoriaPrompt);
+
+    expect(contract.requiredRoutes).not.toContain("/editorial-stories");
+    expect(contract.requiredRoutes).not.toContain("/explore-culinary-destinations");
+    expect(contract.requiredRoutes).not.toContain("/build-custom-itinerary");
+    expect(contract.requiredRoutes).toContain("/menu");
+    expect(contract.requiredRoutes).toContain("/cart");
+    expect(contract.requiredRoutes).toContain("/checkout");
+    expect(contract.requiredRoutes).toContain("/order-history");
+    expect(contract.requiredRoutes).toContain("/table-reservation");
+
+    expect(contract.requiredModels).not.toContain("CulinaryStory");
+    expect(contract.requiredModels).not.toContain("CulinaryDestination");
+    expect(contract.requiredModels).toContain("MenuItem");
+    expect(contract.requiredModels).toContain("CartItem");
+    expect(contract.requiredModels).toContain("Order");
+    expect(contract.requiredModels).toContain("Reservation");
+  });
+
+  it("TEST 6: Aura Health clinic prompt avoids CLI classification and PlatformNamed entity degradation", async () => {
+    const { ArchitectureResolver } = await import("../architecture-resolver.js");
+    const auraPrompt = "Build a healthcare appointment booking platform named AURA HEALTH. Create a patient-centric medical scheduling platform featuring provider listings, clinic availability calendars, interactive booking forms with time slot selection, and patient appointment management.";
+    const contract = ArchitectureResolver.resolve(auraPrompt);
+
+    expect(contract.applicationType).toBe("FULLSTACK_WEB_APPLICATION");
+    expect(contract.applicationType).not.toBe("CLI_APPLICATION");
+    expect(contract.requiredRoutes).not.toContain("/platform-named");
+    expect(contract.requiredRoutes).toContain("/providers");
+    expect(contract.requiredRoutes).toContain("/clinic-calendar");
+    expect(contract.requiredRoutes).toContain("/book-appointment");
+
+    expect(contract.requiredModels).not.toContain("PlatformNamed");
+    expect(contract.requiredModels).toContain("Provider");
+    expect(contract.requiredModels).toContain("Appointment");
+  });
+
+  it("TEST 7: Dwellio Realty resolves to authentic real estate marketplace routes and models", async () => {
+    const { ArchitectureResolver } = await import("../architecture-resolver.js");
+    const dwellioPrompt = "Build an interactive real estate property marketplace named DWELLIO REALTY. Create a premium architectural property platform featuring search with advanced filters (price range, bedroom count, property type: Villa, Penthouse, Modern Loft, location), interactive listing cards with square footage and amenity badges, property detail views with photo galleries, agent contact & tour scheduling forms, and saved favorite properties.";
+    const contract = ArchitectureResolver.resolve(dwellioPrompt);
+
+    expect(contract.requiredRoutes).toContain("/filter-properties");
+    expect(contract.requiredRoutes).toContain("/property-details");
+    expect(contract.requiredRoutes).toContain("/schedule-property-tour");
+    expect(contract.requiredRoutes).toContain("/favorite-listings");
+    expect(contract.requiredRoutes).toContain("/contact-property-agent");
+
+    expect(contract.requiredModels).toContain("Property");
+  });
 });
+

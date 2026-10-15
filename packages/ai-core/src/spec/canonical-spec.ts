@@ -104,10 +104,10 @@ export class SpecificationNormalizer {
       domainCategory = "expense-tracker";
     } else if (promptLower.includes("kanban") || promptLower.includes("task") || promptLower.includes("project management") || promptLower.includes("todo")) {
       domainCategory = "task-manager";
-    } else if (promptLower.includes("art") || promptLower.includes("gallery") || promptLower.includes("artwork") || promptLower.includes("exhibition")) {
-      domainCategory = "art-gallery";
-    } else if (promptLower.includes("ecommerce") || promptLower.includes("shop") || promptLower.includes("store") || promptLower.includes("product")) {
+    } else if (promptLower.includes("furniture") || promptLower.includes("furnishing") || promptLower.includes("ecommerce") || promptLower.includes("e-commerce") || promptLower.includes("shop") || promptLower.includes("store") || promptLower.includes("cart") || promptLower.includes("product listing")) {
       domainCategory = "ecommerce";
+    } else if (promptLower.includes("art museum") || promptLower.includes("art gallery") || promptLower.includes("artwork") || (promptLower.includes("art") && !promptLower.includes("smart") && !promptLower.includes("cart") && !promptLower.includes("start")) || (promptLower.includes("exhibition") && !promptLower.includes("furniture"))) {
+      domainCategory = "art-gallery";
     } else if (promptLower.includes("blog") || promptLower.includes("post") || promptLower.includes("article")) {
       domainCategory = "blog";
     }

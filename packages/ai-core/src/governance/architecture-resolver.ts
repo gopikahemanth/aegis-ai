@@ -130,7 +130,7 @@ export class ArchitectureResolver {
       (cleanPromptLower.includes("static") && (cleanPromptLower.includes("landing") || cleanPromptLower.includes("page") || cleanPromptLower.includes("site") || cleanPromptLower.includes("html"))) ||
       (cleanPromptLower.includes("simple") && cleanPromptLower.includes("landing page") && !cleanPromptLower.includes("database") && !cleanPromptLower.includes("auth"));
 
-    const isCliRequest = cleanPromptLower.includes("cli") || cleanPromptLower.includes("command line tool") || cleanPromptLower.includes("terminal app");
+    const isCliRequest = /\b(cli|command line tool|terminal app)\b/i.test(cleanPromptLower);
     const isPythonRequest = cleanPromptLower.includes("fastapi") || cleanPromptLower.includes("django") || cleanPromptLower.includes("python");
 
     let applicationType: ApplicationCategory = "FULLSTACK_WEB_APPLICATION";
@@ -361,9 +361,106 @@ export class ArchitectureResolver {
       }
     }
 
+    // Domain-specific rich product routes extraction (e.g. Premium Furniture Store & Interior Furnishings E-Commerce / Velora Living)
+    if (!PromptConstraints.isForbiddenByPrompt(userPrompt, "furniture") &&
+        /\b(furniture|furnishing|furnishings|interior furnishings|furniture store|handcrafted furniture|timber joinery)\b/i.test(cleanPrompt)) {
+      const furnitureRoutes = [
+        "/",
+        "/products",
+        "/categories",
+        "/product-details",
+        "/dimension-specs",
+        "/cart",
+        "/order-summary",
+      ];
+      for (const fr of furnitureRoutes) {
+        if (!explicitRoutes.includes(fr)) {
+          explicitRoutes.push(fr);
+        }
+      }
+      const furnitureModels = ["Product", "Category", "Material", "DimensionSpec", "CartItem", "Order"];
+      for (const fm of furnitureModels) {
+        if (!explicitModels.includes(fm)) {
+          explicitModels.push(fm);
+        }
+      }
+    }
+
+    // Domain-specific rich product routes extraction (e.g. Restaurant Food Ordering & Table Reservation / Savoria Kitchen)
+    if (/\b(food ordering|restaurant ordering|ordering platform|table reservation|restaurant menu|takeout|delivery|dish details)\b/i.test(cleanPrompt) ||
+        (/\b(restaurant|kitchen)\b/i.test(cleanPrompt) && /\b(menu|ordering|reservation|cart|checkout)\b/i.test(cleanPrompt))) {
+      const restaurantRoutes = [
+        "/",
+        "/menu",
+        "/dish-details",
+        "/cart",
+        "/checkout",
+        "/order-history",
+        "/table-reservation",
+      ];
+      for (const rr of restaurantRoutes) {
+        if (!explicitRoutes.includes(rr)) {
+          explicitRoutes.push(rr);
+        }
+      }
+      const restaurantModels = ["MenuItem", "Category", "CartItem", "Order", "Reservation", "Review"];
+      for (const rm of restaurantModels) {
+        if (!explicitModels.includes(rm)) {
+          explicitModels.push(rm);
+        }
+      }
+    }
+
+    // Domain-specific rich product routes extraction (e.g. Healthcare Appointment Booking Platform / Aura Health)
+    if (/\b(healthcare|medical appointment|doctor booking|patient scheduling|clinic booking|appointment booking)\b/i.test(cleanPrompt)) {
+      const healthcareRoutes = [
+        "/",
+        "/providers",
+        "/clinic-calendar",
+        "/book-appointment",
+        "/my-appointments",
+        "/patient-management",
+      ];
+      for (const hr of healthcareRoutes) {
+        if (!explicitRoutes.includes(hr)) {
+          explicitRoutes.push(hr);
+        }
+      }
+      const healthcareModels = ["Provider", "Specialty", "Appointment", "TimeSlot", "Clinic", "Patient"];
+      for (const hm of healthcareModels) {
+        if (!explicitModels.includes(hm)) {
+          explicitModels.push(hm);
+        }
+      }
+    }
+
+    // Domain-specific rich product routes extraction (e.g. Real Estate Property Marketplace / Dwellio Realty)
+    if (/\b(real estate|property marketplace|property platform|realty)\b/i.test(cleanPrompt)) {
+      const realEstateRoutes = [
+        "/",
+        "/filter-properties",
+        "/property-details",
+        "/schedule-property-tour",
+        "/favorite-listings",
+        "/contact-property-agent",
+      ];
+      for (const rer of realEstateRoutes) {
+        if (!explicitRoutes.includes(rer)) {
+          explicitRoutes.push(rer);
+        }
+      }
+      const realEstateModels = ["Property", "Agent", "Tour", "Favorite", "Inquiry"];
+      for (const rem of realEstateModels) {
+        if (!explicitModels.includes(rem)) {
+          explicitModels.push(rem);
+        }
+      }
+    }
+
     // Domain-specific rich product routes extraction (e.g. Culinary Travel Magazine / Savorline)
-    if (!PromptConstraints.isForbiddenByPrompt(userPrompt, "culinary") &&
-        /\b(culinary|food travel|gastronom|food journey|recipe collection|chef stories|culinary travel|taste atlas|terroir|savorline)\b/i.test(cleanPrompt)) {
+    const isRestaurantOrdering = /\b(ordering|takeout|delivery|cart|checkout|reservation)\b/i.test(cleanPrompt);
+    if (!isRestaurantOrdering && !PromptConstraints.isForbiddenByPrompt(userPrompt, "culinary") &&
+        /\b(culinary travel|food travel|gastronomic journal|food journey|recipe collection|chef stories|taste atlas|terroir|savorline)\b/i.test(cleanPrompt)) {
       const culinaryRoutes = ["/", "/editorial-stories", "/explore-culinary-destinations", "/and-filter-recipes", "/saved-discoveries", "/build-custom-itinerary"];
       for (const cr of culinaryRoutes) {
         if (!explicitRoutes.includes(cr)) {
@@ -379,8 +476,9 @@ export class ArchitectureResolver {
     }
 
     // Domain-specific rich product routes extraction (e.g. Contemporary Art Museum / Lumen House)
-    if (!PromptConstraints.isForbiddenByPrompt(userPrompt, "museum") && !PromptConstraints.isForbiddenByPrompt(userPrompt, "art") &&
-        /\b(museum|art museum|contemporary art|gallery|curatorial|exhibitions|artwork collection)\b/i.test(cleanPrompt)) {
+    const isCommercialStoreOrFurniture = /\b(furniture|furnishing|furnishings|store|retail|e-commerce|ecommerce|shop|cart|checkout)\b/i.test(cleanPrompt);
+    if (!isCommercialStoreOrFurniture && !PromptConstraints.isForbiddenByPrompt(userPrompt, "museum") && !PromptConstraints.isForbiddenByPrompt(userPrompt, "art") &&
+        /\b(museum|art museum|contemporary art|art gallery|curatorial|exhibitions|artwork collection)\b/i.test(cleanPrompt)) {
       const museumRoutes = [
         "/",
         "/rotating-exhibitions",
@@ -465,7 +563,7 @@ export class ArchitectureResolver {
           if (PromptConstraints.isGovernanceDirective(w)) continue;
           const naming = SemanticNaming.deriveCapabilityNaming(w);
           if (PromptConstraints.isGovernanceDirective(naming.modelName) || PromptConstraints.isGovernanceDirective(naming.routeSlug)) continue;
-          if (naming.modelName && naming.modelName.length > 2 && !["User", "Record", "Item", "None", "System", "Operation", "Platform", "Overview", "Controls"].includes(naming.modelName) && !explicitModels.includes(naming.modelName)) {
+          if (naming.modelName && naming.modelName.length > 2 && !["User", "Record", "Item", "None", "System", "Operation", "Platform", "Overview", "Controls", "PlatformNamed", "Named", "Application", "Website"].includes(naming.modelName) && !explicitModels.includes(naming.modelName)) {
             explicitModels.push(naming.modelName);
           }
           if (naming.routeSlug && naming.routeSlug.length > 1 && naming.routeSlug !== "/controls" && !explicitRoutes.includes(naming.routeSlug)) {

@@ -328,7 +328,8 @@ SCHEMA SPECIFICATION (JSON ONLY):
     }
 
     // 0b2. Contemporary Art Museum / Curated Gallery Collection
-    if (/\b(museum|art museum|contemporary art|gallery|curatorial|exhibitions|artworks|artwork collection)\b/i.test(p)) {
+    const isCommercialStore = /\b(furniture|furnishing|furnishings|store|retail|e-commerce|ecommerce|shop|cart|checkout)\b/i.test(p);
+    if (!isCommercialStore && /\b(museum|art museum|contemporary art|art gallery|curatorial|exhibitions|artworks|artwork collection)\b/i.test(p)) {
       const museumDifferentiators: FeatureSpec[] = [
         {
           name: "Curatorial Audio Guide & Commentary",
@@ -606,8 +607,154 @@ SCHEMA SPECIFICATION (JSON ONLY):
       };
     }
 
+    // 0c. Furniture Store & E-Commerce Interior Furnishings Retail Platform
+    if (/\b(furniture|furnishing|furnishings|interior furnishings|furniture store|handcrafted furniture|timber joinery)\b/i.test(p)) {
+      const furnitureDifferentiators: FeatureSpec[] = [
+        {
+          name: "Interactive Spatial Dimension & Spec Viewer",
+          description: "Technical schematics with millimeter tolerances, clearance radiuses, and room scale indicators.",
+          requiredComponents: ["DimensionViewerModal", "ToleranceBadge", "MaterialSwatchSelector"],
+          requiredDataFields: ["widthMm", "depthMm", "heightMm", "weightKg", "timberSpecies"],
+        },
+        {
+          name: "Artisan Joinery Craft Monograph",
+          description: "Photographic breakdown of mortise-and-tenon joints, grain alignment, and hand-rubbed oil finissage.",
+          requiredComponents: ["JoineryDiagram", "CraftTimeline", "FinissageCallout"],
+          requiredDataFields: ["jointType", "craftsmanHours", "oilCoatings", "sustainabilityCert"],
+        },
+      ];
+
+      return {
+        category: "Luxury Furniture Store & E-Commerce Platform",
+        experiencePattern: "storefront-commerce",
+        primaryLandingFeature: "Heirloom Furniture Collection & Catalog",
+        corePages: ["/", "/products", "/categories", "/product-details", "/dimension-specs", "/cart", "/order-summary"],
+        standardFeatures: [
+          {
+            name: "Heirloom Furniture Collection & Catalog",
+            description: "Curated architectural furniture catalog with category and material filters.",
+            requiredComponents: ["ProductCatalogGrid", "MaterialFilterBar", "ProductCard"],
+            requiredDataFields: ["title", "category", "price", "material", "dimensions", "inStock"],
+          },
+          {
+            name: "Interactive Shopping Cart & Order Summary",
+            description: "Slide-out cart drawer with live subtotal calculation and checkout summary.",
+            requiredComponents: ["CartDrawer", "CartItemRow", "OrderSummaryCard"],
+            requiredDataFields: ["items", "subtotal", "tax", "shipping", "totalAmount"],
+          },
+        ],
+        differentiatorFeatures: this.selectDifferentiators(furnitureDifferentiators, s, 2),
+        dataModels: [
+          { name: "Product", fields: ["id", "title", "price", "category", "material", "dimensions", "description", "inStock"] },
+          { name: "Category", fields: ["id", "name", "slug", "description"] },
+          { name: "Material", fields: ["id", "name", "finish", "colorHex"] },
+          { name: "DimensionSpec", fields: ["id", "productId", "width", "depth", "height", "weight"] },
+          { name: "CartItem", fields: ["id", "productId", "quantity", "price"] },
+          { name: "Order", fields: ["id", "orderNumber", "subtotal", "tax", "totalAmount", "status"] },
+        ],
+      };
+    }
+
+    // 0d1. Restaurant Food Ordering & Table Reservation Platform
+    if (/\b(food ordering|restaurant ordering|ordering platform|table reservation|restaurant menu|takeout|delivery|dish details)\b/i.test(p) ||
+        (/\b(restaurant|kitchen)\b/i.test(p) && /\b(menu|ordering|reservation|cart|checkout)\b/i.test(p))) {
+      const restaurantDifferentiators: FeatureSpec[] = [
+        {
+          name: "Interactive Dish Customizer & Special Instructions",
+          description: "Allergen matrix, dietary tags, ingredient exclusions, and chef preparation notes.",
+          requiredComponents: ["DishAllergenMatrix", "DietaryPills", "SpecialInstructionsInput"],
+          requiredDataFields: ["dishName", "allergens", "dietaryFlags", "customizations"],
+        },
+        {
+          name: "Table Reservation & Dining Concierge",
+          description: "Real-time dining room seating calendar with party size and time slot booking.",
+          requiredComponents: ["ReservationCalendar", "PartySizeSelector", "BookingConfirmationCard"],
+          requiredDataFields: ["guestName", "partySize", "reservationDate", "timeSlot", "seatingZone"],
+        },
+      ];
+
+      return {
+        category: "Restaurant Food Ordering & Table Reservation Platform",
+        experiencePattern: "storefront-commerce",
+        primaryLandingFeature: "Categorized Restaurant Menu & Dish Showcase",
+        corePages: ["/", "/menu", "/dish-details", "/cart", "/checkout", "/order-history", "/table-reservation"],
+        standardFeatures: [
+          {
+            name: "Categorized Restaurant Menu & Dish Showcase",
+            description: "Categorized menu courses (Appetizers, Chef's Specials, Main Courses, Desserts, Artisan Beverages) with dietary filtering.",
+            requiredComponents: ["MenuCourseSection", "DietaryFilterChips", "DishCard"],
+            requiredDataFields: ["name", "course", "price", "dietaryTags", "calories", "isAvailable"],
+          },
+          {
+            name: "Dynamic Cart Drawer & Live Subtotal Calculations",
+            description: "Interactive slide-out cart with live subtotal, tax, delivery fee calculation, and promo code support.",
+            requiredComponents: ["CartDrawer", "QuantityCounter", "PromoCodeInput", "PricingBreakdown"],
+            requiredDataFields: ["cartItems", "subtotal", "tax", "deliveryFee", "discount", "totalAmount"],
+          },
+        ],
+        differentiatorFeatures: this.selectDifferentiators(restaurantDifferentiators, s, 2),
+        dataModels: [
+          { name: "MenuItem", fields: ["id", "name", "description", "price", "course", "dietaryTags", "allergens", "imageUrl"] },
+          { name: "Category", fields: ["id", "name", "displayOrder"] },
+          { name: "CartItem", fields: ["id", "menuItemId", "quantity", "unitPrice", "specialInstructions"] },
+          { name: "Order", fields: ["id", "orderNumber", "subtotal", "tax", "deliveryFee", "totalAmount", "status", "orderType"] },
+          { name: "Reservation", fields: ["id", "guestName", "partySize", "date", "time", "status"] },
+          { name: "Review", fields: ["id", "menuItemId", "author", "rating", "comment"] },
+        ],
+      };
+    }
+
+    // 0e. Healthcare Appointment Booking Platform
+    if (/\b(healthcare|medical appointment|doctor booking|patient scheduling|clinic booking|appointment booking)\b/i.test(p)) {
+      const healthcareDifferentiators: FeatureSpec[] = [
+        {
+          name: "Provider Clinical Credential & Specialty Dossier",
+          description: "Doctor board certifications, clinical affiliations, and verified patient reviews.",
+          requiredComponents: ["DoctorCredentialCard", "SpecialtyBadge", "PatientReviewList"],
+          requiredDataFields: ["doctorName", "specialty", "degrees", "experienceYears", "hospitalAffiliation"],
+        },
+        {
+          name: "Interactive Clinic Time-Slot Booking Stepper",
+          description: "Multi-step appointment scheduling with calendar slot selector and intake notes.",
+          requiredComponents: ["AppointmentTimePicker", "IntakeNotesInput", "BookingSummaryCard"],
+          requiredDataFields: ["providerId", "appointmentDate", "timeSlot", "patientName", "visitReason"],
+        },
+      ];
+
+      return {
+        category: "Healthcare Appointment Booking Platform",
+        experiencePattern: "booking-flow",
+        primaryLandingFeature: "Medical Provider Directory & Availability Calendar",
+        corePages: ["/", "/providers", "/clinic-calendar", "/book-appointment", "/my-appointments", "/patient-management"],
+        standardFeatures: [
+          {
+            name: "Medical Provider Directory & Availability Calendar",
+            description: "Searchable provider roster with specialty filters, clinical hours, and available slots.",
+            requiredComponents: ["ProviderRosterGrid", "SpecialtyFilterTabs", "ClinicHoursBadge"],
+            requiredDataFields: ["providerName", "specialty", "clinicLocation", "nextAvailableSlot"],
+          },
+          {
+            name: "Patient Appointment Dashboard & History",
+            description: "Manage upcoming appointments, past consultations, and visit confirmation slips.",
+            requiredComponents: ["AppointmentLedger", "StatusBadge", "RescheduleButton"],
+            requiredDataFields: ["appointmentId", "date", "time", "provider", "status"],
+          },
+        ],
+        differentiatorFeatures: this.selectDifferentiators(healthcareDifferentiators, s, 2),
+        dataModels: [
+          { name: "Provider", fields: ["id", "name", "specialty", "bio", "clinicId", "rating"] },
+          { name: "Specialty", fields: ["id", "name", "description"] },
+          { name: "Clinic", fields: ["id", "name", "address", "phone", "hours"] },
+          { name: "TimeSlot", fields: ["id", "providerId", "startTime", "endTime", "isAvailable"] },
+          { name: "Appointment", fields: ["id", "providerId", "patientId", "dateTime", "reason", "status"] },
+          { name: "Patient", fields: ["id", "name", "email", "phone"] },
+        ],
+      };
+    }
+
     // 0d. Culinary Travel Magazine / Gastronomy Journal
-    if (/\b(culinary|food travel|gastronom|food journey|recipe collection|chef stories|culinary travel|taste atlas|terroir)\b/i.test(p)) {
+    const isRestaurantOrdering = /\b(ordering|takeout|delivery|cart|checkout|reservation)\b/i.test(p);
+    if (!isRestaurantOrdering && /\b(culinary travel|food travel|gastronomic journal|food journey|recipe collection|chef stories|taste atlas|terroir)\b/i.test(p)) {
       const culinaryDifferentiators: FeatureSpec[] = [
         {
           name: "Terroir Soil & Microclimate Produce Matrix",

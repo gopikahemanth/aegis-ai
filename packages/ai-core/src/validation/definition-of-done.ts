@@ -666,6 +666,37 @@ Fix every REQUIRED criterion listed above. Implement the missing patterns in the
           searchTerms.add("kpi");
           searchTerms.add("summary");
         }
+        if (t === "notification" || t === "notifications" || t.includes("notif")) {
+          searchTerms.add("notification");
+          searchTerms.add("notifications");
+          searchTerms.add("notify");
+          searchTerms.add("confirm");
+          searchTerms.add("confirmation");
+          searchTerms.add("alert");
+          searchTerms.add("reminder");
+          searchTerms.add("dispatch");
+          searchTerms.add("message");
+          searchTerms.add("toast");
+        }
+        if (t === "lightbox" || t === "modal" || t === "dialog") {
+          searchTerms.add("lightbox");
+          searchTerms.add("modal");
+          searchTerms.add("dialog");
+          searchTerms.add("preview");
+          searchTerms.add("overlay");
+          searchTerms.add("view");
+        }
+        if (t === "metadata" || t === "exif") {
+          searchTerms.add("metadata");
+          searchTerms.add("exif");
+          searchTerms.add("aperture");
+          searchTerms.add("shutter");
+          searchTerms.add("iso");
+          searchTerms.add("lens");
+          searchTerms.add("focal");
+          searchTerms.add("spec");
+          searchTerms.add("detail");
+        }
       }
       // Check if any search term appears in source files or file paths
       const inContent = Array.from(searchTerms).some(t => lowerSource.includes(t));

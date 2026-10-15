@@ -1289,7 +1289,7 @@ export { Layout };
       let modified = false;
 
       // Match relative imports: import ... from "./..." or "../..."
-      const newContent = fileText.replace(/(import\s+[\s\S]*?from\s+['"])(\.\.?\/[^'"]+)(['"])/g, (match, prefix, importRel, suffix) => {
+      let newContent = fileText.replace(/(import\s+[\s\S]*?from\s+['"])(\.\.?\/[^'"]+)(['"])/g, (match, prefix, importRel, suffix) => {
         const resolvedTarget = resolve(dirOfFile, importRel);
         // Check if resolved target exists directly (with .ts, .tsx, .js, .jsx or /index.ts)
         const candidates = [
@@ -1328,6 +1328,17 @@ export { Layout };
 
         return match;
       });
+
+      // Repair untyped Set inference in TSX/TS files
+      if (/new\s+Set(?!\s*<)\s*\(/.test(newContent)) {
+        const sanitized = newContent
+          .replace(/Array\.from\(\s*new\s+Set(?!\s*<)\s*\(/g, "Array.from(new Set<any>(")
+          .replace(/\[\s*\.\.\.\s*new\s+Set(?!\s*<)\s*\(/g, "[...new Set<any>(");
+        if (sanitized !== newContent) {
+          newContent = sanitized;
+          modified = true;
+        }
+      }
 
       if (modified) {
         writeFileSync(filePath, newContent, "utf8");
@@ -1401,21 +1412,45 @@ export { Layout };
 import { Routes, Route, Navigate } from "react-router-dom";
 
 function resolveComponent(mod: any, fallbackTitle: string): React.ComponentType<any> {
-  if (typeof mod === "function") return mod;
-  if (mod && typeof mod.default === "function") return mod.default;
-  if (mod && typeof mod[fallbackTitle] === "function") return mod[fallbackTitle];
-  if (mod && typeof mod === "object") {
+  let Comp: any = null;
+  if (typeof mod === "function") Comp = mod;
+  else if (mod && typeof mod.default === "function") Comp = mod.default;
+  else if (mod && typeof mod[fallbackTitle] === "function") Comp = mod[fallbackTitle];
+  else if (mod && typeof mod === "object") {
     for (const key of Object.keys(mod)) {
-      if (typeof mod[key] === "function") return mod[key];
+      if (typeof mod[key] === "function") { Comp = mod[key]; break; }
     }
   }
-  return function SafeFallback() {
-    return (
-      <div className="p-8 text-center text-slate-300 font-sans">
-        <h2 className="text-xl font-bold mb-2">{fallbackTitle}</h2>
-        <p className="text-sm text-slate-400">Loading module interface...</p>
-      </div>
-    );
+  if (!Comp) {
+    return function SafeFallback() {
+      return (
+        <div className="p-8 text-center text-slate-300 font-sans">
+          <h2 className="text-xl font-bold mb-2">{fallbackTitle}</h2>
+          <p className="text-sm text-slate-400">Loading module interface...</p>
+        </div>
+      );
+    };
+  }
+  return function SafeRouteWrapper(props: any) {
+    const safeProps = {
+      appointments: [],
+      providers: [],
+      items: [],
+      data: [],
+      courses: [],
+      lessons: [],
+      records: [],
+      users: [],
+      products: [],
+      orders: [],
+      onSelectProvider: () => {},
+      onBookDirect: () => {},
+      onCancelAppointment: () => {},
+      onRescheduleAppointment: () => {},
+      onUpdateStatus: () => {},
+      ...props
+    };
+    return <Comp {...safeProps} />;
   };
 }
 

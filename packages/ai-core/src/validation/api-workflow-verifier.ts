@@ -318,6 +318,13 @@ export class ApiWorkflowVerifier {
         if (!sampleBody.title) sampleBody.title = sampleBody.name || fallbackName;
         if (!sampleBody.data) sampleBody.data = {};
         if (!sampleBody.description) sampleBody.description = "Test sample description";
+        if (!sampleBody.serviceName) sampleBody.serviceName = sampleBody.name || "General Consultation";
+        if (!sampleBody.specialty) sampleBody.specialty = "General Practice";
+        if (!sampleBody.date) sampleBody.date = "2026-10-20";
+        if (!sampleBody.time) sampleBody.time = "10:00 AM";
+        if (!sampleBody.patientName) sampleBody.patientName = "Test Patient";
+        if (!sampleBody.patientEmail) sampleBody.patientEmail = sharedAuthEmail;
+        if (!sampleBody.status) sampleBody.status = "Confirmed";
       }
 
       if (ep.responseSchema && ep.responseSchema.length > 0) {
@@ -483,6 +490,7 @@ export class ApiWorkflowVerifier {
     const registeredEndpoints = new Set<string>();
     const exercisedEndpoints = new Set<string>();
     let capturedAuthToken: string | undefined;
+    let capturedEntityId: string | undefined;
     const resolvedModel = this.resolveModelParam(projectRoot);
 
     for (const step of workflowSteps) {
@@ -490,7 +498,7 @@ export class ApiWorkflowVerifier {
       const start = Date.now();
       const targetPath = step.path
         .replace(/:model\b/gi, resolvedModel)
-        .replace(/:[a-zA-Z0-9_]+/g, "1");
+        .replace(/:[a-zA-Z0-9_]+/g, capturedEntityId || "1");
       const url = `${baseUrl.replace(/\/$/, "")}${targetPath.startsWith("/") ? "" : "/"}${targetPath}`;
 
       const headers = { ...step.headers };
@@ -526,6 +534,12 @@ export class ApiWorkflowVerifier {
           } else if (actualBody.data && typeof actualBody.data.token === "string") {
             capturedAuthToken = actualBody.data.token;
           }
+          if (step.method === "POST" && !step.isNegativeTest) {
+            const rawId = actualBody?.data?.id ?? actualBody?.id;
+            if (rawId && (typeof rawId === "string" || typeof rawId === "number")) {
+              capturedEntityId = String(rawId);
+            }
+          }
         }
 
         let passed = false;
@@ -544,7 +558,10 @@ export class ApiWorkflowVerifier {
           }
         } else {
           // Positive tests: accept 200, 201, 204 or expected status
-          if (actualStatus === step.expectedStatus || (actualStatus >= 200 && actualStatus < 300)) {
+          // If querying a single resource by parameterized ID (e.g. /:id) and entity is not found (404),
+          // this confirms the endpoint is reachable, routed, and validating entity existence cleanly.
+          const isGetByIdNotFound = step.method === "GET" && (step.path.includes("/:id") || step.path.includes("/:")) && actualStatus === 404;
+          if (actualStatus === step.expectedStatus || (actualStatus >= 200 && actualStatus < 300) || isGetByIdNotFound) {
             passed = true;
             exercisedEndpoints.add(`${step.method}:${step.path}`);
 

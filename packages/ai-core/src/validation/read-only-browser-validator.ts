@@ -458,7 +458,7 @@ export class ReadOnlyBrowserValidator {
       // Find candidate interactive triggers
       const candidateInfo = await page.evaluate(() => {
         const triggers = Array.from(
-          document.querySelectorAll("button, [role='tab'], [role='button'], [data-filter], input[type='checkbox'], input[type='range'], select, [class*='cursor-pointer'], [data-interactive], [style*='cursor: pointer'], [style*='cursor:pointer'], svg [role='button']")
+          document.querySelectorAll("button, a[href], [role='tab'], [role='button'], [data-filter], input[type='checkbox'], input[type='range'], select, [class*='cursor-pointer'], [data-interactive], [style*='cursor: pointer'], [style*='cursor:pointer'], svg [role='button']")
         );
 
         const candidates: Array<{ index: number; text: string; tag: string; role: string; inNav: boolean }> = [];
@@ -470,10 +470,10 @@ export class ReadOnlyBrowserValidator {
           const role = el.getAttribute("role") || "";
           const isIgnored = /close|dismiss|cancel|help/i.test(text);
           const inNav = Boolean(el.closest("nav, header, [role='navigation']"));
-          if (text.length > 0 && !isIgnored && text.length < 80) {
+          if (text.length > 0 && !isIgnored && text.length < 300) {
             candidates.push({
               index: idx,
-              text: text.slice(0, 50),
+              text: text.slice(0, 80),
               tag: el.tagName.toLowerCase(),
               role,
               inNav,
@@ -551,13 +551,13 @@ export class ReadOnlyBrowserValidator {
       for (const candidate of candidatesToTest.slice(0, 10)) {
         try {
           const clicked = await page.evaluate((candText: string) => {
-            const els = Array.from(document.querySelectorAll("button, [role='tab'], [role='button'], [data-filter], select, input[type='checkbox'], input[type='range'], [class*='cursor-pointer'], [data-interactive], [style*='cursor: pointer'], [style*='cursor:pointer'], svg [role='button']"));
+            const els = Array.from(document.querySelectorAll("button, a[href], [role='tab'], [role='button'], [data-filter], select, input[type='checkbox'], input[type='range'], [class*='cursor-pointer'], [data-interactive], [style*='cursor: pointer'], [style*='cursor:pointer'], svg [role='button']"));
             const target = els.find(e => {
               if (candText.startsWith("Range Slider") && e.tagName.toLowerCase() === "input" && (e as HTMLInputElement).type === "range") {
                 return true;
               }
               const t = (e.textContent || (e as HTMLInputElement).value || "").trim();
-              return t === candText || (candText.length > 5 && t.includes(candText));
+              return t === candText || (candText.length > 5 && t.includes(candText)) || (t.length > 5 && candText.includes(t.slice(0, 40)));
             }) as HTMLElement | undefined;
             if (target) {
               if (target.tagName.toLowerCase() === "input" && (target as HTMLInputElement).type === "range") {

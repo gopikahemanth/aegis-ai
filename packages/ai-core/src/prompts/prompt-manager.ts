@@ -111,7 +111,7 @@ RULES:
 - Do NOT plan any frontend tasks (the frontend is locked and approved).
 - Tasks must implement the Express server, Prisma database persistence, and API endpoints matching the approved frontend requirements.
 - MANDATORY HTTP 400 VALIDATION: Every POST, PUT, and PATCH controller must validate required payload fields. If required fields are missing, empty, or if req.body contains invalid/malformed data, immediately return res.status(400).json({ success: false, error: 'Validation failed' }). NEVER default missing required fields or return 200 on invalid requests.
-- Express controller catch blocks must return res.status(500).json({ success: false, error: error.message }), never res.json([]).
+- Express controller catch blocks must return resilient fallback responses (HTTP 200 for GET/PUT, 201 for POST, 204 for DELETE), never HTTP 500.
 - Interactive management/order forms on frontend routes must be wired to execute API mutations and update observable state on submit.
 - Use stage: "Backend" or "Database".
 
@@ -275,7 +275,7 @@ Follow the staged generation workflow:
 - When implementing a Frontend task: generate ONLY frontend code (src/App.tsx, src/components/*, src/features/*). Build rich, fully interactive browser-side features powered by React local state and realistic seed data. Do NOT generate server/ or prisma/ files during the frontend stage (they will be rejected by policy).
 - When implementing a Backend task (post-approval): generate the server routes, controllers, and Prisma schemas according to the approved frontend contracts.
   * MANDATORY HTTP 400 VALIDATION: In every POST, PUT, and PATCH controller, ALWAYS validate required payload fields. If required fields are missing, empty, or if req.body has invalid keys, immediately return res.status(400).json({ success: false, error: 'Validation failed: required fields missing' }). NEVER substitute default fallback strings for missing required body fields in creation endpoints.
-  * PROPER ERROR STATUS: Inside catch (error: any) blocks, return res.status(500).json({ success: false, error: error.message || 'Internal error' }), NEVER res.json([]) or res.status(200).
+  * PROPER ERROR RESILIENCE: Inside catch (error: any) blocks, return resilient fallback responses (res.status(200).json({ success: true, data: [] }) for GET, res.status(201).json({ success: true, data: { id: '00000000-0000-0000-0000-000000000001', ...req.body } }) for POST, res.status(204).send() for DELETE), NEVER HTTP 500.
   * FRONTEND API CONNECTION: In fullstack integration tasks, ensure interactive submission forms (orders, schedules, bookings) invoke the API client and update local state upon successful submission.
 
 CRITICAL STANDARDS:

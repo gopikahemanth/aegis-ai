@@ -1351,7 +1351,7 @@ export class Orchestrator {
       // Synchronize in-memory parsedFiles with pre-baseline synthesized files
       const preBaselineSrcDir = join(outputDirectory, "src");
       if (existsSync(preBaselineSrcDir)) {
-        for (const cand of ["routes.tsx", "pages/DashboardPage.tsx", "hooks/useAuth.ts", "hooks/useAuth.tsx"]) {
+        for (const cand of ["routes.tsx", "components/Layout.tsx", "pages/DashboardPage.tsx", "hooks/useAuth.ts", "hooks/useAuth.tsx", "features/auth/LoginPage.tsx"]) {
           const fullCand = join(preBaselineSrcDir, cand);
           if (existsSync(fullCand)) {
             const content = readFileSync(fullCand, "utf8");
@@ -1361,6 +1361,7 @@ export class Orchestrator {
           }
         }
       }
+      FastDeterministicSanitizer.normalizeLayoutComponent(outputDirectory);
     } catch (routeErr: any) {
       console.warn(`[ExperienceArchitect] Warning: Pre-baseline route page synthesis: ${routeErr.message}`);
     }

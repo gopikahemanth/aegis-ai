@@ -38,7 +38,22 @@ export class RuntimeAcceptanceRunner {
   private readonly spawnedProcesses: ChildProcess[] = [];
 
   constructor(projectRoot: string) {
-    this.projectRoot = projectRoot.replace(/\\/g, "/");
+    let resolvedRoot = projectRoot.replace(/\\/g, "/");
+    if (!existsSync(resolvedRoot)) {
+      const candidates = [
+        join(process.cwd(), "generated/project"),
+        join(process.cwd(), "..", "generated/project"),
+        join(process.cwd(), "../..", "generated/project"),
+        join(process.cwd(), "../../..", "generated/project"),
+      ];
+      for (const cand of candidates) {
+        if (existsSync(cand)) {
+          resolvedRoot = cand.replace(/\\/g, "/");
+          break;
+        }
+      }
+    }
+    this.projectRoot = resolvedRoot;
   }
 
   /**
@@ -52,6 +67,37 @@ export class RuntimeAcceptanceRunner {
     const userScenarios: UserScenarioResult[] = [];
     const qualityChecks: GenerationQualityCheck[] = [];
     const diagnostics: RuntimeAcceptanceDiagnostic[] = [];
+
+    if (!existsSync(this.projectRoot)) {
+      diagnostics.push({
+        phase: "INIT",
+        subsystem: "FILESYSTEM",
+        category: "ENVIRONMENT_INVALID",
+        expected: `Directory ${this.projectRoot} to exist`,
+        actual: "Directory missing",
+        diagnostic: `Project root directory does not exist: ${this.projectRoot}`,
+        remediation: "Verify project root path before invoking runtime acceptance runner",
+      });
+      return {
+        evidenceSummary: `Project root ${this.projectRoot} does not exist`,
+        status: "BLOCKED",
+        passed: false,
+        runtimeHash: "EMPTY_PROJECT_ROOT",
+        services: [],
+        endpoints: [],
+        userScenarios: [],
+        qualityChecks: [{
+          dimension: "STRUCTURE",
+          name: "Project Structure & Manifest",
+          passed: false,
+          evidence: `Directory ${this.projectRoot} does not exist`,
+          message: "Project root missing",
+        }],
+        health: { frontendHealthy: false, backendHealthy: false, databaseHealthy: false, details: "Project root missing" },
+        cleanupVerified: true,
+        diagnostics,
+      };
+    }
 
     let frontendHealthy = false;
     let backendHealthy = false;

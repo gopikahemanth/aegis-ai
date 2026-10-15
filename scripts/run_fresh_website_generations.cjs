@@ -142,10 +142,10 @@ async function runSingleTest(testDef, port = 5174) {
     const routesFile = path.join(absTarget, 'src/routes.tsx');
     if (fs.existsSync(routesFile)) {
       const content = fs.readFileSync(routesFile, 'utf8');
-      const matches = Array.from(content.matchAll(/path="(\/[^"]*)"/g)).map(m => m[1]);
+      const matches = Array.from(content.matchAll(/path=['"](\/[^'"]*)['"]/g)).map(m => m[1]);
       declaredRoutes = Array.from(new Set(['/', ...matches])).filter(r => r !== '/*' && !r.includes(':'));
     }
-    console.log(`  Discovered ${declaredRoutes.length} route(s) to verify: ${declaredRoutes.slice(0, 6).join(', ')}...`);
+    console.log(`  Discovered ${declaredRoutes.length} route(s) to verify: ${declaredRoutes.join(', ')}`);
 
     // Verify viewports: Desktop (1440x900), Tablet (768x1024), Mobile (390x844)
     const viewports = [
@@ -163,13 +163,13 @@ async function runSingleTest(testDef, port = 5174) {
     }
     console.log(`  ✓ Responsive viewports verified & screenshotted (Desktop, Tablet, Mobile)`);
 
-    // Route-level checks
+    // Route-level checks across all discovered routes
     await page.setViewport({ width: 1440, height: 900 });
     let allRoutesRendered = true;
     let buttonsFound = 0;
     let formsFound = 0;
 
-    for (const r of declaredRoutes.slice(0, 8)) {
+    for (const r of declaredRoutes) {
       try {
         await page.goto(`http://localhost:${port}${r}`, { waitUntil: 'networkidle0' });
         const hasContent = await page.evaluate(() => document.body.innerText.length > 50);

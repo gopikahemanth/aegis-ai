@@ -4168,7 +4168,8 @@ export default router;
           const f = routeFiles[i];
           const base = f.replace(/\.(ts|js)$/, "");
           const cleanSlug = base.replace(/\.routes$/, "").replace(/Routes$/, "").toLowerCase();
-          const varName = `${cleanSlug}Router_${i}`;
+          const safeSlug = cleanSlug.replace(/[^a-zA-Z0-9_$]/g, "_");
+          const varName = `${safeSlug}Router_${i}`;
           const aliases = getSlugAliases(base);
 
           let routerMounted = false;

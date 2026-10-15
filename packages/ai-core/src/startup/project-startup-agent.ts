@@ -1673,9 +1673,30 @@ interface ImportMeta {
             }
           }
 
+          // Auto-repair missing Prisma relation scalar fields (P1012: The argument fields must refer only to existing fields)
+          for (const block of modelBlocks) {
+            const mMatch = block.match(/model\s+([A-Za-z0-9_$]+)\s*\{([\s\S]*?)\}/);
+            if (mMatch) {
+              const mName = mMatch[1];
+              const mBody = mMatch[2];
+              const relMatches = mBody.matchAll(/@relation\s*\([^)]*fields:\s*\[([^\]]+)\]/g);
+              for (const rm of relMatches) {
+                const fkFields = rm[1].split(",").map(f => f.trim()).filter(Boolean);
+                for (const fkField of fkFields) {
+                  const hasField = new RegExp(`^\\s*${fkField}\\s+[A-Za-z0-9_$]+`, "m").test(mBody);
+                  if (!hasField) {
+                    const targetRegex = new RegExp(`(model\\s+${mName}\\s*\\{[^}]*)(\\})`, "s");
+                    schemaContent = schemaContent.replace(targetRegex, `$1  ${fkField} String\n$2`);
+                    schemaModified = true;
+                  }
+                }
+              }
+            }
+          }
+
           if (schemaModified) {
             writeFileSync(absSchema, schemaContent, "utf8");
-            patches.push("Auto-repaired Prisma schema inverse relations (P1012)");
+            patches.push("Auto-repaired Prisma schema relations (P1012)");
           }
         } catch { /* ignore */ }
 

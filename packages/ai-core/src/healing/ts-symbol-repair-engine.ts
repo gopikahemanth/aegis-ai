@@ -157,6 +157,34 @@ export class TsSymbolRepairEngine {
         });
         continue;
       }
+
+      // TS2552: Cannot find name 'X'. Did you mean 'Y'?
+      const ts2552Match = line.match(/^([^(]+)\((\d+),(\d+)\):\s+error\s+(TS2552):\s+Cannot find name\s+['"]?([a-zA-Z0-9_$]+)['"]?\.\s+Did you mean\s+['"]?([a-zA-Z0-9_$]+)['"]?\?/);
+      if (ts2552Match) {
+        results.push({
+          importerFile: ts2552Match[1].trim().replace(/\\/g, "/"),
+          line: parseInt(ts2552Match[2], 10),
+          col: parseInt(ts2552Match[3], 10),
+          code: "TS2552",
+          requestedSymbol: cleanQuotes(ts2552Match[5]),
+          suggestedSymbol: cleanQuotes(ts2552Match[6]),
+          message: line,
+        });
+        continue;
+      }
+
+      // TS1312: Did you mean to use a ':'? An '=' can only follow a property name when the containing object literal is part of a destructuring pattern.
+      const ts1312Match = line.match(/^([^(]+)\((\d+),(\d+)\):\s+error\s+(TS1312):/);
+      if (ts1312Match) {
+        results.push({
+          importerFile: ts1312Match[1].trim().replace(/\\/g, "/"),
+          line: parseInt(ts1312Match[2], 10),
+          col: parseInt(ts1312Match[3], 10),
+          code: "TS1312",
+          message: line,
+        });
+        continue;
+      }
     }
 
     return results;
@@ -194,6 +222,16 @@ export class TsSymbolRepairEngine {
     // 6. Handle TS2304 (Cannot find name / dangling export)
     if (err.code === "TS2304" && err.requestedSymbol) {
       return this.fixCannotFindName(projectRoot, err);
+    }
+
+    // 7. Handle TS2552 (Cannot find name with suggestion)
+    if (err.code === "TS2552" && err.requestedSymbol && err.suggestedSymbol) {
+      return this.fixImportSymbolInCaller(projectRoot, err.importerFile, err.requestedSymbol, err.suggestedSymbol);
+    }
+
+    // 8. Handle TS1312 (Accidental '=' in object literal)
+    if (err.code === "TS1312") {
+      return this.fixEqualsInObjectLiteral(projectRoot, err);
     }
 
     return null;
@@ -555,6 +593,53 @@ export class TsSymbolRepairEngine {
       description: `Injected fallback shim for '${symbol}' in ${err.importerFile}`,
       applied: true,
     };
+  }
+
+  /**
+   * Fix TS1312: Replace '=' with ':' in object literal property assignment.
+   */
+  private static fixEqualsInObjectLiteral(
+    projectRoot: string,
+    err: TsErrorParsed
+  ): SymbolRepairAction | null {
+    const absImporter = join(projectRoot, err.importerFile);
+    if (!existsSync(absImporter)) return null;
+
+    const content = readFileSync(absImporter, "utf8");
+    const lines = content.split(/\r?\n/);
+    const targetLineIdx = err.line - 1;
+    if (targetLineIdx < 0 || targetLineIdx >= lines.length) return null;
+
+    const origLine = lines[targetLineIdx];
+    let newLine = origLine;
+    const match = origLine.match(/^(\s*)([a-zA-Z0-9_$]+)\s*=\s*(.+)$/);
+    if (match) {
+      const [, indent, prop, rest] = match;
+      const propRegex = new RegExp(`\\b(?:const|let|var)\\s+\\[?\\s*${prop}\\b`);
+      if (propRegex.test(content)) {
+        newLine = `${indent}${prop}: ${prop} || ${rest}`;
+      } else {
+        newLine = `${indent}${prop}: ${rest}`;
+      }
+    } else {
+      newLine = origLine.replace(/=/, ":");
+    }
+
+    if (newLine !== origLine) {
+      lines[targetLineIdx] = newLine;
+      const newContent = lines.join("\n");
+      writeFileSync(absImporter, newContent, "utf8");
+      console.log(`[TsSymbolRepairEngine] ✓ Repaired TS1312 '=' to ':' in ${absImporter}:${err.line}`);
+      return {
+        fileToModify: absImporter,
+        originalContent: content,
+        modifiedContent: newContent,
+        description: `Repaired TS1312 '=' to ':' in ${err.importerFile}:${err.line}`,
+        applied: true,
+      };
+    }
+
+    return null;
   }
 
   /**

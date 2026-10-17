@@ -78,6 +78,17 @@ export class ProjectGraphEngine {
       while ((m = exportConstRegex.exec(content)) !== null) {
         exports.push(m[1]);
       }
+      const namedExportsRegex = /export\s*\{([^}]+)\}/g;
+      while ((m = namedExportsRegex.exec(content)) !== null) {
+        const parts = m[1].split(",");
+        for (const part of parts) {
+          const alias = part.trim().split(/\s+as\s+/);
+          const exportedName = (alias[1] || alias[0]).trim();
+          if (exportedName && /^[a-zA-Z0-9_$]+$/.test(exportedName)) {
+            exports.push(exportedName);
+          }
+        }
+      }
       if (content.includes("export default")) {
         exports.push("default");
       }
@@ -592,23 +603,30 @@ export class ProjectGraphEngine {
                 let healed = false;
                 try {
                   let targetCode = readFileSync(foundTarget, "utf8");
-                  const defMatch = targetCode.match(/export\s+default\s+(?:function\s+([a-zA-Z0-9_$]+)|class\s+([a-zA-Z0-9_$]+)|([a-zA-Z0-9_$]+)\s*;?)/);
-                  const defId = defMatch ? (defMatch[1] || defMatch[2] || defMatch[3]) : null;
-                  if (defId && !/^(function|class|interface|type|null|undefined|true|false)$/.test(defId)) {
-                    if (!targetCode.includes(`as ${cleanSym}`)) {
-                      targetCode += `\nexport { ${defId} as ${cleanSym} };\n`;
-                      writeFileSync(foundTarget, targetCode, "utf8");
-                    }
-                    targetNode.exports.push(cleanSym);
+                  const alreadyExported = new RegExp(`\\bexport\\s+(?:const|let|var|function|class|type|interface)\\s+${cleanSym}\\b`).test(targetCode) ||
+                                          new RegExp(`\\bexport\\s*\\{[^}]*\\b(?:as\\s+)?${cleanSym}\\b[^}]*\\}`).test(targetCode);
+                  if (alreadyExported) {
+                    if (!targetNode.exports.includes(cleanSym)) targetNode.exports.push(cleanSym);
                     healed = true;
-                    console.log(`[ProjectGraphEngine] 🔧 Reconciled export mismatch in ${targetRel}: added named export "${cleanSym}" aliasing default "${defId}"`);
                   } else {
-                    let srcCode = readFileSync(sourceAbs, "utf8");
-                    const oldImport = new RegExp(`import\\s+\\{\\s*${cleanSym}\\s*\\}\\s+from\\s+(['"]${impPath.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}['"])`, "g");
-                    srcCode = srcCode.replace(oldImport, `import ${cleanSym} from $1`);
-                    writeFileSync(sourceAbs, srcCode, "utf8");
-                    healed = true;
-                    console.log(`[ProjectGraphEngine] 🔧 Reconciled export mismatch in ${relPath}: converted named import "{ ${cleanSym} }" to default import from "${impPath}"`);
+                    const defMatch = targetCode.match(/export\s+default\s+(?:function\s+([a-zA-Z0-9_$]+)|class\s+([a-zA-Z0-9_$]+)|([a-zA-Z0-9_$]+)\s*;?)/);
+                    const defId = defMatch ? (defMatch[1] || defMatch[2] || defMatch[3]) : null;
+                    if (defId && !/^(function|class|interface|type|null|undefined|true|false)$/.test(defId)) {
+                      if (!targetCode.includes(`as ${cleanSym}`) && !new RegExp(`\\b(?:const|let|var|function|class)\\s+${cleanSym}\\b`).test(targetCode)) {
+                        targetCode += `\nexport { ${defId} as ${cleanSym} };\n`;
+                        writeFileSync(foundTarget, targetCode, "utf8");
+                        console.log(`[ProjectGraphEngine] 🔧 Reconciled export mismatch in ${targetRel}: added named export "${cleanSym}" aliasing default "${defId}"`);
+                      }
+                      targetNode.exports.push(cleanSym);
+                      healed = true;
+                    } else {
+                      let srcCode = readFileSync(sourceAbs, "utf8");
+                      const oldImport = new RegExp(`import\\s+\\{\\s*${cleanSym}\\s*\\}\\s+from\\s+(['"]${impPath.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}['"])`, "g");
+                      srcCode = srcCode.replace(oldImport, `import ${cleanSym} from $1`);
+                      writeFileSync(sourceAbs, srcCode, "utf8");
+                      healed = true;
+                      console.log(`[ProjectGraphEngine] 🔧 Reconciled export mismatch in ${relPath}: converted named import "{ ${cleanSym} }" to default import from "${impPath}"`);
+                    }
                   }
                 } catch (fixErr: any) {
                   console.warn(`[ProjectGraphEngine] Could not auto-reconcile export mismatch: ${fixErr.message}`);

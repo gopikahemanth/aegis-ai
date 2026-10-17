@@ -558,7 +558,7 @@ export interface LayoutProps {
   children?: React.ReactNode;
 }
 
-export default function Layout({ children }: LayoutProps) {
+export default function Layout({ children }: LayoutProps = {}) {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
@@ -1985,19 +1985,19 @@ ${routerClose}    </QueryClientProvider>
           if (/export\s+const\s+Layout\s*:\s*React\.FC<[^>]*>\s*=\s*\(\s*\)\s*=>/.test(content)) {
             content = content.replace(
               /export\s+const\s+Layout\s*:\s*React\.FC<[^>]*>\s*=\s*\(\s*\)\s*=>/,
-              "export const Layout: React.FC<any> = ({ children }: any) =>"
+              "export const Layout: React.FC<any> = ({ children }: any = {}) =>"
             );
             changed = true;
           } else if (/export\s+(?:default\s+)?function\s+Layout\s*\(\s*\)/.test(content)) {
             content = content.replace(
               /export\s+(?:default\s+)?function\s+Layout\s*\(\s*\)/,
-              "export function Layout({ children }: any)"
+              "export function Layout({ children }: any = {})"
             );
             changed = true;
           } else if (/const\s+Layout\s*=\s*\(\s*\)\s*=>/.test(content)) {
             content = content.replace(
               /const\s+Layout\s*=\s*\(\s*\)\s*=>/,
-              "const Layout = ({ children }: any) =>"
+              "const Layout = ({ children }: any = {}) =>"
             );
             changed = true;
           }
@@ -3140,11 +3140,99 @@ export default ${validExportName};
 `, "utf8");
                   console.log(`[Startup] Auto-created missing route stub: ${relUnresolved}`);
                 } else {
-                  writeFileSync(fullStubPath, `import React from 'react';
+                  const isContextOrStore = /context|store|provider/i.test(relUnresolved) || /context|store|provider/i.test(validExportName);
+                  if (isContextOrStore) {
+                    writeFileSync(fullStubPath, `import React, { createContext, useContext } from 'react';
 
-export function ${validExportName}({ children, className = '', ...props }: any) {
+export const ${validExportName} = createContext<any>({
+  items: [],
+  cart: [],
+  addToCart: () => {},
+  removeFromCart: () => {},
+  clearCart: () => {},
+  total: 0,
+  itemCount: 0,
+  isOpen: false,
+  setIsOpen: () => {},
+  openCart: () => {},
+  closeCart: () => {},
+  isDarkMode: true,
+  toggleDarkMode: () => {}
+});
+
+export const useCart = () => ({
+  items: [],
+  cart: [],
+  addToCart: () => {},
+  removeFromCart: () => {},
+  clearCart: () => {},
+  total: 0,
+  itemCount: 0,
+  isOpen: false,
+  setIsOpen: () => {},
+  openCart: () => {},
+  closeCart: () => {}
+});
+
+export const use${validExportName.replace(/(Context|Store|Provider)$/, "")} = useCart;
+
+export function ${validExportName}Provider(props: any = {}) {
+  const { children } = props || {};
   return (
-    <div className={\`p-4 \${className}\`} {...props}>
+    <${validExportName}.Provider value={{
+      items: [],
+      cart: [],
+      addToCart: () => {},
+      removeFromCart: () => {},
+      clearCart: () => {},
+      total: 0,
+      itemCount: 0,
+      isOpen: false,
+      setIsOpen: () => {},
+      openCart: () => {},
+      closeCart: () => {},
+      isDarkMode: true,
+      toggleDarkMode: () => {}
+    }}>
+      {children}
+    </${validExportName}.Provider>
+  );
+}
+
+export function ${validExportName}Component(props: any = {}) {
+  const { children, className = '', ...rest } = props || {};
+  if (children) {
+    return (
+      <div className={\`p-4 \${className}\`} {...rest}>
+        {children}
+      </div>
+    );
+  }
+  return {
+    items: [],
+    cart: [],
+    addToCart: () => {},
+    removeFromCart: () => {},
+    clearCart: () => {},
+    total: 0,
+    itemCount: 0,
+    isOpen: false,
+    setIsOpen: () => {},
+    openCart: () => {},
+    closeCart: () => {}
+  } as any;
+}
+
+export default ${validExportName}Component;
+`, "utf8");
+                    console.log(`[Startup] Auto-created resilient context/hook stub: ${relUnresolved}`);
+                  } else {
+                    writeFileSync(fullStubPath, `import React from 'react';
+
+export function ${validExportName}(props: any = {}) {
+  const { children, className = '', ...rest } = props || {};
+  return (
+    <div className={\`p-4 \${className}\`} {...rest}>
       {children}
     </div>
   );
@@ -3152,7 +3240,8 @@ export function ${validExportName}({ children, className = '', ...props }: any) 
 
 export default ${validExportName};
 `, "utf8");
-                  console.log(`[Startup] Auto-created missing component stub: ${relUnresolved}`);
+                    console.log(`[Startup] Auto-created missing component stub: ${relUnresolved}`);
+                  }
                 }
               }
             }

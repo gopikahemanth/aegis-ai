@@ -1660,19 +1660,19 @@ export { App };
       if (/export\s+const\s+Layout\s*:\s*React\.FC<[^>]*>\s*=\s*\(\s*\)\s*=>/.test(layoutContent)) {
         layoutContent = layoutContent.replace(
           /export\s+const\s+Layout\s*:\s*React\.FC<[^>]*>\s*=\s*\(\s*\)\s*=>/,
-          "export const Layout: React.FC<any> = ({ children }: any) =>"
+          "export const Layout: React.FC<any> = ({ children }: any = {}) =>"
         );
         layoutChanged = true;
       } else if (/export\s+(?:default\s+)?function\s+Layout\s*\(\s*\)/.test(layoutContent)) {
         layoutContent = layoutContent.replace(
           /export\s+(?:default\s+)?function\s+Layout\s*\(\s*\)/,
-          "export function Layout({ children }: any)"
+          "export function Layout({ children }: any = {})"
         );
         layoutChanged = true;
       } else if (/const\s+Layout\s*=\s*\(\s*\)\s*=>/.test(layoutContent)) {
         layoutContent = layoutContent.replace(
           /const\s+Layout\s*=\s*\(\s*\)\s*=>/,
-          "const Layout = ({ children }: any) =>"
+          "const Layout = ({ children }: any = {}) =>"
         );
         layoutChanged = true;
       }

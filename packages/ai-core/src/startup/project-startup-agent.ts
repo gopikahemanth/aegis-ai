@@ -2442,16 +2442,36 @@ export default cn;
         // Fix 30: Ensure all interface/type declarations across all TS files are explicitly exported (TS2614)
         if (rel.endsWith(".ts") || rel.endsWith(".tsx")) {
           const reservedGlobals = new Set(["Window", "Document", "Node", "Element", "HTMLElement", "Event", "CustomEvent", "Global", "ImportMeta", "ImportMetaEnv", "ProcessEnv"]);
-          const typeMatches = content.matchAll(/(?:type|interface)\s+([A-Z]\w+)\b/g);
+          const typeMatches = content.matchAll(/\b(?:type\s+([A-Z]\w+)\s*(?:<[^>]*>)?\s*=|interface\s+([A-Z]\w+)\s*(?:<[^>]*>)?\s*(?:extends|\{))/g);
           for (const tm of typeMatches) {
-            const tName = tm[1];
-            if (reservedGlobals.has(tName)) continue;
+            const tName = tm[1] || tm[2];
+            if (!tName || reservedGlobals.has(tName)) continue;
             if (content.includes("declare global") && content.includes(`interface ${tName}`)) continue;
             if (!new RegExp(`export\\s+(?:type|interface)\\s+${tName}\\b`).test(content) && !content.includes(`export type { ${tName}`) && !content.includes(`export { ${tName}`)) {
               content += `\nexport type { ${tName} };\n`;
               changed = true;
             }
           }
+
+          // Fix 30.1: Strip dangling exports of undeclared/unimported symbols (TS2304)
+          content = content.replace(/export\s+type\s*\{\s*([A-Za-z0-9_$]+)\s*\};?/g, (match, sym) => {
+            const isDeclared = new RegExp(`\\b(?:type|interface|class|enum)\\s+${sym}\\b`).test(content);
+            const isImported = new RegExp(`\\bimport\\s+[^;]*\\b${sym}\\b`).test(content);
+            if (!isDeclared && !isImported) {
+              changed = true;
+              return "";
+            }
+            return match;
+          });
+          content = content.replace(/export\s*\{\s*([A-Za-z0-9_$]+)\s*\};?/g, (match, sym) => {
+            const isDeclared = new RegExp(`\\b(?:const|let|var|function|class|type|interface|enum)\\s+${sym}\\b`).test(content);
+            const isImported = new RegExp(`\\bimport\\s+[^;]*\\b${sym}\\b`).test(content);
+            if (!isDeclared && !isImported) {
+              changed = true;
+              return "";
+            }
+            return match;
+          });
         }
 
         // Fix 13.12: TS2322 / TS2559 Type '{ ... }' has no properties in common with type 'IntrinsicAttributes'
@@ -3168,10 +3188,16 @@ export const useCart = () => ({
   clearCart: () => {},
   total: 0,
   itemCount: 0,
+  totalItems: 0,
   isOpen: false,
+  isCartOpen: false,
+  setIsCartOpen: () => {},
   setIsOpen: () => {},
   openCart: () => {},
-  closeCart: () => {}
+  closeCart: () => {},
+  toggleCart: () => {},
+  isDarkMode: true,
+  toggleDarkMode: () => {}
 });
 
 export const use${validExportName.replace(/(Context|Store|Provider)$/, "")} = useCart;

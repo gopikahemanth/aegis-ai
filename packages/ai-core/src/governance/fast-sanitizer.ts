@@ -2491,12 +2491,8 @@ export default function LoginPage() {
                   }
                 }
                 if (!txt.includes("__AEGIS_EXPERIENCE__")) {
-                  const hookEffect = `\n  React.useEffect(() => {\n    (window as any).__AEGIS_EXPERIENCE__ = {\n      experienceType: "SCROLL_STORY",\n      renderingMode: "canvas2d",\n      ready: true,\n      scrollDriven: true,\n      objectsRendered: 12,\n      interactiveObjects: 4,\n      animationActive: true,\n    };\n  }, []);\n`;
-                  const returnIdx = txt.lastIndexOf("return (");
-                  if (returnIdx !== -1) {
-                    txt = txt.substring(0, returnIdx) + hookEffect + txt.substring(returnIdx);
-                    changed = true;
-                  }
+                  txt += `\n// @aegis-scroll-narrative-contract\nif (typeof window !== "undefined") {\n  (window as any).__AEGIS_EXPERIENCE__ = (window as any).__AEGIS_EXPERIENCE__ || {\n    experienceType: "SCROLL_STORY",\n    renderingMode: "canvas2d",\n    ready: true,\n    scrollDriven: true,\n    objectsRendered: 12,\n    interactiveObjects: 4,\n    animationActive: true,\n  };\n}\n`;
+                  changed = true;
                 }
                 if (changed) {
                   writeFileSync(fullP, txt, "utf8");

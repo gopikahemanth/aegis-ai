@@ -2454,7 +2454,8 @@ export default cn;
           }
 
           // Fix 30.1: Strip dangling exports of undeclared/unimported symbols (TS2304)
-          content = content.replace(/export\s+type\s*\{\s*([A-Za-z0-9_$]+)\s*\};?/g, (match, sym) => {
+          // MUST NOT match re-exports with 'from': e.g. export { default } from '...';
+          content = content.replace(/^[ \t]*export\s+type\s*\{\s*([A-Za-z0-9_$]+)\s*\}\s*;\s*$/gm, (match, sym) => {
             const isDeclared = new RegExp(`\\b(?:type|interface|class|enum)\\s+${sym}\\b`).test(content);
             const isImported = new RegExp(`\\bimport\\s+[^;]*\\b${sym}\\b`).test(content);
             if (!isDeclared && !isImported) {
@@ -2463,7 +2464,8 @@ export default cn;
             }
             return match;
           });
-          content = content.replace(/export\s*\{\s*([A-Za-z0-9_$]+)\s*\};?/g, (match, sym) => {
+          content = content.replace(/^[ \t]*export\s*\{\s*([A-Za-z0-9_$]+)\s*\}\s*;\s*$/gm, (match, sym) => {
+            if (sym === "default") return match;
             const isDeclared = new RegExp(`\\b(?:const|let|var|function|class|type|interface|enum)\\s+${sym}\\b`).test(content);
             const isImported = new RegExp(`\\bimport\\s+[^;]*\\b${sym}\\b`).test(content);
             if (!isDeclared && !isImported) {

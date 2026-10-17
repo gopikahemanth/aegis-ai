@@ -185,6 +185,19 @@ export class TsSymbolRepairEngine {
         });
         continue;
       }
+
+      // TS1434: Unexpected keyword or identifier.
+      const ts1434Match = line.match(/^([^(]+)\((\d+),(\d+)\):\s+error\s+(TS1434):/);
+      if (ts1434Match) {
+        results.push({
+          importerFile: ts1434Match[1].trim().replace(/\\/g, "/"),
+          line: parseInt(ts1434Match[2], 10),
+          col: parseInt(ts1434Match[3], 10),
+          code: "TS1434",
+          message: line,
+        });
+        continue;
+      }
     }
 
     return results;
@@ -232,6 +245,11 @@ export class TsSymbolRepairEngine {
     // 8. Handle TS1312 (Accidental '=' in object literal)
     if (err.code === "TS1312") {
       return this.fixEqualsInObjectLiteral(projectRoot, err);
+    }
+
+    // 9. Handle TS1434 (Unexpected keyword or identifier, e.g. corrupted "from '...'")
+    if (err.code === "TS1434") {
+      return this.fixUnexpectedKeywordOrIdentifier(projectRoot, err);
     }
 
     return null;
@@ -556,8 +574,8 @@ export class TsSymbolRepairEngine {
     let newContent = content;
 
     // 1. Check if symbol is part of a dangling export statement: export type { Symbol }; or export { Symbol };
-    const danglingTypeExportRegex = new RegExp(`export\\s+type\\s*\\{[^}]*\\b${symbol}\\b[^}]*\\};?\\r?\\n?`, "g");
-    const danglingExportRegex = new RegExp(`export\\s*\\{[^}]*\\b${symbol}\\b[^}]*\\};?\\r?\\n?`, "g");
+    const danglingTypeExportRegex = new RegExp(`^[ \\t]*export\\s+type\\s*\\{[^}]*\\b${symbol}\\b[^}]*\\}\\s*;?\\s*$`, "gm");
+    const danglingExportRegex = new RegExp(`^[ \\t]*export\\s*\\{[^}]*\\b${symbol}\\b[^}]*\\}\\s*;?\\s*$`, "gm");
 
     if (danglingTypeExportRegex.test(newContent)) {
       newContent = newContent.replace(danglingTypeExportRegex, "");
@@ -635,6 +653,44 @@ export class TsSymbolRepairEngine {
         originalContent: content,
         modifiedContent: newContent,
         description: `Repaired TS1312 '=' to ':' in ${err.importerFile}:${err.line}`,
+        applied: true,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Fix TS1434: Corrupted lines like " from './components/CatalogWorkspace';"
+   */
+  private static fixUnexpectedKeywordOrIdentifier(
+    projectRoot: string,
+    err: TsErrorParsed
+  ): SymbolRepairAction | null {
+    const absImporter = join(projectRoot, err.importerFile);
+    if (!existsSync(absImporter)) return null;
+
+    const content = readFileSync(absImporter, "utf8");
+    const lines = content.split(/\r?\n/);
+    const targetLineIdx = err.line - 1;
+    if (targetLineIdx < 0 || targetLineIdx >= lines.length) return null;
+
+    const origLine = lines[targetLineIdx];
+    let newLine = origLine;
+    if (/^\s*from\s+['"]/.test(origLine)) {
+      newLine = origLine.replace(/^\s*from\s+/, "export * from ");
+    }
+
+    if (newLine !== origLine) {
+      lines[targetLineIdx] = newLine;
+      const newContent = lines.join("\n");
+      writeFileSync(absImporter, newContent, "utf8");
+      console.log(`[TsSymbolRepairEngine] ✓ Repaired TS1434 corrupted line in ${absImporter}:${err.line}`);
+      return {
+        fileToModify: absImporter,
+        originalContent: content,
+        modifiedContent: newContent,
+        description: `Repaired TS1434 in ${err.importerFile}:${err.line}`,
         applied: true,
       };
     }

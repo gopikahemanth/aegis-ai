@@ -81,7 +81,7 @@ export class GeminiProvider implements AIProvider {
               model: targetModel,
               contents: contentParts,
               config: {
-                maxOutputTokens: options?.maxTokens ?? 16384,
+                maxOutputTokens: options?.maxTokens ?? 32768,
               },
             }),
             timeoutPromise,
@@ -102,6 +102,10 @@ export class GeminiProvider implements AIProvider {
               const salvagedText = text.substring(0, lastEndIdx + 9);
               console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars). Salvaging completed files up to last ===END=== (${salvagedText.length} chars)...`);
               return salvagedText;
+            }
+            if (text.length > 500) {
+              console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars). Salvaging partial response...`);
+              return text;
             }
             throw new ProviderError(
               "Gemini response was truncated (MAX_TOKENS) — output incomplete.",

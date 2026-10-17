@@ -4045,6 +4045,19 @@ export default router;
       try { rmSync(serverServerDir, { recursive: true, force: true }); } catch {}
     }
 
+    // Strip duplicate export { app as prisma } in server/index.ts
+    const serverIndexPath = join(serverDir, "index.ts");
+    if (existsSync(serverIndexPath)) {
+      try {
+        let sIndexContent = readFileSync(serverIndexPath, "utf8");
+        if (sIndexContent.includes("export const prisma") && /export\s*\{\s*app\s+as\s+prisma\s*\}\s*;?/.test(sIndexContent)) {
+          sIndexContent = sIndexContent.replace(/^[ \t]*export\s*\{\s*app\s+as\s+prisma\s*\}\s*;?\s*$/gm, "");
+          writeFileSync(serverIndexPath, sIndexContent, "utf8");
+          console.log(`[FastSanitizer] 🔧 Removed duplicate export { app as prisma } from server/index.ts`);
+        }
+      } catch {}
+    }
+
     // Ensure all backend route files expose canonical named exports matching default router
     for (const f of routeFiles) {
       const fullPath = join(routesDir, f);

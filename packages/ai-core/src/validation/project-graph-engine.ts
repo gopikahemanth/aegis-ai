@@ -611,7 +611,15 @@ export class ProjectGraphEngine {
                   } else {
                     const defMatch = targetCode.match(/export\s+default\s+(?:function\s+([a-zA-Z0-9_$]+)|class\s+([a-zA-Z0-9_$]+)|([a-zA-Z0-9_$]+)\s*;?)/);
                     const defId = defMatch ? (defMatch[1] || defMatch[2] || defMatch[3]) : null;
-                    if (defId && !/^(function|class|interface|type|null|undefined|true|false)$/.test(defId)) {
+                    if (cleanSym === "prisma") {
+                      if (!targetCode.includes("export const prisma")) {
+                        targetCode = `import { PrismaClient } from '@prisma/client';\nexport const prisma = new PrismaClient();\n` + targetCode;
+                        writeFileSync(foundTarget, targetCode, "utf8");
+                        console.log(`[ProjectGraphEngine] 🔧 Reconciled prisma export in ${targetRel}: added export const prisma = new PrismaClient()`);
+                      }
+                      targetNode.exports.push("prisma");
+                      healed = true;
+                    } else if (defId && !/^(function|class|interface|type|null|undefined|true|false)$/.test(defId)) {
                       if (!targetCode.includes(`as ${cleanSym}`) && !new RegExp(`\\b(?:const|let|var|function|class)\\s+${cleanSym}\\b`).test(targetCode)) {
                         targetCode += `\nexport { ${defId} as ${cleanSym} };\n`;
                         writeFileSync(foundTarget, targetCode, "utf8");

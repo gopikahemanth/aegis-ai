@@ -2268,6 +2268,10 @@ export default cn;
             content = content.replace(/(?:export\s+)?const app = express\(\);/, "export const prisma = new PrismaClient();\nconst app = express();");
             changed = true;
           }
+          if (content.includes("as prisma")) {
+            content = content.replace(/^[ \t]*export\s*\{\s*app\s+as\s+prisma\s*\}\s*;?\s*$/gm, "");
+            changed = true;
+          }
           if (content.includes("export export")) {
             content = content.replace(/export\s+export\s+/g, "export ");
             changed = true;

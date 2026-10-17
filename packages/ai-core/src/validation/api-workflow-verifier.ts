@@ -324,6 +324,19 @@ export class ApiWorkflowVerifier {
         if (!sampleBody.time) sampleBody.time = "10:00 AM";
         if (!sampleBody.patientName) sampleBody.patientName = "Test Patient";
         if (!sampleBody.patientEmail) sampleBody.patientEmail = sharedAuthEmail;
+        if (!sampleBody.email) sampleBody.email = sharedAuthEmail;
+        if (!sampleBody.message) sampleBody.message = "Test inquiry or message content";
+        if (!sampleBody.subject) sampleBody.subject = "General Inquiry";
+        if (!sampleBody.phone) sampleBody.phone = "+1234567890";
+        if (!sampleBody.partySize) sampleBody.partySize = 2;
+        if (!sampleBody.guests) sampleBody.guests = 2;
+        if (!sampleBody.customerName) sampleBody.customerName = sampleBody.name || "Test Customer";
+        if (!sampleBody.customerEmail) sampleBody.customerEmail = sharedAuthEmail;
+        if (!sampleBody.customerPhone) sampleBody.customerPhone = "+1234567890";
+        if (!sampleBody.address) sampleBody.address = "123 Spice Route Way, Kochi";
+        if (!sampleBody.price) sampleBody.price = 24.50;
+        if (!sampleBody.quantity) sampleBody.quantity = 1;
+        if (!sampleBody.category) sampleBody.category = "Main Courses";
         if (!sampleBody.status) sampleBody.status = "Confirmed";
       }
 

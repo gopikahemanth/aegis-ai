@@ -398,12 +398,16 @@ export class ArchitectureResolver {
         "/order-history",
         "/table-reservation",
       ];
+      const restaurantModels = ["MenuItem", "Category", "CartItem", "Order", "Reservation", "Review"];
+      if (/\b(contact|inquiry)\b/i.test(cleanPrompt)) {
+        if (!restaurantRoutes.includes("/contact")) restaurantRoutes.push("/contact");
+        if (!restaurantModels.includes("ContactMessage")) restaurantModels.push("ContactMessage");
+      }
       for (const rr of restaurantRoutes) {
         if (!explicitRoutes.includes(rr)) {
           explicitRoutes.push(rr);
         }
       }
-      const restaurantModels = ["MenuItem", "Category", "CartItem", "Order", "Reservation", "Review"];
       for (const rm of restaurantModels) {
         if (!explicitModels.includes(rm)) {
           explicitModels.push(rm);

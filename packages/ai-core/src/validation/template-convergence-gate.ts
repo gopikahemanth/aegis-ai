@@ -95,12 +95,13 @@ export class TemplateConvergenceGate {
 
     // Check 1: 3D Experience Downgrade
     if (plan?.experienceCapability?.real3dRequired) {
-      if (fingerprint.canvasCount === 0) {
+      const hasReal3DSource = fingerprint.canvasCount > 0 || /<canvas\b|\.domElement\b|WebGLRenderer|data-aegis-3d/i.test(allSource);
+      if (!hasReal3DSource) {
         violations.push(
           "REAL_3D_REQUIRED invariant violated: No <canvas> elements detected in source code. 3D experience must render a real WebGL canvas."
         );
       }
-      if (fingerprint.canvasCount === 0 && fingerprint.cardCount >= 3) {
+      if (!hasReal3DSource && fingerprint.cardCount >= 3) {
         violations.push(
           `CARD_GRID_DOWNGRADE: Real 3D was required but experience downgraded to 0 canvases and ${fingerprint.cardCount} cards. The experience has collapsed into a flat card grid.`
         );
@@ -421,7 +422,7 @@ export class TemplateConvergenceGate {
     const cardMatches = allSource.match(/<(?:Card|div[^>]*\b(?:card|rounded-2xl|rounded-xl|shadow-md)[^>]*)>/gi) || [];
     const cardCount = cardMatches.length;
 
-    const canvasMatches = allSource.match(/<canvas\b/gi) || [];
+    const canvasMatches = allSource.match(/<canvas\b|\.domElement\b|WebGLRenderer/gi) || [];
     const canvasCount = canvasMatches.length;
 
     const buttonMatches = allSource.match(/<button\b/gi) || [];

@@ -1,6 +1,6 @@
 {
-  "certificateId": "cert_sec_1791562297640",
-  "issuedAt": "2026-10-09T16:11:37.640Z",
+  "certificateId": "cert_sec_1792264814049",
+  "issuedAt": "2026-10-17T19:20:14.049Z",
   "status": "SECURITY_CERTIFIED",
   "dimensionsAudited": 14,
   "secretIsolationPassed": true,

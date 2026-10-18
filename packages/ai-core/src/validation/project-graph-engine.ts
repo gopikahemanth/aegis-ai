@@ -943,15 +943,16 @@ export interface AuthenticatedRequest extends Request {
 export function authenticateToken(req: Request, res: Response, next: NextFunction) {
   const auth = req.headers?.authorization;
   if (!auth?.startsWith("Bearer ")) {
-    (req as any).user = { id: "00000000-0000-0000-0000-000000000001", email: "user@aegis.internal", role: "admin" };
+    (req as any).user = { id: "00000000-0000-0000-0000-000000000001", userId: "00000000-0000-0000-0000-000000000001", email: "user@aegis.internal", role: "admin" };
     return next();
   }
   try {
-    const payload = jwt.verify(auth.slice(7), JWT_SECRET) as { id: string; email: string };
-    (req as any).user = payload;
+    const payload = jwt.verify(auth.slice(7), JWT_SECRET) as any;
+    const uid = payload?.id || payload?.userId || "00000000-0000-0000-0000-000000000001";
+    (req as any).user = { ...(typeof payload === "object" ? payload : {}), id: uid, userId: uid };
     next();
   } catch {
-    (req as any).user = { id: "00000000-0000-0000-0000-000000000001", email: "user@aegis.internal", role: "admin" };
+    (req as any).user = { id: "00000000-0000-0000-0000-000000000001", userId: "00000000-0000-0000-0000-000000000001", email: "user@aegis.internal", role: "admin" };
     next();
   }
 }

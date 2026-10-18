@@ -1198,27 +1198,6 @@ export class CanonicalFileGraph {
     reason?: string;
   } {
     const normalized = proposedPath.replace(/\\/g, "/");
-
-    // Exact match → authorized, not a duplicate
-    if (CanonicalFileGraph.byPath.has(normalized)) {
-      return { isDuplicate: false };
-    }
-
-    const GENERIC_STEMS = new Set([
-      "index", "types", "styles", "api", "app", "main", "utils",
-      "constants", "helpers", "routes", "schema", "config", "client",
-      "header", "sidebar", "navbar", "footer", "layout", "modal",
-      "dashboard", "dashboardpage", "students", "studentspage", "card", "button",
-    ]);
-
-    const proposedStem = normalized
-      .split("/")
-      .pop()
-      ?.replace(/\.(ts|tsx|js|jsx)$/, "")
-      .toLowerCase() ?? "";
-
-    const isGenericStem = GENERIC_STEMS.has(proposedStem);
-
     const root = ProjectRootSingleton.getRoot();
     let aliasCheckSet = CANONICAL_FILES;
     let isAts = true;
@@ -1242,6 +1221,26 @@ export class CanonicalFileGraph {
       } catch {}
     }
 
+    // Exact match in static or dynamic canonical entries → authorized, not a duplicate
+    if (CanonicalFileGraph.byPath.has(normalized) || aliasCheckSet.some(e => e.canonicalPath === normalized)) {
+      return { isDuplicate: false };
+    }
+
+    const GENERIC_STEMS = new Set([
+      "index", "types", "styles", "api", "app", "main", "utils",
+      "constants", "helpers", "routes", "schema", "config", "client",
+      "header", "sidebar", "navbar", "footer", "layout", "modal",
+      "dashboard", "dashboardpage", "students", "studentspage", "card", "button",
+    ]);
+
+    const proposedStem = normalized
+      .split("/")
+      .pop()
+      ?.replace(/\.(ts|tsx|js|jsx)$/, "")
+      .toLowerCase() ?? "";
+
+    const isGenericStem = GENERIC_STEMS.has(proposedStem);
+
     // 1. Check ScoreRadar / ScoreVisualizer duplicate stems (ATS only)
     if (isAts && (proposedStem.includes("scoreradar") || proposedStem.includes("scorevisualizer") || proposedStem.includes("scorechart"))) {
       return {
@@ -1264,6 +1263,10 @@ export class CanonicalFileGraph {
 
     // Check all aliases
     for (const entry of aliasCheckSet) {
+      // Proposed path is this canonical entry itself — not a duplicate
+      if (entry.canonicalPath === normalized) {
+        continue;
+      }
       const isEntryFrontend = entry.canonicalPath.startsWith("src/") || entry.canonicalPath.startsWith("public/");
       const isEntryBackend = entry.canonicalPath.startsWith("server/") || entry.canonicalPath.startsWith("prisma/");
       const crossesBoundary = (isProposedFrontend && isEntryBackend) || (isProposedBackend && isEntryFrontend);

@@ -416,7 +416,8 @@ export class ArchitectureResolver {
     }
 
     // Domain-specific rich product routes extraction (e.g. Healthcare Appointment Booking Platform / Aura Health)
-    if (/\b(healthcare|medical appointment|doctor booking|patient scheduling|clinic booking|appointment booking)\b/i.test(cleanPrompt)) {
+    if (/\b(healthcare|medical appointment|doctor booking|patient scheduling|clinic booking)\b/i.test(cleanPrompt) ||
+        (/\b(medical|clinic|doctor|patient|hospital)\b/i.test(cleanPrompt) && /\b(appointment|booking|schedule|scheduling)\b/i.test(cleanPrompt))) {
       const healthcareRoutes = [
         "/",
         "/providers",

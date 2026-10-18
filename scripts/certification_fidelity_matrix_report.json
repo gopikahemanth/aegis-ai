@@ -1,0 +1,1444 @@
+[
+  {
+    "id": "novus-academy",
+    "name": "Novus Academy",
+    "domain": "Education LMS",
+    "promptDomain": "Learning Management System & Course Portal",
+    "targetDir": "projects/fresh-education-lms-20261015",
+    "exists": true,
+    "timestamp": "2026-10-17T06:58:33.933Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 24930,
+      "output": ""
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "PASS",
+        "textLength": 1256,
+        "buttons": 11,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "COURSE CATALOGS"
+      },
+      {
+        "route": "/course-catalogs",
+        "status": "PASS",
+        "textLength": 1035,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "✦ Foundations of Course"
+      },
+      {
+        "route": "/dashboard",
+        "status": "PASS",
+        "textLength": 1027,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "NOVUS ACADEMY Operations Command & Diagnostics"
+      },
+      {
+        "route": "/interactive-lesson",
+        "status": "PASS",
+        "textLength": 1361,
+        "buttons": 8,
+        "inputs": 1,
+        "forms": 0,
+        "heading": "INTERACTIVE LESSON PLAYER WORKSPACE"
+      },
+      {
+        "route": "/interactive-lessons",
+        "status": "PASS",
+        "textLength": 481,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "✦ Foundations of Interactive"
+      },
+      {
+        "route": "/quiz-assessment",
+        "status": "PASS",
+        "textLength": 931,
+        "buttons": 6,
+        "inputs": 1,
+        "forms": 1,
+        "heading": "QUIZ ASSESSMENTS"
+      },
+      {
+        "route": "/quiz-assessments",
+        "status": "PASS",
+        "textLength": 481,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "✦ Foundations of Assessments"
+      },
+      {
+        "route": "/student-progress",
+        "status": "PASS",
+        "textLength": 1306,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "STUDENT PROGRESS"
+      },
+      {
+        "route": "/login",
+        "status": "PASS",
+        "textLength": 269,
+        "buttons": 1,
+        "inputs": 2,
+        "forms": 1,
+        "heading": "Sign In"
+      }
+    ],
+    "models": [
+      "User",
+      "CourseCatalog",
+      "StudentProgress",
+      "InteractiveLesson",
+      "QuizAssessment"
+    ],
+    "workflows": {
+      "formsTested": 0,
+      "formRejectionsVerified": false,
+      "formSubmissionsVerified": false,
+      "stateChangesVerified": true,
+      "persistenceVerified": true,
+      "details": [
+        "State filter clicked: \"All\"",
+        "Action button clicked: \"Enroll Now\"",
+        "LocalStorage and view state survived page reload"
+      ]
+    },
+    "responsive": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "domainFidelity": {
+      "isHijacked": false,
+      "hijackedPrototype": null,
+      "authenticityScore": 0,
+      "evidence": ""
+    },
+    "blockers": [],
+    "warnings": [],
+    "verdict": "PASS"
+  },
+  {
+    "id": "lumina-lens",
+    "name": "Lumina Lens",
+    "domain": "Creative Photography Portfolio",
+    "promptDomain": "Editorial Fine-Art Visual Platform",
+    "targetDir": "projects/fresh-creative-portfolio-20261015",
+    "exists": true,
+    "timestamp": "2026-10-17T06:59:39.848Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 10667,
+      "output": ""
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "PASS",
+        "textLength": 1006,
+        "buttons": 5,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "✦ Foundations of Submit"
+      },
+      {
+        "route": "/case-studies",
+        "status": "PASS",
+        "textLength": 992,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Editorial Monographs & Case Studies"
+      },
+      {
+        "route": "/case-study",
+        "status": "PASS",
+        "textLength": 985,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Explore Project Case Studies"
+      },
+      {
+        "route": "/dashboard",
+        "status": "PASS",
+        "textLength": 1033,
+        "buttons": 5,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "LUMINA LENS Operations Command & Diagnostics"
+      },
+      {
+        "route": "/exif",
+        "status": "PASS",
+        "textLength": 1016,
+        "buttons": 1,
+        "inputs": 1,
+        "forms": 0,
+        "heading": "Technical Camera Metadata & Telemetry"
+      },
+      {
+        "route": "/full-bleed-galleries",
+        "status": "PASS",
+        "textLength": 999,
+        "buttons": 5,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "✦ Foundations of Bleed"
+      },
+      {
+        "route": "/gallery",
+        "status": "PASS",
+        "textLength": 1012,
+        "buttons": 5,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Fine-Art Visual Monographs"
+      },
+      {
+        "route": "/inquiry",
+        "status": "PASS",
+        "textLength": 1520,
+        "buttons": 2,
+        "inputs": 6,
+        "forms": 1,
+        "heading": "Submit Editorial Inquiry"
+      },
+      {
+        "route": "/inspect-exif-metadata",
+        "status": "PASS",
+        "textLength": 1006,
+        "buttons": 5,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "✦ Foundations of Inspect"
+      },
+      {
+        "route": "/lightbox",
+        "status": "PASS",
+        "textLength": 602,
+        "buttons": 5,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "High-Contrast Minimalist Lightbox Inspection"
+      },
+      {
+        "route": "/open-interactive-lightbox",
+        "status": "PASS",
+        "textLength": 1010,
+        "buttons": 5,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "✦ Foundations of Interactive"
+      },
+      {
+        "route": "/login",
+        "status": "PASS",
+        "textLength": 241,
+        "buttons": 2,
+        "inputs": 2,
+        "forms": 1,
+        "heading": "Sign In"
+      },
+      {
+        "route": "/explore-project-case-studies",
+        "status": "PASS",
+        "textLength": 992,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Editorial Monographs & Case Studies"
+      },
+      {
+        "route": "/submit-editorial-inquiry",
+        "status": "PASS",
+        "textLength": 1006,
+        "buttons": 5,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "✦ Foundations of Submit"
+      }
+    ],
+    "models": [
+      "User",
+      "Photograph",
+      "Gallery",
+      "CaseStudy",
+      "ExifData",
+      "Inquiry"
+    ],
+    "workflows": {
+      "formsTested": 0,
+      "formRejectionsVerified": false,
+      "formSubmissionsVerified": false,
+      "stateChangesVerified": false,
+      "persistenceVerified": true,
+      "details": [
+        "LocalStorage and view state survived page reload"
+      ]
+    },
+    "responsive": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "domainFidelity": {
+      "isHijacked": false,
+      "hijackedPrototype": null,
+      "authenticityScore": 0,
+      "evidence": ""
+    },
+    "blockers": [],
+    "warnings": [],
+    "verdict": "PASS"
+  },
+  {
+    "id": "stratum-analytics",
+    "name": "Stratum Analytics",
+    "domain": "SaaS Sales & Revenue Analytics",
+    "promptDomain": "SaaS Revenue & MRR/ARR Intelligence Platform",
+    "targetDir": "projects/fresh-saas-analytics-20261015",
+    "exists": true,
+    "timestamp": "2026-10-17T07:00:31.822Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 9807,
+      "output": ""
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "PASS",
+        "textLength": 1002,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/analyze-mrr-arr-growth",
+        "status": "PASS",
+        "textLength": 999,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/explore-cohort-retention",
+        "status": "PASS",
+        "textLength": 2489,
+        "buttons": 6,
+        "inputs": 2,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/dashboard",
+        "status": "PASS",
+        "textLength": 1078,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/export-reports-pdf-csv",
+        "status": "PASS",
+        "textLength": 1255,
+        "buttons": 11,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/financial-kpis",
+        "status": "PASS",
+        "textLength": 534,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/geo-performance",
+        "status": "PASS",
+        "textLength": 1453,
+        "buttons": 7,
+        "inputs": 1,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/pipeline-deal",
+        "status": "PASS",
+        "textLength": 1870,
+        "buttons": 7,
+        "inputs": 1,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/revenue-record",
+        "status": "PASS",
+        "textLength": 1876,
+        "buttons": 5,
+        "inputs": 1,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/sales-pipeline",
+        "status": "PASS",
+        "textLength": 994,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/switch-currency-and-periods",
+        "status": "PASS",
+        "textLength": 995,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/user-roles",
+        "status": "PASS",
+        "textLength": 530,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/login",
+        "status": "PASS",
+        "textLength": 316,
+        "buttons": 1,
+        "inputs": 2,
+        "forms": 1,
+        "heading": "STRATUM ANALYTICS"
+      },
+      {
+        "route": "/geo-regional-metrics",
+        "status": "PASS",
+        "textLength": 1002,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "STRATUM ANALYTICS"
+      }
+    ],
+    "models": [
+      "User",
+      "Organization",
+      "MetricSnapshot",
+      "RevenueRecord",
+      "CohortData",
+      "PipelineDeal",
+      "GeoPerformance",
+      "AuditLog"
+    ],
+    "workflows": {
+      "formsTested": 0,
+      "formRejectionsVerified": false,
+      "formSubmissionsVerified": false,
+      "stateChangesVerified": false,
+      "persistenceVerified": true,
+      "details": [
+        "LocalStorage and view state survived page reload"
+      ]
+    },
+    "responsive": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "domainFidelity": {
+      "isHijacked": false,
+      "hijackedPrototype": null,
+      "authenticityScore": 0,
+      "evidence": ""
+    },
+    "blockers": [],
+    "warnings": [],
+    "verdict": "PASS"
+  },
+  {
+    "id": "dwellio-realty",
+    "name": "Dwellio Realty",
+    "domain": "Real Estate Property Marketplace",
+    "promptDomain": "Architectural Property Marketplace & Tour Scheduling",
+    "targetDir": "projects/fresh-property-marketplace-20261015",
+    "exists": true,
+    "timestamp": "2026-10-17T07:01:20.758Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 9435,
+      "output": ""
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "PASS",
+        "textLength": 1520,
+        "buttons": 18,
+        "inputs": 3,
+        "forms": 2,
+        "heading": "The Obsidian Glass Pavilion"
+      },
+      {
+        "route": "/agent",
+        "status": "PASS",
+        "textLength": 1681,
+        "buttons": 9,
+        "inputs": 4,
+        "forms": 1,
+        "heading": "Contact Property Agent"
+      },
+      {
+        "route": "/dashboard",
+        "status": "PASS",
+        "textLength": 1083,
+        "buttons": 12,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "DWELLIO REALTY Operations Command & Diagnostics"
+      },
+      {
+        "route": "/favorite-listings",
+        "status": "PASS",
+        "textLength": 1188,
+        "buttons": 19,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Favorite Listings Experience Surface"
+      },
+      {
+        "route": "/favorite",
+        "status": "PASS",
+        "textLength": 862,
+        "buttons": 14,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Favorite Listings"
+      },
+      {
+        "route": "/filter-properties",
+        "status": "PASS",
+        "textLength": 1133,
+        "buttons": 12,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🔭 The Midnight Aperture Calibration"
+      },
+      {
+        "route": "/inquiry",
+        "status": "PASS",
+        "textLength": 772,
+        "buttons": 8,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Inquiry History & Dispatches"
+      },
+      {
+        "route": "/tour",
+        "status": "PASS",
+        "textLength": 1102,
+        "buttons": 9,
+        "inputs": 4,
+        "forms": 1,
+        "heading": "Schedule Property Tour"
+      },
+      {
+        "route": "/property-details",
+        "status": "PASS",
+        "textLength": 1520,
+        "buttons": 18,
+        "inputs": 3,
+        "forms": 2,
+        "heading": "The Obsidian Glass Pavilion"
+      },
+      {
+        "route": "/schedule-property-tour",
+        "status": "PASS",
+        "textLength": 1520,
+        "buttons": 18,
+        "inputs": 3,
+        "forms": 2,
+        "heading": "The Obsidian Glass Pavilion"
+      },
+      {
+        "route": "/contact-property-agent",
+        "status": "PASS",
+        "textLength": 1520,
+        "buttons": 18,
+        "inputs": 3,
+        "forms": 2,
+        "heading": "The Obsidian Glass Pavilion"
+      }
+    ],
+    "models": [
+      "User",
+      "Property",
+      "Agent",
+      "Tour",
+      "Favorite",
+      "Inquiry"
+    ],
+    "workflows": {
+      "formsTested": 1,
+      "formRejectionsVerified": true,
+      "formSubmissionsVerified": true,
+      "stateChangesVerified": true,
+      "persistenceVerified": true,
+      "details": [
+        "State filter clicked: \"FILTER PROPERTIES\"",
+        "Action button clicked: \"SCHEDULE TOUR\"",
+        "Form validation bounds and submit targets verified",
+        "Form text typing & reactive input binding verified",
+        "LocalStorage and view state survived page reload"
+      ]
+    },
+    "responsive": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "domainFidelity": {
+      "isHijacked": false,
+      "hijackedPrototype": null,
+      "authenticityScore": 0,
+      "evidence": ""
+    },
+    "blockers": [],
+    "warnings": [],
+    "verdict": "PASS"
+  },
+  {
+    "id": "velora-living-v1",
+    "name": "Velora Living (Original Run 1)",
+    "domain": "Furniture E-Commerce",
+    "promptDomain": "Furniture E-Commerce Store & Interior Furnishings",
+    "targetDir": "projects/fresh-ecommerce-furniture-20261015",
+    "exists": true,
+    "timestamp": "2026-10-17T07:02:11.451Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 12831,
+      "output": ""
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "PASS",
+        "textLength": 2270,
+        "buttons": 16,
+        "inputs": 1,
+        "forms": 0,
+        "heading": "VELORA LIVING Furnishing & Art Collection"
+      },
+      {
+        "route": "/admin-dashboard",
+        "status": "PASS",
+        "textLength": 1566,
+        "buttons": 7,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Product & Catalog Administration"
+      },
+      {
+        "route": "/dashboard",
+        "status": "PASS",
+        "textLength": 1434,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "VELORA LIVING Operations Command & Diagnostics"
+      },
+      {
+        "route": "/explore-artist-profiles",
+        "status": "PASS",
+        "textLength": 916,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🪵 The Living Timber Selection"
+      },
+      {
+        "route": "/listen-to-audio-guide",
+        "status": "PASS",
+        "textLength": 1538,
+        "buttons": 0,
+        "inputs": 2,
+        "forms": 0,
+        "heading": "Gallery Audio Guide & Curator Commentary"
+      },
+      {
+        "route": "/navigate-interactive-floor-plan",
+        "status": "PASS",
+        "textLength": 1008,
+        "buttons": 1,
+        "inputs": 0,
+        "forms": 0,
+        "heading": ""
+      },
+      {
+        "route": "/plan-museum-visit",
+        "status": "PASS",
+        "textLength": 1518,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🪵 The Living Timber Selection"
+      },
+      {
+        "route": "/rotating-exhibitions",
+        "status": "PASS",
+        "textLength": 1648,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🪵 The Living Timber Selection"
+      },
+      {
+        "route": "/saved-artworks",
+        "status": "PASS",
+        "textLength": 1995,
+        "buttons": 14,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Saved Artworks & Curated Vault"
+      },
+      {
+        "route": "/search-semantic-artworks",
+        "status": "PASS",
+        "textLength": 1515,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🪵 The Living Timber Selection"
+      }
+    ],
+    "models": [
+      "User",
+      "Exhibition",
+      "Artist",
+      "Artwork",
+      "AudioTrack",
+      "VisitPlan",
+      "SavedArtwork"
+    ],
+    "workflows": {
+      "formsTested": 0,
+      "formRejectionsVerified": false,
+      "formSubmissionsVerified": false,
+      "stateChangesVerified": true,
+      "persistenceVerified": true,
+      "details": [
+        "State filter clicked: \"Advanced Filtering\"",
+        "LocalStorage and view state survived page reload"
+      ]
+    },
+    "responsive": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "domainFidelity": {
+      "isHijacked": true,
+      "hijackedPrototype": "Lumen House Contemporary Art Museum",
+      "authenticityScore": 0,
+      "evidence": "Models include Exhibition, Artist, Artwork instead of Product, Category, Material, CartItem"
+    },
+    "blockers": [
+      "Domain Hijack: Art Museum prototype generated instead of Furniture E-Commerce"
+    ],
+    "warnings": [],
+    "verdict": "FAIL"
+  },
+  {
+    "id": "savoria-kitchen-v1",
+    "name": "Savoria Kitchen (Original Run 1)",
+    "domain": "Restaurant Food Ordering & Menu",
+    "promptDomain": "Restaurant Food Ordering & Table Reservation",
+    "targetDir": "projects/fresh-restaurant-ordering-20261015",
+    "exists": true,
+    "timestamp": "2026-10-17T07:03:04.004Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 10994,
+      "output": ""
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "PASS",
+        "textLength": 1258,
+        "buttons": 1,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "The Art of Terroir & Taste"
+      },
+      {
+        "route": "/and-filter-recipes",
+        "status": "PASS",
+        "textLength": 1846,
+        "buttons": 17,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Saved Artworks & Curated Vault"
+      },
+      {
+        "route": "/build-custom-itinerary",
+        "status": "PASS",
+        "textLength": 1298,
+        "buttons": 8,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Custom Culinary Itinerary"
+      },
+      {
+        "route": "/dashboard",
+        "status": "PASS",
+        "textLength": 1043,
+        "buttons": 5,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "SAVORIA KITCHEN Operations Command & Diagnostics"
+      },
+      {
+        "route": "/editorial-stories",
+        "status": "PASS",
+        "textLength": 1156,
+        "buttons": 5,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🌾 Terroir Awakening & Dawn Harvest"
+      },
+      {
+        "route": "/explore-culinary-destinations",
+        "status": "PASS",
+        "textLength": 1178,
+        "buttons": 2,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "SAVORIA KITCHEN Northern Gateway"
+      },
+      {
+        "route": "/menu-item",
+        "status": "PASS",
+        "textLength": 2450,
+        "buttons": 20,
+        "inputs": 1,
+        "forms": 0,
+        "heading": "Our Signature Menu"
+      },
+      {
+        "route": "/order-history",
+        "status": "PASS",
+        "textLength": 734,
+        "buttons": 7,
+        "inputs": 1,
+        "forms": 0,
+        "heading": "Order History & Reservations"
+      },
+      {
+        "route": "/saved-discoveries",
+        "status": "PASS",
+        "textLength": 1846,
+        "buttons": 17,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Saved Artworks & Curated Vault"
+      }
+    ],
+    "models": [
+      "User",
+      "CulinaryStory",
+      "CulinaryDestination",
+      "Recipe",
+      "SavedDiscovery",
+      "CulinaryItinerary"
+    ],
+    "workflows": {
+      "formsTested": 0,
+      "formRejectionsVerified": false,
+      "formSubmissionsVerified": false,
+      "stateChangesVerified": false,
+      "persistenceVerified": true,
+      "details": [
+        "LocalStorage and view state survived page reload"
+      ]
+    },
+    "responsive": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "domainFidelity": {
+      "isHijacked": true,
+      "hijackedPrototype": "Savorline Culinary Travel Magazine",
+      "authenticityScore": 0,
+      "evidence": "Models include CulinaryStory, CulinaryDestination instead of MenuItem, CartItem, Order"
+    },
+    "blockers": [
+      "Domain Hijack: Culinary Travel Magazine prototype generated instead of Restaurant Food Ordering"
+    ],
+    "warnings": [],
+    "verdict": "FAIL"
+  },
+  {
+    "id": "aura-health-v1",
+    "name": "Aura Health (Original Run 1)",
+    "domain": "Healthcare Appointment Booking",
+    "promptDomain": "Patient-Centric Medical Scheduling Platform",
+    "targetDir": "projects/fresh-healthcare-booking-20261015",
+    "exists": true,
+    "timestamp": "2026-10-17T07:03:54.968Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 9755,
+      "output": ""
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "PASS",
+        "textLength": 2907,
+        "buttons": 6,
+        "inputs": 3,
+        "forms": 0,
+        "heading": "Provider Search & Specialty Filter Workspace"
+      },
+      {
+        "route": "/appointment-dashboard",
+        "status": "PASS",
+        "textLength": 1292,
+        "buttons": 7,
+        "inputs": 1,
+        "forms": 0,
+        "heading": "Appointment Dashboard & Booking History"
+      },
+      {
+        "route": "/clinic-calendar",
+        "status": "PASS",
+        "textLength": 824,
+        "buttons": 3,
+        "inputs": 3,
+        "forms": 0,
+        "heading": "Clinic Calendar Workspace"
+      },
+      {
+        "route": "/dashboard",
+        "status": "PASS",
+        "textLength": 1045,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "AURA HEALTH Operations Command & Diagnostics"
+      },
+      {
+        "route": "/platform-named",
+        "status": "PASS",
+        "textLength": 946,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "✦ Foundations of Named"
+      }
+    ],
+    "models": [
+      "User",
+      "PlatformNamed"
+    ],
+    "workflows": {
+      "formsTested": 1,
+      "formRejectionsVerified": true,
+      "formSubmissionsVerified": true,
+      "stateChangesVerified": false,
+      "persistenceVerified": true,
+      "details": [
+        "Action button clicked: \"Book Visit\"",
+        "Form validation bounds and submit targets verified",
+        "Form text typing & reactive input binding verified",
+        "LocalStorage and view state survived page reload"
+      ]
+    },
+    "responsive": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "domainFidelity": {
+      "isHijacked": true,
+      "hijackedPrototype": "Generic Degraded PlatformNamed",
+      "authenticityScore": 0,
+      "evidence": "Single degraded entity PlatformNamed extracted instead of Provider, Clinic, Appointment"
+    },
+    "blockers": [
+      "Entity Degradation: PlatformNamed extracted instead of Healthcare appointment models"
+    ],
+    "warnings": [],
+    "verdict": "FAIL"
+  },
+  {
+    "id": "velora-living-v2",
+    "name": "Velora Living (Regenerated Run 2 - Post-Fix)",
+    "domain": "Furniture E-Commerce",
+    "promptDomain": "Furniture E-Commerce Store & Interior Furnishings",
+    "targetDir": "projects/fresh-v2-ecommerce-furniture-20261015",
+    "exists": true,
+    "timestamp": "2026-10-17T15:41:16.395Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 9119,
+      "output": ""
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "PASS",
+        "textLength": 1044,
+        "buttons": 5,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Built with transparency in materials and structure"
+      },
+      {
+        "route": "/cart-item",
+        "status": "EMPTY",
+        "textLength": 0,
+        "buttons": 0,
+        "inputs": 0,
+        "forms": 0,
+        "heading": ""
+      },
+      {
+        "route": "/cart",
+        "status": "PASS",
+        "textLength": 1412,
+        "buttons": 6,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🪵 The Living Timber Selection"
+      },
+      {
+        "route": "/categories",
+        "status": "PASS",
+        "textLength": 1279,
+        "buttons": 6,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🪵 The Living Timber Selection"
+      },
+      {
+        "route": "/dashboard",
+        "status": "PASS",
+        "textLength": 1198,
+        "buttons": 6,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "VELORA LIVING Operations Command & Diagnostics"
+      },
+      {
+        "route": "/dimension-spec",
+        "status": "PASS",
+        "textLength": 1207,
+        "buttons": 8,
+        "inputs": 1,
+        "forms": 0,
+        "heading": "Millimeter-precise technical schematics."
+      },
+      {
+        "route": "/dimension-specs",
+        "status": "PASS",
+        "textLength": 1372,
+        "buttons": 6,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🪵 The Living Timber Selection"
+      },
+      {
+        "route": "/order-summary",
+        "status": "PASS",
+        "textLength": 1412,
+        "buttons": 6,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🪵 The Living Timber Selection"
+      },
+      {
+        "route": "/product-details",
+        "status": "PASS",
+        "textLength": 1282,
+        "buttons": 6,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🪵 The Living Timber Selection"
+      },
+      {
+        "route": "/product",
+        "status": "PASS",
+        "textLength": 1815,
+        "buttons": 25,
+        "inputs": 1,
+        "forms": 0,
+        "heading": "The Permanent Collection."
+      },
+      {
+        "route": "/products",
+        "status": "PASS",
+        "textLength": 1282,
+        "buttons": 6,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🪵 The Living Timber Selection"
+      }
+    ],
+    "models": [
+      "User",
+      "Product",
+      "Category",
+      "Material",
+      "DimensionSpec",
+      "CartItem",
+      "Order"
+    ],
+    "workflows": {
+      "formsTested": 0,
+      "formRejectionsVerified": false,
+      "formSubmissionsVerified": false,
+      "stateChangesVerified": false,
+      "persistenceVerified": true,
+      "details": [
+        "LocalStorage and view state survived page reload"
+      ]
+    },
+    "responsive": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "domainFidelity": {
+      "isHijacked": false,
+      "hijackedPrototype": null,
+      "authenticityScore": 0,
+      "evidence": ""
+    },
+    "blockers": [],
+    "warnings": [],
+    "verdict": "PASS"
+  },
+  {
+    "id": "savoria-kitchen-v2",
+    "name": "Savoria Kitchen (Regenerated Run 2 - Post-Fix)",
+    "domain": "Restaurant Food Ordering & Menu",
+    "promptDomain": "Restaurant Food Ordering & Table Reservation",
+    "targetDir": "projects/fresh-v2-restaurant-ordering-20261015",
+    "exists": true,
+    "timestamp": "2026-10-17T17:52:29.157Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 8015,
+      "output": ""
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "PASS",
+        "textLength": 1140,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🌾 Terroir Awakening & Dawn Harvest"
+      },
+      {
+        "route": "/cart-item",
+        "status": "PASS",
+        "textLength": 1067,
+        "buttons": 8,
+        "inputs": 3,
+        "forms": 1,
+        "heading": "Interactive Cart Drawer, Promo Codes & Fulfillment"
+      },
+      {
+        "route": "/cart",
+        "status": "PASS",
+        "textLength": 1295,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🌾 Terroir Awakening & Dawn Harvest"
+      },
+      {
+        "route": "/checkout",
+        "status": "PASS",
+        "textLength": 1144,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🌾 Terroir Awakening & Dawn Harvest"
+      },
+      {
+        "route": "/dashboard",
+        "status": "PASS",
+        "textLength": 1032,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "SAVORIA KITCHEN Operations Command & Diagnostics"
+      },
+      {
+        "route": "/dish-detail",
+        "status": "PASS",
+        "textLength": 1199,
+        "buttons": 14,
+        "inputs": 1,
+        "forms": 1,
+        "heading": "Dish Details, Allergen Matrix & Customization"
+      },
+      {
+        "route": "/dish-details",
+        "status": "PASS",
+        "textLength": 1144,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🌾 Terroir Awakening & Dawn Harvest"
+      },
+      {
+        "route": "/menu-item",
+        "status": "PASS",
+        "textLength": 1928,
+        "buttons": 12,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Culinary Menu Catalog & Dietary Matrix"
+      },
+      {
+        "route": "/order-history",
+        "status": "PASS",
+        "textLength": 707,
+        "buttons": 1,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Order History & Re-ordering Ledger"
+      },
+      {
+        "route": "/reservation",
+        "status": "PASS",
+        "textLength": 1076,
+        "buttons": 18,
+        "inputs": 5,
+        "forms": 1,
+        "heading": "Table Reservation & Concierge Seating"
+      },
+      {
+        "route": "/table-reservation",
+        "status": "PASS",
+        "textLength": 530,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🌾 Terroir Awakening & Dawn Harvest"
+      },
+      {
+        "route": "/menu",
+        "status": "PASS",
+        "textLength": 1140,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "🌾 Terroir Awakening & Dawn Harvest"
+      }
+    ],
+    "models": [
+      "User",
+      "MenuItem",
+      "Category",
+      "CartItem",
+      "Order",
+      "Reservation",
+      "Review"
+    ],
+    "workflows": {
+      "formsTested": 0,
+      "formRejectionsVerified": false,
+      "formSubmissionsVerified": false,
+      "stateChangesVerified": false,
+      "persistenceVerified": true,
+      "details": [
+        "LocalStorage and view state survived page reload"
+      ]
+    },
+    "responsive": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "domainFidelity": {
+      "isHijacked": false,
+      "hijackedPrototype": null,
+      "authenticityScore": 0,
+      "evidence": ""
+    },
+    "blockers": [],
+    "warnings": [],
+    "verdict": "PASS"
+  },
+  {
+    "id": "aura-health-v2",
+    "name": "Aura Health (Regenerated Run 2 - Post-Fix)",
+    "domain": "Healthcare Appointment Booking",
+    "promptDomain": "Patient-Centric Medical Scheduling Platform",
+    "targetDir": "projects/fresh-v2-healthcare-booking-20261015",
+    "exists": true,
+    "timestamp": "2026-10-17T18:09:16.343Z",
+    "build": {
+      "status": "PASS",
+      "durationMs": 7565,
+      "output": ""
+    },
+    "routes": [
+      {
+        "route": "/",
+        "status": "PASS",
+        "textLength": 813,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Application Platform"
+      },
+      {
+        "route": "/appointment",
+        "status": "PASS",
+        "textLength": 757,
+        "buttons": 7,
+        "inputs": 3,
+        "forms": 1,
+        "heading": "Application Platform"
+      },
+      {
+        "route": "/book-appointment",
+        "status": "PASS",
+        "textLength": 259,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Application Platform"
+      },
+      {
+        "route": "/clinic-calendar",
+        "status": "PASS",
+        "textLength": 815,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Application Platform"
+      },
+      {
+        "route": "/dashboard",
+        "status": "PASS",
+        "textLength": 807,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Application Platform"
+      },
+      {
+        "route": "/my-appointments",
+        "status": "PASS",
+        "textLength": 721,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Application Platform"
+      },
+      {
+        "route": "/patient-management",
+        "status": "PASS",
+        "textLength": 255,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Application Platform"
+      },
+      {
+        "route": "/patient",
+        "status": "PASS",
+        "textLength": 413,
+        "buttons": 3,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Application Platform"
+      },
+      {
+        "route": "/provider",
+        "status": "PASS",
+        "textLength": 1158,
+        "buttons": 8,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Application Platform"
+      },
+      {
+        "route": "/providers",
+        "status": "PASS",
+        "textLength": 813,
+        "buttons": 4,
+        "inputs": 0,
+        "forms": 0,
+        "heading": "Application Platform"
+      }
+    ],
+    "models": [
+      "User",
+      "Provider",
+      "Specialty",
+      "Appointment",
+      "TimeSlot",
+      "Clinic",
+      "Patient"
+    ],
+    "workflows": {
+      "formsTested": 0,
+      "formRejectionsVerified": false,
+      "formSubmissionsVerified": false,
+      "stateChangesVerified": false,
+      "persistenceVerified": true,
+      "details": [
+        "LocalStorage and view state survived page reload"
+      ]
+    },
+    "responsive": {
+      "desktop": true,
+      "tablet": true,
+      "mobile": true
+    },
+    "domainFidelity": {
+      "isHijacked": false,
+      "hijackedPrototype": null,
+      "authenticityScore": 0,
+      "evidence": ""
+    },
+    "blockers": [],
+    "warnings": [],
+    "verdict": "PASS"
+  }
+]

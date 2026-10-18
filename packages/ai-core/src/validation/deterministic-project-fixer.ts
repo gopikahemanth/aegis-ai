@@ -712,7 +712,6 @@ export function Layout({ children }: LayoutProps = {}) {
 }
 
 export default Layout;
-export { Layout };
 `;
       writeFileSync(layoutPath, layoutContent, "utf8");
       createdFiles.push("src/shared/components/Layout.tsx");
@@ -1568,15 +1567,20 @@ export const apiClient = axios.create({
   },
 });
 
+export const getAll = async (url: string) => (await apiClient.get(url)).data;
+export const create = async (url: string, data: any) => (await apiClient.post(url, data)).data;
+export const update = async (url: string, data: any) => (await apiClient.put(url, data)).data;
+export const remove = async (url: string) => (await apiClient.delete(url)).data;
+
 export const api = {
   get: (url: string, config?: any) => apiClient.get(url, config),
   post: (url: string, data?: any, config?: any) => apiClient.post(url, data, config),
   put: (url: string, data?: any, config?: any) => apiClient.put(url, data, config),
   delete: (url: string, config?: any) => apiClient.delete(url, config),
-  getAll: async (url: string) => (await apiClient.get(url)).data,
-  create: async (url: string, data: any) => (await apiClient.post(url, data)).data,
-  update: async (url: string, data: any) => (await apiClient.put(url, data)).data,
-  remove: async (url: string) => (await apiClient.delete(url)).data,
+  getAll,
+  create,
+  update,
+  remove,
 ${resourceMethods}
 };
 

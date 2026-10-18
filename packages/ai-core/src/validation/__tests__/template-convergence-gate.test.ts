@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { TemplateConvergenceGate } from "../template-convergence-gate.js";
+import { GenericExperienceGenerator } from "../../design/experience-generators/generic-experience-generator.js";
 import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -331,5 +332,41 @@ export default function App() {
     const report = TemplateConvergenceGate.audit(testProjectDir);
     expect(report.passed).toBe(false);
     expect(report.violations.some(v => v.includes("CROSS_ROUTE_STRUCTURAL_CONVERGENCE_DETECTED"))).toBe(true);
+  });
+
+  it("passes when distinct space workspace routes generate route-specific parameters and actions without convergence", () => {
+    const spacePrompt = "Build an orbital satellite constellation command and telemetry platform for Orbitalis Dynamics with solar array monitoring, delta-v burn planner, and ground stations.";
+
+    const maneuverPage = GenericExperienceGenerator.generate({
+      componentName: "PlanOrbitalManeuverPage",
+      brandName: "Orbitalis Dynamics",
+      route: "/maneuver",
+      pageRole: "Orbital Maneuver & Propulsion Console",
+      purpose: "Orbital Maneuver Burn & Delta-V Planner",
+      prompt: spacePrompt,
+      experienceCapability: "WORKSPACE_TOOL",
+      seed: 42,
+    });
+
+    const trajectoryPage = GenericExperienceGenerator.generate({
+      componentName: "VisualizeSatelliteTrajectoryPage",
+      brandName: "Orbitalis Dynamics",
+      route: "/trajectory",
+      pageRole: "Constellation Trajectory & Ephemeris Console",
+      purpose: "Satellite Trajectory & Orbital Ephemeris Workbench",
+      prompt: spacePrompt,
+      experienceCapability: "WORKSPACE_TOOL",
+      seed: 42,
+    });
+
+    writeFileSync(join(testProjectDir, "src", "pages", "PlanOrbitalManeuverPage.tsx"), maneuverPage);
+    writeFileSync(join(testProjectDir, "src", "pages", "VisualizeSatelliteTrajectoryPage.tsx"), trajectoryPage);
+
+    const report = TemplateConvergenceGate.audit(testProjectDir);
+    expect(report.violations.some(v => v.includes("CROSS_ROUTE_STRUCTURAL_CONVERGENCE_DETECTED"))).toBe(false);
+    expect(maneuverPage).toContain("deltaVTarget");
+    expect(trajectoryPage).toContain("inclination");
+    expect(maneuverPage).not.toContain("gridFrequency");
+    expect(trajectoryPage).not.toContain("Wind Turbine");
   });
 });

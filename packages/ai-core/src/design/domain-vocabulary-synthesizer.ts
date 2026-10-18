@@ -521,7 +521,53 @@ export class DomainVocabularySynthesizer {
       ];
     }
 
-    const isCleanEnergy = /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(combined);
+    const isSpace = /\b(space|celestial|orbit|orbital|satellite|planetary|astro|astronomy|observatory|telescope|starmap|star map)\b/i.test(combined);
+    if (isSpace) {
+      return [
+        {
+          id: 1,
+          title: "Orbital Insertion & Trajectory Propagation",
+          scene: "scene-1",
+          color: palette[0],
+          emoji: "🛰️",
+          lore: `${brandName} propagates high-precision SGP4 state vectors and monitors orbital inclination across the constellation.`,
+          milestone: "Orbit Synchronized",
+          scrollPct: 0,
+        },
+        {
+          id: 2,
+          title: "Subsystem Telemetry & Power Balance",
+          scene: "scene-2",
+          color: palette[1],
+          emoji: "⚡",
+          lore: "Dual-axis solar array gimbals articulate toward the solar vector while bus thermal loops regulate battery temperatures.",
+          milestone: "Bus Health Nominal",
+          scrollPct: 33,
+        },
+        {
+          id: 3,
+          title: "Ground Station Pass & Downlink Acquisition",
+          scene: "scene-3",
+          color: palette[2],
+          emoji: "📡",
+          lore: "X-band high-gain dishes establish line-of-sight tracking across Svalbard, Goldstone, and Madrid ground networks.",
+          milestone: "Downlink Established",
+          scrollPct: 66,
+        },
+        {
+          id: 4,
+          title: "Encrypted Command Uplink & Maneuver Execution",
+          scene: "scene-4",
+          color: palette[3],
+          emoji: "🔒",
+          lore: "Cryptographically signed telecommands upload delta-v burn schedules to onboard thruster manifolds.",
+          milestone: "Uplink Verified",
+          scrollPct: 100,
+        },
+      ];
+    }
+
+    const isCleanEnergy = !isSpace && /\b(renewable|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine|wind farm)\b/i.test(combined);
     if (isCleanEnergy) {
       return [
         {

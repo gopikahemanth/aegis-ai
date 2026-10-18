@@ -1040,29 +1040,33 @@ export default EmptyState;
       content: `import React from 'react';
 
 export interface TimelineEvent {
-  id: string;
-  title: string;
-  timestamp: string;
+  id?: string;
+  title?: string;
+  timestamp?: string;
+  date?: string;
+  subtitle?: string;
   description?: string;
   status?: string;
+  [key: string]: any;
 }
 
 export interface TimelineProps {
   events: TimelineEvent[];
   title?: string;
   className?: string;
+  [key: string]: any;
 }
 
-export const Timeline: React.FC<TimelineProps> = ({ events, title, className = '' }) => (
+export const Timeline: React.FC<TimelineProps> = ({ events = [], title, className = '' }) => (
   <div className={\`card \${className}\`}>
     {title && <h3 className="text-base font-semibold text-[var(--color-text-primary)] mb-4">{title}</h3>}
     <div className="relative pl-6 border-l-2 border-[var(--color-border)] space-y-6">
-      {events.map((event) => (
-        <div key={event.id} className="relative">
+      {events.map((event, idx) => (
+        <div key={event.id || idx} className="relative">
           <div className="absolute -left-[31px] top-1.5 h-3.5 w-3.5 rounded-full bg-[var(--color-primary)] border-2 border-[var(--color-surface)]" />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-semibold text-[var(--color-text-primary)]">{event.title}</span>
-            <span className="text-xs font-mono text-[var(--color-text-muted)]">{event.timestamp}</span>
+            <span className="text-sm font-semibold text-[var(--color-text-primary)]">{event.title || event.subtitle}</span>
+            <span className="text-xs font-mono text-[var(--color-text-muted)]">{event.timestamp || event.date || event.subtitle || ''}</span>
           </div>
           {event.description && <p className="text-xs text-[var(--color-text-muted)] mt-1">{event.description}</p>}
           {event.status && <span className="inline-block mt-2 badge">{event.status}</span>}
@@ -1100,11 +1104,12 @@ export default Timeline;
         content: `import React from 'react';
 
 export interface KanbanItem {
-  id: string;
-  title: string;
+  id?: string;
+  title?: string;
   subtitle?: string;
-  status: string;
+  status?: string;
   tags?: string[];
+  [key: string]: any;
 }
 
 export interface KanbanBoardProps {
@@ -1112,6 +1117,7 @@ export interface KanbanBoardProps {
   items: KanbanItem[];
   onItemClick?: (item: KanbanItem) => void;
   className?: string;
+  [key: string]: any;
 }
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({ columns, items, onItemClick, className = '' }) => (

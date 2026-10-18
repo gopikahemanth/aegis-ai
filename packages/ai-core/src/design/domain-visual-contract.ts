@@ -406,7 +406,15 @@ export class DomainVisualContractGenerator {
     const rawText = `${prompt} ${spec?.name || ""} ${(spec?.dataModels || []).join(" ")} ${(archContract?.requiredModels || []).join(" ")}`.toLowerCase();
 
     // Derive deterministic art direction based on prompt semantics and stable hash
-    const artDirection = deriveArtDirection(prompt, spec?.name || (spec?.dataModels || []).join(" "));
+    let seedVal: number | undefined = (spec as any)?.seed !== undefined ? Number((spec as any).seed) : undefined;
+    if (seedVal === undefined && archContract?.architectureHash) {
+      let h = 0;
+      for (let i = 0; i < archContract.architectureHash.length; i++) {
+        h = (Math.imul(31, h) + archContract.architectureHash.charCodeAt(i)) | 0;
+      }
+      seedVal = Math.abs(h);
+    }
+    const artDirection = deriveArtDirection(prompt, spec?.name || (spec?.dataModels || []).join(" "), seedVal);
 
     // ── 1. Semantic Domain Classification ────────────────────────────────────
     let domain = "General Enterprise";

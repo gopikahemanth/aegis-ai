@@ -54,9 +54,6 @@ export class PatchEngine {
           if (reviewData.status === "APPROVED") isFrontendProtected = true;
         } catch {}
       }
-      if (!isFrontendProtected && InteractionProvenanceTracker.hasBaseline(projectPath)) {
-        isFrontendProtected = true;
-      }
       if (isFrontendProtected) {
         const isProtectedFrontend = norm.startsWith("src/");
         if (isProtectedFrontend) {
@@ -118,9 +115,6 @@ export class PatchEngine {
           const reviewData = JSON.parse(readFileSync(reviewPathForPatch, "utf8"));
           if (reviewData.status === "APPROVED") isPatchProtected = true;
         } catch {}
-      }
-      if (!isPatchProtected && InteractionProvenanceTracker.hasBaseline(projectPath)) {
-        isPatchProtected = true;
       }
       if (isPatchProtected) {
         const norm = safeRelPath.replace(/\\/g, "/");

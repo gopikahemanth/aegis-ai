@@ -347,6 +347,36 @@ export class PageExperienceQualityGate {
           violations.push(`MISSING_CAPABILITY: Route '${pagePlan.route}' requires '${reqCap}' but no virtual concierge chat logic was detected.`);
         }
       }
+      if (reqCap === "movement-viewer" || reqCap === "calibre-inspection") {
+        if (!/movement|calibre|escapement|balance|gear|jewel|anglage|explosion|exploded|plate|bridge/i.test(content)) {
+          specializedPresent = false;
+          violations.push(`MISSING_CAPABILITY: Route '${pagePlan.route}' requires '${reqCap}' but no movement calibre inspection logic was detected.`);
+        }
+      }
+      if (reqCap === "dial-configurator" || reqCap === "engraving-preview") {
+        if (!/dial|engrav|finish|color|custom|bespoke|pattern|material|case|strap/i.test(content)) {
+          specializedPresent = false;
+          violations.push(`MISSING_CAPABILITY: Route '${pagePlan.route}' requires '${reqCap}' but no dial customization or bespoke engraving logic was detected.`);
+        }
+      }
+      if (reqCap === "provenance-registry" || reqCap === "certificate-verifier") {
+        if (!/provenance|serial|certificate|verify|authenti|ledger|origin|hash/i.test(content)) {
+          specializedPresent = false;
+          violations.push(`MISSING_CAPABILITY: Route '${pagePlan.route}' requires '${reqCap}' but no provenance registry or certificate verification logic was detected.`);
+        }
+      }
+      if (reqCap === "collector-vault" || reqCap === "portfolio-ledger") {
+        if (!/vault|collector|portfolio|holding|timepiece|collection|valuation|value|acquire/i.test(content)) {
+          specializedPresent = false;
+          violations.push(`MISSING_CAPABILITY: Route '${pagePlan.route}' requires '${reqCap}' but no collector vault or portfolio ledger logic was detected.`);
+        }
+      }
+      if (reqCap === "concierge-scheduler" || reqCap === "salon-city-switcher") {
+        if (!/salon|atelier|appointment|consult|schedule|date|city|book|concierge/i.test(content)) {
+          specializedPresent = false;
+          violations.push(`MISSING_CAPABILITY: Route '${pagePlan.route}' requires '${reqCap}' but no concierge appointment scheduling logic was detected.`);
+        }
+      }
     }
 
     const checks: RouteAuditChecklist = {

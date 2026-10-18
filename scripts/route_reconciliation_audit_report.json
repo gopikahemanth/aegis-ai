@@ -1,0 +1,677 @@
+[
+  {
+    "project": "Velora Living",
+    "domain": "Furniture E-Commerce",
+    "requiredCount": 8,
+    "implementedCount": 10,
+    "renderedCount": 10,
+    "missingRequiredCount": 0,
+    "missingRequiredRoutes": [],
+    "optionalOrAliasRoutes": [
+      "/admin-dashboard",
+      "/dashboard"
+    ],
+    "details": [
+      {
+        "route": "/",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 2270,
+        "buttons": 16,
+        "inputs": 1,
+        "matchedKeywords": [
+          "Velora",
+          "Living",
+          "Interior",
+          "Collection"
+        ],
+        "screenshot": "audit-route-root.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/admin-dashboard",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 1566,
+        "buttons": 7,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Velora",
+          "Living",
+          "Collection",
+          "Exhibition"
+        ],
+        "screenshot": "audit-route-_admin-dashboard.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/dashboard",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 1434,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Velora",
+          "Living",
+          "Collection",
+          "Exhibition"
+        ],
+        "screenshot": "audit-route-_dashboard.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/explore-artist-profiles",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 916,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Velora",
+          "Living",
+          "Collection",
+          "Exhibition"
+        ],
+        "screenshot": "audit-route-_explore-artist-profiles.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/listen-to-audio-guide",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1538,
+        "buttons": 0,
+        "inputs": 2,
+        "matchedKeywords": [
+          "Velora",
+          "Living",
+          "Collection",
+          "Exhibition"
+        ],
+        "screenshot": "audit-route-_listen-to-audio-guide.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/navigate-interactive-floor-plan",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1008,
+        "buttons": 1,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Velora",
+          "Living",
+          "Collection",
+          "Exhibition"
+        ],
+        "screenshot": "audit-route-_navigate-interactive-floor-plan.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/plan-museum-visit",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1518,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Velora",
+          "Living",
+          "Collection",
+          "Exhibition"
+        ],
+        "screenshot": "audit-route-_plan-museum-visit.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/rotating-exhibitions",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1648,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Velora",
+          "Living",
+          "Collection",
+          "Exhibition"
+        ],
+        "screenshot": "audit-route-_rotating-exhibitions.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/saved-artworks",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1995,
+        "buttons": 14,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Velora",
+          "Living",
+          "Collection",
+          "Exhibition"
+        ],
+        "screenshot": "audit-route-_saved-artworks.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/search-semantic-artworks",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1515,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Velora",
+          "Living",
+          "Collection",
+          "Exhibition"
+        ],
+        "screenshot": "audit-route-_search-semantic-artworks.png",
+        "errorMessage": null
+      }
+    ]
+  },
+  {
+    "project": "Novus Academy",
+    "domain": "Education LMS",
+    "requiredCount": 5,
+    "implementedCount": 9,
+    "renderedCount": 9,
+    "missingRequiredCount": 0,
+    "missingRequiredRoutes": [],
+    "optionalOrAliasRoutes": [
+      "/dashboard",
+      "/interactive-lesson",
+      "/quiz-assessment",
+      "/login"
+    ],
+    "details": [
+      {
+        "route": "/",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1256,
+        "buttons": 11,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Novus",
+          "Academy",
+          "Course",
+          "Lesson"
+        ],
+        "screenshot": "audit-route-root.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/course-catalogs",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1035,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Novus",
+          "Academy",
+          "Course",
+          "Lesson"
+        ],
+        "screenshot": "audit-route-_course-catalogs.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/dashboard",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 1027,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Novus",
+          "Academy",
+          "Course",
+          "Lesson"
+        ],
+        "screenshot": "audit-route-_dashboard.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/interactive-lesson",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 1361,
+        "buttons": 8,
+        "inputs": 1,
+        "matchedKeywords": [
+          "Novus",
+          "Academy",
+          "Course",
+          "Lesson"
+        ],
+        "screenshot": "audit-route-_interactive-lesson.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/interactive-lessons",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 481,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Novus",
+          "Academy",
+          "Course",
+          "Lesson"
+        ],
+        "screenshot": "audit-route-_interactive-lessons.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/quiz-assessment",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 931,
+        "buttons": 6,
+        "inputs": 1,
+        "matchedKeywords": [
+          "Novus",
+          "Academy",
+          "Course",
+          "Lesson"
+        ],
+        "screenshot": "audit-route-_quiz-assessment.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/quiz-assessments",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 481,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Novus",
+          "Academy",
+          "Course",
+          "Lesson"
+        ],
+        "screenshot": "audit-route-_quiz-assessments.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/student-progress",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1306,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Novus",
+          "Academy",
+          "Course",
+          "Lesson"
+        ],
+        "screenshot": "audit-route-_student-progress.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/login",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 269,
+        "buttons": 1,
+        "inputs": 2,
+        "matchedKeywords": [
+          "Novus",
+          "Academy",
+          "Course",
+          "Lesson"
+        ],
+        "screenshot": "audit-route-_login.png",
+        "errorMessage": null
+      }
+    ]
+  },
+  {
+    "project": "Aura Health",
+    "domain": "Healthcare Booking",
+    "requiredCount": 2,
+    "implementedCount": 5,
+    "renderedCount": 5,
+    "missingRequiredCount": 0,
+    "missingRequiredRoutes": [],
+    "optionalOrAliasRoutes": [
+      "/appointment-dashboard",
+      "/clinic-calendar",
+      "/dashboard"
+    ],
+    "details": [
+      {
+        "route": "/",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 2907,
+        "buttons": 6,
+        "inputs": 3,
+        "matchedKeywords": [
+          "Aura",
+          "Health",
+          "Clinic",
+          "Calendar"
+        ],
+        "screenshot": "audit-route-root.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/appointment-dashboard",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 1292,
+        "buttons": 7,
+        "inputs": 1,
+        "matchedKeywords": [
+          "Aura",
+          "Health",
+          "Appointment",
+          "Clinic"
+        ],
+        "screenshot": "audit-route-_appointment-dashboard.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/clinic-calendar",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 824,
+        "buttons": 3,
+        "inputs": 3,
+        "matchedKeywords": [
+          "Aura",
+          "Health",
+          "Appointment",
+          "Clinic"
+        ],
+        "screenshot": "audit-route-_clinic-calendar.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/dashboard",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 1045,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Aura",
+          "Health",
+          "Clinic"
+        ],
+        "screenshot": "audit-route-_dashboard.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/platform-named",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 946,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Aura",
+          "Health",
+          "Clinic"
+        ],
+        "screenshot": "audit-route-_platform-named.png",
+        "errorMessage": null
+      }
+    ]
+  },
+  {
+    "project": "Lumina Lens",
+    "domain": "Creative Portfolio",
+    "requiredCount": 6,
+    "implementedCount": 14,
+    "renderedCount": 14,
+    "missingRequiredCount": 0,
+    "missingRequiredRoutes": [],
+    "optionalOrAliasRoutes": [
+      "/case-studies",
+      "/case-study",
+      "/dashboard",
+      "/exif",
+      "/gallery",
+      "/inquiry",
+      "/lightbox",
+      "/login"
+    ],
+    "details": [
+      {
+        "route": "/",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1006,
+        "buttons": 5,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-root.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/case-studies",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 992,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_case-studies.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/case-study",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 985,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_case-study.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/dashboard",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 1033,
+        "buttons": 5,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_dashboard.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/exif",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 1016,
+        "buttons": 1,
+        "inputs": 1,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_exif.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/full-bleed-galleries",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 999,
+        "buttons": 5,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_full-bleed-galleries.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/gallery",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 1012,
+        "buttons": 5,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_gallery.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/inquiry",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 1520,
+        "buttons": 2,
+        "inputs": 6,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_inquiry.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/inspect-exif-metadata",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1006,
+        "buttons": 5,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_inspect-exif-metadata.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/lightbox",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 602,
+        "buttons": 5,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_lightbox.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/open-interactive-lightbox",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1010,
+        "buttons": 5,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_open-interactive-lightbox.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/login",
+        "isRequired": false,
+        "status": "PASS",
+        "textLength": 241,
+        "buttons": 2,
+        "inputs": 2,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_login.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/explore-project-case-studies",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 992,
+        "buttons": 4,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_explore-project-case-studies.png",
+        "errorMessage": null
+      },
+      {
+        "route": "/submit-editorial-inquiry",
+        "isRequired": true,
+        "status": "PASS",
+        "textLength": 1006,
+        "buttons": 5,
+        "inputs": 0,
+        "matchedKeywords": [
+          "Lumina",
+          "Lens",
+          "Exif",
+          "Lightbox"
+        ],
+        "screenshot": "audit-route-_submit-editorial-inquiry.png",
+        "errorMessage": null
+      }
+    ]
+  }
+]

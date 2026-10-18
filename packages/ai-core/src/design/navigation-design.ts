@@ -362,13 +362,13 @@ export class NavigationDesignResolver {
     }
 
     const lower = prompt.toLowerCase();
-    const isCleanEnergy = /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(lower);
-    if (isCleanEnergy) {
-      return "GREENPULSE ENERGY";
-    }
-    const isObservatory = /\b(observatory|orbitalis|astronomy|celestial|telescope|deep sky)\b/i.test(lower);
+    const isObservatory = /\b(observatory|orbitalis|orbit|orbital|satellite|spacecraft|astronomy|celestial|telescope|deep sky)\b/i.test(lower);
     if (isObservatory) {
       return "ORBITALIS";
+    }
+    const isCleanEnergy = !isObservatory && /\b(renewable|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine|wind farm)\b/i.test(lower);
+    if (isCleanEnergy) {
+      return "GREENPULSE ENERGY";
     }
     if (lower.includes("culinary") || lower.includes("food journey") || lower.includes("recipe") || lower.includes("gastronom")) {
       return "SAVORLINE";

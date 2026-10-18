@@ -39,15 +39,19 @@ export class RuntimeAcceptanceRunner {
 
   constructor(projectRoot: string) {
     let resolvedRoot = projectRoot.replace(/\\/g, "/");
-    if (!existsSync(resolvedRoot)) {
+    if (!existsSync(resolvedRoot) || !existsSync(join(resolvedRoot, "package.json"))) {
       const candidates = [
+        join(process.cwd(), "apps/cli/generated/project"),
+        join(process.cwd(), "..", "apps/cli/generated/project"),
+        join(process.cwd(), "../..", "apps/cli/generated/project"),
+        join(process.cwd(), "../../..", "apps/cli/generated/project"),
         join(process.cwd(), "generated/project"),
         join(process.cwd(), "..", "generated/project"),
         join(process.cwd(), "../..", "generated/project"),
         join(process.cwd(), "../../..", "generated/project"),
       ];
       for (const cand of candidates) {
-        if (existsSync(cand)) {
+        if (existsSync(cand) && existsSync(join(cand, "package.json"))) {
           resolvedRoot = cand.replace(/\\/g, "/");
           break;
         }

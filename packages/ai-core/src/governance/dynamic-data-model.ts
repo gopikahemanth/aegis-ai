@@ -98,37 +98,327 @@ export class DynamicDataModelContract {
       return fields;
     }
 
-    // Domain entities: add userId FK + domain-specific text fields
-    fields.push(
-      { name: "userId", type: "String", nullable: false },
-    );
+    // Domain entities: add userId FK
+    fields.push({ name: "userId", type: "String", nullable: false });
 
-    // Add name/title field (most entities have a primary label)
     const entityNameLower = entity.name.toLowerCase();
+
+    // ── Canonical Domain Field Registry ──────────────────────────────────────
+    // Maps entity archetypes to their full, business-correct Prisma field sets.
+    // Prevents PRISMA_SCHEMA_MISMATCH when LLM controllers reference domain
+    // fields absent from a too-minimal schema.
+    const DOMAIN_FIELD_REGISTRY: Record<string, DataField[]> = {
+      // Restaurant / Food ordering
+      menuitem: [
+        { name: "name", type: "String", nullable: false },
+        { name: "description", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "price", type: "Float", nullable: false, default: "0.0" },
+        { name: "category", type: "String", nullable: true },
+        { name: "image", type: "String", nullable: true },
+        { name: "dietaryTags", type: "String", nullable: true },
+        { name: "allergens", type: "String", nullable: true },
+        { name: "isAvailable", type: "Boolean", nullable: false, default: "true", validation: "@default(true)" },
+        { name: "preparationTime", type: "Int", nullable: true },
+        { name: "isVegetarian", type: "Boolean", nullable: true },
+        { name: "isVegan", type: "Boolean", nullable: true },
+        { name: "spiceLevel", type: "String", nullable: true },
+        { name: "calories", type: "Int", nullable: true },
+      ],
+      cartitem: [
+        { name: "menuItemId", type: "String", nullable: true },
+        { name: "productId", type: "String", nullable: true },
+        { name: "name", type: "String", nullable: false },
+        { name: "quantity", type: "Int", nullable: false, default: "1", validation: "@default(1)" },
+        { name: "price", type: "Float", nullable: false, default: "0.0" },
+        { name: "customizations", type: "String", nullable: true },
+        { name: "sessionId", type: "String", nullable: true },
+        { name: "notes", type: "String", nullable: true },
+      ],
+      orderitem: [
+        { name: "menuItemId", type: "String", nullable: true },
+        { name: "productId", type: "String", nullable: true },
+        { name: "orderId", type: "String", nullable: true },
+        { name: "name", type: "String", nullable: false },
+        { name: "quantity", type: "Int", nullable: false, default: "1" },
+        { name: "price", type: "Float", nullable: false, default: "0.0" },
+        { name: "customizations", type: "String", nullable: true },
+      ],
+      order: [
+        { name: "name", type: "String", nullable: true },
+        { name: "customerName", type: "String", nullable: true },
+        { name: "customerEmail", type: "String", nullable: true },
+        { name: "customerPhone", type: "String", nullable: true },
+        { name: "status", type: "String", nullable: false, default: '"PENDING"', validation: '@default("PENDING")' },
+        { name: "totalAmount", type: "Float", nullable: false, default: "0.0" },
+        { name: "orderType", type: "String", nullable: true },
+        { name: "deliveryAddress", type: "String", nullable: true },
+        { name: "notes", type: "String", nullable: true },
+        { name: "paymentMethod", type: "String", nullable: true },
+        { name: "paymentStatus", type: "String", nullable: true },
+        { name: "deliveryFee", type: "Float", nullable: true },
+        { name: "items", type: "String", nullable: true, validation: "@db.Text" },
+      ],
+      reservation: [
+        { name: "name", type: "String", nullable: false },
+        { name: "email", type: "String", nullable: true },
+        { name: "phone", type: "String", nullable: true },
+        { name: "date", type: "String", nullable: true },
+        { name: "time", type: "String", nullable: true },
+        { name: "partySize", type: "Int", nullable: false, default: "2", validation: "@default(2)" },
+        { name: "status", type: "String", nullable: false, default: '"PENDING"', validation: '@default("PENDING")' },
+        { name: "zone", type: "String", nullable: true },
+        { name: "specialNotes", type: "String", nullable: true },
+        { name: "specialRequests", type: "String", nullable: true },
+        { name: "tableNumber", type: "String", nullable: true },
+      ],
+      review: [
+        { name: "name", type: "String", nullable: true },
+        { name: "author", type: "String", nullable: true },
+        { name: "rating", type: "Int", nullable: false, default: "5" },
+        { name: "comment", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "menuItemId", type: "String", nullable: true },
+        { name: "orderId", type: "String", nullable: true },
+        { name: "location", type: "String", nullable: true },
+        { name: "isVerified", type: "Boolean", nullable: true },
+      ],
+      contactmessage: [
+        { name: "name", type: "String", nullable: false },
+        { name: "email", type: "String", nullable: false },
+        { name: "subject", type: "String", nullable: true },
+        { name: "message", type: "String", nullable: false, validation: "@db.Text" },
+        { name: "phone", type: "String", nullable: true },
+        { name: "status", type: "String", nullable: true },
+        { name: "data", type: "String", nullable: true, validation: "@db.Text" },
+      ],
+      // E-commerce / Bookstore
+      product: [
+        { name: "name", type: "String", nullable: false },
+        { name: "description", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "price", type: "Float", nullable: false, default: "0.0" },
+        { name: "category", type: "String", nullable: true },
+        { name: "image", type: "String", nullable: true },
+        { name: "sku", type: "String", nullable: true },
+        { name: "stock", type: "Int", nullable: false, default: "0" },
+        { name: "isAvailable", type: "Boolean", nullable: false, default: "true", validation: "@default(true)" },
+        { name: "rating", type: "Float", nullable: true },
+        { name: "brand", type: "String", nullable: true },
+        { name: "tags", type: "String", nullable: true },
+      ],
+      book: [
+        { name: "title", type: "String", nullable: false },
+        { name: "author", type: "String", nullable: false },
+        { name: "isbn", type: "String", nullable: true },
+        { name: "description", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "price", type: "Float", nullable: false, default: "0.0" },
+        { name: "genre", type: "String", nullable: true },
+        { name: "coverImage", type: "String", nullable: true },
+        { name: "publishedYear", type: "Int", nullable: true },
+        { name: "publisher", type: "String", nullable: true },
+        { name: "stock", type: "Int", nullable: false, default: "0" },
+        { name: "rating", type: "Float", nullable: true },
+        { name: "isAvailable", type: "Boolean", nullable: false, default: "true", validation: "@default(true)" },
+      ],
+      // Healthcare
+      appointment: [
+        { name: "name", type: "String", nullable: true },
+        { name: "patientName", type: "String", nullable: false },
+        { name: "patientEmail", type: "String", nullable: true },
+        { name: "patientPhone", type: "String", nullable: true },
+        { name: "providerId", type: "String", nullable: true },
+        { name: "date", type: "String", nullable: false },
+        { name: "time", type: "String", nullable: false },
+        { name: "status", type: "String", nullable: false, default: '"SCHEDULED"', validation: '@default("SCHEDULED")' },
+        { name: "notes", type: "String", nullable: true },
+        { name: "duration", type: "Int", nullable: true },
+        { name: "type", type: "String", nullable: true },
+      ],
+      provider: [
+        { name: "name", type: "String", nullable: false },
+        { name: "specialty", type: "String", nullable: true },
+        { name: "bio", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "image", type: "String", nullable: true },
+        { name: "acceptingPatients", type: "Boolean", nullable: true },
+        { name: "rating", type: "Float", nullable: true },
+        { name: "phone", type: "String", nullable: true },
+        { name: "email", type: "String", nullable: true },
+      ],
+      patient: [
+        { name: "name", type: "String", nullable: false },
+        { name: "email", type: "String", nullable: true },
+        { name: "phone", type: "String", nullable: true },
+        { name: "dateOfBirth", type: "String", nullable: true },
+        { name: "gender", type: "String", nullable: true },
+        { name: "bloodGroup", type: "String", nullable: true },
+        { name: "address", type: "String", nullable: true },
+        { name: "allergies", type: "String", nullable: true },
+      ],
+      // Real estate
+      property: [
+        { name: "title", type: "String", nullable: false },
+        { name: "description", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "price", type: "Float", nullable: false, default: "0.0" },
+        { name: "type", type: "String", nullable: true },
+        { name: "status", type: "String", nullable: false, default: '"AVAILABLE"', validation: '@default("AVAILABLE")' },
+        { name: "address", type: "String", nullable: true },
+        { name: "city", type: "String", nullable: true },
+        { name: "bedrooms", type: "Int", nullable: true },
+        { name: "bathrooms", type: "Int", nullable: true },
+        { name: "area", type: "Float", nullable: true },
+        { name: "images", type: "String", nullable: true },
+        { name: "amenities", type: "String", nullable: true },
+        { name: "isFeatured", type: "Boolean", nullable: true },
+      ],
+      // Education / LMS
+      course: [
+        { name: "title", type: "String", nullable: false },
+        { name: "description", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "category", type: "String", nullable: true },
+        { name: "level", type: "String", nullable: true },
+        { name: "duration", type: "String", nullable: true },
+        { name: "price", type: "Float", nullable: true },
+        { name: "thumbnail", type: "String", nullable: true },
+        { name: "instructor", type: "String", nullable: true },
+        { name: "isPublished", type: "Boolean", nullable: false, default: "false", validation: "@default(false)" },
+        { name: "enrolledCount", type: "Int", nullable: true },
+      ],
+      // Equipment maintenance
+      asset: [
+        { name: "name", type: "String", nullable: false },
+        { name: "assetTag", type: "String", nullable: true },
+        { name: "description", type: "String", nullable: true },
+        { name: "category", type: "String", nullable: true },
+        { name: "location", type: "String", nullable: true },
+        { name: "status", type: "String", nullable: false, default: '"OPERATIONAL"', validation: '@default("OPERATIONAL")' },
+        { name: "manufacturer", type: "String", nullable: true },
+        { name: "model", type: "String", nullable: true },
+        { name: "serialNumber", type: "String", nullable: true },
+        { name: "purchaseDate", type: "String", nullable: true },
+        { name: "lastMaintenanceDate", type: "String", nullable: true },
+        { name: "nextMaintenanceDate", type: "String", nullable: true },
+      ],
+      workorder: [
+        { name: "name", type: "String", nullable: true },
+        { name: "title", type: "String", nullable: false },
+        { name: "description", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "assetId", type: "String", nullable: true },
+        { name: "assignedTo", type: "String", nullable: true },
+        { name: "priority", type: "String", nullable: false, default: '"MEDIUM"', validation: '@default("MEDIUM")' },
+        { name: "status", type: "String", nullable: false, default: '"OPEN"', validation: '@default("OPEN")' },
+        { name: "type", type: "String", nullable: true },
+        { name: "scheduledDate", type: "String", nullable: true },
+        { name: "completedDate", type: "String", nullable: true },
+        { name: "estimatedHours", type: "Float", nullable: true },
+        { name: "actualHours", type: "Float", nullable: true },
+        { name: "notes", type: "String", nullable: true, validation: "@db.Text" },
+      ],
+      // Portfolio
+      project: [
+        { name: "title", type: "String", nullable: false },
+        { name: "description", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "technologies", type: "String", nullable: true },
+        { name: "category", type: "String", nullable: true },
+        { name: "githubUrl", type: "String", nullable: true },
+        { name: "liveUrl", type: "String", nullable: true },
+        { name: "image", type: "String", nullable: true },
+        { name: "featured", type: "Boolean", nullable: true },
+        { name: "year", type: "Int", nullable: true },
+        { name: "status", type: "String", nullable: true },
+      ],
+      skill: [
+        { name: "name", type: "String", nullable: false },
+        { name: "category", type: "String", nullable: true },
+        { name: "proficiency", type: "Int", nullable: true },
+        { name: "icon", type: "String", nullable: true },
+        { name: "yearsOfExperience", type: "Float", nullable: true },
+      ],
+      experience: [
+        { name: "title", type: "String", nullable: false },
+        { name: "company", type: "String", nullable: false },
+        { name: "description", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "startDate", type: "String", nullable: false },
+        { name: "endDate", type: "String", nullable: true },
+        { name: "isCurrent", type: "Boolean", nullable: true },
+        { name: "location", type: "String", nullable: true },
+        { name: "type", type: "String", nullable: true },
+      ],
+      // Universal
+      category: [
+        { name: "name", type: "String", nullable: false },
+        { name: "slug", type: "String", nullable: true },
+        { name: "description", type: "String", nullable: true },
+        { name: "icon", type: "String", nullable: true },
+        { name: "color", type: "String", nullable: true },
+        { name: "parentId", type: "String", nullable: true },
+        { name: "image", type: "String", nullable: true },
+      ],
+      post: [
+        { name: "title", type: "String", nullable: false },
+        { name: "content", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "excerpt", type: "String", nullable: true },
+        { name: "slug", type: "String", nullable: true },
+        { name: "category", type: "String", nullable: true },
+        { name: "tags", type: "String", nullable: true },
+        { name: "image", type: "String", nullable: true },
+        { name: "isPublished", type: "Boolean", nullable: false, default: "false", validation: "@default(false)" },
+        { name: "publishedAt", type: "DateTime", nullable: true },
+        { name: "views", type: "Int", nullable: true },
+      ],
+      payment: [
+        { name: "name", type: "String", nullable: true },
+        { name: "orderId", type: "String", nullable: true },
+        { name: "amount", type: "Float", nullable: false, default: "0.0" },
+        { name: "status", type: "String", nullable: false, default: '"PENDING"', validation: '@default("PENDING")' },
+        { name: "method", type: "String", nullable: true },
+        { name: "transactionId", type: "String", nullable: true },
+        { name: "paidAt", type: "DateTime", nullable: true },
+      ],
+      notification: [
+        { name: "title", type: "String", nullable: false },
+        { name: "message", type: "String", nullable: false },
+        { name: "type", type: "String", nullable: true },
+        { name: "isRead", type: "Boolean", nullable: false, default: "false", validation: "@default(false)" },
+        { name: "data", type: "String", nullable: true },
+      ],
+    };
+
+    // Check registry for exact entity archetype match
+    const registryFields = DOMAIN_FIELD_REGISTRY[entityNameLower];
+    if (registryFields) {
+      fields.push(...registryFields.filter(f => f.name !== "userId"));
+      return fields;
+    }
+
+    // ── Semantic fallback for unrecognized entities ────────────────────────
     if (!["analysisresult", "keywordmatch", "matchanalysis"].includes(entityNameLower)) {
       fields.push({ name: "name", type: "String", nullable: false });
     }
 
-    // Add text/content field for entities that store document-like data
-    const textEntitySignals = ["text", "content", "description", "body", "note", "log", "data"];
     const entityWords = entity.name.replace(/([A-Z])/g, " $1").trim().toLowerCase().split(/\s+/);
+
+    const statusSignals = ["scan", "analysis", "result", "report", "job", "task", "order", "payment", "request", "ticket", "workflow"];
+    if (entityWords.some(w => statusSignals.some(s => w.includes(s)))) {
+      fields.push({ name: "status", type: "String", nullable: false, default: '"PENDING"', validation: '@default("PENDING")' });
+    }
+
+    const textEntitySignals = ["text", "content", "description", "body", "note", "log", "data", "message", "comment"];
     const hasTextSignal = entityWords.some(w => textEntitySignals.some(s => w.includes(s)));
-    if (hasTextSignal || entity.purpose.toLowerCase().includes("text") || entity.purpose.toLowerCase().includes("content")) {
+    if (hasTextSignal || entity.purpose.toLowerCase().includes("content")) {
       fields.push({ name: "content", type: "String", nullable: true, validation: "@db.Text" });
     }
 
-    // Status field for entities that go through workflow states
-    const statusSignals = ["scan", "analysis", "result", "report", "job", "task", "order", "payment"];
-    const hasStatusSignal = entityWords.some(w => statusSignals.some(s => w.includes(s)));
-    if (hasStatusSignal) {
-      fields.push({ name: "status", type: "String", nullable: false, default: '"PENDING"' });
+    const scoreSignals = ["result", "analysis", "score", "match", "rating", "metric"];
+    if (entityWords.some(w => scoreSignals.some(s => w.includes(s)))) {
+      fields.push({ name: "score", type: "Float", nullable: false, default: "0.0" });
     }
 
-    // Score/rating field for analysis/result entities
-    const scoreSignals = ["result", "analysis", "score", "match", "rating", "metric"];
-    const hasScoreSignal = entityWords.some(w => scoreSignals.some(s => w.includes(s)));
-    if (hasScoreSignal) {
-      fields.push({ name: "score", type: "Float", nullable: false, default: "0.0" });
+    const dateSignals = ["schedule", "booking", "event", "slot", "shift", "session", "meeting"];
+    if (entityWords.some(w => dateSignals.some(s => w.includes(s)))) {
+      fields.push(
+        { name: "date", type: "String", nullable: true },
+        { name: "startTime", type: "String", nullable: true },
+        { name: "endTime", type: "String", nullable: true },
+        { name: "status", type: "String", nullable: true },
+      );
     }
 
     return fields;

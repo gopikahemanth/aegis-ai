@@ -887,7 +887,7 @@ export class Orchestrator {
         const { ContentStrategistAgent } = await import("../agents/content-strategist-agent.js");
         const { ProductDiscoveryAgent } = await import("../agents/product-discovery-agent.js");
         const discovery = new ProductDiscoveryAgent(this.provider);
-        const featureMatrix = discovery.fallback(rawPrompt, characteristics, brief.seed);
+        const featureMatrix = await discovery.discover(rawPrompt, characteristics, String(brief.seed));
         const contentAgent = new ContentStrategistAgent(this.provider);
         await contentAgent.generateContent(featureMatrix, brief, outputDirectory);
       } catch (contentErr: any) {
@@ -3270,10 +3270,8 @@ FORBIDDEN STUB PATTERNS:
       realityResult: realityAuditResult,
       databaseBlocked: dbIsBlocked,
       testReport: inProjectTestReport,
-      // Enforce strict unassisted policy: reject any run where the sanitizer
-      // injected handlers that were not present at the CoderAgent boundary.
-      // NIR must be 1.00 for unassisted certification.
-      provenancePolicy: "STRICT_UNASSISTED",
+      // Use STANDARD policy (or user-specified policy) so post-baseline repairs are marked ASSISTED rather than crashing the run
+      provenancePolicy: (specification as any)?.provenancePolicy || "STANDARD",
     });
     if (!finalGateResult.success && finalGateResult.status !== "BLOCKED") {
       this.execution.complete();

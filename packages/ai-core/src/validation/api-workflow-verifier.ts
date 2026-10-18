@@ -515,25 +515,65 @@ export class ApiWorkflowVerifier {
       const url = `${baseUrl.replace(/\/$/, "")}${targetPath.startsWith("/") ? "" : "/"}${targetPath}`;
 
       const headers = { ...step.headers };
-      if (capturedAuthToken && headers["Authorization"] && headers["Authorization"].includes("test_token")) {
+      if (!step.isNegativeTest && !step.path.includes("/auth/") && !step.path.includes("/health")) {
+        if (capturedAuthToken) {
+          headers["Authorization"] = `Bearer ${capturedAuthToken}`;
+        } else if (!headers["Authorization"]) {
+          headers["Authorization"] = "Bearer test_token";
+        }
+      } else if (capturedAuthToken && headers["Authorization"] && headers["Authorization"].includes("test_token")) {
         headers["Authorization"] = `Bearer ${capturedAuthToken}`;
       }
 
       try {
-        const fetchResponse = await fetch(url, {
+        let fetchResponse = await fetch(url, {
           method: step.method,
           headers,
           body: step.requestBody ? JSON.stringify(step.requestBody) : undefined,
         });
 
-        const durationMs = Date.now() - start;
-        const actualStatus = fetchResponse.status;
+        let durationMs = Date.now() - start;
+        let actualStatus = fetchResponse.status;
         let actualBody: any = null;
 
         try {
           actualBody = await fetchResponse.json();
         } catch {
           actualBody = null;
+        }
+
+        // If a positive test received 401 Unauthorized (e.g. endpoint requires auth token), retry with captured auth token or fallback
+        if (actualStatus === 401 && !step.isNegativeTest && !step.path.includes("/auth/")) {
+          let retryToken = capturedAuthToken;
+          if (!retryToken) {
+            try {
+              const loginRes = await fetch(`${baseUrl.replace(/\/$/, "")}/api/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: `operator_test_${Date.now()}@test.internal`, password: "Secr3t_1234!" }),
+              });
+              const loginBody = await loginRes.json();
+              if (loginBody?.token) {
+                retryToken = loginBody.token;
+                capturedAuthToken = loginBody.token;
+              }
+            } catch {}
+          }
+          headers["Authorization"] = `Bearer ${retryToken || "test_token"}`;
+          try {
+            fetchResponse = await fetch(url, {
+              method: step.method,
+              headers,
+              body: step.requestBody ? JSON.stringify(step.requestBody) : undefined,
+            });
+            durationMs = Date.now() - start;
+            actualStatus = fetchResponse.status;
+            try {
+              actualBody = await fetchResponse.json();
+            } catch {
+              actualBody = null;
+            }
+          } catch {}
         }
 
         // Check for 500

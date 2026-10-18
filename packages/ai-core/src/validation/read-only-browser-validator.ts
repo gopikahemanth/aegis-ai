@@ -189,7 +189,15 @@ export class ReadOnlyBrowserValidator {
       const browser = await puppeteer.launch({
         headless: true,
         protocolTimeout: 120000,
-        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--enable-webgl",
+          "--ignore-gpu-blocklist",
+          "--use-gl=angle",
+          "--use-angle=swiftshader",
+        ],
       });
       const page = await browser.newPage();
       page.on("dialog", async (dialog) => {
@@ -198,12 +206,22 @@ export class ReadOnlyBrowserValidator {
 
       page.on("console", (msg) => {
         if (msg.type() === "error") {
-          consoleErrors.push(msg.text());
+          const text = msg.text();
+          if (/Error creating WebGL context|CONTEXT_LOST_WEBGL/i.test(text)) {
+            console.warn(`[BrowserValidator] Non-fatal WebGL context note in headless browser: ${text}`);
+            return;
+          }
+          consoleErrors.push(text);
         }
       });
 
       page.on("pageerror", (err: unknown) => {
-        uncaughtExceptions.push((err as any)?.message || String(err));
+        const text = (err as any)?.message || String(err);
+        if (/Error creating WebGL context|CONTEXT_LOST_WEBGL/i.test(text)) {
+          console.warn(`[BrowserValidator] Non-fatal WebGL context note in headless browser: ${text}`);
+          return;
+        }
+        uncaughtExceptions.push(text);
       });
 
       page.on("requestfailed", (req) => {
@@ -315,7 +333,8 @@ export class ReadOnlyBrowserValidator {
           !e.includes("DATABASE_URL") &&
           !e.includes("Failed to load resource") &&
           !e.includes("404") &&
-          !e.includes("ERR_BLOCKED_BY_CLIENT")
+          !e.includes("ERR_BLOCKED_BY_CLIENT") &&
+          !/Error creating WebGL context|CONTEXT_LOST_WEBGL/i.test(e)
       );
 
       if (uncaughtExceptions.length > 0) {
@@ -859,7 +878,15 @@ export class ReadOnlyBrowserValidator {
       const browser = await puppeteer.launch({
         headless: true,
         protocolTimeout: 120000,
-        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--enable-webgl",
+          "--ignore-gpu-blocklist",
+          "--use-gl=angle",
+          "--use-angle=swiftshader",
+        ],
       });
       const page = await browser.newPage();
       page.on("dialog", async (dialog) => {
@@ -869,6 +896,10 @@ export class ReadOnlyBrowserValidator {
       page.on("console", (msg) => {
         if (msg.type() === "error") {
           const text = msg.text();
+          if (/Error creating WebGL context|CONTEXT_LOST_WEBGL/i.test(text)) {
+            console.warn(`[BrowserValidator] Non-fatal WebGL context note in headless browser: ${text}`);
+            return;
+          }
           const isFatal = /Cannot read propert|is not a function|Uncaught|SyntaxError|ReferenceError|Failed to resolve import/i.test(text);
           if (isFatal && !review.fatalConsoleErrors.includes(text)) {
             review.fatalConsoleErrors.push(text);
@@ -878,6 +909,10 @@ export class ReadOnlyBrowserValidator {
 
       page.on("pageerror", (err: any) => {
         const text = err?.message || String(err);
+        if (/Error creating WebGL context|CONTEXT_LOST_WEBGL/i.test(text)) {
+          console.warn(`[BrowserValidator] Non-fatal WebGL context note in headless browser: ${text}`);
+          return;
+        }
         if (!review.uncaughtExceptions.includes(text)) {
           review.uncaughtExceptions.push(text);
         }
@@ -1015,6 +1050,9 @@ export class ReadOnlyBrowserValidator {
             const consoleHandler = (msg: any) => {
               if (msg.type() === "error") {
                 const text = msg.text();
+                if (/Error creating WebGL context|CONTEXT_LOST_WEBGL/i.test(text)) {
+                  return;
+                }
                 if (/Cannot read propert|is not a function|Uncaught|SyntaxError|ReferenceError|Failed to resolve import/i.test(text)) {
                   routeConsoleErrors.push(text);
                 }

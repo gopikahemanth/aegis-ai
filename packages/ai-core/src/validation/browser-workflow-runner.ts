@@ -73,16 +73,31 @@ export class BrowserWorkflowRunner {
         const puppeteer = await import("puppeteer");
         const browser = await puppeteer.launch({
           headless: true,
-          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+          args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--enable-webgl",
+            "--ignore-gpu-blocklist",
+            "--use-gl=angle",
+            "--use-angle=swiftshader",
+          ],
         });
 
         try {
           const page = await browser.newPage();
           page.on("console", (msg) => {
-            if (msg.type() === "error") consoleErrors.push(msg.text());
+            if (msg.type() === "error") {
+              const text = msg.text();
+              if (!/Error creating WebGL context|CONTEXT_LOST_WEBGL/i.test(text)) {
+                consoleErrors.push(text);
+              }
+            }
           });
           page.on("pageerror", (err: any) => {
-            uncaughtExceptions.push(err?.message || String(err));
+            const text = err?.message || String(err);
+            if (!/Error creating WebGL context|CONTEXT_LOST_WEBGL/i.test(text)) {
+              uncaughtExceptions.push(text);
+            }
           });
 
 

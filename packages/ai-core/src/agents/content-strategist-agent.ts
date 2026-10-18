@@ -625,7 +625,8 @@ export default siteContent;
     }
 
     // 2c. Healthcare Appointment Booking Platform
-    if (/\b(healthcare|medical appointment|doctor booking|patient scheduling|clinic booking|appointment booking)\b/i.test(promptLower)) {
+    if (/\b(healthcare|medical appointment|doctor booking|patient scheduling|clinic booking)\b/i.test(promptLower) ||
+        (/\b(medical|clinic|doctor|patient|hospital)\b/i.test(promptLower) && /\b(appointment|booking|schedule|scheduling)\b/i.test(promptLower))) {
       const healthBrand = authoritativeBrand || "AURA HEALTH";
       return {
         brand: {
@@ -722,7 +723,49 @@ export default siteContent;
       };
     }
 
-    const isCleanEnergy = /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(promptLower);
+    const isSpace = /\b(space|celestial|orbit|orbital|satellite|planetary|astro|astronomy|observatory|telescope|starmap|star map)\b/i.test(promptLower);
+    if (isSpace) {
+      const brand = NavigationDesignResolver.extractBrandFromPrompt(promptLower) || "Orbitalis Dynamics";
+      return {
+        brand: {
+          name: brand,
+          tagline: "Orbital Satellite Constellation Command & Telemetry Platform",
+          valueProposition: "Real-time satellite trajectory propagation, subsystem telemetry monitoring, ground station pass scheduling, and encrypted telecommand uplink.",
+          contact: { phone: "+1 (800) 555-0199", email: "ops@orbitalis-dynamics.com", hours: "24/7 Mission Flight Control", address: "Space Operations Center, Colorado Springs, CO" }
+        },
+        navigationLabels: { "/": "Mission Control", "/trajectories": "Orbits & Ephemeris", "/subsystems": "Subsystems", "/maneuvers": "Burn Planner", "/ground-stations": "Ground Passes", "/commands": "Command Uplink" },
+        pages: {
+          "/": {
+            title: `${brand} | Mission Flight Control`,
+            headline: "Satellite Constellation Command & Telemetry",
+            subheadline: "Real-time SGP4 orbital tracking, dual-axis solar array power, and encrypted telecommands.",
+            primaryCta: "Inspect Constellation",
+            secondaryCta: "Plan Burn Maneuver",
+            highlights: [
+              { label: "Orbital Constellation", description: "SGP4 orbit propagation with sub-arcsecond tracking across 24 orbital planes." },
+              { label: "Flight Subsystems", description: "Real-time solar array generation, hydrazine pressure, and radiator loop regulation." }
+            ]
+          }
+        },
+        mockRecords: [
+          { id: "sat-01", noradId: "58201", name: "Orbitalis Sentinel-1", inclination: "53.2°", altitude: "550 km", period: "95.6 min", status: "Operational", health: "Nominal" },
+          { id: "sat-02", noradId: "58202", name: "Orbitalis Sentinel-2", inclination: "53.2°", altitude: "552 km", period: "95.7 min", status: "Operational", health: "Nominal" },
+          { id: "sat-03", noradId: "58203", name: "Orbitalis Sentinel-2", inclination: "53.2°", altitude: "552 km", period: "95.7 min", status: "Operational", health: "Nominal" },
+          { id: "sat-04", noradId: "58204", name: "Orbitalis Scout-A", inclination: "97.4°", altitude: "620 km", period: "97.1 min", status: "Maneuver", health: "Nominal" }
+        ],
+        testimonials: [
+          { author: "Dr. Sarah Lin", role: "Flight Dynamics Lead", location: "Space Operations Center", quote: "The real-time SGP4 orbit propagation and conjunction warnings gave us full situational awareness during orbital insertion.", rating: 5, isPlaceholder: true, isSampleData: true },
+          { author: "Commander David Vance", role: "Mission Operations Director", location: "Ground Network Command", quote: "Automated ground pass tracking between Svalbard and Goldstone achieved zero telemetry packet loss.", rating: 5, isPlaceholder: true, isSampleData: true }
+        ],
+        imageKeywords: {
+          hero: "satellite orbiting earth blue planet curvature solar panels space mission",
+          features: ["satellite bus solar arrays deep space starlight", "mission control center telemetry screens operators"],
+          gallery: ["earth from low earth orbit space station sunset", "satellite ground station dish antenna milky way"]
+        }
+      };
+    }
+
+    const isCleanEnergy = !isSpace && /\b(renewable|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine|wind farm)\b/i.test(promptLower);
     if (isCleanEnergy) {
       const brand = NavigationDesignResolver.extractBrandFromPrompt(promptLower) || "GreenPulse Energy";
       return {

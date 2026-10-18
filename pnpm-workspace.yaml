@@ -1,7 +1,6 @@
 packages:
   - "apps/*"
   - "packages/*"
-  - "projects/*"
 
 overrides:
   "@types/react": "^18.3.18"

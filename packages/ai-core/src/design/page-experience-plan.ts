@@ -541,7 +541,7 @@ export class PageExperiencePlanner {
     // =========================================================================
     const isOcean = /\b(underwater|marine|submersible|abyss|benthic|bathymetric|deep-sea|hadal trench|hydrophone)\b/i.test(promptLower);
     const isFantasy = /\b(claymation|kazzoo|fairy realm|enchanted forest)\b/i.test(promptLower);
-    const isSpace = /\b(spacecraft|celestial|satellite|planetary|astronomy|orbital station|star-field)\b/i.test(promptLower);
+    const isSpace = /\b(spacecraft|celestial|satellite|planetary|astronomy|orbital station|star-field|orbit|orbital)\b/i.test(promptLower);
     const isFurniture = /\b(furniture|cabinetry|credenza|dining table|armchair|sofa|chair design|joinery|woodworking|oakhaven)\b/i.test(promptLower);
     const isMusic = /\b(music|synthesizer|polyphonic|frequency modulation|melody|harmonic chord|acoustic guitar|audio mixer)\b/i.test(promptLower);
 
@@ -1141,7 +1141,286 @@ export class PageExperiencePlanner {
       };
     }
 
-    if (genre === "SPATIAL_WORLD" || capabilityPlan.real3dRequired) {
+    // =========================================================================
+    // GENRE: LUXURY_ARTIFACT_STAGE (High Horology, Jewelry, Perfume, Atelier)
+    // =========================================================================
+    const isLuxuryPrompt =
+      genre === "LUXURY_ARTIFACT_STAGE" ||
+      (!isHotelOrHospitality && !isObservatory && /\b(watch|horology|timepiece|atelier|calibre|tourbillon|chronometer|jewelry|perfume|flacon)\b/i.test(promptLower + " " + brandName.toLowerCase()));
+
+    if (isLuxuryPrompt) {
+      if (route === "/" || slug === "home" || slug === "stage" || slug === "hero") {
+        return {
+          route,
+          pageRole: "Hero Artifact Stage & 3D Interactive Rotator",
+          purpose: `Hero luxury product stage for ${brandName} with 360-degree interactive 3D model, caliber loupe zoom, and material switching`,
+          experienceIntent: "Inspect the tactile finish, sapphire caseback, and complications of the manufacture timepiece",
+          focalElement: "Hand-finished tourbillon timepiece in grade-5 titanium and rose gold with 360-degree rotation",
+          composition: {
+            topology: "PORTAL_HERO_SHOWCASE",
+            layers: ["Minimalist Studio Plinth", "3D WebGL Mesh Canvas", "Minimalist Horology HUD"],
+            sections: ["Timepiece Hero Rotator", "Caliber Complication Loupe", "Private Viewing Salon Trigger"],
+            dominantStructure: "FULL_BLEED_STAGE",
+          },
+          interaction: {
+            primary: ["Drag to rotate timepiece 360 degrees", "Switch case material (Titanium, Rose Gold, Platinum)"],
+            secondary: ["Zoom loupe into escapement", "Request private atelier appointment"],
+          },
+          motion: {
+            entrance: "smooth axial spin with dramatic spotlight reveal",
+            scroll: "subtle zoom into movement facets",
+            transitions: ["material shader interpolation"],
+          },
+          contentPresentation: "Monochrome luxury stage with gold accents and high-precision technical specifications",
+          visualHierarchy: {
+            primary: "3D Timepiece Stage",
+            secondary: ["Material Switcher HUD", "Caliber Specs Strip"],
+          },
+          responsiveStrategy: "Touch-rotatable artifact canvas with floating specs drawer",
+          requiredCapabilities: ["3d-webgl-canvas", "3d-model-rotator"],
+          forbiddenPatterns: ["saas dashboard", "generic empty cards", "unformatted raw data table", "placeholder text"],
+        };
+      }
+
+      // Movement, calibre, mechanics, craftsmanship, anatomy
+      if (slug.includes("movement") || slug.includes("calibre") || slug.includes("exploded") || slug.includes("craft") || slug.includes("anatomy") || slug.includes("mechanism") || slug.includes("complication")) {
+        return {
+          route,
+          pageRole: "Mechanical Calibre Architecture & Exploded Movement Inspection",
+          purpose: "Deep technical dive into manufacture calibre architecture, balance wheel escapement, and hand-finishing anglage",
+          experienceIntent: "Observe exploded movement layers, gear train interaction, and artisan hand-finishing traditions",
+          focalElement: "Exploded movement assembly showing bridge architecture, ruby jewels, and tourbillon cage",
+          composition: {
+            topology: "ASYMMETRIC_TECTONIC_STUDY",
+            layers: ["Dark Studio Void", "Exploded Movement Stage", "Horological Chronicle Overlay"],
+            sections: ["Exploded Caliber Assembly", "Hand-Finishing Micro-Loupe", "Geneva Wave & Anglage Details"],
+            dominantStructure: "ASYMMETRIC_TECTONIC_STUDY",
+          },
+          interaction: {
+            primary: ["Drag explosion slider to separate movement plates", "Select caliber component to inspect anglage"],
+            secondary: ["Toggle balance spring oscillation", "View watchmaker notes"],
+          },
+          motion: {
+            entrance: "axial separation of movement components",
+            scroll: "layer-by-layer deconstruction",
+            transitions: ["part focus and camera zoom"],
+          },
+          contentPresentation: "Technical horology monograph with exploded schematics and high-magnification photography",
+          visualHierarchy: {
+            primary: "Exploded Movement Stage",
+            secondary: ["Component Selector", "Craftsmanship Chronicle"],
+          },
+          responsiveStrategy: "Sequential component breakdown on mobile viewports",
+          requiredCapabilities: ["movement-viewer", "calibre-inspection"],
+          forbiddenPatterns: ["saas dashboard", "generic empty cards", "unformatted raw data table", "placeholder text"],
+        };
+      }
+
+      // Dial configurator, bespoke engraving, studio
+      if (slug.includes("config") || slug.includes("dial") || slug.includes("custom") || slug.includes("engrav") || slug.includes("bespoke") || slug.includes("studio")) {
+        return {
+          route,
+          pageRole: "Artisanal Dial Customization & Bespoke Engraving Studio",
+          purpose: "Interactive bespoke customization atelier allowing collectors to configure dials, hands, materials, and caseback engravings with real-time aesthetic feedback",
+          experienceIntent: "Customize timepiece specifications and preview bespoke engravings before commission",
+          focalElement: "Interactive timepiece configurator canvas with live dial texture switching, metal alloy preview, and bespoke engraving text renderer",
+          composition: {
+            topology: "BESPOKE_STUDIO",
+            layers: ["Studio Lighting Stage", "Interactive Timepiece Mesh Canvas", "Atelier Customization Palette"],
+            sections: ["Interactive Timepiece Stage", "Dial & Case Material Palette", "Custom Engraving Studio & Commission Summary"],
+            dominantStructure: "BESPOKE_STUDIO",
+          },
+          interaction: {
+            primary: ["Select dial finish (Guilloché, Sunburst, Enamel, Aventurine)", "Enter bespoke caseback engraving text and preview typography"],
+            secondary: ["Toggle hand finishes", "Save bespoke configuration to vault"],
+          },
+          motion: {
+            entrance: "subtle spotlight sweep across dial guilloché pattern",
+            scroll: "smooth palette transition",
+            transitions: ["real-time material shader updates"],
+          },
+          contentPresentation: "Luxury atelier studio interface with gold accents, precise typography, and tactile configuration swatches",
+          visualHierarchy: {
+            primary: "Interactive Dial Stage",
+            secondary: ["Configuration Swatches", "Engraving Input & Summary"],
+          },
+          responsiveStrategy: "Sticky dial preview on mobile with swipeable configuration tabs",
+          requiredCapabilities: ["dial-configurator", "engraving-preview"],
+          forbiddenPatterns: ["saas dashboard", "generic empty cards", "unformatted raw data table", "placeholder text"],
+        };
+      }
+
+      // Provenance registry, digital certificate verification, ledger
+      if (slug.includes("provenance") || slug.includes("certificate") || slug.includes("registry") || slug.includes("verify") || slug.includes("ledger") || slug.includes("auth")) {
+        return {
+          route,
+          pageRole: "Tamper-Evident Provenance Registry & Digital Certificate Authentication",
+          purpose: "Searchable cryptographic provenance registry and serial certificate verification portal for authenticated manufactured timepieces",
+          experienceIntent: "Verify authentic manufacture serial numbers, provenance history, and certificate of origin",
+          focalElement: "Cryptographic serial verification terminal and verified manufacture provenance certificate viewer",
+          composition: {
+            topology: "PROVENANCE_LEDGER",
+            layers: ["Guilloché Security Background", "Certificate Verification Terminal", "Manufacture Ledger Feed"],
+            sections: ["Serial Number Verification Portal", "Verified Provenance Certificate Display", "Manufacture Archive Ledger"],
+            dominantStructure: "PROVENANCE_LEDGER",
+          },
+          interaction: {
+            primary: ["Enter serial number or certificate hash to verify authenticity", "Inspect digital certificate of origin and ownership chain"],
+            secondary: ["Download cryptographic certificate PDF", "Register timepiece acquisition"],
+          },
+          motion: {
+            entrance: "certificate border reveal and digital stamp seal animation",
+            scroll: "quiet ledger reveal",
+            transitions: ["verification status pulse transition"],
+          },
+          contentPresentation: "Cryptographic security document aesthetic with guilloché security borders, gold foil seals, and monospace hash displays",
+          visualHierarchy: {
+            primary: "Serial Verification Terminal",
+            secondary: ["Certificate Details Card", "Provenance Chain Ledger"],
+          },
+          responsiveStrategy: "Stacked certificate viewport with card-based provenance trail on mobile",
+          requiredCapabilities: ["provenance-registry", "certificate-verifier"],
+          forbiddenPatterns: ["saas dashboard", "generic empty cards", "unformatted raw data table", "placeholder text"],
+        };
+      }
+
+      // Collector vault, portfolio, collection catalog, timepieces
+      if (slug.includes("vault") || slug.includes("collector") || slug.includes("portfolio") || slug.includes("archive") || slug.includes("catalog") || slug.includes("collection") || slug.includes("timepiece")) {
+        return {
+          route,
+          pageRole: "Collector Vault Portfolio & Timepiece Collection Ledger",
+          purpose: "Private collector vault cataloging acquired manufacture timepieces, valuation metrics, service history, and certificate dossiers",
+          experienceIntent: "Review collector portfolio holdings, market valuation, service milestones, and acquisition records",
+          focalElement: "Interactive collector vault showcase featuring curated timepiece cards, total portfolio valuation metrics, and provenance dossiers",
+          composition: {
+            topology: "COLLECTOR_VAULT",
+            layers: ["Obsidian Vault Surface", "Curated Collection Grid", "Valuation Summary Panel"],
+            sections: ["Portfolio Valuation Overview", "Collector Timepiece Gallery", "Service History & Milestones Ledger"],
+            dominantStructure: "COLLECTOR_VAULT",
+          },
+          interaction: {
+            primary: ["Inspect timepieces in vault", "Filter by complication, case material, and acquisition date"],
+            secondary: ["Request certified valuation update", "Schedule atelier servicing"],
+          },
+          motion: {
+            entrance: "vault aperture opening and golden card elevation",
+            scroll: "subtle card parallax",
+            transitions: ["filter crossfade with smooth height animation"],
+          },
+          contentPresentation: "Deep obsidian vault aesthetic with brushed brass accents, precision typography, and rich specimen cards",
+          visualHierarchy: {
+            primary: "Portfolio Valuation Masthead",
+            secondary: ["Timepiece Collection Cards", "Provenance Dossier Drawer"],
+          },
+          responsiveStrategy: "Responsive vault card layout with summary metrics banner on mobile viewports",
+          requiredCapabilities: ["collector-vault", "portfolio-ledger"],
+          forbiddenPatterns: ["saas dashboard", "generic empty cards", "unformatted raw data table", "placeholder text"],
+        };
+      }
+
+      // Salon appointments, concierge consultation, atelier booking
+      if (slug.includes("appointment") || slug.includes("salon") || slug.includes("consult") || slug.includes("book") || slug.includes("atelier") || slug.includes("concierge")) {
+        return {
+          route,
+          pageRole: "Private Salon Consultation & Atelier Viewing Appointment",
+          purpose: "Exclusive consultation scheduling and bespoke commission concierge for Geneva, Paris, and New York ateliers",
+          experienceIntent: "Schedule private viewing salon appointment with master horologist",
+          focalElement: "Atelier presentation tray with salon city selector and private consultation scheduler",
+          composition: {
+            topology: "CONCIERGE_SALON",
+            layers: ["Silk Presentation Mat Background", "Concierge Consultation Panel", "Salon Location Selector"],
+            sections: ["Salon City Selector (Geneva, Paris, New York)", "Private Appointment Scheduler", "Bespoke Consultation Intake"],
+            dominantStructure: "CONCIERGE_SALON",
+          },
+          interaction: {
+            primary: ["Select salon city to view available consultation dates", "Select preferred appointment date and time"],
+            secondary: ["Specify bespoke interests or collection inquiries", "Confirm private salon reservation"],
+          },
+          motion: {
+            entrance: "quiet fade in with gold border reveal",
+            scroll: "minimal scroll",
+            transitions: ["salon city transition"],
+          },
+          contentPresentation: "Understated luxury concierge interface with serif typography and private consultation calendar",
+          visualHierarchy: {
+            primary: "Salon Presentation Tray",
+            secondary: ["City Atelier Selector", "Concierge Intake Form"],
+          },
+          responsiveStrategy: "Centered concierge card with modal city selector",
+          requiredCapabilities: ["concierge-scheduler", "salon-city-switcher"],
+          forbiddenPatterns: ["saas dashboard", "generic empty cards", "unformatted raw data table", "placeholder text"],
+        };
+      }
+
+      // Material, metallurgy
+      if (slug.includes("material") || slug.includes("metallurgy") || slug.includes("alloy") || slug.includes("gold") || slug.includes("titanium")) {
+        return {
+          route,
+          pageRole: "Metallurgical Matrix & Case Metallurgy",
+          purpose: "Side-by-side metallurgical comparison of grade-5 titanium, 18k 5N rose gold, and platinum 950",
+          experienceIntent: "Compare tensile strength, Vickers hardness, density, and thermal tactile ergonomics",
+          focalElement: "Interactive metallurgical comparison plinth with live material shader switching and tactile spec cards",
+          composition: {
+            topology: "METALLURGY_COMPARISON_STAGE",
+            layers: ["Studio Plinth Surface", "Material Swatch Stage", "Ergonomics & Hardness Matrix"],
+            sections: ["Alloy Composition Stage", "Vickers Hardness Radar", "Tactile Ergonomics Breakdown"],
+            dominantStructure: "METALLURGY_COMPARISON_STAGE",
+          },
+          interaction: {
+            primary: ["Toggle alloy alloy to preview case sheen and weight density", "Compare metallurgical parameters"],
+            secondary: ["Inspect hypoallergenic surface treatment", "Calculate wrist mass balance"],
+          },
+          motion: {
+            entrance: "specular light sweep across alloy bars",
+            scroll: "comparison radar expansion",
+            transitions: ["anisotropic metallic shader crossfade"],
+          },
+          contentPresentation: "Clean metallurgical laboratory presentation with specular reflections and exact alloy formulas",
+          visualHierarchy: {
+            primary: "Case Metallurgy Plinth",
+            secondary: ["Hardness & Density Matrix", "Alloy Composition Formula"],
+          },
+          responsiveStrategy: "Swipeable alloy selector with comparison table",
+          requiredCapabilities: ["material-shader-preview", "alloy-comparator"],
+          forbiddenPatterns: ["saas dashboard", "generic empty cards", "unformatted raw data table", "placeholder text"],
+        };
+      }
+
+      // Fallback for any other luxury route
+      const natTitle = titleHint || slug.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+      return {
+        route,
+        pageRole: `${natTitle} Presentation Surface`,
+        purpose: `Atelier presentation surface for ${natTitle} crafted for ${brandName}`,
+        experienceIntent: `Engage with ${natTitle} through bespoke horological presentation and tactile interaction`,
+        focalElement: `Hand-finished ${natTitle} presentation plinth with high-precision horological details`,
+        composition: {
+          topology: "BESPOKE_STUDIO",
+          layers: ["Brushed Dark Obsidian Plinth", "Horological Feature Stage", "Craft Details Drawer"],
+          sections: [`${natTitle} Exhibition Stage`, `${natTitle} Technical Details`, "Atelier Actions & Inquiries"],
+          dominantStructure: "BESPOKE_STUDIO",
+        },
+        interaction: {
+          primary: [`Inspect ${natTitle} details`, `Toggle ${natTitle} view options`],
+          secondary: ["Request atelier dossier", "Save to collection"],
+        },
+        motion: {
+          entrance: "quiet fade in with gold accent settle",
+          scroll: "smooth contextual element reveal",
+          transitions: ["subtle sheen highlight crossfade"],
+        },
+        contentPresentation: "Understated haute horlogerie aesthetic with gold accents and high-precision technical specifications",
+        visualHierarchy: {
+          primary: `${natTitle} Exhibition Stage`,
+          secondary: ["Technical Details", "Atelier Actions"],
+        },
+        responsiveStrategy: "Fluid responsive layout adapting gracefully across viewports",
+        requiredCapabilities: [`${slug}-interactive-stage`],
+        forbiddenPatterns: ["saas dashboard", "generic empty cards", "unformatted raw data table", "placeholder text"],
+      };
+    }
+
+    if (genre === "SPATIAL_WORLD") {
       if (route === "/" || slug === "home" || slug === "world-stage") {
         return {
           route,
@@ -1337,7 +1616,7 @@ export class PageExperiencePlanner {
     // =========================================================================
     // GENRE: CLEAN ENERGY & RENEWABLE OPERATIONS
     // =========================================================================
-    const isCleanEnergy = /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(promptLower);
+    const isCleanEnergy = !isSpace && !isOcean && /\b(renewable|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine|wind farm)\b/i.test(promptLower);
 
     if (isCleanEnergy) {
       if (route === "/" || slug === "operations" || slug === "home" || slug === "overview" || slug === "dashboard" || slug === "console") {
@@ -2157,141 +2436,7 @@ export class PageExperiencePlanner {
       };
     }
 
-    // =========================================================================
-    // GENRE 3: LUXURY_ARTIFACT_STAGE (e.g. Watch Atelier, Perfume, High Jewelry)
-    // =========================================================================
-    if (genre === "LUXURY_ARTIFACT_STAGE" || promptLower.includes("watch") || promptLower.includes("perfume")) {
-      if (route === "/" || slug === "home" || slug === "stage") {
-        return {
-          route,
-          pageRole: "Hero Artifact Stage & 3D Interactive Rotator",
-          purpose: "Hero product stage with 360-degree interactive 3D model, caliber loupe zoom, and material switching",
-          experienceIntent: "Inspect the tactile finish, sapphire caseback, and complications of the manufacture timepiece",
-          focalElement: "Hand-finished tourbillon timepiece in grade-5 titanium and rose gold with 360-degree rotation",
-          composition: {
-            topology: "PORTAL_HERO_SHOWCASE",
-            layers: ["Minimalist Studio Plinth", "3D WebGL Mesh Canvas", "Minimalist Horology HUD"],
-            sections: ["Timepiece Hero Rotator", "Caliber Complication Loupe", "Private Viewing Salon Trigger"],
-            dominantStructure: "FULL_BLEED_STAGE",
-          },
-          interaction: {
-            primary: ["Drag to rotate timepiece 360 degrees", "Switch case material (Titanium, Rose Gold, Platinum)"],
-            secondary: ["Zoom loupe into escapement", "Request private atelier appointment"],
-          },
-          motion: {
-            entrance: "smooth axial spin with dramatic spotlight reveal",
-            scroll: "subtle zoom into movement facets",
-            transitions: ["material shader interpolation"],
-          },
-          contentPresentation: "Monochrome luxury stage with gold accents and high-precision technical specifications",
-          visualHierarchy: {
-            primary: "3D Timepiece Stage",
-            secondary: ["Material Switcher HUD", "Caliber Specs Strip"],
-          },
-          responsiveStrategy: "Touch-rotatable artifact canvas with floating specs drawer",
-          requiredCapabilities: ["3d-model-rotator", "material-switcher", "loupe-zoom"],
-          forbiddenPatterns: ["search bar", "card grid", "crud forms"],
-        };
-      }
 
-      if (slug.includes("craft") || slug.includes("movement") || slug.includes("anatomy")) {
-        return {
-          route,
-          pageRole: "Movement Architecture & Finissage Inspection",
-          purpose: "Deep technical dive into movement anglage, black polish, and balance wheel escapement",
-          experienceIntent: "Observe exploded movement layers and artisan hand-finishing traditions",
-          focalElement: "Exploded 3D movement assembly showing bridge architecture, ruby jewels, and tourbillon cage",
-          composition: {
-            topology: "ASYMMETRIC_TECTONIC_STUDY",
-            layers: ["Dark Studio Void", "Exploded Movement Stage", "Horological Chronicle Overlay"],
-            sections: ["Exploded Caliber Assembly", "Hand-Finishing Micro-Loupe", "Geneva Wave & Anglage Details"],
-            dominantStructure: "ASYMMETRIC_TECTONIC_STUDY",
-          },
-          interaction: {
-            primary: ["Drag explosion slider to separate movement plates", "Select caliber component to inspect anglage"],
-            secondary: ["Toggle balance spring oscillation", "View watchmaker notes"],
-          },
-          motion: {
-            entrance: "axial separation of movement components",
-            scroll: "layer-by-layer deconstruction",
-            transitions: ["part focus and camera zoom"],
-          },
-          contentPresentation: "Technical horology monograph with exploded schematics and high-magnification photography",
-          visualHierarchy: {
-            primary: "Exploded Movement Stage",
-            secondary: ["Component Selector", "Craftsmanship Chronicle"],
-          },
-          responsiveStrategy: "Sequential component breakdown on mobile viewports",
-          requiredCapabilities: ["exploded-view-controller", "anglage-magnifier"],
-          forbiddenPatterns: ["card grid", "search bar", "crud forms"],
-        };
-      }
-
-      if (slug.includes("material") || slug.includes("metallurgy")) {
-        return {
-          route,
-          pageRole: "Metallurgical Matrix & Case Metallurgy",
-          purpose: "Side-by-side metallurgical comparison of grade-5 titanium, 18k 5N rose gold, and platinum 950",
-          experienceIntent: "Compare tensile strength, Vickers hardness, density, and thermal tactile ergonomics",
-          focalElement: "Interactive metallurgical comparison plinth with live material shader switching and tactile spec cards",
-          composition: {
-            topology: "METALLURGY_COMPARISON_STAGE",
-            layers: ["Studio Plinth Surface", "Material Swatch Stage", "Ergonomics & Hardness Matrix"],
-            sections: ["Alloy Composition Stage", "Vickers Hardness Radar", "Tactile Ergonomics Breakdown"],
-            dominantStructure: "METALLURGY_COMPARISON_STAGE",
-          },
-          interaction: {
-            primary: ["Toggle alloy alloy to preview case sheen and weight density", "Compare metallurgical parameters"],
-            secondary: ["Inspect hypoallergenic surface treatment", "Calculate wrist mass balance"],
-          },
-          motion: {
-            entrance: "specular light sweep across alloy bars",
-            scroll: "comparison radar expansion",
-            transitions: ["anisotropic metallic shader crossfade"],
-          },
-          contentPresentation: "Clean metallurgical laboratory presentation with specular reflections and exact alloy formulas",
-          visualHierarchy: {
-            primary: "Case Metallurgy Plinth",
-            secondary: ["Hardness & Density Matrix", "Alloy Composition Formula"],
-          },
-          responsiveStrategy: "Swipeable alloy selector with comparison table",
-          requiredCapabilities: ["material-shader-preview", "alloy-comparator"],
-          forbiddenPatterns: ["generic card directory", "crud forms"],
-        };
-      }
-
-      // Concierge Salon Appointment
-      return {
-        route,
-        pageRole: "Private Salon Atelier & Acquisition Concierge",
-        purpose: "Exclusive consultation scheduling and bespoke commission concierge for Geneva, Paris, and New York ateliers",
-        experienceIntent: "Request private salon appointment with the master horologist",
-        focalElement: "Atelier presentation tray with salon city selector and private consultation scheduler",
-        composition: {
-          topology: "CONCIERGE_SALON",
-          layers: ["Silk Presentation Mat Background", "Concierge Consultation Panel", "Salon Location Selector"],
-          sections: ["Salon City Selector (Geneva, Paris, New York)", "Bespoke Commission Intake", "Private Appointment Confirmation"],
-          dominantStructure: "CONCIERGE_SALON",
-        },
-        interaction: {
-          primary: ["Select salon city to view available consultation dates", "Submit private appointment inquiry"],
-          secondary: ["Specify bespoke dial engraving request", "Download private salon guide"],
-        },
-        motion: {
-          entrance: "quiet fade in with gold border reveal",
-          scroll: "minimal scroll",
-          transitions: ["salon city transition"],
-        },
-        contentPresentation: "Understated luxury concierge interface with serif typography and private consultation calendar",
-        visualHierarchy: {
-          primary: "Salon Presentation Tray",
-          secondary: ["City Atelier Selector", "Concierge Intake Form"],
-        },
-        responsiveStrategy: "Centered concierge card with modal city selector",
-        requiredCapabilities: ["concierge-scheduler", "salon-city-switcher"],
-        forbiddenPatterns: ["generic table", "card grid"],
-      };
-    }
 
     // =========================================================================
     // GENRE 4: DYNAMIC_BESPOKE (General products with tailored route designs)

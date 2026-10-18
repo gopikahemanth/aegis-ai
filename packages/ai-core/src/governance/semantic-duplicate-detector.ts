@@ -45,7 +45,7 @@ export class SemanticDuplicateDetector {
 
       // 1. Check semantic duplicate FIRST before general prefix authorization
       const dupCheck = CanonicalFileGraph.detectSemanticDuplicate(normalized);
-      if (dupCheck.isDuplicate && dupCheck.canonicalFile) {
+      if (dupCheck.isDuplicate && dupCheck.canonicalFile && dupCheck.canonicalFile.canonicalPath !== normalized) {
         console.warn(
           `[SemanticDuplicate] ⛔ REJECTED: "${normalized}" is a duplicate alias for "${dupCheck.canonicalFile.canonicalPath}". ` +
           `Rejecting write to force CoderAgent to generate canonical path directly.`

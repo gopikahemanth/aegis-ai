@@ -796,16 +796,20 @@ function deriveTargetAudience(text: string, audience: ProductCharacteristics["au
   return "Discerning end users seeking an intuitive, purposeful product experience";
 }
 
+function isSpace(text: string): boolean {
+  return /\b(space|celestial|orbit|orbital|satellite|planetary|astro|astronomy|observatory|telescope|starmap|star map)\b/i.test(text);
+}
+
 function isCleanEnergy(text: string): boolean {
-  return /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(text);
+  return !isSpace(text) && /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine|wind farm)\b/i.test(text);
 }
 
 function isOperationalOrConsole(text: string): boolean {
-  return !isCleanEnergy(text) && /\b(avionics|aerospace|aircraft|flight|aviation|cockpit|airframe|airspace|transponder|squawk|rnav|airway)\b/i.test(text);
+  return !isCleanEnergy(text) && !isSpace(text) && /\b(avionics|aerospace|aircraft|flight|aviation|cockpit|airframe|airspace|transponder|squawk|rnav|airway)\b/i.test(text);
 }
 
 function isArchitecturalPublicationDomain(text: string): boolean {
-  if (isOperationalOrConsole(text)) return false;
+  if (isOperationalOrConsole(text) || isSpace(text)) return false;
   if (/\b(software architecture|system architecture|data architecture|application architecture|required by the architecture|backend architecture|cloud architecture)\b/i.test(text)) {
     return false;
   }
@@ -813,6 +817,9 @@ function isArchitecturalPublicationDomain(text: string): boolean {
 }
 
 function derivePrimaryAction(text: string, activity: ProductCharacteristics["primaryActivity"]): string {
+  if (isSpace(text)) {
+    return "Track orbital constellation trajectories, inspect subsystem bus telemetry, schedule downlink passes, and transmit encrypted commands";
+  }
   if (isCleanEnergy(text)) {
     return "Monitor renewable generation telemetry, inspect wind and solar assets, and triage grid incidents";
   }
@@ -840,7 +847,9 @@ function derivePrimaryAction(text: string, activity: ProductCharacteristics["pri
 
 function deriveSecondaryActions(text: string, activity: ProductCharacteristics["primaryActivity"]): string[] {
   const actions: string[] = [];
-  if (isCleanEnergy(text)) {
+  if (isSpace(text)) {
+    actions.push("Calculate orbital maneuver delta-v burn vectors", "Inspect solar array generation, battery state, and radiator thermal loops");
+  } else if (isCleanEnergy(text)) {
     actions.push("Analyze inverter waveforms and turbine yaw telemetry", "Review preventive maintenance schedules and dispatch work orders");
   } else if (isOperationalOrConsole(text)) {
     actions.push("Analyze flight sensor parameters and trajectory vectors", "Inspect subsystem diagnostic logs and alarm thresholds");
@@ -881,6 +890,15 @@ function deriveVisualPersonality(tone: ProductCharacteristics["emotionalTone"], 
 
 function deriveContentHierarchy(activity: ProductCharacteristics["primaryActivity"], pattern: ProductCharacteristics["experiencePattern"], text?: string): string[] {
   const lower = (text || "").toLowerCase();
+  if (isSpace(lower)) {
+    return [
+      "Satellite Constellation Command & Orbit Telemetry Deck",
+      "Orbital Maneuver Burn & Delta-V Planner",
+      "Subsystem Telemetry & Power Distribution Inspector",
+      "Ground Station Downlink Pass Scheduler",
+      "Encrypted Satellite Command Uplink Log",
+    ];
+  }
   if (isCleanEnergy(lower)) {
     return [
       "Renewable Energy Generation & Grid Telemetry Deck",

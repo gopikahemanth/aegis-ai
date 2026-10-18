@@ -654,7 +654,7 @@ Focal Subject: ${focalObj}
    - 3D Scene Initialization:
      * Scene: const scene = new THREE.Scene();
      * Camera: const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-     * Renderer: const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+     * Renderer: Wrap WebGLRenderer instantiation in a try/catch with fallback so headless environments without GPU hardware render safely: let renderer = null; try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); } catch (e) { console.warn("WebGL fallback", e); }. In animation loop, guard: if (renderer) renderer.render(scene, camera); In cleanup, guard: if (renderer) renderer.dispose();
      * Lighting: ${lighting}
      * Meshes: Procedural 3D geometry representing ${focalObj}. Group Three.js primitives (lathes, extrusions, cylinders, spheres, toruses, custom groups) with tactile MeshStandardMaterial / MeshPhysicalMaterial (metalness, roughness, transmission for glass/water).
      * Render Loop: Active requestAnimationFrame loop rotating objects, animating particles/floating motion, and responding to pointer/mouse movement or scroll progress.

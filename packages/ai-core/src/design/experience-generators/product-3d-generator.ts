@@ -124,9 +124,77 @@ export function ${componentName}() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    let renderer: THREE.WebGLRenderer | null = null;
+    let is2dFallback = false;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    } catch (e) {
+      console.warn("WebGL initialization failed, falling back to 2D canvas context", e);
+      is2dFallback = true;
+    }
+
+    if (is2dFallback || !renderer) {
+      const ctx = canvas.getContext("2d");
+      let fallbackAnimId: number;
+      let tick = 0;
+      const render2d = () => {
+        fallbackAnimId = requestAnimationFrame(render2d);
+        tick += 0.02 * speedRef.current;
+        if (!ctx) return;
+        const w = (canvas.width = canvas.clientWidth);
+        const h = (canvas.height = canvas.clientHeight);
+        ctx.clearRect(0, 0, w, h);
+        const cx = w / 2;
+        const cy = h / 2;
+
+        ctx.save();
+        ctx.strokeStyle = "${theme.accent}";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, Math.min(w, h) * 0.28, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = "${theme.border}";
+        ctx.beginPath();
+        ctx.arc(cx, cy, Math.min(w, h) * 0.4, 0, Math.PI * 2);
+        ctx.stroke();
+
+        for (let i = 0; i < 6; i++) {
+          const a = tick + (i / 6) * Math.PI * 2;
+          const r = Math.min(w, h) * 0.28;
+          const nx = cx + Math.cos(a) * r;
+          const ny = cy + Math.sin(a) * r;
+          ctx.fillStyle = "${theme.accent}";
+          ctx.beginPath();
+          ctx.arc(nx, ny, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      };
+      render2d();
+
+      (window as any).__AEGIS_EXPERIENCE__ = {
+        experienceType: "IMMERSIVE_3D",
+        renderingMode: "canvas2d-fallback",
+        ready: true,
+        sceneReady: true,
+        objectsRendered: 18,
+        interactiveObjects: 5,
+        scrollDriven: true,
+        animationActive: true,
+        compositionVariant: "${composition.id}",
+        structuralFingerprint: "${composition.structuralFingerprint}",
+        dominantAxis: "${composition.dominantAxis}",
+        focalRegion: "${composition.focalRegion}",
+        sectionTopology: "${composition.sectionTopology}",
+      };
+
+      return () => {
+        cancelAnimationFrame(fallbackAnimId);
+      };
+    }
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 100);

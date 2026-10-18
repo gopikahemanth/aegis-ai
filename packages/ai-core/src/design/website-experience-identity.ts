@@ -152,13 +152,19 @@ export class WebsiteExperienceIdentityResolver {
       !/\b(software architecture|system architecture|data architecture|application architecture|required by the architecture|backend architecture|cloud architecture)\b/i.test(raw) &&
       /\b(architectural\s+(?:monograph|journal|review|digest|firm|studio|practice|portfolio|criticism)|architecture\s+(?:firm|studio|monograph|journal|magazine|exhibition)|building\s+typolog(?:y|ies)|spatial\s+(?:monograph|essay)|tectonic\s+journal)\b/i.test(raw);
 
+    const isLuxuryArtifact =
+      raw.includes("watch") || raw.includes("horology") || raw.includes("timepiece") ||
+      raw.includes("jewelry") || raw.includes("perfume") || raw.includes("flacon") ||
+      raw.includes("luxury") || raw.includes("atelier") || raw.includes("calibre") ||
+      raw.includes("chronometer") || raw.includes("tourbillon");
+
     const genre: ExperienceGenre =
       (isOperational || characteristics.experiencePattern === "realtime-console" || raw.includes("telemetry") || raw.includes("sensor") || raw.includes("trading") || raw.includes("scada"))
         ? "HIGH_DENSITY_CONSOLE"
-        : (capabilityPlan.real3dRequired || raw.includes("kazzoo") || raw.includes("fantasy") || raw.includes("planetarium") || raw.includes("claymation") || raw.includes("biome"))
-        ? "SPATIAL_WORLD"
-        : (raw.includes("watch") || raw.includes("horology") || raw.includes("timepiece") || raw.includes("jewelry") || raw.includes("perfume") || raw.includes("flacon") || raw.includes("luxury"))
+        : isLuxuryArtifact
         ? "LUXURY_ARTIFACT_STAGE"
+        : (raw.includes("kazzoo") || raw.includes("fantasy") || raw.includes("planetarium") || raw.includes("claymation") || raw.includes("biome") || (!isLuxuryArtifact && capabilityPlan.real3dRequired && (raw.includes("world") || raw.includes("metaverse") || raw.includes("realm") || raw.includes("spatial") || raw.includes("game"))))
+        ? "SPATIAL_WORLD"
         : (!isOperational && (capabilityPlan.experienceType === "EDITORIAL" || isArchPublication || raw.includes("journal") || raw.includes("monograph") || raw.includes("magazine") || raw.includes("essay") || raw.includes("tectonic")))
         ? "EDITORIAL_PUBLICATION"
         : (raw.includes("bakery") || raw.includes("boutique") || raw.includes("store") || raw.includes("shop"))

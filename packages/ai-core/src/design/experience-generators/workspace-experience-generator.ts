@@ -601,9 +601,9 @@ export default ${componentName};
     const isOcean = /\b(underwater|marine|ocean|submersible|hadal|bathymetr|hydrophone|benthic|abyss)\b/i.test(promptLower);
     const isFurniture = /furniture|chair|table|sofa|wood|interior|design|configurator/i.test(promptLower);
     const isMusic = /music|sound|audio|synthesizer|frequency|melody|harmonic/i.test(promptLower);
-    const isCleanEnergy = /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine)\b/i.test(promptLower);
-    const isClimate = !isCleanEnergy && /climate|weather|atmosphere|carbon|emissions|planet/i.test(promptLower);
+    const isClimate = /climate|weather|atmosphere|carbon|emissions|albedo|planet/i.test(promptLower);
     const isSpace = /\b(space|celestial|orbit|orbital|satellite|planetary|astro|astronomy|observatory|telescope|starmap|star map)\b/i.test(promptLower);
+    const isCleanEnergy = !isClimate && !isSpace && !isOcean && /\b(renewable|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine|wind farm)\b/i.test(promptLower);
 
     const routeContext = `${route || ""} ${pageRole || ""} ${purpose || ""}`.toLowerCase();
     const isAnalyticsRoute = /analytic|trend|telemetry|waveform|performance|metric|spectral|photometry/i.test(routeContext);
@@ -794,6 +794,142 @@ export default ${componentName};
     }
 
     if (isSpace) {
+      const isManeuverRoute = /maneuver|burn|propulsion|delta-v|thruster|orbit-raise|transfer|trajectory-correction/i.test(routeContext);
+      const isTrajectoryRoute = /trajectory|orbit|visualize|tracking|ground-track|propagation|constellation|ephemeris/i.test(routeContext);
+      const isSubsystemsRoute = /subsystem|power|solar|battery|thermal|telemetry|sensor|bus|payload|radiator/i.test(routeContext);
+      const isDownlinkRoute = /downlink|ground-station|pass|station|antenna|rf|pass-scheduler|scheduler|contact/i.test(routeContext);
+      const isCommandRoute = /command|uplink|audit|log|encrypt|security|crypto|dispatch|telecommand/i.test(routeContext);
+
+      if (isManeuverRoute) {
+        return {
+          workspaceCategory: "Orbital Maneuver & Propulsion Console",
+          title: "Orbital Maneuver Burn & Delta-V Planner",
+          subtitle: "Calculate Hohmann transfer windows, configure RCS thruster burn durations, and execute delta-v vector burns.",
+          summaryHeader: "Orbital Propulsion & Vector Status",
+          summaryDescription: "Hydrazine RCS manifolds pressurized. Inertial measurement guidance system synchronized with ephemeris state vectors.",
+          params: [
+            { id: "deltaVTarget", label: "Prograde Delta-V Budget", min: 1, max: 500, step: 5, unit: "m/s", defaultValue: 45, description: "Total velocity increment for orbital altitude adjustment." },
+            { id: "burnDuration", label: "Hydrazine Thruster Burn Time", min: 5, max: 300, step: 1, unit: "s", defaultValue: 38, description: "Continuous firing duration for primary bi-propellant thrusters." },
+            { id: "perigeeTarget", label: "Target Perigee Altitude", min: 200, max: 2000, step: 10, unit: "km", defaultValue: 520, description: "Target orbital perigee altitude following insertion burn." },
+          ],
+          quickActions: [
+            { name: "Compute Hohmann Transfer", desc: "Calculate orbital transfer burn arc", effect: "Transfer solution computed: Δv 45.2 m/s" },
+            { name: "Arm RCS Thruster Pods", desc: "Pre-pressurize propellant manifolds and igniters", effect: "Propellant manifold pressurized to 22.4 bar" },
+            { name: "Upload Burn Sequence", desc: "Encrypt and upload timed burn commands to flight computer", effect: "Burn packet scheduled for execution at ascending node" },
+          ],
+          telemetryStreams: [
+            { label: "Target Apogee", value: "1,240 km", status: "Orbit Insertion Nominal" },
+            { label: "Propellant Mass", value: "48.2 kg", status: "Hydrazine Reserve: 91%" },
+            { label: "RCS Chamber Pressure", value: "22.4 bar", status: "Nominal Firing Threshold" },
+            { label: "Guidance IMU Alignment", value: "99.98%", status: "Inertial Lock Verified" },
+          ],
+        };
+      }
+
+      if (isTrajectoryRoute) {
+        return {
+          workspaceCategory: "Constellation Trajectory & Ephemeris Console",
+          title: "Satellite Trajectory & Orbital Ephemeris Workbench",
+          subtitle: "Propagate SGP4 orbital state vectors, model RAAN plane separation, and analyze conjunction encounter geometry.",
+          summaryHeader: "Orbital State Vector & Ephemeris Status",
+          summaryDescription: "Constellation orbits propagated via SGP4 high-precision gravity model. Zero high-probability conjunction risks detected in lookahead window.",
+          params: [
+            { id: "inclination", label: "Orbital Inclination Angle", min: 0, max: 110, step: 0.5, unit: "°", defaultValue: 53.2, description: "Orbital tilt relative to the equatorial plane." },
+            { id: "raanOffset", label: "RAAN Plane Separation", min: 0, max: 360, step: 5, unit: "°", defaultValue: 72, description: "Right Ascension of Ascending Node spacing between orbital planes." },
+            { id: "propagationWindow", label: "Ephemeris Orbit Lookahead", min: 1, max: 72, step: 1, unit: "hrs", defaultValue: 24, description: "Time horizon for numerical trajectory propagation." },
+          ],
+          quickActions: [
+            { name: "Propagate SGP4 State", desc: "Propagate TLE orbital state vectors over time horizon", effect: "SGP4 state vectors updated: 0.02km error bound" },
+            { name: "Conjunction Risk Assessment", desc: "Scan Space-Track catalog for orbital close approaches", effect: "Zero high-probability conjunctions detected (< 5km)" },
+            { name: "Generate Ground Track", desc: "Calculate sub-satellite point track and sensor swath", effect: "Ground track projected across 16 orbital passes" },
+          ],
+          telemetryStreams: [
+            { label: "Orbital Velocity", value: "7.66 km/s", status: "Low Earth Orbit Nominal" },
+            { label: "Semi-Major Axis", value: "6,928 km", status: "Circularized 550km Orbit" },
+            { label: "Eccentricity", value: "0.00084", status: "Near-Circular Geometry" },
+            { label: "Tracked Conjunctions", value: "0 Alerts", status: "Clear Flight Corridor" },
+          ],
+        };
+      }
+
+      if (isSubsystemsRoute) {
+        return {
+          workspaceCategory: "Satellite Subsystem Health & Telemetry Console",
+          title: "Subsystem Telemetry & Power Distribution Workbench",
+          subtitle: "Monitor solar array photovoltaic power, battery state-of-charge, bus voltage rails, and thermal radiators.",
+          summaryHeader: "Spacecraft Bus Subsystem Status",
+          summaryDescription: "Electrical power subsystem operating in positive energy balance. Cryogenic and thermal louvers calibrated for eclipse transit.",
+          params: [
+            { id: "solarArrayAngle", label: "Solar Array Gimbal Bias", min: -90, max: 90, step: 1, unit: "°", defaultValue: 32, description: "Dual-axis solar array orientation angle toward the sun vector." },
+            { id: "radiatorTempThreshold", label: "Thermal Loop Target Temp", min: -40, max: 85, step: 1, unit: "°C", defaultValue: 18, description: "Active thermal regulation setpoint for payload instrument bay." },
+            { id: "batterySocLimit", label: "Eclipse Discharge Floor", min: 20, max: 80, step: 5, unit: "%", defaultValue: 40, description: "Maximum allowable battery depth-of-discharge during eclipse passes." },
+          ],
+          quickActions: [
+            { name: "Run Subsystem Ping Sweep", desc: "Query all bus sensor interfaces and telemetry nodes", effect: "148 sensors responding within nominal spec" },
+            { name: "Articulate Solar Panels", desc: "Orient dual-axis arrays toward optimum solar vector", effect: "Solar array tracking sun vector (+14.2% power)" },
+            { name: "Cycle Radiator Heat Pipes", desc: "Open ammonia heat pipe valves for thermal dissipation", effect: "Loop temperature stabilized at 17.8°C" },
+          ],
+          telemetryStreams: [
+            { label: "Solar Array Output", value: "3.42 kW", status: "Optimal Irradiance Angle" },
+            { label: "Battery Bus Voltage", value: "28.4 V", status: "Fully Charged Nominal" },
+            { label: "Bus Core Temp", value: "21.6°C", status: "Thermal Balance Maintained" },
+            { label: "Telemetry Beacon", value: "100% OK", status: "High SNR Link Established" },
+          ],
+        };
+      }
+
+      if (isDownlinkRoute) {
+        return {
+          workspaceCategory: "Ground Station Pass & Downlink Console",
+          title: "Ground Station Downlink Pass Scheduler Workbench",
+          subtitle: "Schedule ground contact passes across Svalbard, Goldstone, and Madrid tracking stations.",
+          summaryHeader: "Ground Segment Network & Pass Status",
+          summaryDescription: "High-gain steerable dish antennas synchronized for horizon-to-horizon satellite passes with automated doppler correction.",
+          params: [
+            { id: "minElevationAngle", label: "Min Acquisition Elevation", min: 5, max: 45, step: 1, unit: "°", defaultValue: 10, description: "Minimum elevation angle above local horizon for ground station lock." },
+            { id: "downlinkDataRate", label: "X-Band Downlink Throughput", min: 50, max: 1000, step: 25, unit: "Mbps", defaultValue: 350, description: "RF telemetry and payload science downlink data transfer rate." },
+            { id: "rfCarrierFreq", label: "S-Band Telemetry Carrier", min: 2000, max: 2400, step: 10, unit: "MHz", defaultValue: 2245, description: "Telemetry tracking and command RF carrier frequency." },
+          ],
+          quickActions: [
+            { name: "Acquire Ground Station Lock", desc: "Slew dish antenna to line-of-sight acquisition angle", effect: "Lock acquired: Goldstone Station (SNR 18.4 dB)" },
+            { name: "Dump Payload Telemetry", desc: "Stream buffered high-res science and radar data", effect: "42.8 GB dumped over Svalbard pass (100% verified)" },
+            { name: "Synchronize Ephemeris TLE", desc: "Upload calibrated orbital two-line element set", effect: "Onboard ephemeris synchronized with Norad TLE" },
+          ],
+          telemetryStreams: [
+            { label: "Next Ground Pass", value: "14m 22s", status: "Svalbard Station AOS" },
+            { label: "Link Margin", value: "+8.6 dB", status: "Exceeds BER 1e-9 Ceiling" },
+            { label: "Data Buffer Backlog", value: "12.4 GB", status: "Clearable in 1 Pass" },
+            { label: "Tracking Azimuth", value: "182.4°", status: "Dish Auto-Track Online" },
+          ],
+        };
+      }
+
+      if (isCommandRoute) {
+        return {
+          workspaceCategory: "Encrypted Satellite Command Uplink Console",
+          title: "Cryptographic Command Uplink & Telecommand Log",
+          subtitle: "Sign and transmit authenticated telecommand packets, monitor replay nonce windows, and verify command receipt.",
+          summaryHeader: "Telecommand Uplink & Cryptographic Security",
+          summaryDescription: "Hardware Security Module (HSM) online. Command authentication tokens signed with rotating session keys and verified via flight computer telemetry ACK.",
+          params: [
+            { id: "cryptoNonceWindow", label: "Replay Nonce Validity Window", min: 5, max: 120, step: 5, unit: "s", defaultValue: 30, description: "Time-to-live expiration window for telecommand nonce tokens." },
+            { id: "uplinkPowerLevel", label: "Ground Uplink EIRP Power", min: 20, max: 80, step: 2, unit: "dBW", defaultValue: 54, description: "Effective Isotropic Radiated Power of uplink transmitter." },
+            { id: "authKeyIndex", label: "Operational Key Slot Index", min: 1, max: 16, step: 1, unit: "slot", defaultValue: 4, description: "Active cryptographic key index in satellite hardware security module." },
+          ],
+          quickActions: [
+            { name: "Sign Command Packet", desc: "HMAC-SHA256 sign telecommand with operational key", effect: "Packet signed: CRC32 and cryptographic token attached" },
+            { name: "Transmit Critical Uplink", desc: "Beam telecommand burst via encrypted S-band carrier", effect: "Uplink confirmed: Flight computer ACK received" },
+            { name: "Export Uplink Audit Trail", desc: "Compile immutable cryptographic audit trail of sent commands", effect: "Audit trail compiled: 142 commands exported" },
+          ],
+          telemetryStreams: [
+            { label: "Telecommand State", value: "Armed", status: "Crypto Engine Synchronized" },
+            { label: "Uplink Carrier Lock", value: "Locked", status: "Madrid Ground Terminal" },
+            { label: "Auth Nonce Drift", value: "0.2 s", status: "Well Within Tolerance" },
+            { label: "Rejected Packets", value: "0 Packets", status: "Zero Spoofing / Bit Flips" },
+          ],
+        };
+      }
+
       if (isAnalyticsRoute) {
         return {
           workspaceCategory: "Spectral Absorption & Photometry Workbench",
@@ -926,22 +1062,24 @@ export default ${componentName};
       };
     }
 
-    // Default General Purpose Domain Config (Domain-neutral, zero telemetry/startup jargon)
+    // Default General Purpose Domain Config (Domain-neutral, route-differentiated to prevent convergence)
+    const slug = (route || pageRole || "core").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8) || "core";
+    const slugLabel = slug.charAt(0).toUpperCase() + slug.slice(1);
     return {
-      workspaceCategory: "Interactive Studio Workbench",
-      title: "Interactive Workspace & Parameter Console",
+      workspaceCategory: `${slugLabel} Interactive Studio Workbench`,
+      title: `${slugLabel} Workspace & Parameter Console`,
       subtitle: "Calibrate operational thresholds, analyze dynamic indicators, and inspect active feedback loops.",
-      summaryHeader: "System Readiness & Status",
+      summaryHeader: `${slugLabel} Readiness & Status`,
       summaryDescription: "All core subsystems online. Parameters are continuously monitored and validated against safe operating boundaries.",
       params: [
-        { id: "intensity", label: "Core Processing Intensity", min: 10, max: 100, step: 5, unit: "%", defaultValue: 60, description: "Regulates throughput speed and resource allocation." },
-        { id: "sensitivity", label: "Signal Detection Sensitivity", min: 1, max: 10, step: 0.5, unit: "index", defaultValue: 6.5, description: "Adjusts threshold to balance noise reduction with coverage." },
-        { id: "damping", label: "Harmonic Damping Ratio", min: 0.1, max: 1.0, step: 0.05, unit: "ratio", defaultValue: 0.7, description: "Prevents operational oscillation during rapid state transitions." },
+        { id: `${slug}Intensity`, label: `${slugLabel} Processing Intensity`, min: 10, max: 100, step: 5, unit: "%", defaultValue: 60, description: "Regulates throughput speed and resource allocation." },
+        { id: `${slug}Sensitivity`, label: `${slugLabel} Detection Sensitivity`, min: 1, max: 10, step: 0.5, unit: "index", defaultValue: 6.5, description: "Adjusts threshold to balance noise reduction with coverage." },
+        { id: `${slug}Damping`, label: `${slugLabel} Harmonic Damping`, min: 0.1, max: 1.0, step: 0.05, unit: "ratio", defaultValue: 0.7, description: "Prevents operational oscillation during rapid state transitions." },
       ],
       quickActions: [
-        { name: "Trigger Diagnostic Audit", desc: "Run comprehensive diagnostic pass", effect: "All nodes passed verification" },
-        { name: "Calibrate Parameters", desc: "Zero out drift across input channels", effect: "Calibration completed nominal" },
-        { name: "Export State Snapshot", desc: "Download timestamped system state", effect: "Configuration packet saved" },
+        { name: `Run ${slugLabel} Diagnostic Audit`, desc: "Run comprehensive diagnostic pass", effect: "All nodes passed verification" },
+        { name: `Calibrate ${slugLabel} Parameters`, desc: "Zero out drift across input channels", effect: "Calibration completed nominal" },
+        { name: `Export ${slugLabel} State Snapshot`, desc: "Download timestamped system state", effect: "Configuration packet saved" },
       ],
       telemetryStreams: [
         { label: "Operational Integrity", value: "98.4%", status: "Optimal Balance" },
@@ -981,6 +1119,16 @@ export default ${componentName};
         accent: "#10b981",
         text: "#ecfdf5",
         textMuted: "#6ee7b7",
+      };
+    }
+    if (/space|celestial|orbit|orbital|satellite|astronomy|planetary/i.test(promptLower)) {
+      return {
+        bg: "linear-gradient(170deg,#050813 0%,#0a1128 50%,#030712 100%)",
+        surface: "rgba(10,17,40,0.85)",
+        border: "rgba(56,189,248,0.25)",
+        accent: "#38bdf8",
+        text: "#f0f9ff",
+        textMuted: "#7dd3fc",
       };
     }
     return {

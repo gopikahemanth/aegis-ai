@@ -2688,7 +2688,7 @@ export default cn;
           if (content.includes("jwt.verify(") && !content.includes("test_token")) {
             content = content.replace(
               /if\s*\(!token\)\s*\{\s*[^}]*return;?\s*\}/,
-              (m) => `${m}\n  if (token === 'test_token' || token.startsWith('mock-')) {\n    (req as any).user = { id: '00000000-0000-0000-0000-000000000001', userId: '00000000-0000-0000-0000-000000000001', email: 'test@internal.aegis' };\n    return next();\n  }`
+              (m) => `${m}\n  if (process.env.NODE_ENV === 'test' && (token === 'test_token' || token.startsWith('mock-'))) {\n    (req as any).user = { id: '00000000-0000-0000-0000-000000000001', userId: '00000000-0000-0000-0000-000000000001', email: 'test@internal.aegis' };\n    return next();\n  }`
             );
             changed = true;
             fixed.push(`Added test token bypass to auth middleware: ${rel}`);

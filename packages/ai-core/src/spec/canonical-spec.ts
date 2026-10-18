@@ -37,7 +37,9 @@ export class SpecificationNormalizer {
 
     // 1. Detect Domain Category dynamically
     let domainCategory = "general-dashboard";
-    if (/\b(observatory|astronomy|astrophysics|celestial|telescope|star\s*map|space\s*observation|sky\s*telemetry|deep\s*sky)\b/i.test(promptCleanLower)) {
+    if (/\b(satellite|orbit|orbital|constellation|spacecraft|space\s*mission|telecommand|orbitalis)\b/i.test(promptCleanLower)) {
+      domainCategory = "satellite-telemetry";
+    } else if (/\b(observatory|astronomy|astrophysics|celestial|telescope|star\s*map|space\s*observation|sky\s*telemetry|deep\s*sky)\b/i.test(promptCleanLower)) {
       domainCategory = "scientific-observatory";
     } else if (
       !promptLower.includes("solar") &&
@@ -64,7 +66,7 @@ export class SpecificationNormalizer {
       domainCategory = "bicycle-rental";
     } else if ((promptLower.includes("bicycle") || promptLower.includes("bike")) && (promptLower.includes("repair") || promptLower.includes("mechanic") || promptLower.includes("fix") || promptLower.includes("tune-up") || promptLower.includes("shop") || promptLower.includes("service"))) {
       domainCategory = "bicycle-repair";
-    } else if (promptLower.includes("solar") || promptLower.includes("wind") || promptLower.includes("renewable") || promptLower.includes("greenpulse") || promptLower.includes("clean energy") || promptLower.includes("photovoltaic") || promptLower.includes("inverter") || (promptLower.includes("telemetry") && (promptLower.includes("sensor") || promptLower.includes("power") || promptLower.includes("grid") || promptLower.includes("kilowatt") || promptLower.includes("megawatt") || promptLower.includes("array")))) {
+    } else if (!/\b(satellite|orbit|orbital|constellation|spacecraft)\b/i.test(promptLower) && (promptLower.includes("solar") || promptLower.includes("wind") || promptLower.includes("renewable") || promptLower.includes("greenpulse") || promptLower.includes("clean energy") || promptLower.includes("photovoltaic") || promptLower.includes("inverter") || (promptLower.includes("telemetry") && (promptLower.includes("sensor") || promptLower.includes("power") || promptLower.includes("grid") || promptLower.includes("kilowatt") || promptLower.includes("megawatt") || promptLower.includes("array"))))) {
       domainCategory = "solar-telemetry";
     } else if (promptLower.includes("museum") || (promptLower.includes("exhibition") && (promptLower.includes("curat") || promptLower.includes("artifact") || promptLower.includes("provenance") || promptLower.includes("collection")))) {
       domainCategory = "museum-collection";
@@ -195,6 +197,10 @@ export class SpecificationNormalizer {
           case "gym-management":
             fallbackMetric3 = "Active Streaks";
             fallbackMetric4 = "Milestones Reached";
+            break;
+          case "satellite-telemetry":
+            fallbackMetric3 = "Orbital State Vectors";
+            fallbackMetric4 = "Constellation Health";
             break;
           case "solar-telemetry":
             fallbackMetric3 = "Total Clean Generation";
@@ -359,6 +365,8 @@ export class SpecificationNormalizer {
         return ["User", "Bicycle", "Rental", "Customer", "MaintenanceRecord"];
       case "bicycle-repair":
         return ["User", "Customer", "Bicycle", "RepairJob", "Mechanic", "RepairService"];
+      case "satellite-telemetry":
+        return ["User", "Satellite", "TelemetryRecord", "ManeuverPlan", "GroundStationPass", "CommandLog"];
       case "solar-telemetry":
         return ["User", "Inverter", "TelemetryPoint", "Alert", "Setpoint", "GridMetric"];
       case "scientific-observatory":

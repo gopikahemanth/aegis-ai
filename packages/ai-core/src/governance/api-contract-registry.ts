@@ -76,8 +76,15 @@ export class ApiContractRegistry {
   private static endpoints: ApiEndpointContract[] = [];
 
   public static registerContract(endpoints: ApiEndpointContract[]): void {
-    this.endpoints = endpoints;
-    console.log(`[ApiContractRegistry] 🔒 Locked ${endpoints.length} API endpoint contracts as single source of truth for frontend & backend.`);
+    const seen = new Set<string>();
+    this.endpoints = (endpoints || []).filter(ep => {
+      const path = (ep.path ?? "").replace(/\/+$/, "");
+      const key = `${ep.method?.toUpperCase()}:${path}`;
+      if (!/^\/api\/[^/]+/.test(path) || seen.has(key)) return false; // drops bare "/api"
+      seen.add(key);
+      return true;
+    });
+    console.log(`[ApiContractRegistry] 🔒 Locked ${this.endpoints.length} API endpoint contracts as single source of truth for frontend & backend.`);
   }
 
   public static getEndpoints(): ApiEndpointContract[] {

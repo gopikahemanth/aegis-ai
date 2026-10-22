@@ -1297,15 +1297,20 @@ export * from './components/ShowcaseGrid';
       const pages = b.pageCompositions;
       briefMandate = `
 ══════════════════════════════════════════════════════════════
-ANTI-AI-WEBSITE PRINCIPLE — MANDATORY
+CREATIVE DESIGN FREEDOM WITHIN BRIEF — MANDATORY
 ══════════════════════════════════════════════════════════════
-Every visual component, layout pattern, navigation structure,
-terminology, and color treatment must be traceable to this
-ProductDesignBrief, the user's requirements, the selected design
-direction, or a justified reusable design-system primitive.
-
-You are implementing a design that has already been decided.
-You are not designing.
+You are an elite creative design technologist and visual designer.
+Design a bespoke, world-class interface that belongs specifically to this project's world.
+- Invent novel layout structures that fit the subject (cutaway views,
+  schematic overlays, architectural elevations, spatial split-screens,
+  sensor sweeps - NOT another 3-column feature grid).
+- Use typography with strong character.
+- Every section should feel designed for THIS content, not like a card
+  holding text.
+- NAVIGATION contract is fixed: Strategy: ${b.navigation.strategy}, Max PRIMARY items: ${b.navigation.maxPrimaryItems}.
+- COLOR contract is fixed: Background: ${b.colorSystem.background}, Surface: ${b.colorSystem.surface}, Primary: ${b.colorSystem.primary}, Text Primary: ${b.colorSystem.textPrimary}.
+- Inside those two constraints, you have COMPLETE CREATIVE FREEDOM to invent
+  the visual hierarchy, component shapes, data displays, and micro-interactions.
 ══════════════════════════════════════════════════════════════
 
 PRODUCT DESIGN MANDATE [briefId: ${b.briefId}]

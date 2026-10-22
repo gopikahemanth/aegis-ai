@@ -64,7 +64,7 @@ export class PageExperiencePlanner {
   public static plan(
     rawPrompt: string,
     expectedRoutes: string[],
-    plannedPages?: Array<{ path: string; title: string; category?: string }>
+    plannedPages?: Array<{ path: string; title: string; category?: string; description?: string }>
   ): { pages: PageExperiencePlan[] } {
     const characteristics = ProductUnderstanding.analyze(rawPrompt);
     const capabilityPlan = ExperienceCapabilityResolver.resolve(rawPrompt, characteristics);
@@ -106,7 +106,7 @@ export class PageExperiencePlanner {
     identity: WebsiteExperienceIdentity,
     capabilityPlan: ExperienceCapabilityPlan,
     expectedRoutes: string[],
-    plannedPages?: Array<{ path: string; title: string; category?: string }>
+    plannedPages?: Array<{ path: string; title: string; category?: string; description?: string }>
   ): PageExperiencePlan[] {
     const promptLower = rawPrompt.toLowerCase();
     const genre = identity.genre;
@@ -126,7 +126,9 @@ export class PageExperiencePlanner {
         promptLower,
         identity,
         capabilityPlan,
-        pageInfo?.title
+        pageInfo?.title,
+        pageInfo?.description,
+        rawPrompt
       );
 
       const isOperationalPrompt =
@@ -175,6 +177,29 @@ export class PageExperiencePlanner {
     return plans;
   }
 
+  private static deriveSubtitle(naturalTitle: string, descriptionHint?: string, rawPrompt?: string): string {
+    if (descriptionHint && descriptionHint.trim().length > 0) {
+      const firstSentence = descriptionHint.split(/[.!?]\s+/)[0].trim();
+      if (firstSentence.length > 5) {
+        return firstSentence.endsWith(".") ? firstSentence : `${firstSentence}.`;
+      }
+    }
+    if (rawPrompt && rawPrompt.trim().length > 0) {
+      const sentences = rawPrompt.split(/[.!?]\s+/);
+      const titleWords = naturalTitle.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      for (const s of sentences) {
+        const sLower = s.toLowerCase();
+        if (titleWords.some(w => sLower.includes(w))) {
+          const clean = s.trim();
+          if (clean.length > 10) {
+            return clean.endsWith(".") ? clean : `${clean}.`;
+          }
+        }
+      }
+    }
+    return `Interactive operational overview and dedicated feature workflow for ${naturalTitle}.`;
+  }
+
   private static deriveRoutePlan(
     route: string,
     slug: string,
@@ -182,7 +207,9 @@ export class PageExperiencePlanner {
     promptLower: string,
     identity: WebsiteExperienceIdentity,
     capabilityPlan: ExperienceCapabilityPlan,
-    titleHint?: string
+    titleHint?: string,
+    descriptionHint?: string,
+    rawPrompt?: string
   ): PageExperiencePlan {
     const brandName = identity.brandIdentity.name;
     const target = `${slug} ${titleHint || ""}`.toLowerCase();
@@ -499,21 +526,22 @@ export class PageExperiencePlanner {
       }
 
       // Tailored fallback for any other observatory route
-      const naturalTitle = slug
+      const naturalTitle = titleHint || slug
         .split(/[-_]+/)
         .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
         .join(" ");
+      const subtitle = this.deriveSubtitle(naturalTitle, descriptionHint, rawPrompt);
 
       return {
         route,
-        pageRole: `${naturalTitle} & Observatory Telemetry Console`,
-        purpose: `Dedicated scientific editorial interface for ${naturalTitle} at ${brandName}`,
+        pageRole: naturalTitle,
+        purpose: `${subtitle} Dedicated scientific interface for ${naturalTitle} at ${brandName}`,
         experienceIntent: `Engage with observatory data and specialized telemetry for ${naturalTitle}`,
         focalElement: `Interactive ${naturalTitle} scientific instrumentation display with high-precision metrics`,
         composition: {
           topology: "EDITORIAL_SPREAD",
           layers: ["Deep Void Scientific Canvas", "Instrumentation HUD", "Editorial Content Layer"],
-          sections: [`${naturalTitle} Zenith Header`, `${naturalTitle} Telemetry & Observation Data`, "Operational Notes & Archival Context"],
+          sections: [naturalTitle, `${naturalTitle} Observation Data`, "Operational Notes & Archival Context"],
           dominantStructure: "SCIENTIFIC_TELEMETRY_ARRAY",
         },
         interaction: {
@@ -1818,16 +1846,17 @@ export class PageExperiencePlanner {
       }
 
       const naturalTitle = titleHint || slug.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+      const subtitle = this.deriveSubtitle(naturalTitle, descriptionHint, rawPrompt);
       return {
         route,
-        pageRole: `${naturalTitle} Renewable Operations Console`,
-        purpose: `Dedicated operational console for ${naturalTitle} at ${brandName}`,
+        pageRole: naturalTitle,
+        purpose: `${subtitle} Dedicated operational console for ${naturalTitle} at ${brandName}`,
         experienceIntent: `Inspect renewable generation metrics and operational workflows for ${naturalTitle}`,
         focalElement: `Interactive ${naturalTitle} operations console and generation telemetry instrumentation`,
         composition: {
           topology: "FULL_BLEED_STAGE",
           layers: ["Operations Telemetry Canvas", "Instrumentation HUD", "Diagnostics Data Strip"],
-          sections: [`${naturalTitle} Header & Core Telemetry`, `${naturalTitle} Subsystem Diagnostics`, "Operational Event Log"],
+          sections: [naturalTitle, `${naturalTitle} Subsystem Diagnostics`, "Operational Event Log"],
           dominantStructure: "DENSE_TELEMETRY_GRID",
         },
         interaction: {
@@ -1857,16 +1886,18 @@ export class PageExperiencePlanner {
 
     if (isOperationalDomain) {
       if (route === "/" || slug === "home" || slug === "overview" || slug === "dashboard" || slug === "console") {
+        const homeTitle = titleHint || (brandName ? `${brandName} Flight Command` : "Flight Command Overview");
+        const subtitle = this.deriveSubtitle(homeTitle, descriptionHint, rawPrompt);
         return {
           route,
-          pageRole: "Mission Telemetry Command & Avionics Flight Deck",
-          purpose: `Central real-time operational command console for ${brandName} featuring live telemetry streams, flight vector HUD, and subsystem diagnostics`,
+          pageRole: homeTitle,
+          purpose: `${subtitle} Central real-time operational command console for ${brandName} featuring live telemetry streams, flight vector HUD, and subsystem diagnostics`,
           experienceIntent: `Monitor real-time avionics telemetry, airspace navigation vectors, and aircraft subsystem statuses through high-density telemetry instrumentation`,
           focalElement: "Primary flight telemetry array with attitude indicator, altitude/airspeed tape, and high-frequency subsystem data streams",
           composition: {
             topology: "FULL_BLEED_STAGE",
-            layers: ["Avionics Glass Cockpit Canvas", "Attitude & Vector HUD", "Flight Vector Telemetry Strip"],
-            sections: ["Primary Flight Telemetry & Attitude Indicator", "Subsystem Diagnostics & Bus Health", "Active Airspace Fleet Roster"],
+            layers: ["Glass Cockpit Canvas", "Attitude & Vector HUD", "Flight Vector Telemetry Strip"],
+            sections: [homeTitle, "Subsystem Diagnostics & Bus Health", "Active Airspace Fleet Roster"],
             dominantStructure: "DENSE_TELEMETRY_GRID",
           },
           interaction: {
@@ -1990,17 +2021,17 @@ export class PageExperiencePlanner {
 
       // Operational domain fallback for any other route
       const naturalTitle = titleHint || slug.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase());
-      const roleSuffix = isOperationalDomain ? "Telemetry & Operations Console" : "Operations Console";
+      const subtitle = this.deriveSubtitle(naturalTitle, descriptionHint, rawPrompt);
       return {
         route,
-        pageRole: `${naturalTitle} ${roleSuffix}`,
-        purpose: `Dedicated operational telemetry console for ${naturalTitle} at ${brandName}`,
-        experienceIntent: `Inspect operational parameters and real-time instrumentation for ${naturalTitle}`,
-        focalElement: `Interactive ${naturalTitle} operations console and high-density telemetry instrumentation`,
+        pageRole: naturalTitle,
+        purpose: `${subtitle} Dedicated interface for ${naturalTitle} at ${brandName}`,
+        experienceIntent: `Inspect parameters and real-time instrumentation for ${naturalTitle}`,
+        focalElement: `Interactive ${naturalTitle} operations console and instrumentation`,
         composition: {
           topology: "FULL_BLEED_STAGE",
           layers: ["Operations Telemetry Canvas", "Instrumentation HUD", "Diagnostics Data Strip"],
-          sections: [`${naturalTitle} Header & Core Telemetry`, `${naturalTitle} Subsystem Diagnostics`, "Operational Event Log"],
+          sections: [naturalTitle, `${naturalTitle} Controls & Readouts`, "Operational Event Log"],
           dominantStructure: "DENSE_TELEMETRY_GRID",
         },
         interaction: {

@@ -560,9 +560,27 @@ export interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps = {}) {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+    <div
+      className="min-h-screen flex flex-col font-sans"
+      style={{
+        backgroundColor: "var(--color-background, #090d16)",
+        color: "var(--color-text-primary, #f8fafc)",
+      }}
+    >
+      <header
+        className="px-6 py-4 flex items-center justify-between backdrop-blur sticky top-0 z-40"
+        style={{
+          borderBottom: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
+          backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.75))",
+        }}
+      >
+        <h1
+          className="text-xl font-bold"
+          style={{
+            fontFamily: "var(--font-display, inherit)",
+            color: "var(--color-primary, #38bdf8)",
+          }}
+        >
           ${appTitle}
         </h1>
       </header>
@@ -606,35 +624,61 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-slate-900/80 border border-slate-800 rounded-2xl p-8 shadow-2xl backdrop-blur">
-        <h2 className="text-2xl font-bold text-center text-slate-100 mb-6">Sign In</h2>
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{
+        backgroundColor: "var(--color-background, #090d16)",
+        color: "var(--color-text-primary, #f8fafc)",
+      }}
+    >
+      <div
+        className="max-w-md w-full rounded-2xl p-8 shadow-2xl backdrop-blur"
+        style={{
+          backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.8))",
+          border: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
+        }}
+      >
+        <h2 className="text-2xl font-bold text-center mb-6" style={{ color: "var(--color-text-primary, #f8fafc)" }}>Sign In</h2>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Email</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted, #94a3b8)" }}>Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              className="w-full rounded-lg px-4 py-2.5 focus:outline-none"
+              style={{
+                backgroundColor: "var(--color-surface-elevated, rgba(30, 41, 59, 0.7))",
+                border: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
+                color: "var(--color-text-primary, #f8fafc)",
+              }}
               placeholder="user@example.com"
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Password</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted, #94a3b8)" }}>Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              className="w-full rounded-lg px-4 py-2.5 focus:outline-none"
+              style={{
+                backgroundColor: "var(--color-surface-elevated, rgba(30, 41, 59, 0.7))",
+                border: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
+                color: "var(--color-text-primary, #f8fafc)",
+              }}
               placeholder="••••••••"
               required
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold py-2.5 rounded-lg shadow-lg transition duration-200 mt-2"
+            className="w-full font-semibold py-2.5 rounded-lg shadow-lg transition duration-200 mt-2 cursor-pointer"
+            style={{
+              backgroundColor: "var(--color-primary, #38bdf8)",
+              color: "var(--color-background, #090d16)",
+            }}
           >
             Sign In
           </button>
@@ -653,7 +697,7 @@ export default function LoginPage() {
       mkdirSync(join(dir, "src/shared/components"), { recursive: true });
       writeFileSync(cardPath, `import React from "react";
 
-export interface CardProps {
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode;
   className?: string;
   title?: string;
@@ -662,15 +706,55 @@ export interface CardProps {
 }
 
 export function Card(props: CardProps) {
-  const { children, className = "", title, value, ...rest } = props || {};
+  const { children, className = "", title, value, style, ...rest } = props || {};
   return (
-    <div className={\`bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur \${className}\`} {...rest}>
-      {title && <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{title}</h3>}
-      {value && <p className="text-2xl font-bold text-slate-100 mt-1">{value}</p>}
+    <div
+      className={\`rounded-xl p-6 shadow-lg backdrop-blur \${className}\`}
+      style={{
+        backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.6))",
+        borderColor: "var(--color-border, rgba(51, 65, 85, 0.5))",
+        borderWidth: 1,
+        borderStyle: "solid",
+        color: "var(--color-text-primary, inherit)",
+        ...style,
+      }}
+      {...rest}
+    >
+      {title && (
+        <h3
+          className="text-sm font-semibold uppercase tracking-wider"
+          style={{ color: "var(--color-text-muted, #94a3b8)" }}
+        >
+          {title}
+        </h3>
+      )}
+      {value && (
+        <p
+          className="text-2xl font-bold mt-1"
+          style={{ color: "var(--color-text-primary, #f8fafc)" }}
+        >
+          {value}
+        </p>
+      )}
       {children}
     </div>
   );
 }
+
+export const CardHeader: React.FC<any> = ({ children, className = '', ...props }: any) =>
+  <div className={\`mb-4 \${className}\`} {...props}>{children}</div>;
+
+export const CardTitle: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
+  <h3 className={\`text-lg font-bold \${className}\`} style={{ color: "var(--color-text-primary, inherit)", ...(style || {}) }} {...props}>{children}</h3>;
+
+export const CardDescription: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
+  <p className={\`text-sm \${className}\`} style={{ color: "var(--color-text-secondary, #94a3b8)", ...(style || {}) }} {...props}>{children}</p>;
+
+export const CardContent: React.FC<any> = ({ children, className = '', ...props }: any) =>
+  <div className={\`\${className}\`} {...props}>{children}</div>;
+
+export const CardFooter: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
+  <div className={\`mt-4 pt-4 flex items-center \${className}\`} style={{ borderTop: "1px solid var(--color-border, rgba(51, 65, 85, 0.4))", ...(style || {}) }} {...props}>{children}</div>;
 
 export const GlassCard = Card;
 export default Card;
@@ -689,23 +773,47 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   size?: "sm" | "md" | "lg" | string;
 }
 
-export function Button({ children, className = "", variant = "primary", size = "md", ...props }: ButtonProps) {
-  const base = "font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2";
+export function Button({ children, className = "", variant = "primary", size = "md", style, ...props }: ButtonProps) {
+  const base = "font-medium rounded-lg transition-all inline-flex items-center justify-center gap-2 cursor-pointer";
   const sizeClasses: Record<string, string> = {
     sm: "px-3 py-1.5 text-xs",
     md: "px-4 py-2 text-sm",
     lg: "px-6 py-3 text-base",
   };
-  const variantClasses: Record<string, string> = {
-    primary: "bg-amber-700 hover:bg-amber-800 text-white shadow-sm",
-    secondary: "bg-stone-200 hover:bg-stone-300 text-stone-800",
-    outline: "border border-stone-300 hover:bg-stone-100 text-stone-700",
-    ghost: "hover:bg-stone-100 text-stone-600",
-  };
   const sClass = sizeClasses[size] || sizeClasses.md;
-  const vClass = variantClasses[variant] || variantClasses.primary;
+  const isPrimary = variant === "primary";
+  const isOutline = variant === "outline";
+  const isSecondary = variant === "secondary";
+
+  const dynamicStyle: React.CSSProperties = isPrimary
+    ? {
+        backgroundColor: "var(--color-primary, #38bdf8)",
+        color: "var(--color-background, #090d16)",
+        boxShadow: "var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.1))",
+        ...style,
+      }
+    : isOutline
+    ? {
+        border: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
+        color: "var(--color-text-primary, inherit)",
+        backgroundColor: "transparent",
+        ...style,
+      }
+    : isSecondary
+    ? {
+        backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.5))",
+        border: "1px solid var(--color-border, rgba(51, 65, 85, 0.3))",
+        color: "var(--color-text-primary, inherit)",
+        ...style,
+      }
+    : {
+        backgroundColor: "transparent",
+        color: "var(--color-text-secondary, #94a3b8)",
+        ...style,
+      };
+
   return (
-    <button className={\`\${base} \${sClass} \${vClass} \${className}\`} {...props}>
+    <button className={\`\${base} \${sClass} \${className}\`} style={dynamicStyle} {...props}>
       {children}
     </button>
   );
@@ -727,10 +835,19 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: string;
 }
 
-export function Badge({ children, status, variant = "default", className = "", ...props }: BadgeProps) {
+export function Badge({ children, status, variant = "default", className = "", style, ...props }: BadgeProps) {
   const label = children || status || "Active";
   return (
-    <span className={\`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-800 border border-stone-200 \${className}\`} {...props}>
+    <span
+      className={\`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium \${className}\`}
+      style={{
+        backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.6))",
+        color: "var(--color-text-primary, #f8fafc)",
+        border: "1px solid var(--color-border, rgba(51, 65, 85, 0.4))",
+        ...style,
+      }}
+      {...props}
+    >
       {label}
     </span>
   );
@@ -847,9 +964,22 @@ export default Progress;
 
 export function Navbar() {
   return (
-    <nav className="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-4 flex items-center justify-between">
+    <nav
+      className="backdrop-blur px-6 py-4 flex items-center justify-between sticky top-0 z-40"
+      style={{
+        backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.8))",
+        borderBottom: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
+        color: "var(--color-text-primary, #f8fafc)",
+      }}
+    >
       <div className="flex items-center gap-6">
-        <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+        <span
+          className="text-xl font-bold"
+          style={{
+            fontFamily: "var(--font-display, inherit)",
+            color: "var(--color-primary, #38bdf8)",
+          }}
+        >
           AEGIS AI
         </span>
       </div>
@@ -3353,32 +3483,133 @@ export default ${validExportName};
             } else {
               if (relUnresolved === "src/components/ui.tsx" || relUnresolved.endsWith("/ui.tsx") || relUnresolved.endsWith("/ui.ts") || validExportName === "ui") {
                 writeFileSync(fullStubPath, `import React from 'react';
-export function Card({ title, children, className = '', ...props }: any) {
-  return <div className={\`p-4 bg-slate-900 border border-slate-800 rounded-xl shadow-lg text-slate-100 \${className}\`} {...props}>{title && <h3 className="text-sm font-semibold text-slate-300 mb-2">{title}</h3>}{children}</div>;
+export function Card({ title, children, className = '', style, ...props }: any) {
+  return (
+    <div
+      className={\`p-4 rounded-xl shadow-lg backdrop-blur \${className}\`}
+      style={{
+        backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.6))",
+        border: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
+        color: "var(--color-text-primary, #f8fafc)",
+        ...style,
+      }}
+      {...props}
+    >
+      {title && <h3 className="text-sm font-semibold mb-2" style={{ color: "var(--color-text-muted, #94a3b8)" }}>{title}</h3>}
+      {children}
+    </div>
+  );
 }
-export function Select({ value, onChange, options = [], children, className = '', ...props }: any) {
-  return <select value={value} onChange={onChange} className={\`px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-medium focus:outline-none focus:border-cyan-500 transition cursor-pointer \${className}\`} {...props}>{options && options.length > 0 ? options.map((opt: any) => <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>{typeof opt === 'string' ? opt : opt.label || opt.value}</option>) : children}</select>;
+export function Select({ value, onChange, options = [], children, className = '', style, ...props }: any) {
+  return (
+    <select
+      value={value}
+      onChange={onChange}
+      className={\`px-3 py-1.5 rounded-lg text-xs font-medium focus:outline-none transition cursor-pointer \${className}\`}
+      style={{
+        backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.8))",
+        border: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
+        color: "var(--color-text-primary, #f8fafc)",
+        ...style,
+      }}
+      {...props}
+    >
+      {options && options.length > 0 ? options.map((opt: any) => <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>{typeof opt === 'string' ? opt : opt.label || opt.value}</option>) : children}
+    </select>
+  );
 }
 export function Spinner({ size = 'md', className = '', ...props }: any) {
-  return <div className={\`inline-block animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400 \${size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-8 h-8' : 'w-5 h-5'} \${className}\`} {...props} />;
+  return <div className={\`inline-block animate-spin rounded-full border-2 border-[var(--color-border,rgba(51,65,85,0.5))] border-t-[var(--color-primary,#38bdf8)] \${size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-8 h-8' : 'w-5 h-5'} \${className}\`} {...props} />;
 }
 export const LoadingSpinner = Spinner;
-export function Alert({ variant = 'info', children, className = '', ...props }: any) {
-  const styles: Record<string, string> = { info: 'bg-cyan-950/40 border-cyan-800/60 text-cyan-200', success: 'bg-emerald-950/40 border-emerald-800/60 text-emerald-200', danger: 'bg-rose-950/40 border-rose-800/60 text-rose-200', error: 'bg-rose-950/40 border-rose-800/60 text-rose-200', warning: 'bg-amber-950/40 border-amber-800/60 text-amber-200' };
-  return <div className={\`p-4 rounded-xl border text-sm flex items-center gap-3 \${styles[variant as string] || 'bg-slate-900 border-slate-800 text-slate-200'} \${className}\`} {...props}>{children}</div>;
+export function Alert({ variant = 'info', children, className = '', style, ...props }: any) {
+  return (
+    <div
+      className={\`p-4 rounded-xl border text-sm flex items-center gap-3 \${className}\`}
+      style={{
+        backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.7))",
+        border: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
+        color: "var(--color-text-primary, #f8fafc)",
+        ...style,
+      }}
+      {...props}
+    >
+      {children}
+    </div>
+  );
 }
-export function Button({ children, onClick, variant = 'primary', size = 'md', className = '', disabled = false, ...props }: any) {
-  return <button onClick={onClick} disabled={disabled} className={\`inline-flex items-center justify-center rounded-lg font-medium transition cursor-pointer \${size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-4 py-2 text-xs'} bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold \${className}\`} {...props}>{children}</button>;
+export function Button({ children, onClick, variant = 'primary', size = 'md', className = '', disabled = false, style, ...props }: any) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={\`inline-flex items-center justify-center rounded-lg font-medium transition cursor-pointer \${size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-4 py-2 text-xs'} \${className}\`}
+      style={{
+        backgroundColor: variant === 'secondary' ? "var(--color-surface, rgba(15, 23, 42, 0.6))" : "var(--color-primary, #38bdf8)",
+        color: variant === 'secondary' ? "var(--color-text-primary, #f8fafc)" : "var(--color-background, #090d16)",
+        border: variant === 'secondary' ? "1px solid var(--color-border, rgba(51, 65, 85, 0.5))" : "none",
+        ...style,
+      }}
+      {...props}
+    >
+      {children}
+    </button>
+  );
 }
-export function Input({ value, onChange, placeholder = '', type = 'text', className = '', ...props }: any) {
-  return <input type={type} value={value} onChange={onChange} placeholder={placeholder} className={\`px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs \${className}\`} {...props} />;
+export function Input({ value, onChange, placeholder = '', type = 'text', className = '', style, ...props }: any) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className={\`px-3 py-1.5 rounded-lg text-xs focus:outline-none \${className}\`}
+      style={{
+        backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.8))",
+        border: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
+        color: "var(--color-text-primary, #f8fafc)",
+        ...style,
+      }}
+      {...props}
+    />
+  );
 }
-export function Badge({ children, variant = 'default', className = '', ...props }: any) {
-  return <span className={\`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border bg-slate-800 text-slate-300 border-slate-700 \${className}\`} {...props}>{children}</span>;
+export function Badge({ children, variant = 'default', className = '', style, ...props }: any) {
+  return (
+    <span
+      className={\`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border \${className}\`}
+      style={{
+        backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.6))",
+        border: "1px solid var(--color-border, rgba(51, 65, 85, 0.4))",
+        color: "var(--color-text-primary, #f8fafc)",
+        ...style,
+      }}
+      {...props}
+    >
+      {children}
+    </span>
+  );
 }
-export function Progress({ value = 0, max = 100, className = '', ...props }: any) {
+export function Progress({ value = 0, max = 100, className = '', style, ...props }: any) {
   const pct = Math.min(100, Math.max(0, Math.round((Number(value) / Number(max || 100)) * 100)));
-  return <div className={\`w-full bg-slate-800 rounded-full h-2 overflow-hidden \${className}\`} {...props}><div className="bg-cyan-400 h-full rounded-full" style={{ width: \`\${pct}%\` }} /></div>;
+  return (
+    <div
+      className={\`w-full rounded-full h-2 overflow-hidden \${className}\`}
+      style={{
+        backgroundColor: "var(--color-border, rgba(51, 65, 85, 0.5))",
+        ...style,
+      }}
+      {...props}
+    >
+      <div
+        className="h-full rounded-full transition-all duration-300"
+        style={{
+          width: \`\${pct}%\`,
+          backgroundColor: "var(--color-primary, #38bdf8)",
+        }}
+      />
+    </div>
+  );
 }
 export const ui = { Card, Select, Spinner, LoadingSpinner, Alert, Button, Input, Badge, Progress };
 export default ui;

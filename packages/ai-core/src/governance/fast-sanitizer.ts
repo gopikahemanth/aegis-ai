@@ -341,7 +341,7 @@ export class FastDeterministicSanitizer {
   /**
    * Enforce clean structure for generic design system components without domain data.
    */
-  private static enforceGenericComponents(root: string): void {
+  public static enforceGenericComponents(root: string): void {
     const cpPath = join(root, "src", "design-system", "components", "CircularProgress.tsx");
     if (existsSync(cpPath)) {
       const content = readFileSync(cpPath, "utf8");
@@ -422,23 +422,36 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   value?: string | number;
 }
 
-export const Card: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <div className={\`bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur \${className}\`} {...props}>{children}</div>;
+export const Card: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
+  <div
+    className={\`rounded-xl p-6 shadow-lg backdrop-blur \${className}\`}
+    style={{
+      backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.6))",
+      borderColor: "var(--color-border, rgba(51, 65, 85, 0.5))",
+      borderWidth: 1,
+      borderStyle: "solid",
+      color: "var(--color-text-primary, inherit)",
+      ...style,
+    }}
+    {...props}
+  >
+    {children}
+  </div>;
 
 export const CardHeader: React.FC<any> = ({ children, className = '', ...props }: any) =>
   <div className={\`mb-4 \${className}\`} {...props}>{children}</div>;
 
-export const CardTitle: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <h3 className={\`text-lg font-bold text-slate-100 \${className}\`} {...props}>{children}</h3>;
+export const CardTitle: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
+  <h3 className={\`text-lg font-bold \${className}\`} style={{ color: "var(--color-text-primary, inherit)", ...(style || {}) }} {...props}>{children}</h3>;
 
-export const CardDescription: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <p className={\`text-sm text-slate-400 \${className}\`} {...props}>{children}</p>;
+export const CardDescription: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
+  <p className={\`text-sm \${className}\`} style={{ color: "var(--color-text-secondary, #94a3b8)", ...(style || {}) }} {...props}>{children}</p>;
 
 export const CardContent: React.FC<any> = ({ children, className = '', ...props }: any) =>
   <div className={\`\${className}\`} {...props}>{children}</div>;
 
-export const CardFooter: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <div className={\`mt-4 pt-4 border-t border-slate-800 flex items-center \${className}\`} {...props}>{children}</div>;
+export const CardFooter: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
+  <div className={\`mt-4 pt-4 flex items-center \${className}\`} style={{ borderTop: "1px solid var(--color-border, rgba(51, 65, 85, 0.4))", ...(style || {}) }} {...props}>{children}</div>;
 
 export default Card;
 `;
@@ -455,10 +468,33 @@ export default Card;
           const defaultExportCount = (existing.match(/\bexport\s+default\b/g) || []).length;
           // Count top-level Card declarations — if >1, the file is corrupted
           const cardDeclCount = (existing.match(/\b(?:export\s+)?(?:const|function)\s+Card\b/g) || []).length;
-          const missingSubcomponents = !existing.includes("CardContent");
-          if (defaultExportCount > 1 || cardDeclCount > 1 || missingSubcomponents) {
+          const isBroken = defaultExportCount > 1 || cardDeclCount > 1;
+          if (isBroken) {
             writeFileSync(cp, canonicalCardContent, "utf8");
-            console.log(`[FastSanitizer] 🔧 Rewrote corrupted/incomplete Card: ${cp}`);
+            console.log(`[FastSanitizer] 🔧 Rewrote corrupted Card (duplicate exports/declarations): ${cp}`);
+          } else {
+            // Append missing subcomponents without overwriting existing styling
+            const subcomponentsToAppend: string[] = [];
+            if (!/\bexport\s+(?:const|function)\s+CardHeader\b/.test(existing)) {
+              subcomponentsToAppend.push(`export const CardHeader: React.FC<any> = ({ children, className = '', ...props }: any) => <div className={\`mb-4 \${className}\`} {...props}>{children}</div>;`);
+            }
+            if (!/\bexport\s+(?:const|function)\s+CardTitle\b/.test(existing)) {
+              subcomponentsToAppend.push(`export const CardTitle: React.FC<any> = ({ children, className = '', style, ...props }: any) => <h3 className={\`text-lg font-bold \${className}\`} style={{ color: "var(--color-text-primary, inherit)", ...(style || {}) }} {...props}>{children}</h3>;`);
+            }
+            if (!/\bexport\s+(?:const|function)\s+CardDescription\b/.test(existing)) {
+              subcomponentsToAppend.push(`export const CardDescription: React.FC<any> = ({ children, className = '', style, ...props }: any) => <p className={\`text-sm \${className}\`} style={{ color: "var(--color-text-secondary, #94a3b8)", ...(style || {}) }} {...props}>{children}</p>;`);
+            }
+            if (!/\bexport\s+(?:const|function)\s+CardContent\b/.test(existing)) {
+              subcomponentsToAppend.push(`export const CardContent: React.FC<any> = ({ children, className = '', ...props }: any) => <div className={\`\${className}\`} {...props}>{children}</div>;`);
+            }
+            if (!/\bexport\s+(?:const|function)\s+CardFooter\b/.test(existing)) {
+              subcomponentsToAppend.push(`export const CardFooter: React.FC<any> = ({ children, className = '', style, ...props }: any) => <div className={\`mt-4 pt-4 flex items-center \${className}\`} style={{ borderTop: "1px solid var(--color-border, rgba(51, 65, 85, 0.4))", ...(style || {}) }} {...props}>{children}</div>;`);
+            }
+            if (subcomponentsToAppend.length > 0) {
+              const updated = existing.trimEnd() + "\n\n// Subcomponents appended to preserve existing Card styling\n" + subcomponentsToAppend.join("\n\n") + "\n";
+              writeFileSync(cp, updated, "utf8");
+              console.log(`[FastSanitizer] 🔧 Appended missing Card subcomponents to ${cp} without overwriting styling`);
+            }
           }
         } catch {}
       }
@@ -1780,9 +1816,15 @@ export { App };
           "export const Layout: React.FC<any> = ({ children }: any = {}) =>"
         );
         layoutChanged = true;
-      } else if (/export\s+(?:default\s+)?function\s+Layout\s*\(\s*\)/.test(layoutContent)) {
+      } else if (/export\s+default\s+function\s+Layout\s*\(\s*\)/.test(layoutContent)) {
         layoutContent = layoutContent.replace(
-          /export\s+(?:default\s+)?function\s+Layout\s*\(\s*\)/,
+          /export\s+default\s+function\s+Layout\s*\(\s*\)/,
+          "export default function Layout({ children }: any = {})"
+        );
+        layoutChanged = true;
+      } else if (/export\s+function\s+Layout\s*\(\s*\)/.test(layoutContent)) {
+        layoutContent = layoutContent.replace(
+          /export\s+function\s+Layout\s*\(\s*\)/,
           "export function Layout({ children }: any = {})"
         );
         layoutChanged = true;
@@ -1793,14 +1835,24 @@ export { App };
         );
         layoutChanged = true;
       }
+      const returnIndex = layoutContent.indexOf("return");
+      const jsxBody = returnIndex !== -1 ? layoutContent.slice(returnIndex) : layoutContent;
+      const hasChildrenInJsx = /\{children(\s*\|\|\s*<Outlet\s*\/?>)?\}/.test(jsxBody);
       if (layoutContent.includes("<Outlet />") || layoutContent.includes("<Outlet/>")) {
-        if (!layoutContent.includes("children")) {
+        if (!hasChildrenInJsx) {
           layoutContent = layoutContent.replace(/<Outlet\s*\/>/g, "{children || <Outlet />}");
           layoutChanged = true;
         }
-      } else if (!layoutContent.includes("children") && layoutContent.includes("</main>")) {
+      } else if (!hasChildrenInJsx && layoutContent.includes("</main>")) {
         layoutContent = layoutContent.replace("</main>", "{children}</main>");
         layoutChanged = true;
+      } else if (!hasChildrenInJsx && /<\/[a-zA-Z0-9]+>\s*;?\s*(?:}\s*)?(?:export\s+default)?\s*$/.test(layoutContent)) {
+        // Only append {children} inside the outermost container if not already rendering children
+        const lastClosingMatch = layoutContent.lastIndexOf("</div>");
+        if (lastClosingMatch !== -1) {
+          layoutContent = layoutContent.slice(0, lastClosingMatch) + "{children}</div>" + layoutContent.slice(lastClosingMatch + 6);
+          layoutChanged = true;
+        }
       }
       if (layoutChanged) {
         writeFileSync(targetLayoutPath, layoutContent, "utf8");
@@ -6630,3 +6682,4 @@ export default WorldStage;
   }
 }
 
+export const FastSanitizer = FastDeterministicSanitizer;

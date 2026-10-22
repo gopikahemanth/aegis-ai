@@ -1207,11 +1207,23 @@ export interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps = {}) {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-3.5 flex items-center justify-between">
+    <div
+      className="min-h-screen flex flex-col font-sans"
+      style={{
+        backgroundColor: "var(--color-background, #090d16)",
+        color: "var(--color-text-primary, #f8fafc)",
+      }}
+    >
+      <header
+        className="px-6 py-3.5 flex items-center justify-between backdrop-blur sticky top-0 z-40"
+        style={{
+          borderBottom: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
+          backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.75))",
+        }}
+      >
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white">⬡</div>
-          <span className="font-bold text-lg text-white">Application</span>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white" style={{ backgroundColor: "var(--color-primary, #38bdf8)" }}>⬡</div>
+          <span className="font-bold text-lg" style={{ color: "var(--color-text-primary, #f8fafc)" }}>Application</span>
         </Link>
       </header>
       <main className="flex-1 max-w-7xl w-full mx-auto p-6">{children}</main>
@@ -1228,9 +1240,22 @@ export default function Layout({ children }: LayoutProps = {}) {
 
 export function Navbar() {
   return (
-    <nav className="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-4 flex items-center justify-between">
+    <nav
+      className="backdrop-blur px-6 py-4 flex items-center justify-between sticky top-0 z-40"
+      style={{
+        backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.8))",
+        borderBottom: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
+        color: "var(--color-text-primary, #f8fafc)",
+      }}
+    >
       <div className="flex items-center gap-6">
-        <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+        <span
+          className="text-xl font-bold"
+          style={{
+            fontFamily: "var(--font-display, inherit)",
+            color: "var(--color-primary, #38bdf8)",
+          }}
+        >
           Studio
         </span>
       </div>
@@ -1247,7 +1272,7 @@ export default Navbar;
     if (relPath === "src/shared/components/Card.tsx" || relPath.endsWith("Card.tsx")) {
       writeFileSync(absPath, `import React from "react";
 
-export interface CardProps {
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode;
   className?: string;
   title?: string;
@@ -1256,15 +1281,41 @@ export interface CardProps {
 }
 
 export function Card(props: CardProps) {
-  const { children, className = "", title, value, ...rest } = props || {};
+  const { children, className = "", title, value, style, ...rest } = props || {};
   return (
-    <div className={\`bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur \${className}\`} {...rest}>
-      {title && <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{title}</h3>}
-      {value && <p className="text-2xl font-bold text-slate-100 mt-1">{value}</p>}
+    <div
+      className={\`rounded-xl p-6 shadow-lg backdrop-blur \${className}\`}
+      style={{
+        backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.6))",
+        borderColor: "var(--color-border, rgba(51, 65, 85, 0.5))",
+        borderWidth: 1,
+        borderStyle: "solid",
+        color: "var(--color-text-primary, inherit)",
+        ...style,
+      }}
+      {...rest}
+    >
+      {title && <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-muted, #94a3b8)" }}>{title}</h3>}
+      {value && <p className="text-2xl font-bold mt-1" style={{ color: "var(--color-text-primary, #f8fafc)" }}>{value}</p>}
       {children}
     </div>
   );
 }
+
+export const CardHeader: React.FC<any> = ({ children, className = '', ...props }: any) =>
+  <div className={\`mb-4 \${className}\`} {...props}>{children}</div>;
+
+export const CardTitle: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
+  <h3 className={\`text-lg font-bold \${className}\`} style={{ color: "var(--color-text-primary, inherit)", ...(style || {}) }} {...props}>{children}</h3>;
+
+export const CardDescription: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
+  <p className={\`text-sm \${className}\`} style={{ color: "var(--color-text-secondary, #94a3b8)", ...(style || {}) }} {...props}>{children}</p>;
+
+export const CardContent: React.FC<any> = ({ children, className = '', ...props }: any) =>
+  <div className={\`\${className}\`} {...props}>{children}</div>;
+
+export const CardFooter: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
+  <div className={\`mt-4 pt-4 flex items-center \${className}\`} style={{ borderTop: "1px solid var(--color-border, rgba(51, 65, 85, 0.4))", ...(style || {}) }} {...props}>{children}</div>;
 
 export const GlassCard = Card;
 export default Card;

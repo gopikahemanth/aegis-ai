@@ -1025,35 +1025,6 @@ export default ${componentName};
       };
     }
 
-
-    const isArchitecture = /architecture|architect|journal|monograph|building|spatial|urban|tectonic|editorial|dispatch/i.test(promptLower);
-
-    if (isArchitecture) {
-      return {
-        workspaceCategory: "Tectonic Specification & Monograph Workbench",
-        title: "Architectural Studio & Spatial Parameter Console",
-        subtitle: "Calibrate structural massing, daylight apertures, and material joinery tolerances across built monographs.",
-        summaryHeader: "Tectonic Performance & Assembly Status",
-        summaryDescription: "Monolithic assemblies and load-bearing timber frameworks validated against thermal mass and structural acoustic standards.",
-        params: [
-          { id: "wallThickness", label: "Basalt & Earth Wall Thickness", min: 300, max: 1200, step: 50, unit: "mm", defaultValue: 600, description: "Calibrates thermal lag and acoustic stillness within interior enclosures." },
-          { id: "apertureRatio", label: "Solar Aperture Ratio", min: 10, max: 60, step: 5, unit: "%", defaultValue: 25, description: "Balances natural diffuse daylighting against solar thermal heat gain." },
-          { id: "timberTension", label: "Glulam Truss Pre-Tension", min: 5, max: 40, step: 1, unit: "kN", defaultValue: 18, description: "Maintains structural stiffness across expansive column-free gallery spans." },
-        ],
-        quickActions: [
-          { name: "Run Daylight Shadow Study", desc: "Simulate solar transit across solstice", effect: "Apertures optimized for diffuse northern light" },
-          { name: "Verify Acoustic Dampening", desc: "Calculate reverberation time in civic hall", effect: "Reverberation time tuned to 1.1s standard" },
-          { name: "Export Tectonic Dossier", desc: "Download material and joinery specifications", effect: "Archival PDF dossier generated" },
-        ],
-        telemetryStreams: [
-          { label: "Thermal Inertia", value: "8.4 hrs", status: "Subterranean Mass Standard" },
-          { label: "Daylight Factor", value: "3.2% DF", status: "Optimal Gallery Illumination" },
-          { label: "Acoustic Attenuation", value: "-46 dB", status: "Porous Plaster Isolation" },
-          { label: "Structural Redundancy", value: "2.4x", status: "Generational Seismic Reserve" },
-        ],
-      };
-    }
-
     // Default General Purpose Domain Config (Domain-specific, route-differentiated by construction to prevent convergence)
     let vocabMetrics = primaryMetrics || [];
     let vocabVerbs = actionVerbs || [];

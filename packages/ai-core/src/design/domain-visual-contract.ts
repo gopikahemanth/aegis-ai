@@ -619,7 +619,7 @@ export class DomainVisualContractGenerator {
     }
 
     // 3D Animated Universe / Fantasy Adventure / WebGL World / Claymation
-    else if (rawText.includes("3d") || rawText.includes("claymation") || rawText.includes("fantasy adventure") || (rawText.includes("world explorer") && (rawText.includes("quest") || rawText.includes("whimsical")))) {
+    else if (rawText.includes("claymation") || rawText.includes("fantasy adventure") || (rawText.includes("3d") && (rawText.includes("fantasy") || rawText.includes("kazzoo") || rawText.includes("whimsical") || rawText.includes("claymation") || rawText.includes("biome") || rawText.includes("companion"))) || (rawText.includes("world explorer") && (rawText.includes("quest") || rawText.includes("whimsical")))) {
       domain = "3D Fantasy Adventure Universe";
       productType = "Interactive 3D World Stage";
       layoutFamily = "VISUAL_ANALYTICS_CANVAS";
@@ -1043,7 +1043,7 @@ export class DomainVisualContractGenerator {
     }
 
     // F. Marine & Oceanographic Research / Maritime Expeditions
-    else if (rawText.includes("ocean") || rawText.includes("marine") || rawText.includes("expedition") || rawText.includes("vessel") || rawText.includes("maritime") || rawText.includes("voyage") || rawText.includes("sampling") || rawText.includes("oceanographic") || rawText.includes("nautical") || rawText.includes("deepsea") || rawText.includes("sea")) {
+    else if (rawText.includes("ocean") || rawText.includes("marine") || rawText.includes("expedition") || rawText.includes("vessel") || rawText.includes("maritime") || rawText.includes("voyage") || rawText.includes("sampling") || rawText.includes("oceanographic") || rawText.includes("nautical") || rawText.includes("deepsea") || rawText.includes("sea") || rawText.includes("underwater") || rawText.includes("habitat") || rawText.includes("submersible")) {
       domain = "Marine & Oceanographic Research";
       productType = "Expedition Telemetry & Ocean Discovery Hub";
       layoutFamily = "COMMAND_CENTER";

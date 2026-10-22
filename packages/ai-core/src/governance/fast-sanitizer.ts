@@ -470,8 +470,26 @@ export default Card;
           const cardDeclCount = (existing.match(/\b(?:export\s+)?(?:const|function)\s+Card\b/g) || []).length;
           const isBroken = defaultExportCount > 1 || cardDeclCount > 1;
           if (isBroken) {
-            writeFileSync(cp, canonicalCardContent, "utf8");
-            console.log(`[FastSanitizer] 🔧 Rewrote corrupted Card (duplicate exports/declarations): ${cp}`);
+            // Non-destructive AST deduplication to preserve domain/user styling
+            const dedupResult = ASTSafeTransformer.deduplicateTopLevelIdentifiers(existing, cp);
+            let cleaned = dedupResult.code;
+            if ((cleaned.match(/\bexport\s+default\b/g) || []).length > 1) {
+              let seenDefault = false;
+              cleaned = cleaned.replace(/\bexport\s+default\s+[^;]+;?/g, (match) => {
+                if (!seenDefault) {
+                  seenDefault = true;
+                  return match;
+                }
+                return "";
+              });
+            }
+            if (cleaned.length > 50 && (cleaned.includes("<div") || cleaned.includes("return"))) {
+              writeFileSync(cp, cleaned, "utf8");
+              console.log(`[FastSanitizer] 🔧 Deduplicated declarations in Card without overwriting styling: ${cp}`);
+            } else {
+              writeFileSync(cp, canonicalCardContent, "utf8");
+              console.log(`[FastSanitizer] 🔧 Initialized minimal Card from canonical template: ${cp}`);
+            }
           } else {
             // Append missing subcomponents without overwriting existing styling
             const subcomponentsToAppend: string[] = [];

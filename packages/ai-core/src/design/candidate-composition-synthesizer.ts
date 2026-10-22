@@ -575,9 +575,10 @@ export class CandidateCompositionSynthesizer {
     characteristics: ProductCharacteristics,
     capabilityPlan: ExperienceCapabilityPlan
   ) {
-    let primarySubject = "interactive 3D world";
-    let focalEntityName = "World Stage";
-    let entityCategory = "landmark";
+    const charAny = characteristics as any;
+    let primarySubject = charAny.coreEntityName ? `${charAny.coreEntityName} spatial environment` : "spatial environment";
+    let focalEntityName = charAny.coreEntityName || "Spatial Stage";
+    let entityCategory = "structure";
 
     if (rawPrompt.includes("perfume") || rawPrompt.includes("fragrance") || rawPrompt.includes("scent") || rawPrompt.includes("bottle") || rawPrompt.includes("flacon")) {
       primarySubject = "sculptural crystal perfume flacon";

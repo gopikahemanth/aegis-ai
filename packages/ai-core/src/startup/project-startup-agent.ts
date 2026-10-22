@@ -3623,9 +3623,17 @@ import React from 'react';
 
 export function ${validExportName}(props: any) {
   return (
-    <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 font-sans" data-testid="route-stub">
+    <div
+      className="p-4 rounded-lg font-sans border"
+      style={{
+        backgroundColor: "var(--color-surface, #0f172a)",
+        borderColor: "var(--color-border, rgba(51, 65, 85, 0.5))",
+        color: "var(--color-text-primary, #e2e8f0)",
+      }}
+      data-testid="route-stub"
+    >
       <h1 className="text-xl font-bold mb-2">${validExportName}</h1>
-      <p className="text-sm text-slate-400">Route stub: capability implementation required by Coder.</p>
+      <p className="text-sm opacity-70">Route stub: capability implementation required by Coder.</p>
       {props?.children}
     </div>
   );

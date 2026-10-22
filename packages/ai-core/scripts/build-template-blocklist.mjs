@@ -94,6 +94,38 @@ function shouldFilterOut(str, node) {
   if (trimmed.includes("_")) return true;
   if (!trimmed.includes(" ")) return true;
 
+  // Generic UI, telemetry statuses, scene layers, and audio console elements
+  const genericUiPatterns = [
+    /^(optimal baseline|nominal range|within target bounds|verified stable|active stability)$/i,
+    /^(configuration packet saved|export timestamped snapshot)$/i,
+    /^calibrates target/i,
+    /^adjusts threshold to balance/i,
+    /^prevents operational oscillation/i,
+    /procedure completed nominal/i,
+    /optimized within bounds/i,
+    /^atmospheric lighting$/i,
+    /^camera waypoints$/i,
+    /^clipping planes$/i,
+    /^schematics hotspots$/i,
+    /^telemetry hud$/i,
+    /^(acoustic & resonance console|tactile audio synthesis studio|master resonance gain|reverb decay envelope)$/i,
+    /tap tactical pads to synthesize real-time harmonic frequencies calibrated to this domain/i,
+    /^(high-freq sonar ping|deep hydrophone hum|pelagic leviathan call|thermal vent rumble|bioluminescent shimmer|hadal pressure echo)$/i,
+    /^(acoustic bathymetric depth sounder echo|sub-surface tectonic pressure resonance|low-frequency communication across 100 nautical miles|superheated mineral expulsion from hydrothermal chimneys|high-order harmonic chime from siphonophore photophores|deepest benthic reverberation from 11,000 meters)$/i,
+    /^(curator introduction|artist voice: the monolith|gallery 01: north atrium|gallery 02: light & void|gallery 03: tactile bronze|exhibition walkthrough outro)$/i,
+    /^(stardust chime|misty flute|moss drum|cloud bell|acorn pop|whisper breeze)$/i,
+    /^(sunlight xylophone|rainbow glockenspiel|bubble bass|playful brass horn|rhythm woodblock|fairy harp gliss)$/i,
+    /^(harmonic ingress|sub-octave resonance|meridian bell|tactile pulse|atmospheric flute|high horizon chime)$/i,
+  ];
+
+  if (genericUiPatterns.some(pattern => pattern.test(trimmed))) {
+    return true;
+  }
+
+  if (/\b(Drawer|Slide-over|Dialog|Modal|Button|Controls|Viewer|Plinth|Stage|Canvas|Mesh|Dropdown|Tooltip|Breadcrumb|Navbar|Header|Footer)$/i.test(trimmed)) {
+    return true;
+  }
+
   const words = trimmed.split(/\s+/).filter(Boolean);
   const has3Words = words.length >= 3;
   const has12Chars = trimmed.length >= 12;

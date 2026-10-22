@@ -104,14 +104,15 @@ export class ExperienceArchitect {
     capabilityPlan: ExperienceCapabilityPlan,
     domainContract?: any,
     generationSeed?: number,
-    explicitStrategy?: string
+    explicitStrategy?: string,
+    specification?: any
   ): CompositionGraph {
     const cleanPrompt = PromptConstraints.stripNegativeConstraints(prompt || "");
     const raw = cleanPrompt.toLowerCase();
 
     // 1. If 3D / WebGL is required or requested, design a spatial composition
     if (capabilityPlan.real3dRequired || capabilityPlan.experienceType === "IMMERSIVE_3D" || capabilityPlan.experienceType === "WEBGL_EXPERIENCE") {
-      return this.designSpatialComposition(raw, characteristics, capabilityPlan, domainContract, generationSeed, explicitStrategy);
+      return this.designSpatialComposition(raw, characteristics, capabilityPlan, domainContract, generationSeed, explicitStrategy, specification);
     }
 
     // 2. Editorial / Publication / Narrative / Scientific Observatory
@@ -154,7 +155,8 @@ export class ExperienceArchitect {
     capabilityPlan: ExperienceCapabilityPlan,
     domainContract?: any,
     generationSeed?: number,
-    explicitStrategy?: string
+    explicitStrategy?: string,
+    specification?: any
   ): CompositionGraph {
     const seedNum = generationSeed !== undefined ? Math.abs(generationSeed) : 0;
 
@@ -165,6 +167,11 @@ export class ExperienceArchitect {
       capabilityPlan,
       domainContract,
       generationSeed: seedNum,
+      specification,
+      rawSpec: specification?.rawSpec,
+      features: specification?.features,
+      featureDescriptions: specification?.featureDescriptions,
+      domainVocabulary: specification?.domainVocabulary,
     });
 
     let selected = candidates[seedNum % candidates.length];

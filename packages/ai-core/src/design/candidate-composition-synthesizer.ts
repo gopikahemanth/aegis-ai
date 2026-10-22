@@ -7,12 +7,12 @@
  * - Audience & emotional tone
  * - Visual personality & materials
  * - Primary activity & key interactions
- * - Required capabilities (3D, audio, quest map, soundboard, telemetry, etc.)
+ * - Required capabilities (3D, audio, interactive exploration, telemetry, etc.)
  *
  * SYSTEM INVARIANT:
- * "Aegis must never use hardcoded domain-specific strategy tables (e.g. KazzooLayouts[],
- * WatchLayouts[], PerfumeLayouts[]). Instead, candidate architectures are dynamically
- * synthesized from the product's actual semantics, and selected/perturbed by the generation seed."
+ * "Aegis must never use hardcoded domain-specific strategy tables. Instead, candidate
+ * architectures are dynamically synthesized from the product's actual semantics,
+ * and selected/perturbed by the generation seed."
  */
 
 import type { ProductCharacteristics } from "./product-understanding.js";
@@ -28,6 +28,51 @@ import type {
   UXIntentType,
 } from "./composition-graph.js";
 import type { NavigationModel } from "./navigation-design.js";
+
+function slugify(text: string): string {
+  return (text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "section";
+}
+
+function humanizeFeatureName(raw: string): string {
+  let s = (raw || "").trim();
+  s = s.replace(/^(?:users?\s+(?:should|can|will)|explore\s+the|explore|inspect|view|interact\s+with|change|monitor|manage|configure|toggle|track|move\s+between)\s+/i, "");
+  s = s.replace(/[,.;]+$/, "");
+  s = s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+  return s || raw;
+}
+
+function extractFeatureNoun(name: string): string {
+  let s = (name || "").trim();
+  s = s.replace(/^(?:Interactive|Real-Time|Live|Dynamic|Comprehensive)\s+/i, "");
+  s = s.replace(/\s+Views?$/i, "");
+  s = s.replace(/\s+Systems?$/i, " Systems");
+  return s || name;
+}
+
+function extractKeywordsFromDescription(desc: string): string[] {
+  const words = (desc || "")
+    .replace(/[^a-zA-Z\s]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 4 && !/^(about|which|their|these|those|using|under|above|between|during|before|after|through|with|from)$/i.test(w));
+  const unique = Array.from(new Set(words));
+  return unique.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
+export interface SectionPlanContext {
+  prompt?: string;
+  rawPrompt?: string;
+  characteristics?: ProductCharacteristics;
+  capabilityPlan?: ExperienceCapabilityPlan;
+  domainContract?: any;
+  specification?: any;
+  rawSpec?: any;
+  featureDescriptions?: Record<string, string>;
+  domainVocabulary?: any;
+  features?: string[];
+}
 
 export interface CandidateExperienceArchitecture {
   strategyId: string;
@@ -78,6 +123,11 @@ export class CandidateCompositionSynthesizer {
     capabilityPlan: ExperienceCapabilityPlan;
     domainContract?: any;
     generationSeed?: number;
+    specification?: any;
+    rawSpec?: any;
+    features?: string[];
+    featureDescriptions?: Record<string, string>;
+    domainVocabulary?: any;
   }): CandidateExperienceArchitecture[] {
     const raw = (options.prompt || "").toLowerCase();
     const { characteristics, capabilityPlan } = options;
@@ -88,10 +138,159 @@ export class CandidateCompositionSynthesizer {
       capabilityPlan.experienceType === "WEBGL_EXPERIENCE";
 
     if (isSpatial) {
-      return this.synthesizeSpatialCandidates(raw, characteristics, capabilityPlan, options.domainContract);
+      return this.synthesizeSpatialCandidates(raw, characteristics, capabilityPlan, options.domainContract, options);
     }
 
     return this.synthesizeNonSpatialCandidates(raw, characteristics, capabilityPlan, options.domainContract);
+  }
+
+  /**
+   * Derives a structured section plan from the project context:
+   * rawSpec.sectionPlan, specification features, featureDescriptions, domainVocabulary,
+   * or the user prompt. One section per feature, named after the feature,
+   * with the focal subject taken from the feature noun.
+   */
+  public static deriveSectionPlan(ctx: SectionPlanContext): CompositionSection[] {
+    const rawSpec = ctx.rawSpec || ctx.specification?.rawSpec;
+    if (rawSpec?.sectionPlan && Array.isArray(rawSpec.sectionPlan) && rawSpec.sectionPlan.length > 0) {
+      return rawSpec.sectionPlan.map((s: any, idx: number) => ({
+        id: s.id || `sec_${s.name ? slugify(s.name) : `section_${idx + 1}`}`,
+        order: s.order || idx + 1,
+        name: s.name || `Section ${idx + 1}`,
+        focalElement: s.focalElement || `Interactive 3D ${s.focalSubject || s.name} presentation`,
+        layoutFamily: s.layoutFamily || (idx === 0 ? "IMMERSIVE_WORLD" : idx === 1 ? "SPLIT_SHOWCASE" : idx === 2 ? "CONSOLE" : "TIMELINE"),
+        gridStructure: s.gridStructure || (idx === 0 ? "canvas-fullbleed" : idx === 1 ? "split-6-6" : idx === 2 ? "dock-panel" : "scroll-timeline"),
+        contentPurpose: s.contentPurpose || s.purpose || `Interactive ${s.name} module`,
+        primaryAction: s.primaryAction || { label: `Inspect ${s.focalSubject || s.name}`, action: `inspect_${slugify(s.name || `feat_${idx}`)}` },
+        secondaryElements: s.secondaryElements || [`${s.name} status`, `${s.name} controls`],
+      }));
+    }
+
+    const prompt = ctx.prompt || ctx.rawPrompt || "";
+    const featureDescriptions = ctx.featureDescriptions || ctx.specification?.featureDescriptions || {};
+    let featureList: string[] = [];
+
+    if (Array.isArray(ctx.features) && ctx.features.length > 0) {
+      featureList = [...ctx.features];
+    } else if (Array.isArray(ctx.specification?.features) && ctx.specification.features.length > 0) {
+      featureList = [...ctx.specification.features];
+    } else if (Object.keys(featureDescriptions).length > 0) {
+      featureList = Object.keys(featureDescriptions);
+    } else if (Array.isArray(ctx.domainContract?.entities) && ctx.domainContract.entities.length > 0) {
+      featureList = ctx.domainContract.entities.map((e: any) => typeof e === "string" ? e : e.name);
+    } else {
+      featureList = this.extractFeaturesFromPrompt(prompt);
+    }
+
+    if (featureList.length === 0) {
+      featureList = ["Core Architecture", "Interactive Systems", "Diagnostics & Telemetry", "Operational Controls"];
+    }
+
+    const layoutFamilies = ["IMMERSIVE_WORLD", "SPLIT_SHOWCASE", "CONSOLE", "TIMELINE", "FORM_CENTRIC"];
+    const gridStructures = ["canvas-fullbleed", "split-6-6", "dock-panel", "scroll-timeline", "split-form-schedule"];
+
+    const domainVocab = ctx.domainVocabulary || ctx.specification?.domainVocabulary;
+    const actionVerbs = domainVocab?.actionVerbs || ["Inspect", "Explore", "Configure", "Analyze", "Monitor"];
+
+    return featureList.slice(0, 5).map((feat, idx) => {
+      const cleanName = humanizeFeatureName(feat);
+      const featureNoun = extractFeatureNoun(cleanName);
+      const slug = slugify(cleanName);
+      const desc = featureDescriptions[feat] || featureDescriptions[cleanName] || "";
+      const actionVerb = actionVerbs[idx % actionVerbs.length] || "Inspect";
+
+      const secondaryElements: string[] = [];
+      if (domainVocab?.primaryMetrics?.[idx]) {
+        secondaryElements.push(domainVocab.primaryMetrics[idx]);
+      }
+      if (desc) {
+        const keywords = extractKeywordsFromDescription(desc);
+        secondaryElements.push(...keywords.slice(0, 2));
+      }
+      if (secondaryElements.length < 2) {
+        secondaryElements.push(`${featureNoun} Status`, `${featureNoun} Telemetry`);
+      }
+
+      return {
+        id: `sec_${slug}`,
+        order: idx + 1,
+        name: cleanName,
+        focalElement: `Interactive 3D ${featureNoun} with spatial inspection and telemetry overlay`,
+        layoutFamily: layoutFamilies[idx % layoutFamilies.length],
+        gridStructure: gridStructures[idx % gridStructures.length],
+        contentPurpose: desc ? desc.split(".")[0] + "." : `Comprehensive inspection and telemetry controls for ${featureNoun}`,
+        primaryAction: {
+          label: `${actionVerb} ${featureNoun}`,
+          action: `${actionVerb.toLowerCase()}_${slug}`,
+        },
+        secondaryElements: secondaryElements.slice(0, 3),
+      };
+    });
+  }
+
+  private static deriveScenesPlan(
+    profile: ReturnType<typeof CandidateCompositionSynthesizer.extractSpatialSemanticProfile>,
+    sections: CompositionSection[]
+  ): CompositionScene[] {
+    return sections.map((sec, idx) => {
+      const cameraBehaviors: Array<{
+        perspective: "orbit" | "scroll_dolly" | "first_person" | "fixed_cinematic" | "top_down";
+        motionProfile: "gentle_float" | "kinetic_snap" | "slow_axial_orbit" | "smooth_pan";
+        targetFocus: string;
+      }> = [
+        { perspective: "orbit", motionProfile: "gentle_float", targetFocus: sec.name },
+        { perspective: "scroll_dolly", motionProfile: "kinetic_snap", targetFocus: sec.name },
+        { perspective: "top_down", motionProfile: "slow_axial_orbit", targetFocus: sec.name },
+        { perspective: "first_person", motionProfile: "smooth_pan", targetFocus: sec.name },
+      ];
+      const noun = extractFeatureNoun(sec.name);
+      return {
+        id: `scene_${sec.id.replace("sec_", "")}`,
+        sceneIndex: idx + 1,
+        name: sec.name,
+        intent: sec.contentPurpose,
+        focalSubject: noun,
+        cameraOrViewBehavior: cameraBehaviors[idx % cameraBehaviors.length],
+        spatialElements: [noun, ...sec.secondaryElements],
+        hudElements: [`${noun} Telemetry`, `${noun} Controls`],
+        interactiveControls: [sec.primaryAction?.label || `Inspect ${noun}`, "Reset Perspective"],
+        narrativeOrContent: sec.contentPurpose,
+      };
+    });
+  }
+
+  private static extractFeaturesFromPrompt(rawPrompt: string): string[] {
+    const prompt = (rawPrompt || "").replace(/\r?\n/g, " ");
+    const features: string[] = [];
+
+    const featMatch = prompt.match(/features?:\s*([^.]+)/i);
+    if (featMatch && featMatch[1]) {
+      const items = featMatch[1].split(/,|;|and\s+/i).map(s => s.trim()).filter(Boolean);
+      if (items.length > 0) return items.map(s => humanizeFeatureName(s));
+    }
+
+    const actionMatch = prompt.match(/(?:users?\s+(?:should|can|will)|offering|includes?|featuring)\s+([^.]+)/i);
+    if (actionMatch && actionMatch[1]) {
+      const items = actionMatch[1].split(/,|;|and\s+/i).map(s => s.trim()).filter(s => s.length > 3);
+      if (items.length >= 2) return items.map(s => humanizeFeatureName(s));
+    }
+
+    const withMatch = prompt.match(/\bwith\s+([^.]+)/i);
+    if (withMatch && withMatch[1]) {
+      const items = withMatch[1].split(/,|;|and\s+/i).map(s => s.trim()).filter(s => s.length > 2);
+      if (items.length >= 2) return items.map(s => humanizeFeatureName(s));
+    }
+
+    const clauses = prompt.split(/[,.;]/).map(s => s.trim()).filter(s => s.length > 8);
+    for (const clause of clauses) {
+      if (/(?:explore|inspect|view|interact|navigate|monitor|control|track|manage|configure|simulate|schedule|switch|cutaways|telemetry|sensor)/i.test(clause)) {
+        features.push(humanizeFeatureName(clause));
+      }
+    }
+
+    if (features.length >= 2) return features;
+
+    return ["Interactive Model Stage", "Structural Inspection", "Telemetry & Controls", "Operational Systems"];
   }
 
   /**
@@ -101,25 +300,29 @@ export class CandidateCompositionSynthesizer {
     rawPrompt: string,
     characteristics: ProductCharacteristics,
     capabilityPlan: ExperienceCapabilityPlan,
-    domainContract?: any
+    domainContract?: any,
+    options?: any
   ): CandidateExperienceArchitecture[] {
-    // 1. Extract semantic entities, environments, materials, and capabilities from the prompt
     const semanticProfile = this.extractSpatialSemanticProfile(rawPrompt, characteristics, capabilityPlan);
 
-    // 2. Synthesize Candidate A: EXPEDITION / WORLD EXPLORATION
-    const candidateA = this.buildExpeditionCandidate(semanticProfile, characteristics);
+    const ctx: SectionPlanContext = {
+      prompt: rawPrompt,
+      rawPrompt,
+      characteristics,
+      capabilityPlan,
+      domainContract,
+      specification: options?.specification,
+      rawSpec: options?.rawSpec || options?.specification?.rawSpec,
+      featureDescriptions: options?.featureDescriptions || options?.specification?.featureDescriptions,
+      domainVocabulary: options?.domainVocabulary || options?.specification?.domainVocabulary,
+      features: options?.features || options?.specification?.features,
+    };
 
-    // 3. Synthesize Candidate B: CINEMATIC JOURNEY / NARRATIVE DOLLY
-    const candidateB = this.buildCinematicCandidate(semanticProfile, characteristics);
-
-    // 4. Synthesize Candidate C: SPATIAL ATLAS / TOPOLOGICAL CARTOGRAPHY
-    const candidateC = this.buildSpatialAtlasCandidate(semanticProfile, characteristics);
-
-    // 5. Synthesize Candidate D: FOCAL STAGE / SPECIMEN TURNTABLE
-    const candidateD = this.buildFocalStageCandidate(semanticProfile, characteristics);
-
-    // 6. Synthesize Candidate E: INTERACTIVE PLAYGROUND / TACTILE WORKSPACE
-    const candidateE = this.buildPlaygroundCandidate(semanticProfile, characteristics);
+    const candidateA = this.buildExpeditionCandidate(semanticProfile, characteristics, ctx);
+    const candidateB = this.buildCinematicCandidate(semanticProfile, characteristics, ctx);
+    const candidateC = this.buildSpatialAtlasCandidate(semanticProfile, characteristics, ctx);
+    const candidateD = this.buildFocalStageCandidate(semanticProfile, characteristics, ctx);
+    const candidateE = this.buildPlaygroundCandidate(semanticProfile, characteristics, ctx);
 
     if (semanticProfile.entityCategory === "flacon" || semanticProfile.entityCategory === "sneaker") {
       return [candidateD, candidateB, candidateC, candidateA, candidateE];
@@ -248,84 +451,108 @@ export class CandidateCompositionSynthesizer {
           name: `${primaryObject} Catalog Grid`,
           focalElement: `Responsive grid of ${primaryObject} items with instant action`,
           layoutFamily: "GRID_CATALOG",
-          gridStructure: "grid-4-col",
-          contentPurpose: `Browse and select ${primaryObject} items`,
-          primaryAction: { label: "Select Item", action: "select_item" },
-          secondaryElements: ["Filter tags", "Specifications"],
+          gridStructure: "grid-cards",
+          contentPurpose: `Primary discovery interface for ${primaryObject}`,
+          secondaryElements: ["Sorting options", "Filter chips"],
+        },
+        {
+          id: "sec_action_drawer",
+          order: 3,
+          name: `${primaryObject} Detail & Action Drawer`,
+          focalElement: `Slide-out sheet with rich metadata and acquisition actions for ${primaryObject}`,
+          layoutFamily: "FORM_CENTRIC",
+          gridStructure: "drawer-panel",
+          contentPurpose: `Inspect selected ${primaryObject} and proceed to execution`,
+          primaryAction: { label: `Add to Selection`, action: "add_item" },
+          secondaryElements: ["Availability status", "Variant options"],
         },
       ],
       intent: "TRANSACT_BROWSE",
       topology: {
         type: "PORTAL_HERO_SHOWCASE",
         regions: [
-          { id: "hero", role: "hero", gridSpan: { cols: 12 }, density: "spacious" },
-          { id: "catalog", role: "primary", gridSpan: { cols: 12 }, density: "spacious" },
+          { id: "banner", role: "hero", gridSpan: { cols: 12 }, density: "spacious" },
+          { id: "catalog", role: "primary", gridSpan: { cols: 8 }, density: "dense" },
+          { id: "sidebar", role: "aside", gridSpan: { cols: 4 }, density: "compact" },
         ],
       },
       primaryFocus: {
         type: "catalog_grid",
         entity: primaryObject,
-        title: `${primaryObject} Catalog`,
-        description: `Explore ${primaryObject}`,
-        density: "spacious",
+        title: `Curated ${primaryObject} Collection`,
+        description: `Comprehensive discovery interface for ${primaryObject}`,
+        density: "dense",
       },
       widgets: [],
       interactions: [],
       responsiveStrategy: {
         desktop: "grid-12-col",
-        tablet: "grid-2-col",
+        tablet: "grid-8-col",
         mobile: "single-column-flow",
       },
     };
 
-    // Candidate 3: Command & Telemetry Console
+    // Candidate 3: High-Density Diagnostic Command Console
     const candConsole: CandidateExperienceArchitecture = {
-      strategyId: "OPERATIONAL_CONSOLE",
-      name: "Command & Telemetry Console",
-      experienceIntent: `High-density telemetry and operational console for monitoring ${primaryObject} flux and state`,
-      focalElement: `Live status matrix with state gauges and real-time signal ticker for ${primaryObject}`,
+      strategyId: "HIGH_DENSITY_CONSOLE",
+      name: "Tactile Diagnostic Command Console",
+      experienceIntent: `High-density multi-panel telemetry console with live charts, status feeds, and direct control ledger for ${primaryObject}`,
+      focalElement: `Live status matrix with sparkline charts, status lights, and telemetry indicators for ${primaryObject}`,
       layoutTopology: "OPERATIONAL_COMMAND_CONSOLE",
       navigationModel: "sidebar",
-      cardDensityRatio: 0.35,
+      cardDensityRatio: 0.65,
       scenes: [],
       layers: [],
       sections: [
         {
-          id: "sec_console_telemetry",
+          id: "sec_kpi_matrix",
           order: 1,
-          name: "Operational Telemetry Matrix",
-          focalElement: "Live signal gauges and operational state monitors",
+          name: `${primaryObject} Operational KPI Matrix`,
+          focalElement: `Dense grid of 4-6 real-time status metric meters for ${primaryObject}`,
           layoutFamily: "CONSOLE",
-          gridStructure: "command-grid",
-          contentPurpose: "Continuous telemetry inspection and signal dispatch",
-          primaryAction: { label: "Dispatch Signal", action: "dispatch_signal" },
-          secondaryElements: ["Signal health", "Active status"],
+          gridStructure: "metric-grid-4",
+          contentPurpose: `Immediate health, throughput, and status overview for ${primaryObject}`,
+          primaryAction: { label: "Run System Diagnostics", action: "trigger_diagnostic" },
+          secondaryElements: ["Refresh interval", "Alert status indicator"],
         },
         {
-          id: "sec_event_ledger",
+          id: "sec_telemetry_stream",
           order: 2,
-          name: "Audit & Event Ledger",
-          focalElement: "Real-time chronological activity ledger",
-          layoutFamily: "TIMELINE",
-          gridStructure: "split-timeline",
-          contentPurpose: "Inspect event history and telemetry anomalies",
-          secondaryElements: ["Timestamp filter", "Severity badges"],
+          name: `${primaryObject} Realtime Status Feed`,
+          focalElement: "Multi-channel continuous telemetry feed with threshold alerting",
+          layoutFamily: "CONSOLE",
+          gridStructure: "split-panel-charts",
+          contentPurpose: "Continuous telemetry tracking and anomaly detection",
+          secondaryElements: ["Time range selector", "Channel toggles"],
+        },
+        {
+          id: "sec_control_ledger",
+          order: 3,
+          name: `${primaryObject} Execution Ledger`,
+          focalElement: "Dense tabular audit ledger with inline status switches and quick-action buttons",
+          layoutFamily: "CONSOLE",
+          gridStructure: "data-table-full",
+          contentPurpose: "Audit trail and direct state configuration",
+          primaryAction: { label: "Dispatch Command", action: "open_dispatch_modal" },
+          secondaryElements: ["Filter by state", "Export CSV"],
         },
       ],
-      intent: "ANALYZE_DISCOVER",
+      intent: "MONITOR_CONTROL",
       topology: {
         type: "OPERATIONAL_COMMAND_CONSOLE",
         regions: [
-          { id: "telemetry", role: "primary", gridSpan: { cols: 8 }, density: "compact" },
-          { id: "sidebar", role: "aside", gridSpan: { cols: 4 }, density: "compact" },
+          { id: "rail", role: "navigation", gridSpan: { cols: 2 }, density: "compact" },
+          { id: "kpi", role: "hero", gridSpan: { cols: 10 }, density: "dense" },
+          { id: "main-console", role: "primary", gridSpan: { cols: 7 }, density: "dense" },
+          { id: "ledger", role: "secondary", gridSpan: { cols: 3 }, density: "dense" },
         ],
       },
       primaryFocus: {
-        type: "telemetry_grid",
+        type: "telemetry_console",
         entity: primaryObject,
-        title: `${primaryObject} Status Matrix`,
-        description: `Operational telemetry for ${primaryObject}`,
-        density: "compact",
+        title: `${primaryObject} Operations Console`,
+        description: `Operational command console for ${primaryObject}`,
+        density: "dense",
       },
       widgets: [],
       interactions: [],
@@ -348,9 +575,8 @@ export class CandidateCompositionSynthesizer {
     characteristics: ProductCharacteristics,
     capabilityPlan: ExperienceCapabilityPlan
   ) {
-    // 1. Identify primary domain character / entity
     let primarySubject = "interactive 3D world";
-    let focalEntityName = "Realm World";
+    let focalEntityName = "World Stage";
     let entityCategory = "landmark";
 
     if (rawPrompt.includes("perfume") || rawPrompt.includes("fragrance") || rawPrompt.includes("scent") || rawPrompt.includes("bottle") || rawPrompt.includes("flacon")) {
@@ -365,13 +591,13 @@ export class CandidateCompositionSynthesizer {
       primarySubject = "celestial solar system orrery";
       focalEntityName = "Solar System Orrery";
       entityCategory = "orrery";
-    } else if (rawPrompt.includes("kazzoo") || rawPrompt.includes("claymation") || rawPrompt.includes("fantasy")) {
-      primarySubject = "whimsical 3D claymation fantasy universe";
-      focalEntityName = "Claymation Fantasy Realm";
-      entityCategory = "companion";
-    } else if (rawPrompt.includes("ocean") || rawPrompt.includes("underwater") || rawPrompt.includes("submersible") || rawPrompt.includes("abyssal")) {
-      primarySubject = "deep sea abyssal marine universe";
-      focalEntityName = "Abyssal Ocean Trench";
+    } else if (rawPrompt.includes("kazzoo") || rawPrompt.includes("claymation") || rawPrompt.includes("animated")) {
+      primarySubject = "whimsical 3D animated universe";
+      focalEntityName = "Animated World Stage";
+      entityCategory = "character";
+    } else if (rawPrompt.includes("ocean") || rawPrompt.includes("underwater") || rawPrompt.includes("submersible") || rawPrompt.includes("abyssal") || rawPrompt.includes("thalassa") || rawPrompt.includes("habitat")) {
+      primarySubject = "deep sea underwater architectural habitat";
+      focalEntityName = "Underwater Research Habitat";
       entityCategory = "specimen";
     } else if (rawPrompt.includes("watch") || rawPrompt.includes("horology") || rawPrompt.includes("timepiece")) {
       primarySubject = "artisan mechanical horology caliber";
@@ -391,10 +617,9 @@ export class CandidateCompositionSynthesizer {
       entityCategory = "instrument";
     }
 
-    // 2. Identify environment mood & lighting
-    let environmentDescription = "Enchanted dusk sky with procedural volumetric clouds, floating stardust, and warm amber lights";
-    let lightingModel = "Warm ambient daylight with soft directional sunlight casting claymation shadow mounds";
-    let materialsDescription = "Tactile claymation materials (roughness 0.65, metalness 0.05) with saturated playful hues";
+    let environmentDescription = "Tactile ambient lighting with procedural volumetric atmosphere and soft directional illumination";
+    let lightingModel = "Warm ambient daylight with soft directional sunlight casting realistic contact shadows";
+    let materialsDescription = "Physically based materials (roughness 0.5, metalness 0.1) with rich contextual surface texturing";
 
     if (rawPrompt.includes("perfume") || rawPrompt.includes("fragrance") || rawPrompt.includes("scent") || rawPrompt.includes("flacon")) {
       environmentDescription = "Minimal dark studio void with subtle warm rim lighting and floating aromatic dust particles";
@@ -408,14 +633,10 @@ export class CandidateCompositionSynthesizer {
       environmentDescription = "Deep space cosmic void with procedural starfield (10,000 points) and subtle chromatic nebula dust";
       lightingModel = "Omnidirectional sun point light with volumetric corona glow and soft cosmic ambient fill";
       materialsDescription = "Procedural planet surface shaders and emissive star particles";
-    } else if (rawPrompt.includes("claymation") || rawPrompt.includes("pixar") || rawPrompt.includes("nintendo") || rawPrompt.includes("mossy") || rawPrompt.includes("pastel")) {
-      environmentDescription = "Warm golden sky with fluffy procedural volumetric clouds, mossy slopes, and drifting pastel stardust";
-      lightingModel = "Warm ambient daylight with soft directional sunlight casting claymation shadow mounds";
-      materialsDescription = "Tactile claymation materials (roughness 0.65, metalness 0.05) with saturated playful hues and mossy textures";
-    } else if (rawPrompt.includes("ocean") || rawPrompt.includes("underwater") || rawPrompt.includes("marine")) {
-      environmentDescription = "Deep oceanic abyssal void with bioluminescent plankton drift and shimmering water caustics";
+    } else if (rawPrompt.includes("ocean") || rawPrompt.includes("underwater") || rawPrompt.includes("marine") || rawPrompt.includes("thalassa") || rawPrompt.includes("habitat")) {
+      environmentDescription = "Deep oceanic abyssal void with bioluminescent particles and shimmering water caustics";
       lightingModel = "Submersible dual halogen beam lighting cutting through deep ocean darkness with soft blue backfill";
-      materialsDescription = "Deep ocean water shader, refractive bioluminescent glass, and weathered submersible titanium";
+      materialsDescription = "Deep ocean water shader, refractive pressure glass, and structural titanium composite";
     } else if (rawPrompt.includes("watch") || rawPrompt.includes("atelier") || rawPrompt.includes("luxury")) {
       environmentDescription = "Dark studio void with brushed graphite plinth, warm golden grazing rim light, and floating dust";
       lightingModel = "Precision chiaroscuro spotlighting with anisotropic highlights on brushed metal bevels and polished anglage";
@@ -426,11 +647,10 @@ export class CandidateCompositionSynthesizer {
       materialsDescription = "Full-grain aniline leather, oiled solid walnut, brushed champagne brass, and bouclé textile weave";
     }
 
-    // 3. Extract required capabilities
-    const hasCharacters = rawPrompt.includes("character") || rawPrompt.includes("companion") || rawPrompt.includes("avatar") || rawPrompt.includes("specimen") || rawPrompt.includes("inhabitant");
-    const hasQuests = rawPrompt.includes("quest") || rawPrompt.includes("mission") || rawPrompt.includes("trial") || rawPrompt.includes("challenge") || rawPrompt.includes("expedition");
-    const hasAudio = (capabilityPlan as any).audioSupported || (capabilityPlan as any).ambientAudioSupported || rawPrompt.includes("soundboard") || rawPrompt.includes("voice") || rawPrompt.includes("audio") || rawPrompt.includes("chime") || rawPrompt.includes("hydrophone");
-    const hasJourney = rawPrompt.includes("journey") || rawPrompt.includes("scroll") || rawPrompt.includes("timeline") || rawPrompt.includes("logbook") || rawPrompt.includes("chronicle");
+    const hasCharacters = rawPrompt.includes("character") || rawPrompt.includes("avatar") || rawPrompt.includes("specimen") || rawPrompt.includes("inhabitant");
+    const hasMissions = rawPrompt.includes("mission") || rawPrompt.includes("trial") || rawPrompt.includes("challenge") || rawPrompt.includes("expedition");
+    const hasAudio = (capabilityPlan as any).audioSupported || (capabilityPlan as any).ambientAudioSupported || rawPrompt.includes("voice") || rawPrompt.includes("audio") || rawPrompt.includes("chime") || rawPrompt.includes("hydrophone");
+    const hasTimeline = rawPrompt.includes("scroll") || rawPrompt.includes("timeline") || rawPrompt.includes("logbook") || rawPrompt.includes("chronicle");
 
     return {
       primarySubject,
@@ -440,9 +660,9 @@ export class CandidateCompositionSynthesizer {
       lightingModel,
       materialsDescription,
       hasCharacters,
-      hasQuests,
+      hasMissions,
       hasAudio,
-      hasJourney,
+      hasTimeline,
     };
   }
 
@@ -456,16 +676,20 @@ export class CandidateCompositionSynthesizer {
    */
   private static buildExpeditionCandidate(
     profile: ReturnType<typeof CandidateCompositionSynthesizer.extractSpatialSemanticProfile>,
-    characteristics: ProductCharacteristics
+    characteristics: ProductCharacteristics,
+    ctx: SectionPlanContext
   ): CandidateExperienceArchitecture {
-    const experienceIntent = `Immersive 3D ${profile.primarySubject} with interactive spatial world explorer, ${profile.hasQuests ? "quest landmarks, " : ""}${profile.hasAudio ? "ambient soundboard, " : ""}${profile.hasCharacters ? "and companion sanctums" : ""}`;
+    const sections = this.deriveSectionPlan(ctx);
+    const scenes = this.deriveScenesPlan(profile, sections);
+    const primarySection = sections[0];
+    const experienceIntent = `Immersive 3D ${profile.primarySubject} with interactive spatial exploration, real-time telemetry, and module inspection`;
     const focalElement = profile.entityCategory === "caliber"
       ? "Hand-finished tourbillon timepiece in grade-5 titanium and 18k rose gold with interactive 360-degree rotation"
       : profile.entityCategory === "specimen"
-      ? "Abyssal research submersible with external manipulator arms and volumetric marine spotlights"
+      ? "Abyssal research habitat with structural modules, cutaway viewing planes, and volumetric lighting"
       : profile.entityCategory === "module"
       ? "Architectural modular seating centerpiece with customizable tactile materials and proportions"
-      : `Floating procedural 3D archipelago with volumetric atmosphere, interactive landmarks, and ${profile.entityCategory} beacons`;
+      : `Interactive 3D ${primarySection ? extractFeatureNoun(primarySection.name) : profile.primarySubject} stage with volumetric atmosphere and status beacons`;
 
     const navigationModel = "immersive-hud" as any;
     const layoutTopology: LayoutTopologyType = "PLAYFUL_WORKSPACE";
@@ -476,114 +700,25 @@ export class CandidateCompositionSynthesizer {
       focalObject: profile.entityCategory === "caliber"
         ? "Artisan tourbillon watch with sapphire crystal, grand feu enamel dial, and exhibition caseback"
         : profile.entityCategory === "specimen"
-        ? "Deep sea hydrothermal vent spire with bioluminescent organisms and research submersible"
+        ? "Deep sea abyssal research submersible and habitat facility with pressurized marine modules, external manipulator arrays, and telemetry sensors"
         : profile.entityCategory === "module"
         ? "Modular architectural furniture suite in daylight interior pavilion"
-        : `Floating 3D island terrain with tactile surface contours, interactive landmark totems, and ${profile.entityCategory} encounters`,
+        : `Floating 3D island terrain stage with tactile contours, landmark beacons, and responsive inspection points`,
       sceneEnvironment: profile.environmentDescription,
       cameraStrategy: "Gentle smooth orbit camera with responsive landmark focusing on user click",
       lightingModel: profile.lightingModel,
       materialsAndShaders: profile.materialsDescription,
       spatialHud: {
         placement: "floating_overlay",
-        components: ["Active Realm Indicator", "Ambient Soundboard Mixer", "Quest HUD Compass", "Companion Roster"],
+        components: sections.map(s => `${extractFeatureNoun(s.name)} Telemetry`).slice(0, 4),
       },
       interactionTopology: "raycast_inspection",
     };
 
-    const scenes: CompositionScene[] = [
-      {
-        id: "scene_world_stage",
-        sceneIndex: 1,
-        name: "The Floating Realm Stage",
-        intent: "Full 3D spatial world exploration with panoramic orbital overview",
-        focalSubject: "Floating Archipelago Stage",
-        cameraOrViewBehavior: { perspective: "orbit", motionProfile: "gentle_float", targetFocus: "Island Center" },
-        spatialElements: ["Floating Island Mounds", "Volumetric Atmosphere", "Quest Landmark Totems"],
-        hudElements: ["Realm Name Badge", "Audio Atmosphere Toggle"],
-        interactiveControls: ["Landmark Raycasting", "Camera Angle Switcher"],
-        narrativeOrContent: `A living ${profile.primarySubject} waiting to be explored by fearless journeyers.`,
-      },
-      {
-        id: "scene_companions",
-        sceneIndex: 2,
-        name: "Sanctuary of Companions & Inhabitants",
-        intent: "Meet animated characters stationed across the realm with voice lines and lore",
-        focalSubject: "Companion Avatars",
-        spatialElements: ["Character Meshes", "Campfire Embers", "Whimsical Props"],
-        hudElements: ["Companion Lore Card", "Voice Clip Playback"],
-        narrativeOrContent: "Befriend mystical forest guardians and ancient star-weavers.",
-      },
-      {
-        id: "scene_quests",
-        sceneIndex: 3,
-        name: "Quest Journey & Milestones",
-        intent: "Track active quests, discover hidden biomes, and record exploration achievements",
-        focalSubject: "Spatial Quest Map",
-        spatialElements: ["Quest Trail Path", "Glowing Waypoint Beacon"],
-        interactiveControls: ["Quest Selection", "Checkpoint Log"],
-        narrativeOrContent: "Unravel ancient mysteries across the whispering peaks and enchanted groves.",
-      },
-      {
-        id: "scene_soundboard",
-        sceneIndex: 4,
-        name: "Ambient Atmosphere & Soundboard Mixer",
-        intent: "Interactive audio mixer with environmental atmosphere sliders and harmonic chime pads",
-        focalSubject: "Soundboard Totem",
-        interactiveControls: ["Breeze Volume Slider", "Forest Chime Trigger", "Mythical Flute Player"],
-        narrativeOrContent: "Tune the ambient resonance of the enchanted groves and starry night skies.",
-      },
-    ];
-
-    const sections: CompositionSection[] = [
-      {
-        id: "sec_world_stage",
-        order: 1,
-        name: "Floating Realm 3D Stage",
-        focalElement: "Full-bleed WebGL claymation universe with floating landmarks and cloud layers",
-        layoutFamily: "IMMERSIVE_WORLD",
-        gridStructure: "canvas-fullbleed",
-        contentPurpose: "Interactive spatial navigation across the fantasy archipelago",
-        primaryAction: { label: "Explore Realm Landmarks", action: "explore_landmarks" },
-        secondaryElements: ["Realm selector", "Live companion counter"],
-      },
-      {
-        id: "sec_companions",
-        order: 2,
-        name: "Companion Encounters",
-        focalElement: "Interactive character spotlight with 3D avatar animations and whimsical lore",
-        layoutFamily: "EDITORIAL",
-        gridStructure: "split-3d-text",
-        contentPurpose: "Meet mythical companions and listen to their stories",
-        secondaryElements: ["Character traits", "Voice clips"],
-      },
-      {
-        id: "sec_quests",
-        order: 3,
-        name: "Quest Ledger & Journey Scroll",
-        focalElement: "Interactive quest trail map with milestone completion badges",
-        layoutFamily: "TIMELINE",
-        gridStructure: "scroll-timeline",
-        contentPurpose: "Track exploration journey and claim realm badges",
-        primaryAction: { label: "Accept Quest", action: "accept_quest" },
-        secondaryElements: ["Milestone badges", "Artifact pouch"],
-      },
-      {
-        id: "sec_soundboard",
-        order: 4,
-        name: "Atmosphere & Ambient Soundboard",
-        focalElement: "Tactile audio mixer console with ambient sliders and playful sound triggers",
-        layoutFamily: "CONSOLE",
-        gridStructure: "dock-panel",
-        contentPurpose: "Mix realm sounds and environmental audio",
-        secondaryElements: ["Sound wave visualizer", "Preset themes"],
-      },
-    ];
-
     const layers: CompositionLayer[] = [
-      { id: "l_sky", name: "Enchanted Atmosphere", depth: "background", renderingTechnology: "webgl", contentRole: "Atmosphere", description: "Atmospheric sky with volumetric shaders" },
-      { id: "l_world", name: "3D Islands & Entities", depth: "midground", renderingTechnology: "webgl", contentRole: "Living World", description: "Rounded terrain, floating islands, and interactive characters" },
-      { id: "l_hud", name: "Floating HUD & Soundboard Dock", depth: "hud", renderingTechnology: "dom", contentRole: "User Interface", description: "Pill navigation, quest counter, and audio mixer" },
+      { id: "l_env", name: "Atmospheric Environment", depth: "background", renderingTechnology: "webgl", contentRole: "Atmosphere", description: profile.environmentDescription },
+      { id: "l_stage", name: `${primarySection ? extractFeatureNoun(primarySection.name) : "3D Stage"} Model`, depth: "midground", renderingTechnology: "webgl", contentRole: "Primary Model", description: profile.materialsDescription },
+      { id: "l_hud", name: "Floating HUD & Interface Dock", depth: "hud", renderingTechnology: "dom", contentRole: "User Interface", description: "Interactive telemetry overlays, status cards, and navigation" },
     ];
 
     return {
@@ -604,7 +739,7 @@ export class CandidateCompositionSynthesizer {
         regions: [
           { id: "hero-stage", role: "hero", gridSpan: { cols: 12, rows: 6 }, density: "spacious" },
           { id: "spatial-exploration", role: "primary", gridSpan: { cols: 8, rows: 4 }, density: "balanced" },
-          { id: "realm-hud", role: "aside", gridSpan: { cols: 4, rows: 4 }, density: "compact" },
+          { id: "telemetry-hud", role: "aside", gridSpan: { cols: 4, rows: 4 }, density: "compact" },
         ],
       },
       primaryFocus: {
@@ -630,16 +765,26 @@ export class CandidateCompositionSynthesizer {
    */
   private static buildCinematicCandidate(
     profile: ReturnType<typeof CandidateCompositionSynthesizer.extractSpatialSemanticProfile>,
-    characteristics: ProductCharacteristics
+    characteristics: ProductCharacteristics,
+    ctx: SectionPlanContext
   ): CandidateExperienceArchitecture {
-    const experienceIntent = `Cinematic 3D ${profile.primarySubject} scroll journey through enchanted landmarks, character encounters, and whimsical sound echoes`;
+    const baseSections = this.deriveSectionPlan(ctx);
+    const sections: CompositionSection[] = baseSections.map((s, idx) => ({
+      ...s,
+      layoutFamily: idx === 0 ? "HERO_CANVAS" : idx === 1 ? "EDITORIAL" : idx === 2 ? "TIMELINE" : "CONSOLE",
+      gridStructure: idx === 0 ? "canvas-fullbleed" : idx === 1 ? "split-3d-text" : idx === 2 ? "scroll-timeline" : "dock-panel",
+    }));
+    const scenes = this.deriveScenesPlan(profile, sections);
+    const primarySection = sections[0];
+
+    const experienceIntent = `Cinematic 3D ${profile.primarySubject} scroll journey through interactive systems, focal viewpoints, and atmospheric audio`;
     const focalElement = profile.entityCategory === "caliber"
       ? "Cinematic slow-orbit tourbillon centerpiece with macro focal transitions across dial indices"
       : profile.entityCategory === "specimen"
-      ? "Submersible descent journey scroll tracking marine depth transitions and bathypelagic layers"
+      ? "Submersible architectural descent journey tracking pressure hulls and internal decks"
       : profile.entityCategory === "module"
       ? "Architectural furniture craft journey following joinery, material selection, and final hand finishing"
-      : "Panoramic 3D cinematic river valley with volumetric atmosphere, companion waypoints, and journey scroll milestones";
+      : `Panoramic 3D cinematic ${primarySection ? extractFeatureNoun(primarySection.name) : profile.primarySubject} with volumetric atmosphere and milestone waypoints`;
 
     const navigationModel: NavigationModel = "floating_pills";
     const layoutTopology: LayoutTopologyType = "PORTAL_HERO_SHOWCASE";
@@ -650,101 +795,24 @@ export class CandidateCompositionSynthesizer {
       focalObject: profile.entityCategory === "caliber"
         ? "Artisan tourbillon watch with sapphire crystal, grand feu enamel dial, and exhibition caseback"
         : profile.entityCategory === "specimen"
-        ? "Descending research bathyscaphe traversing benthic marine zones and deep hydrothermal plumes"
+        ? "Descending research habitat complex traversing benthic marine zones and deep hydrothermal plumes"
         : profile.entityCategory === "module"
         ? "Handcrafted solid walnut joinery framework with bespoke leather upholstery layers"
-        : "Winding valley path with landmarks, floating pastel spheres, and companion rest stops",
+        : `Contoured structural terrain stage with interactive landmark inspection nodes and environmental sensors`,
       sceneEnvironment: profile.environmentDescription,
-      cameraStrategy: "Cinematic scroll-linked dolly camera gliding along whimsical valley pass",
+      cameraStrategy: "Cinematic scroll-linked dolly camera gliding along architectural terrain pass",
       lightingModel: profile.lightingModel,
       materialsAndShaders: profile.materialsDescription,
       spatialHud: {
         placement: "minimal_compass",
-        components: ["Journey Chapter Marker", "Magical Soundboard Toggle", "Realm Map Compass"],
+        components: sections.map(s => `${extractFeatureNoun(s.name)} Marker`).slice(0, 3),
       },
       interactionTopology: "scroll_driven_orbit",
     };
 
-    const scenes: CompositionScene[] = [
-      {
-        id: "scene_journey_intro",
-        sceneIndex: 1,
-        name: "The Dawn Crossing",
-        intent: "Gliding camera entrance over mossy ridges as the day begins",
-        focalSubject: "Valley Ridge Path",
-        cameraOrViewBehavior: { perspective: "scroll_dolly", motionProfile: "gentle_float", targetFocus: "River Pass" },
-        spatialElements: ["Pastel Spheres", "Moss Mound Topography", "Sunbeam Rays"],
-        narrativeOrContent: "Every great quest starts with a single step into the morning mist.",
-      },
-      {
-        id: "scene_companions_waypoint",
-        sceneIndex: 2,
-        name: "Companions at the Crossroads",
-        intent: "Meet valley guardians and hear voice greetings",
-        focalSubject: "Guardian Campfire",
-        spatialElements: ["Character Avatars", "Campfire Embers", "Whimsical Props"],
-        hudElements: ["Companion Dialogue", "Voice Playback"],
-        narrativeOrContent: "Ancient storytellers offer guidance for the path ahead.",
-      },
-      {
-        id: "scene_sound_grove",
-        sceneIndex: 3,
-        name: "Harmonic Sound Grove",
-        intent: "Atmospheric chime audio immersion",
-        focalSubject: "Chime Totem Tree",
-        interactiveControls: ["Harmonic Chimes", "Wind Intensity"],
-        narrativeOrContent: "The leaves sing with resonant chime notes C4, E4, and G4.",
-      },
-    ];
-
-    const sections: CompositionSection[] = [
-      {
-        id: "sec_journey_hero",
-        order: 1,
-        name: "The Living Journey Scroll & 3D Entrance",
-        focalElement: "Cinematic 3D world scroll with mossy knolls and drifting volumetric clouds",
-        layoutFamily: "HERO_CANVAS",
-        gridStructure: "canvas-fullbleed",
-        contentPurpose: "Cinematic world entrance and narrative embarkation",
-        primaryAction: { label: "Begin Journey Scroll", action: "scroll_journey" },
-        secondaryElements: ["Realm Chapter", "Active Companions"],
-      },
-      {
-        id: "sec_companion_encounters",
-        order: 2,
-        name: "Tales of the Valley Companions",
-        focalElement: "Story-driven character bio cards with authentic voice audio clips",
-        layoutFamily: "EDITORIAL",
-        gridStructure: "split-3d-text",
-        contentPurpose: "Meet mythical companions and hear their ancient voice clips",
-        secondaryElements: ["Companion origin", "Voice clips"],
-      },
-      {
-        id: "sec_trials_path",
-        order: 3,
-        name: "Quest Trials Along the Ridge",
-        focalElement: "Illustrated quest ledger with milestone badges and discovery trials",
-        layoutFamily: "TIMELINE",
-        gridStructure: "scroll-timeline",
-        contentPurpose: "Track active quest progression and realm discoveries",
-        primaryAction: { label: "Accept Trial", action: "accept_quest" },
-        secondaryElements: ["Spore dust charms", "Milestone trophies"],
-      },
-      {
-        id: "sec_sound_echoes",
-        order: 4,
-        name: "Echoes of the Magical Soundboard",
-        focalElement: "Harmonic soundboard pads embedded in the journey narrative",
-        layoutFamily: "CONSOLE",
-        gridStructure: "dock-panel",
-        contentPurpose: "Interactive soundboard with playful chime and flute chords",
-        secondaryElements: ["Chime frequencies", "Ambient volume"],
-      },
-    ];
-
     const layers: CompositionLayer[] = [
-      { id: "l_sky", name: "Dawn Skies & Clouds", depth: "background", renderingTechnology: "webgl", contentRole: "Atmosphere", description: "Soft dawn sky with procedural clouds" },
-      { id: "l_world", name: "Valley Path & Waypoints", depth: "midground", renderingTechnology: "webgl", contentRole: "Living World", description: "Winding river trail and character encampments" },
+      { id: "l_env", name: "Atmospheric Lighting", depth: "background", renderingTechnology: "webgl", contentRole: "Atmosphere", description: profile.environmentDescription },
+      { id: "l_stage", name: "Interactive System Mesh", depth: "midground", renderingTechnology: "webgl", contentRole: "Living World", description: profile.materialsDescription },
       { id: "l_hud", name: "Journey HUD & Compass", depth: "hud", renderingTechnology: "dom", contentRole: "User Interface", description: "Pill navigation and chapter trackers" },
     ];
 
@@ -791,66 +859,10 @@ export class CandidateCompositionSynthesizer {
    */
   private static buildSpatialAtlasCandidate(
     profile: ReturnType<typeof CandidateCompositionSynthesizer.extractSpatialSemanticProfile>,
-    characteristics: ProductCharacteristics
+    characteristics: ProductCharacteristics,
+    ctx: SectionPlanContext
   ): CandidateExperienceArchitecture {
-    const experienceIntent = `Spatial cartography & landmark atlas with 3D terrain topography, quest waypoints, and companion sanctums`;
-    const focalElement = profile.entityCategory === "caliber"
-      ? "Exploded caliber complication matrix with separated balance wheel, tourbillon cage, and bridges"
-      : profile.entityCategory === "specimen"
-      ? "Bathymetric ocean floor relief model with coordinates of hydrothermal vents and abyssal trenches"
-      : profile.entityCategory === "module"
-      ? "Architectural spatial matrix and blueprint layout with modular component specifications"
-      : "Interactive 3D topological realm map with glowing quest landmarks and animated waypoint trails";
-
-    const navigationModel: NavigationModel = profile.entityCategory === "orrery" ? ("orbital-ring-compass" as any) : "floating_pills";
-    const layoutTopology: LayoutTopologyType = "ASYMMETRIC_SPLIT_PANE";
-    const cardDensityRatio = 0.07;
-
-    const spatialPlan: SpatialPlan = {
-      sceneType: "SPATIAL_EXHIBITION",
-      focalObject: profile.entityCategory === "caliber"
-        ? "Exploded caliber complication assembly of manufacture movement with floating tourbillon components"
-        : profile.entityCategory === "specimen"
-        ? "Bathymetric ocean floor relief model with coordinates of hydrothermal vents and deep abyssal plains"
-        : profile.entityCategory === "module"
-        ? "Architectural floorplan spatial matrix with configurable furniture modules"
-        : profile.entityCategory === "orrery"
-        ? "Full scale 3D procedural Solar system orrery with central sun, orbiting textured planets, and asteroid belt"
-        : "Topological relief map with glowing landmark pins, biome ridges, and hidden companion burrows",
-      sceneEnvironment: profile.environmentDescription,
-      cameraStrategy: "Topological realm atlas view with bird's-eye panning and biome pin focusing",
-      lightingModel: profile.lightingModel,
-      materialsAndShaders: profile.materialsDescription,
-      spatialHud: {
-        placement: "perimeter_dock",
-        components: ["Biome Coordinates HUD", "Discovered Landmarks 2/6", "Soundboard Resonance"],
-      },
-      interactionTopology: "poi_teleport",
-    };
-
-    const scenes: CompositionScene[] = [
-      {
-        id: "scene_topomap",
-        sceneIndex: 1,
-        name: "Topological Realm Cartography",
-        intent: "Bird's eye overview of the realm biomes and waypoints",
-        focalSubject: "Realm Atlas Grid",
-        cameraOrViewBehavior: { perspective: "orbit", motionProfile: "slow_axial_orbit", targetFocus: "Central Mountain" },
-        spatialElements: ["Whispering Valley", "Crystal Ridge", "Elder Knoll"],
-        narrativeOrContent: "Chart unmapped frontiers and uncharted groves.",
-      },
-      {
-        id: "scene_waypoint_inspect",
-        sceneIndex: 2,
-        name: "Biome Landmark Inspection",
-        intent: "Focus into clicked landmark waypoint",
-        focalSubject: "Selected Landmark Marker",
-        cameraOrViewBehavior: { perspective: "scroll_dolly", motionProfile: "kinetic_snap", targetFocus: "Waypoint Node" },
-        spatialElements: ["Glowing Marker Beacon", "Waypoint Terrain Cutout"],
-        narrativeOrContent: "Each landmark preserves an ancient secret of the realm.",
-      },
-    ];
-
+    const baseSections = this.deriveSectionPlan(ctx);
     const sections: CompositionSection[] = profile.entityCategory === "orrery"
       ? [
           {
@@ -886,55 +898,53 @@ export class CandidateCompositionSynthesizer {
             secondaryElements: ["Telescope specs", "Sky condition forecast"],
           },
         ]
-      : [
-          {
-            id: "sec_atlas_viewport",
-            order: 1,
-            name: "Topological Atlas Stage",
-            focalElement: "Interactive 3D realm map with clickable biome landmarks and quest waypoints",
-            layoutFamily: "IMMERSIVE_WORLD",
-            gridStructure: "canvas-fullbleed",
-            contentPurpose: "Spatial exploration of realm landmarks and terrain topography",
-        primaryAction: { label: "Inspect Active Waypoint", action: "select_waypoint" },
-        secondaryElements: ["Discovered landmarks counter", "Biome filter"],
+      : baseSections.map((s, idx) => ({
+          ...s,
+          layoutFamily: idx === 0 ? "IMMERSIVE_WORLD" : idx === 1 ? "SPLIT_SHOWCASE" : idx === 2 ? "EDITORIAL" : "CONSOLE",
+          gridStructure: idx === 0 ? "canvas-fullbleed" : idx === 1 ? "split-6-6" : idx === 2 ? "split-3d-text" : "dock-panel",
+        }));
+    const scenes = this.deriveScenesPlan(profile, sections);
+    const primarySection = sections[0];
+
+    const experienceIntent = `Spatial cartography & landmark atlas with 3D terrain topography, system waypoints, and telemetry nodes`;
+    const focalElement = profile.entityCategory === "caliber"
+      ? "Exploded caliber complication matrix with separated balance wheel, tourbillon cage, and bridges"
+      : profile.entityCategory === "specimen"
+      ? "Bathymetric ocean floor relief model with coordinates of research modules and abyssal cutaways"
+      : profile.entityCategory === "module"
+      ? "Architectural spatial matrix and blueprint layout with modular component specifications"
+      : `Interactive 3D topological atlas map with active system landmarks and animated waypoint trails`;
+
+    const navigationModel: NavigationModel = profile.entityCategory === "orrery" ? ("orbital-ring-compass" as any) : "floating_pills";
+    const layoutTopology: LayoutTopologyType = "ASYMMETRIC_SPLIT_PANE";
+    const cardDensityRatio = 0.07;
+
+    const spatialPlan: SpatialPlan = {
+      sceneType: "SPATIAL_EXHIBITION",
+      focalObject: profile.entityCategory === "caliber"
+        ? "Exploded caliber complication assembly of manufacture movement with floating tourbillon components"
+        : profile.entityCategory === "specimen"
+        ? "Bathymetric ocean floor relief model with coordinates of research modules and deep trench cutaways"
+        : profile.entityCategory === "module"
+        ? "Architectural floorplan spatial matrix with configurable furniture modules"
+        : profile.entityCategory === "orrery"
+        ? "Full scale 3D procedural Solar system orrery with central sun, orbiting textured planets, and asteroid belt"
+        : `Topological relief model stage with system node markers, module coordinates, and telemetry landmark beacons`,
+      sceneEnvironment: profile.environmentDescription,
+      cameraStrategy: "Topological spatial atlas view with bird's-eye panning and telemetry pin focusing",
+      lightingModel: profile.lightingModel,
+      materialsAndShaders: profile.materialsDescription,
+      spatialHud: {
+        placement: "perimeter_dock",
+        components: sections.map(s => `${extractFeatureNoun(s.name)} HUD`).slice(0, 3),
       },
-      {
-        id: "sec_active_quests",
-        order: 2,
-        name: "Waypoint Dossier & Quest Trials",
-        focalElement: "Sliding quest dossier revealing secrets of the selected map landmark",
-        layoutFamily: "SPLIT_SHOWCASE",
-        gridStructure: "split-6-6",
-        contentPurpose: "Undertake landmark quests and claim spore dust charms",
-        primaryAction: { label: "Embark on Quest", action: "start_quest" },
-        secondaryElements: ["Trial difficulty", "Artifact rewards"],
-      },
-      {
-        id: "sec_character_lore",
-        order: 3,
-        name: "Guardian Inhabitants & Voice Glyphs",
-        focalElement: "Interactive companion encounter cards with voice frequency waveforms",
-        layoutFamily: "EDITORIAL",
-        gridStructure: "split-3d-text",
-        contentPurpose: "Inspect companion lore, traits, and hear spoken wisdom",
-        secondaryElements: ["Origin biomes", "Voice recordings"],
-      },
-      {
-        id: "sec_atmosphere_lab",
-        order: 4,
-        name: "Ambient Frequency & Sound Studio",
-        focalElement: "Magical soundboard console with forest chime visualizers and ambient sliders",
-        layoutFamily: "CONSOLE",
-        gridStructure: "dock-panel",
-        contentPurpose: "Play realm ambient soundboard and harmonic frequencies",
-        secondaryElements: ["Frequency visualizer", "Harmonic notes"],
-      },
-    ];
+      interactionTopology: "poi_teleport",
+    };
 
     const layers: CompositionLayer[] = [
-      { id: "l_sky", name: "Twilight Starlight", depth: "background", renderingTechnology: "webgl", contentRole: "Atmosphere", description: "Atmospheric celestial sky" },
-      { id: "l_world", name: "Topological Relief Mesh", depth: "midground", renderingTechnology: "webgl", contentRole: "Atlas Terrain", description: "Elevated contour hills and glowing node points" },
-      { id: "l_hud", name: "Compass & Landmark Radar", depth: "hud", renderingTechnology: "dom", contentRole: "Navigation HUD", description: "Perimeter coordinate instruments" },
+      { id: "l_env", name: "Atmospheric Lighting", depth: "background", renderingTechnology: "webgl", contentRole: "Atmosphere", description: profile.environmentDescription },
+      { id: "l_stage", name: "Topological Relief Mesh", depth: "midground", renderingTechnology: "webgl", contentRole: "Atlas Terrain", description: profile.materialsDescription },
+      { id: "l_hud", name: "Compass & Landmark Radar", depth: "hud", renderingTechnology: "dom", contentRole: "Navigation HUD", description: "Perimeter coordinate instruments and telemetry cards" },
     ];
 
     return {
@@ -976,20 +986,24 @@ export class CandidateCompositionSynthesizer {
 
   /**
    * Candidate 4: CHARACTER_STAGE (or FOCAL_STAGE)
-   * 360-degree pedestal spotlight inspecting an active character or entity, with companion dock.
+   * 360-degree pedestal spotlight inspecting an active model or entity.
    */
   private static buildFocalStageCandidate(
     profile: ReturnType<typeof CandidateCompositionSynthesizer.extractSpatialSemanticProfile>,
-    characteristics: ProductCharacteristics
+    characteristics: ProductCharacteristics,
+    ctx: SectionPlanContext
   ): CandidateExperienceArchitecture {
-    const experienceIntent = `Character-focused 3D spotlight and lore stage with rotatable companion plinth, voice playback, and quest challenges`;
+    const baseSections = this.deriveSectionPlan(ctx);
+    const primarySection = baseSections[0];
+
+    const experienceIntent = `Focused 3D spotlight and inspection stage with rotatable model plinth, audio feedback, and system status`;
     const focalElement = profile.entityCategory === "caliber"
       ? "Hand-finished tourbillon timepiece in grade-5 titanium and 18k rose gold with interactive 360-degree rotation"
       : profile.entityCategory === "specimen"
-      ? "3D deep sea creature specimen turntable with bioluminescent luminescence and anatomical callouts"
+      ? "3D deep sea habitat specimen turntable with interior cutaway callouts and volumetric lighting"
       : profile.entityCategory === "module"
       ? "3D architectural lounge chair with rotatable plinth and customizable leather materials"
-      : `Large 3D character inspection plinth with animated companion avatar, claymation props, and voice trigger`;
+      : `Large 3D focal inspection plinth with animated model display and contextual controls`;
 
     let navigationModel: NavigationModel = "bottom_dock";
     if (profile.entityCategory === "flacon") {
@@ -1009,33 +1023,20 @@ export class CandidateCompositionSynthesizer {
         : profile.entityCategory === "caliber"
         ? "Artisan tourbillon watch on rotating graphite plinth with exhibition caseback and macro inspection"
         : profile.entityCategory === "specimen"
-        ? "Bioluminescent deep sea creature specimen on floating acoustic observation turntable"
+        ? "Deep sea research module specimen on floating acoustic observation turntable"
         : profile.entityCategory === "module"
         ? "Sculptural lounge chair on rotating architectural plinth with real-time textile swatches"
-        : `Tactile claymation companion on rotating pedestal stage with responsive facial expressions and props`,
+        : `Tactile 3D model on rotating pedestal stage with responsive controls`,
       sceneEnvironment: profile.environmentDescription,
-      cameraStrategy: "Pedestal character turntable with close-up face and voice gesture tracking",
+      cameraStrategy: "Pedestal model turntable with close-up inspection and gesture tracking",
       lightingModel: profile.lightingModel,
       materialsAndShaders: profile.materialsDescription,
       spatialHud: {
         placement: "integrated_sidebar",
-        components: ["Companion Roster Selector", "Voice Resonance Gauge", "Quest Ledger"],
+        components: baseSections.map(s => `${extractFeatureNoun(s.name)} Selector`).slice(0, 3),
       },
       interactionTopology: "direct_mesh_manipulation",
     };
-
-    const scenes: CompositionScene[] = [
-      {
-        id: "scene_plinth",
-        sceneIndex: 1,
-        name: "The Character Pedestal",
-        intent: "Close-up 360-degree rotation of selected companion avatar",
-        focalSubject: "Active Companion Model",
-        cameraOrViewBehavior: { perspective: "orbit", motionProfile: "gentle_float", targetFocus: "Companion Plinth" },
-        spatialElements: ["Pedestal Stone", "Bramble Bear", "Pebble Sprite", "Cloud Weaver"],
-        narrativeOrContent: "Every companion has a voice and a unique lore trait.",
-      },
-    ];
 
     let sections: CompositionSection[] = profile.entityCategory === "flacon"
       ? [
@@ -1107,60 +1108,19 @@ export class CandidateCompositionSynthesizer {
             secondaryElements: ["Size guide", "Worldwide shipping estimate"],
           },
         ]
-      : [
-          {
-            id: "sec_character_plinth",
-            order: 1,
-            name: "3D Companion Spotlight Stage",
-            focalElement: "Interactive 3D companion model on rotatable pedestal with animated gestures",
-            layoutFamily: "HERO_CANVAS",
-            gridStructure: "canvas-fullbleed",
-            contentPurpose: "Hero companion spotlight and tactile inspection",
-            primaryAction: { label: "Commune & Hear Voice", action: "play_voice" },
-            secondaryElements: ["Companion trait badge", "Origin biome"],
-          },
-          {
-            id: "sec_voice_sanctuary",
-            order: 2,
-            name: "Companion Lore & Voice Excerpts",
-            focalElement: "Companion dialogue transcript, character quote, and audio frequency visualizer",
-            layoutFamily: "SPLIT_SHOWCASE",
-            gridStructure: "split-6-6",
-            contentPurpose: "Explore character personality and listen to folklore clips",
-            secondaryElements: ["Wisdom quotes", "Voice clips"],
-          },
-          {
-            id: "sec_companion_quests",
-            order: 3,
-            name: "Quests Bestowed by Companions",
-            focalElement: "Interactive quest map waypoints unlocked by the active companion",
-            layoutFamily: "TIMELINE",
-            gridStructure: "scroll-timeline",
-            contentPurpose: "Complete companion trials and earn guardian charms",
-            primaryAction: { label: "Accept Quest", action: "accept_quest" },
-            secondaryElements: ["Quest rewards", "Completion state"],
-          },
-          {
-            id: "sec_soundboard_dock",
-            order: 4,
-            name: "Companion Harmony Soundboard",
-            focalElement: "Tactile chime soundboard tuned to companion resonant notes (C4, E4, G4)",
-            layoutFamily: "CONSOLE",
-            gridStructure: "dock-panel",
-            contentPurpose: "Harmonic soundboard audio mixer with whimsical chime triggers",
-            secondaryElements: ["Resonant frequencies", "Ambient volume"],
-          },
-        ];
+      : baseSections;
+
+    const scenes = this.deriveScenesPlan(profile, sections);
 
     const layers: CompositionLayer[] = [
-      { id: "l_glade", name: "Enchanted Glade", depth: "background", renderingTechnology: "webgl", contentRole: "Atmosphere", description: "Atmospheric glade environment" },
-      { id: "l_avatar", name: "3D Companion Plinth", depth: "midground", renderingTechnology: "webgl", contentRole: "Hero Avatar", description: "Detailed character turntable" },
-      { id: "l_hud", name: "Voice & Lore Drawer", depth: "hud", renderingTechnology: "dom", contentRole: "Interaction UI", description: "Bottom companion dock and dialogue drawer" },
+      { id: "l_env", name: "Atmospheric Studio Lighting", depth: "background", renderingTechnology: "webgl", contentRole: "Atmosphere", description: profile.environmentDescription },
+      { id: "l_stage", name: "3D Model Plinth", depth: "midground", renderingTechnology: "webgl", contentRole: "Hero Avatar", description: profile.materialsDescription },
+      { id: "l_hud", name: "Control & Telemetry Drawer", depth: "hud", renderingTechnology: "dom", contentRole: "Interaction UI", description: "Bottom control dock and telemetry drawer" },
     ];
 
     return {
       strategyId: "CHARACTER_STAGE",
-      name: "Character Pedestal Stage",
+      name: "Model Pedestal Stage",
       experienceIntent,
       focalElement,
       layoutTopology,
@@ -1196,21 +1156,31 @@ export class CandidateCompositionSynthesizer {
   }
 
   /**
-   * Candidate 5: INTERACTIVE_REALM
-   * Tactile direct manipulation sandbox with physics, soundboards, and trial ledger.
+   * Candidate 5: INTERACTIVE_SIMULATION
+   * Tactile direct manipulation sandbox with physics, simulation console, and operational metrics.
    */
   private static buildPlaygroundCandidate(
     profile: ReturnType<typeof CandidateCompositionSynthesizer.extractSpatialSemanticProfile>,
-    characteristics: ProductCharacteristics
+    characteristics: ProductCharacteristics,
+    ctx: SectionPlanContext
   ): CandidateExperienceArchitecture {
-    const experienceIntent = `Whimsical living playground with interactive pastel spheres, soundboard totems, and quest trials`;
+    const baseSections = this.deriveSectionPlan(ctx);
+    const sections: CompositionSection[] = baseSections.map((s, idx) => ({
+      ...s,
+      layoutFamily: idx === 0 ? "IMMERSIVE_WORLD" : idx === 1 ? "CONSOLE" : idx === 2 ? "TIMELINE" : "EDITORIAL",
+      gridStructure: idx === 0 ? "canvas-fullbleed" : idx === 1 ? "dock-panel" : idx === 2 ? "scroll-timeline" : "split-3d-text",
+    }));
+    const scenes = this.deriveScenesPlan(profile, sections);
+    const primarySection = sections[0];
+
+    const experienceIntent = `Dynamic living simulation workspace with interactive physics, acoustic console, and operational metrics`;
     const focalElement = profile.entityCategory === "caliber"
       ? "Interactive horological workbench with escapement speed regulator and complication simulator"
       : profile.entityCategory === "specimen"
       ? "Submersible sonar acoustic console with hydrophone frequency mixer and pressure chamber simulator"
       : profile.entityCategory === "module"
       ? "Interactive 3D interior layout sandbox with drag-and-drop modular furniture pieces"
-      : "Interactive whimsical physics sandbox with bouncy pastel spheres, soundboard totems, and living clouds";
+      : `Interactive simulation sandbox with physics objects, telemetry totems, and atmospheric lighting`;
 
     const navigationModel: NavigationModel = "bottom_dock";
     const layoutTopology: LayoutTopologyType = "PLAYFUL_WORKSPACE";
@@ -1224,85 +1194,27 @@ export class CandidateCompositionSynthesizer {
         ? "Submersible acoustic observation basin with interactive hydrophone sensors"
         : profile.entityCategory === "module"
         ? "Interactive architectural space planner with responsive daylight and furniture swatches"
-        : "Bouncy claymation playground with pastel physics spheres, secret burrow openings, and sound rocks",
+        : `Interactive simulation basin with physical entities, telemetry sensors, and acoustic resonance`,
       sceneEnvironment: profile.environmentDescription,
-      cameraStrategy: "Interactive tilt-and-bounce camera with bouncy sphere physics collisions",
+      cameraStrategy: "Interactive tilt-and-pan camera with responsive physics interactions",
       lightingModel: profile.lightingModel,
       materialsAndShaders: profile.materialsDescription,
       spatialHud: {
         placement: "floating_overlay",
-        components: ["Magical Soundboard Mixer", "Realm Telemetry", "Traveler Ledger"],
+        components: sections.map(s => `${extractFeatureNoun(s.name)} Console`).slice(0, 3),
       },
       interactionTopology: "direct_mesh_manipulation",
     };
 
-    const scenes: CompositionScene[] = [
-      {
-        id: "scene_sandbox",
-        sceneIndex: 1,
-        name: "Living Playground",
-        intent: "Clickable pastel spheres that bounce on the terrain",
-        focalSubject: "Playground Basin",
-        cameraOrViewBehavior: { perspective: "orbit", motionProfile: "kinetic_snap", targetFocus: "Pastel Spheres" },
-        spatialElements: ["Pastel Spheres", "Mossy Mounds", "Sound Rocks"],
-        narrativeOrContent: "Tap spheres to hear musical notes ring through the valley.",
-      },
-    ];
-
-    const sections: CompositionSection[] = [
-      {
-        id: "sec_sandbox_stage",
-        order: 1,
-        name: "Living Playground & Pastel Spheres Canvas",
-        focalElement: "Full 3D WebGL interactive universe with clickable pastel spheres and tilt physics",
-        layoutFamily: "IMMERSIVE_WORLD",
-        gridStructure: "canvas-fullbleed",
-        contentPurpose: "Playful physics interaction and landmark discovery",
-        primaryAction: { label: "Bounce Pastel Spheres", action: "bounce_spheres" },
-        secondaryElements: ["Landmarks counter", "Active biome"],
-      },
-      {
-        id: "sec_magical_soundboard",
-        order: 2,
-        name: "Tactile Magical Soundboard Console",
-        focalElement: "Interactive soundboard pads with real Web Audio chime playback and visualizer waves",
-        layoutFamily: "CONSOLE",
-        gridStructure: "dock-panel",
-        contentPurpose: "Magical soundboard with chime notes and ambient wind mixers",
-        secondaryElements: ["Chime Note C4", "Chime Note E4", "Chime Note G4"],
-      },
-      {
-        id: "sec_realm_quest_board",
-        order: 3,
-        name: "Realm Discovery Trials & Trophies",
-        focalElement: "Tactile quest map cards with confetti celebration animations upon completion",
-        layoutFamily: "TIMELINE",
-        gridStructure: "scroll-timeline",
-        contentPurpose: "Complete whimsical trials across the fantasy universe",
-        primaryAction: { label: "Complete Trial", action: "complete_quest" },
-        secondaryElements: ["Charm rewards", "Trial status"],
-      },
-      {
-        id: "sec_chronicler_journal",
-        order: 4,
-        name: "Journey Scroll & Scrapbook Ledger",
-        focalElement: "Whimsical journey scroll with traveler memories and discovery entries",
-        layoutFamily: "EDITORIAL",
-        gridStructure: "split-3d-text",
-        contentPurpose: "Read chronicled realm history and family journey discoveries",
-        secondaryElements: ["Cycle entries", "Traveler lore"],
-      },
-    ];
-
     const layers: CompositionLayer[] = [
-      { id: "l_sky", name: "Atmospheric Clouds & Sky", depth: "background", renderingTechnology: "webgl", contentRole: "Atmosphere", description: "Procedural volumetric clouds drifting over hills" },
-      { id: "l_world", name: "Pastel Spheres & Mounds", depth: "midground", renderingTechnology: "webgl", contentRole: "Physics Sandbox", description: "Bouncy spheres and interactive burrow avatars" },
-      { id: "l_hud", name: "Soundboard & Quest Bar", depth: "hud", renderingTechnology: "dom", contentRole: "Sandbox Controls", description: "Pill navigation and audio pads" },
+      { id: "l_env", name: "Atmospheric Clouds & Lighting", depth: "background", renderingTechnology: "webgl", contentRole: "Atmosphere", description: profile.environmentDescription },
+      { id: "l_stage", name: "Interactive Simulation Stage", depth: "midground", renderingTechnology: "webgl", contentRole: "Physics Sandbox", description: profile.materialsDescription },
+      { id: "l_hud", name: "Simulation Controls & HUD", depth: "hud", renderingTechnology: "dom", contentRole: "Sandbox Controls", description: "Pill navigation and simulation controls" },
     ];
 
     return {
-      strategyId: "INTERACTIVE_REALM",
-      name: "Interactive Tactile Playground",
+      strategyId: "INTERACTIVE_SIMULATION",
+      name: "Interactive Simulation Workspace",
       experienceIntent,
       focalElement,
       layoutTopology,
@@ -1317,8 +1229,8 @@ export class CandidateCompositionSynthesizer {
         type: layoutTopology,
         regions: [
           { id: "sandbox-stage", role: "hero", gridSpan: { cols: 12, rows: 6 }, density: "spacious" },
-          { id: "soundboard-console", role: "primary", gridSpan: { cols: 8, rows: 4 }, density: "compact" },
-          { id: "quest-trials", role: "aside", gridSpan: { cols: 4, rows: 4 }, density: "compact" },
+          { id: "simulation-console", role: "primary", gridSpan: { cols: 8, rows: 4 }, density: "compact" },
+          { id: "telemetry-metrics", role: "aside", gridSpan: { cols: 4, rows: 4 }, density: "compact" },
         ],
       },
       primaryFocus: {

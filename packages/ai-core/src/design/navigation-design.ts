@@ -149,12 +149,12 @@ export class NavigationDesignResolver {
         logoType = "hud_badge";
         mobileModel = "drawer";
         interactionModel = "cartographic-tab-strip";
-      } else if (compositionStrategy === "INTERACTIVE_REALM") {
+      } else if (compositionStrategy === "INTERACTIVE_SIMULATION" || compositionStrategy === "INTERACTIVE_REALM") {
         model = "bottom_dock";
         position = "floating_bottom";
         logoType = "monogram";
         mobileModel = "inline";
-        interactionModel = "realm-compass-dock";
+        interactionModel = "simulation-compass-dock";
       } else {
         // WORLD_EXPLORATION or default
         model = "immersive_hud";

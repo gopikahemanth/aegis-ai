@@ -865,7 +865,9 @@ export class Orchestrator {
         characteristics,
         experienceCapability,
         resolvedContract,
-        genIdentity.seed
+        genIdentity.seed,
+        undefined,
+        specification
       );
       console.log(`[DesignPipeline] ✓ CompositionGraph synthesized: ${compositionGraph.structuralFingerprint}`);
 

@@ -50,7 +50,7 @@ describe("ExperienceArchitect", () => {
     expect(fantasyGraph.spatialPlan?.sceneType).toBe("WORLD_EXPLORATION");
     expect(fantasyGraph.spatialPlan?.focalObject).toContain("island");
     expect(fantasyGraph.navigationModel).toMatch(/immersive-hud|playful-pill-dock/);
-    expect(fantasyGraph.sections?.some(s => s.name.includes("Realm") || s.name.includes("Companions"))).toBe(true);
+    expect(fantasyGraph.sections?.some(s => s.name.includes("Characters") || s.name.includes("Islands") || s.name.includes("Adventure"))).toBe(true);
 
     // 4. Futuristic Sneaker Launch
     const sneakerPrompt = "Build a futuristic sneaker launch experience with 3D product turntable and dynamic materials";

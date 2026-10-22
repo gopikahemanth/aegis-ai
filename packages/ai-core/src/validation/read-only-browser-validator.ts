@@ -3,6 +3,7 @@ import { join } from "node:path";
 import http from "node:http";
 import { ErrorClassifier } from "../healing/error-classifier.js";
 import type { PrimaryRouteCapabilityContract } from "../governance/architecture-contract.js";
+import { CHROMIUM_ARGS } from "./chromium-args.js";
 
 function findSourceFiles(dir: string, ext = [".tsx", ".jsx", ".ts", ".js"]): string[] {
   const results: string[] = [];
@@ -87,6 +88,7 @@ export interface FrontendBrowserReview {
   experienceFidelity?: ExperienceFidelityResult;
   routeReviews?: RouteBrowserReview[];
   failureReason?: string;
+  warnings?: string[];
 }
 
 export interface ExperienceFidelityResult {
@@ -191,15 +193,7 @@ export class ReadOnlyBrowserValidator {
       const browser = await puppeteer.launch({
         headless: true,
         protocolTimeout: 120000,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--enable-webgl",
-          "--ignore-gpu-blocklist",
-          "--use-gl=angle",
-          "--use-angle=swiftshader",
-        ],
+        args: [...CHROMIUM_ARGS],
       });
       const page = await browser.newPage();
       page.on("dialog", async (dialog) => {
@@ -835,6 +829,7 @@ export class ReadOnlyBrowserValidator {
       fatalConsoleErrors: [],
       uncaughtExceptions: [],
       renderedElementsCount: 0,
+      warnings: [],
     };
 
     const cleanUrl = (url || "http://localhost:5173").trim().replace(/^h+ttp:\/\//i, "http://").replace(/^http:\/\/\/+/i, "http://");
@@ -880,15 +875,7 @@ export class ReadOnlyBrowserValidator {
       const browser = await puppeteer.launch({
         headless: true,
         protocolTimeout: 120000,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--enable-webgl",
-          "--ignore-gpu-blocklist",
-          "--use-gl=angle",
-          "--use-angle=swiftshader",
-        ],
+        args: [...CHROMIUM_ARGS],
       });
       const page = await browser.newPage();
       page.on("dialog", async (dialog) => {
@@ -900,6 +887,9 @@ export class ReadOnlyBrowserValidator {
           const text = msg.text();
           if (ReadOnlyBrowserValidator.NON_FATAL_WEBGL_REGEX.test(text)) {
             console.warn(`[BrowserValidator] Non-fatal WebGL context note in headless browser: ${text}`);
+            if (review.warnings && !review.warnings.includes(text)) {
+              review.warnings.push(`WebGL context note: ${text}`);
+            }
             return;
           }
           const isFatal = /Cannot read propert|is not a function|Uncaught|SyntaxError|ReferenceError|Failed to resolve import/i.test(text);
@@ -913,6 +903,9 @@ export class ReadOnlyBrowserValidator {
         const text = err?.message || String(err);
         if (ReadOnlyBrowserValidator.NON_FATAL_WEBGL_REGEX.test(text)) {
           console.warn(`[BrowserValidator] Non-fatal WebGL context note in headless browser: ${text}`);
+          if (review.warnings && !review.warnings.includes(text)) {
+            review.warnings.push(`WebGL context note: ${text}`);
+          }
           return;
         }
         if (!review.uncaughtExceptions.includes(text)) {
@@ -965,6 +958,69 @@ export class ReadOnlyBrowserValidator {
               captured = true;
             } else {
               console.warn(`[BrowserValidator] ⚠️ Screenshot file for ${vp.name} is missing or invalid size (attempt ${attempts}/2)`);
+            }
+
+            // Check whether <canvas> renders non-blank pixels: take a 200x200 crop/sample of the canvas, compute pixel variance
+            if (vp.name === "desktop" && captured) {
+              try {
+                const canvasHandles = await page.$$("canvas");
+                for (const canvasHandle of canvasHandles) {
+                  try {
+                    const isBlank = await page.evaluate((el: HTMLCanvasElement) => {
+                      try {
+                        const w = Math.min(200, el.width || 200);
+                        const h = Math.min(200, el.height || 200);
+                        if (w <= 0 || h <= 0) return true;
+
+                        let pixelData: Uint8Array | Uint8ClampedArray | null = null;
+                        const gl = el.getContext("webgl") || el.getContext("webgl2") || (el as any).getContext("experimental-webgl");
+                        if (gl && !gl.isContextLost()) {
+                          const buf = new Uint8Array(w * h * 4);
+                          gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+                          pixelData = buf;
+                        }
+
+                        if (!pixelData || pixelData.every(b => b === 0)) {
+                          const offscreen = document.createElement("canvas");
+                          offscreen.width = w;
+                          offscreen.height = h;
+                          const ctx = offscreen.getContext("2d");
+                          if (ctx) {
+                            ctx.drawImage(el, 0, 0, w, h);
+                            pixelData = ctx.getImageData(0, 0, w, h).data;
+                          }
+                        }
+
+                        if (!pixelData || pixelData.length === 0) return true;
+
+                        let sum = 0;
+                        let sumSq = 0;
+                        const n = Math.floor(pixelData.length / 4);
+                        if (n === 0) return true;
+
+                        for (let i = 0; i < pixelData.length; i += 4) {
+                          const lum = 0.299 * pixelData[i] + 0.587 * pixelData[i + 1] + 0.114 * pixelData[i + 2];
+                          sum += lum;
+                          sumSq += lum * lum;
+                        }
+                        const mean = sum / n;
+                        const variance = (sumSq / n) - (mean * mean);
+                        return variance < 1.0;
+                      } catch {
+                        return false;
+                      }
+                    }, canvasHandle);
+
+                    if (isBlank) {
+                      const warningMsg = "canvas element is blank / failed to render";
+                      console.warn(`[BrowserValidator] ⚠️ ${warningMsg}`);
+                      if (review.warnings && !review.warnings.includes(warningMsg)) {
+                        review.warnings.push(warningMsg);
+                      }
+                    }
+                  } catch {}
+                }
+              } catch {}
             }
 
             // If desktop viewport, capture interactive cart drawer open state if available

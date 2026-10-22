@@ -8,6 +8,7 @@
  */
 
 import http from "node:http";
+import { CHROMIUM_ARGS } from "./chromium-args.js";
 
 export interface BrowserWorkflowAction {
   name: string;
@@ -73,14 +74,7 @@ export class BrowserWorkflowRunner {
         const puppeteer = await import("puppeteer");
         const browser = await puppeteer.launch({
           headless: true,
-          args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--enable-webgl",
-            "--ignore-gpu-blocklist",
-            "--use-gl=angle",
-            "--use-angle=swiftshader",
-          ],
+          args: [...CHROMIUM_ARGS],
         });
 
         try {

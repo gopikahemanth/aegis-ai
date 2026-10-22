@@ -2,6 +2,7 @@ import { createServer, Server, get } from "node:http";
 import { readFileSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { spawn, execSync } from "node:child_process";
+import { CHROMIUM_ARGS } from "../validation/chromium-args.js";
 
 export interface SandboxResult {
   success: boolean;
@@ -170,7 +171,7 @@ export class SandboxVerifier {
       try {
         browser = await puppeteer.default.launch({
           headless: true,
-          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+          args: [...CHROMIUM_ARGS],
         });
       } catch (launchErr: any) {
         console.warn(`[Sandbox] ⚠️ Browser launch warning: ${launchErr.message}. Falling back to HTTP connection verification.`);

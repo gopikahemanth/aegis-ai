@@ -1715,7 +1715,7 @@ Do NOT touch backend or database.`;
       fatalConsoleErrors: browserReview.fatalConsoleErrors,
       uncaughtExceptions: browserReview.uncaughtExceptions,
       reviewPassed: browserReview.passed,
-      warnings: visualWarnings,
+      warnings: [...(visualWarnings || []), ...(browserReview.warnings || [])],
       productIdentity: browserReview.productIdentity,
       status: "PENDING",
     };

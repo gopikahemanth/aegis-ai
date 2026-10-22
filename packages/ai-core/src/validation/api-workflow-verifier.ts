@@ -44,6 +44,7 @@ export interface ApiStepResult {
   dbMutationConfirmed?: boolean;
   error?: string;
   durationMs: number;
+  failureType?: "APPLICATION_FAILURE" | "INFRASTRUCTURE_FAILURE" | "NONE";
 }
 
 export interface ApiWorkflowReport {
@@ -301,51 +302,17 @@ export class ApiWorkflowVerifier {
 
       if (ep.requestSchema && ep.requestSchema.length > 0) {
         for (const field of ep.requestSchema) {
-          sampleBody[field.name] = this.generateSampleFieldValue(field.type);
+          sampleBody[field.name] = this.generateSampleFieldValue(field.type, field.name);
         }
       } else if (ep.requestFields) {
         for (const [key, type] of Object.entries(ep.requestFields)) {
-          sampleBody[key] = this.generateSampleFieldValue(type);
+          sampleBody[key] = this.generateSampleFieldValue(type, key);
         }
       } else if (isPostOrPut) {
-        sampleBody.name = `sample_${Date.now()}`;
+        // Fallback generic schema if endpoint contract did not declare inline requestSchema
+        sampleBody.name = `Sample_${ep.operationId || "item"}_${Date.now()}`;
         sampleBody.status = "active";
-      }
-
-      if (isPostOrPut) {
-        const fallbackName = `sample_${Date.now()}`;
-        if (!sampleBody.name) sampleBody.name = sampleBody.title || fallbackName;
-        if (!sampleBody.title) sampleBody.title = sampleBody.name || fallbackName;
-        if (!sampleBody.data) sampleBody.data = {};
-        if (!sampleBody.description) sampleBody.description = "Test sample description";
-        if (!sampleBody.serviceName) sampleBody.serviceName = sampleBody.name || "General Consultation";
-        if (!sampleBody.specialty) sampleBody.specialty = "General Practice";
-        if (!sampleBody.date) sampleBody.date = "2026-10-20";
-        if (!sampleBody.time) sampleBody.time = "10:00 AM";
-        if (!sampleBody.patientName) sampleBody.patientName = "Test Patient";
-        if (!sampleBody.patientEmail) sampleBody.patientEmail = sharedAuthEmail;
-        if (!sampleBody.email) sampleBody.email = sharedAuthEmail;
-        if (!sampleBody.message) sampleBody.message = "Test inquiry or message content";
-        if (!sampleBody.subject) sampleBody.subject = "General Inquiry";
-        if (!sampleBody.phone) sampleBody.phone = "+1234567890";
-        if (!sampleBody.partySize) sampleBody.partySize = 2;
-        if (!sampleBody.guests) sampleBody.guests = 2;
-        if (!sampleBody.customerName) sampleBody.customerName = sampleBody.name || "Test Customer";
-        if (!sampleBody.customerEmail) sampleBody.customerEmail = sharedAuthEmail;
-        if (!sampleBody.customerPhone) sampleBody.customerPhone = "+1234567890";
-        if (!sampleBody.address) sampleBody.address = "123 Spice Route Way, Kochi";
-        if (!sampleBody.price) sampleBody.price = 24.50;
-        if (!sampleBody.quantity) sampleBody.quantity = 1;
-        if (!sampleBody.category) sampleBody.category = "Main Courses";
-        if (!sampleBody.status) sampleBody.status = "Confirmed";
-        if (!sampleBody.bookId) sampleBody.bookId = "1";
-        if (!sampleBody.productId) sampleBody.productId = "1";
-        if (!sampleBody.itemId) sampleBody.itemId = "1";
-        if (!sampleBody.orderId) sampleBody.orderId = "1";
-        if (!sampleBody.userId) sampleBody.userId = "1";
-        if (!sampleBody.items) sampleBody.items = [{ id: "1", name: sampleBody.name, price: 10, quantity: 1 }];
-        if (!sampleBody.totalAmount) sampleBody.totalAmount = 24.50;
-        if (!sampleBody.shippingAddress) sampleBody.shippingAddress = "123 Spice Route Way, Kochi";
+        sampleBody.description = `Test payload for ${ep.path}`;
       }
 
       if (ep.responseSchema && ep.responseSchema.length > 0) {
@@ -375,9 +342,17 @@ export class ApiWorkflowVerifier {
         }
       }
 
-      const expectedStatus = ep.method === "POST"
-        ? (ep.path.endsWith("/login") ? 200 : 201)
-        : (ep.method === "DELETE" ? 204 : 200);
+      // Respect endpoint-specific status codes if declared in contract
+      let expectedStatus: number;
+      if (ep.statusCodes && ep.statusCodes.length > 0) {
+        expectedStatus = ep.statusCodes.find(code => code >= 200 && code < 300) || ep.statusCodes[0];
+      } else if (ep.method === "POST") {
+        expectedStatus = ep.path.endsWith("/login") || ep.path.includes("/query") || ep.path.includes("/search") ? 200 : 201;
+      } else if (ep.method === "DELETE") {
+        expectedStatus = 204;
+      } else {
+        expectedStatus = 200;
+      }
 
       steps.push({
         workflowId: `wf_pos_${ep.operationId || ep.method + ep.path.replace(/\//g, "_")}`,
@@ -692,6 +667,7 @@ export class ApiWorkflowVerifier {
           dbMutationConfirmed,
           error: errorReason,
           durationMs,
+          failureType: passed ? "NONE" : "APPLICATION_FAILURE",
         });
 
         if (passed) {
@@ -701,13 +677,16 @@ export class ApiWorkflowVerifier {
           console.warn(`  ✗ [FAIL] ${step.method} ${step.path}: ${errorReason} (${durationMs}ms)`);
         }
       } catch (err: any) {
+        const isConnRefused = err.message?.includes("ECONNREFUSED") || err.cause?.code === "ECONNREFUSED";
+        const failureType = isConnRefused ? "INFRASTRUCTURE_FAILURE" : "APPLICATION_FAILURE";
         results.push({
           step,
           passed: false,
           error: `Network/Fetch error: ${err.message}`,
           durationMs: Date.now() - start,
+          failureType,
         });
-        console.warn(`  ✗ [FAIL] ${step.method} ${step.path}: Network error: ${err.message}`);
+        console.warn(`  ✗ [FAIL] ${step.method} ${step.path}: ${failureType}: ${err.message}`);
       }
     }
 
@@ -765,12 +744,29 @@ export class ApiWorkflowVerifier {
     return report;
   }
 
-  private static generateSampleFieldValue(type: string): any {
+  private static generateSampleFieldValue(type: string, fieldName?: string): any {
     const t = type.toLowerCase();
+    const fn = (fieldName || "").toLowerCase();
+
+    // Semantic field name hints
+    if (fn.includes("email")) return "test_user@example.internal";
+    if (fn.includes("password")) return "Secr3t_1234!";
+    if (fn.includes("phone")) return "+1234567890";
+    if (fn.includes("sku") || fn.includes("code")) return "SKU-1001";
+    if (fn.includes("status")) return "active";
+    if (fn.includes("date")) return "2026-10-22";
+    if (fn.includes("time")) return "14:00";
+    if (fn.includes("price") || fn.includes("amount") || fn.includes("cost") || fn.includes("fee")) return 29.99;
+    if (fn.includes("quantity") || fn.includes("count") || fn.includes("partysize") || fn.includes("guests")) return 2;
+    if (fn.includes("description") || fn.includes("note") || fn.includes("message")) return "Sample test content";
+
+    // Type hints
     if (t.includes("string[]") || t.includes("array")) return ["sample_item_1", "sample_item_2"];
-    if (t.includes("number") || t.includes("int") || t.includes("float")) return 42;
+    if (t.includes("number") || t.includes("int") || t.includes("float")) return 10;
     if (t.includes("boolean")) return true;
     if (t.includes("date")) return new Date().toISOString();
-    return "sample_value";
+    if (t.includes("object") || t.includes("json")) return {};
+
+    return fieldName ? `Sample_${fieldName}` : "sample_value";
   }
 }

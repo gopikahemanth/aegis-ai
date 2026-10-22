@@ -149,6 +149,18 @@ export * from "./real-product-generation/index.js";
 export * from "./testing/index.js";
 export * from "./validation/wiring-integrity-checker.js";
 export * from "./healing/self-healing-coordinator.js";
+export {
+  FeatureMatrixManager,
+  type FeatureMatrix as CanonicalFeatureMatrix,
+  type FeatureDefinition,
+  type FeaturePriority,
+  type FeatureVerificationStatus,
+  type TestVerificationStrategy,
+  type FeatureEndpointRef,
+  type FeatureModelRef,
+  type FeatureAcceptanceTestRef,
+} from "./contracts/feature-matrix.js";
+export * from "./contracts/canonical-contract.js";
 
 
 

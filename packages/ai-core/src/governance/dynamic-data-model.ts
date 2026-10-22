@@ -402,7 +402,7 @@ export class DynamicDataModelContract {
 
     const textEntitySignals = ["text", "content", "description", "body", "note", "log", "data", "message", "comment"];
     const hasTextSignal = entityWords.some(w => textEntitySignals.some(s => w.includes(s)));
-    if (hasTextSignal || entity.purpose.toLowerCase().includes("content")) {
+    if (hasTextSignal || entity.purpose?.toLowerCase().includes("content")) {
       fields.push({ name: "content", type: "String", nullable: true, validation: "@db.Text" });
     }
 

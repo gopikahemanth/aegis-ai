@@ -1151,9 +1151,22 @@ export class CanonicalFileGraph {
   public static isAuthorized(path: string): boolean {
     const normalized = path.replace(/\\/g, "/");
     if (CanonicalFileGraph.byPath.has(normalized)) return true;
-    // Allow standard application layers
+
+    // Check project-specific dynamic file graph
+    const root = ProjectRootSingleton.getRoot();
+    if (root) {
+      try {
+        const dyn = DynamicFileGraphManager.load(root);
+        if (dyn && dyn.entries.some(e => e.canonicalPath === normalized)) {
+          return true;
+        }
+      } catch {}
+    }
+
+    // Allow standard application layers (dynamic domain generalization)
     if (
       normalized.startsWith("src/pages/") ||
+      normalized.startsWith("src/views/") ||
       normalized.startsWith("src/components/") ||
       normalized.startsWith("src/services/") ||
       normalized.startsWith("src/utils/") ||
@@ -1161,12 +1174,24 @@ export class CanonicalFileGraph {
       normalized.startsWith("src/hooks/") ||
       normalized.startsWith("src/lib/") ||
       normalized.startsWith("src/context/") ||
+      normalized.startsWith("src/store/") ||
+      normalized.startsWith("src/state/") ||
+      normalized.startsWith("src/api/") ||
       normalized.startsWith("src/shared/") ||
       normalized.startsWith("src/design-system/") ||
       normalized.startsWith("src/content/") ||
       normalized.startsWith("src/features/") ||
       normalized.startsWith("src/entities/") ||
       normalized.startsWith("src/models/") ||
+      normalized.startsWith("src/layouts/") ||
+      normalized.startsWith("src/constants/") ||
+      normalized.startsWith("src/helpers/") ||
+      normalized.startsWith("src/locales/") ||
+      normalized.startsWith("src/theme/") ||
+      normalized.startsWith("src/styles/") ||
+      normalized.startsWith("src/config/") ||
+      normalized.startsWith("src/data/") ||
+      normalized.startsWith("src/assets/") ||
       normalized.startsWith("src/__tests__/") ||
       normalized.startsWith("test/") ||
       normalized === "src/routes.tsx" ||
@@ -1180,9 +1205,15 @@ export class CanonicalFileGraph {
     // Allow server and prisma subdirectories
     if (normalized.startsWith("server/") || normalized.startsWith("prisma/")) return true;
 
+    // Allow public assets
+    if (normalized.startsWith("public/")) return true;
+
+    // Allow .aegis contracts & state
+    if (normalized.startsWith(".aegis/")) return true;
+
     // Allow config/tooling/declaration/asset files
     if (/\.(json|md|env|css|scss|svg|png|jpg|ico|html|txt|yaml|yml|d\.ts)$/.test(normalized)) return true;
-    if (/(vite|tailwind|postcss|tsconfig|eslint|prettier)\.config\./i.test(normalized)) return true;
+    if (/(vite|tailwind|postcss|tsconfig|eslint|prettier|vitest)\.config\./i.test(normalized)) return true;
     if (normalized.startsWith(".")) return true; // dotfiles (.gitignore, .env*)
     return false;
 
@@ -1200,25 +1231,27 @@ export class CanonicalFileGraph {
     const normalized = proposedPath.replace(/\\/g, "/");
     const root = ProjectRootSingleton.getRoot();
     let aliasCheckSet = CANONICAL_FILES;
-    let isAts = true;
+    let isAts = false;
     if (root) {
       try {
         const dyn = DynamicFileGraphManager.load(root);
         if (dyn && dyn.entries.length > 0) {
           aliasCheckSet = dyn.entries;
+          isAts = (dyn.domainName || "").toLowerCase().includes("resume") || (dyn.domainName || "").toLowerCase().includes("ats");
         } else {
           const contractPath = join(root, ".aegis", "architecture-contract.json");
           if (existsSync(contractPath)) {
             const contract = JSON.parse(readFileSync(contractPath, "utf8"));
             const promptLower = (contract.prompt || "").toLowerCase();
             isAts = promptLower.includes("resume") || promptLower.includes("ats");
-            if (!isAts) {
-              const ATS_STEMS = ["scan", "resume", "keyword", "matchdashboard", "scoregauge", "analyzepage", "uploadform"];
-              aliasCheckSet = aliasCheckSet.filter(e => !ATS_STEMS.some(stem => e.canonicalPath.toLowerCase().includes(stem)));
-            }
           }
         }
       } catch {}
+    }
+
+    if (!isAts) {
+      const ATS_STEMS = ["scan", "resume", "keyword", "matchdashboard", "scoregauge", "analyzepage", "uploadform"];
+      aliasCheckSet = aliasCheckSet.filter(e => !ATS_STEMS.some(stem => e.canonicalPath.toLowerCase().includes(stem)));
     }
 
     // Exact match in static or dynamic canonical entries → authorized, not a duplicate

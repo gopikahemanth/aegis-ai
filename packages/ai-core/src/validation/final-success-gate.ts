@@ -429,13 +429,14 @@ export class FinalSuccessGate {
     // ── 6. Browser Runtime & Semantic State-Mutation Gate (BROWSER_RUNTIME_PASS) ──────
     if (browserResult) {
       const hasMutationFailures = browserResult.semanticMutationResults?.some(m => !m.passed);
+      const routesChecked = browserResult.routesChecked || [];
       const zeroMutations = browserResult.semanticMutationsCount !== undefined &&
         browserResult.semanticMutationsCount === 0 &&
-        browserResult.routesChecked.length > 0;
+        routesChecked.length > 0;
 
       const browserPassed = browserResult.passed && !hasMutationFailures && !zeroMutations;
       let browserMsg = browserResult.passed
-        ? `Rendered ${browserResult.renderedElementsCount} DOM elements cleanly across [${browserResult.routesChecked.join(", ")}].`
+        ? `Rendered ${browserResult.renderedElementsCount ?? 0} DOM elements cleanly across [${routesChecked.join(", ")}].`
         : `Browser crash / error: ${browserResult.classifiedError || "Console error detected"}`;
 
       if (browserResult.semanticMutationsCount !== undefined) {
@@ -549,45 +550,79 @@ export class FinalSuccessGate {
     });
 
 
-    // ── 10. In-Project Automated Test Suite Gate (V2.2 Staged Rollout) ────────
+    // ── 10. In-Project Automated Test Suite Gate (Release-Blocking Mandatory Gate) ──
     const testReport = input.testReport;
+    const isClientOnly = !!((input.contract as any)?.clientOnly || (input.contract?.frontend?.framework && (!input.contract.backend?.framework || input.contract.backend.framework.toLowerCase().includes("none"))));
+
     if (testReport) {
       if (testReport.status === "PASS") {
         items.push({
           name: "In-Project Test Suite",
           passed: true,
           message: `All ${testReport.totalTests} in-project tests passed (${testReport.passedTests}/${testReport.totalTests}) in ${testReport.durationMs}ms.`,
-          critical: false,
+          critical: true,
           category: "BUILD",
         });
-      } else if (testReport.status === "NOT_APPLICABLE" || testReport.status === "SKIPPED") {
+      } else if (testReport.status === "NOT_APPLICABLE") {
         items.push({
           name: "In-Project Test Suite",
-          passed: true,
-          message: `In-project automated testing marked NOT_APPLICABLE for this project stack.`,
-          critical: false,
+          passed: isClientOnly,
+          message: isClientOnly
+            ? "In-project test suite optional for client-only project."
+            : "Mandatory in-project test suite missing or marked NOT_APPLICABLE for full-stack project.",
+          critical: !isClientOnly,
+          category: "BUILD",
+        });
+      } else if (testReport.status === "SKIPPED") {
+        items.push({
+          name: "In-Project Test Suite",
+          passed: false,
+          message: "Mandatory in-project test suite was skipped without executing test assertions.",
+          critical: true,
           category: "BUILD",
         });
       } else {
         items.push({
           name: "In-Project Test Suite",
           passed: false,
-          message: `In-project test failures: ${testReport.failedTests}/${testReport.totalTests} failed.`,
-          critical: false,
+          message: testReport.failureReason || `In-project test failures: ${testReport.failedTests}/${testReport.totalTests} failed (Status: ${testReport.status}).`,
+          critical: true,
           category: "BUILD",
         });
       }
+    } else {
+      items.push({
+        name: "In-Project Test Suite",
+        passed: isClientOnly,
+        message: isClientOnly
+          ? "In-project test suite optional for client-only project."
+          : "Mandatory in-project test suite not executed.",
+        critical: !isClientOnly,
+        category: "BUILD",
+      });
     }
 
-    // ── 11. Runtime Acceptance & User Scenario Gate (Phase 5.4) ───────────────
+    // ── 11. Runtime Acceptance & User Scenario Gate (Release-Blocking Mandatory Gate) ──
     const runtimeReport = input.runtimeReport;
+    const hasBackend = !!(input.contract?.backend?.framework && !input.contract.backend.framework.toLowerCase().includes("none"));
+
     if (runtimeReport) {
       const isPassed = runtimeReport.passed && runtimeReport.status === "SUCCESS";
       items.push({
         name: "Runtime Acceptance & Scenarios",
         passed: isPassed,
         message: runtimeReport.evidenceSummary || (isPassed ? "All quality dimensions and user scenarios passed." : "Runtime acceptance checks failed."),
-        critical: false,
+        critical: true,
+        category: "RUNTIME",
+      });
+    } else {
+      items.push({
+        name: "Runtime Acceptance & Scenarios",
+        passed: !hasBackend,
+        message: hasBackend
+          ? "Mandatory runtime acceptance verification not executed for backend project."
+          : "Client-only runtime verified via browser validator.",
+        critical: hasBackend,
         category: "RUNTIME",
       });
     }

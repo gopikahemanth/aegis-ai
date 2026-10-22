@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { ASTSafeTransformer } from "../governance/ast-safe-transformer.js";
+import { AuthorizedSchemaManager } from "../governance/authorized-schema-manager.js";
 
 export interface GeneratedFile {
   path: string;
@@ -16,18 +17,11 @@ export class FileWriter {
         .replace(/^(\.\/|\/)+/, "")
         .replace(/^(generated\/project\/|apps\/cli\/generated\/project\/)+/i, "");
 
-      // Rule 2: Protect canonical prisma/schema.prisma from LLM overwrite (only if existing file contains valid models)
+      // Rule 2: Authoritative schema evolution via AuthorizedSchemaManager
       if (cleanRelativePath === "prisma/schema.prisma" || cleanRelativePath.endsWith("schema.prisma")) {
-        const fullSchemaPath = join(outputDir, "prisma/schema.prisma");
-        if (existsSync(fullSchemaPath)) {
-          try {
-            const existingContent = readFileSync(fullSchemaPath, "utf8").trim();
-            if (existingContent.length > 0 && /model\s+[A-Z]/.test(existingContent)) {
-              console.log(`[PRISMA-SCHEMA-WRITE] 🔒 Blocked unauthorized LLM overwrite of canonical prisma/schema.prisma.`);
-              continue;
-            }
-          } catch {}
-        }
+        const callerRole = (file as any).callerRole || (file as any).owner || "DatabaseAgent";
+        AuthorizedSchemaManager.reconcileAndWriteSchema(outputDir, file.content, callerRole);
+        continue;
       }
 
       // Rule 6: Protect backend files (server/ and prisma/) from .ts -> .tsx mutation

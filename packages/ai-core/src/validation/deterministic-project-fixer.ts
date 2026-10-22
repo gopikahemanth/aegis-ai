@@ -4,6 +4,7 @@ import { ArchitectureResolver, ArchitectureContractV1 } from "../governance/arch
 import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "../design/domain-visual-contract.js";
 import { DesignSystemGenerator } from "../design/design-system-generator.js";
 import { CapabilityCompletenessInvariant } from "./capability-completeness-invariant.js";
+import { AuthorizedSchemaManager } from "../governance/authorized-schema-manager.js";
 
 export interface BuildFixReport {
   createdFiles: string[];
@@ -337,38 +338,16 @@ try {
       createdFiles.push("tsconfig.node.json");
     }
 
-    // ── 2. Ensure prisma/schema.prisma exists with all Domain Models ──────────
+    // ── 2. Ensure prisma/schema.prisma exists with complete Domain Models ────
     try {
-      const prismaDir = join(projectRoot, "prisma");
-      if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
-      const prismaPath = join(prismaDir, "schema.prisma");
-      let prismaContent = existsSync(prismaPath)
-        ? readFileSync(prismaPath, "utf8")
-        : `datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String   @default("password")
-  name      String   @default("User")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-`;
-      for (const model of domainSpec.allModels) {
-        if (!new RegExp(`model\\s+${model}\\s*\\{`, "m").test(prismaContent)) {
-          prismaContent += `\nmodel ${model} {\n  id          String   @id @default(uuid())\n  userId      String?  @map("user_id")\n  name        String   @default("${model}")\n  description String?  @default("")\n  category    String?  @default("Standard")\n  status      String   @default("Active")\n  data        Json?    @default("{}")\n  createdAt   DateTime @default(now())\n  updatedAt   DateTime @updatedAt\n}\n`;
-        }
-      }
-      writeFileSync(prismaPath, prismaContent, "utf8");
-    } catch {}
+      AuthorizedSchemaManager.reconcileProjectSchema(
+        projectRoot,
+        domainSpec.allModels,
+        "postgresql"
+      );
+    } catch (schemaErr: any) {
+      console.warn(`[DeterministicFixer] Non-fatal schema reconciliation warning: ${schemaErr.message}`);
+    }
 
     // ── 3. Ensure server/lib/prisma.ts exists ─────────────────────────────────
     try {

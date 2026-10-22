@@ -352,6 +352,8 @@ Arguments:
       console.log("🎉 Project generated successfully.");
     } else {
       console.log("❌ Project generation failed.");
+      process.exitCode = 1;
+      process.exit(1);
     }
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : String(error);

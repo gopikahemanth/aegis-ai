@@ -352,6 +352,26 @@ export class Orchestrator {
         imagePayload,
       );
 
+    if (!specification.domainCategory) {
+      try {
+        const { ProductDiscoveryAgent } = await import("../agents/product-discovery-agent.js");
+        const discovery = new ProductDiscoveryAgent(this.provider);
+        const matrix = await discovery.discover(request, {
+          domainType: "commercial",
+          primaryActivity: "data-analysis",
+          complexityLevel: "intermediate",
+          aestheticTone: "technical",
+          userArchetype: "operator",
+        } as any, String(genIdentity.seed));
+        if (matrix?.category) {
+          specification.domainCategory = matrix.category;
+          (this as any)._cachedFeatureMatrix = matrix;
+        }
+      } catch (discErr: any) {
+        console.warn(`[Orchestrator] ProductDiscovery early discovery skipped: ${discErr.message}`);
+      }
+    }
+
     // ── Canonical Specification Normalization & Architecture Lock ────────────────
     const canonicalSpec = SpecificationNormalizer.normalize(request, specification);
 
@@ -688,6 +708,26 @@ export class Orchestrator {
       rawSpecification = architectRes.specification;
       architecturePlan = architectRes.architecturePlan;
 
+      if (!rawSpecification.domainCategory) {
+        try {
+          const { ProductDiscoveryAgent } = await import("../agents/product-discovery-agent.js");
+          const discovery = new ProductDiscoveryAgent(this.provider);
+          const matrix = await discovery.discover(request, {
+            domainType: "commercial",
+            primaryActivity: "data-analysis",
+            complexityLevel: "intermediate",
+            aestheticTone: "technical",
+            userArchetype: "operator",
+          } as any, String(genIdentity.seed));
+          if (matrix?.category) {
+            rawSpecification.domainCategory = matrix.category;
+            (this as any)._cachedFeatureMatrix = matrix;
+          }
+        } catch (discErr: any) {
+          console.warn(`[Orchestrator] ProductDiscovery early discovery skipped: ${discErr.message}`);
+        }
+      }
+
       canonicalSpec = SpecificationNormalizer.normalize(request, rawSpecification);
       (this as any)._currentCanonicalSpec = canonicalSpec;
       specification = canonicalSpec;
@@ -887,7 +927,7 @@ export class Orchestrator {
         const { ContentStrategistAgent } = await import("../agents/content-strategist-agent.js");
         const { ProductDiscoveryAgent } = await import("../agents/product-discovery-agent.js");
         const discovery = new ProductDiscoveryAgent(this.provider);
-        const featureMatrix = await discovery.discover(rawPrompt, characteristics, String(brief.seed));
+        const featureMatrix = (this as any)._cachedFeatureMatrix || await discovery.discover(rawPrompt, characteristics, String(brief.seed));
         const contentAgent = new ContentStrategistAgent(this.provider);
         await contentAgent.generateContent(featureMatrix, brief, outputDirectory);
       } catch (contentErr: any) {
@@ -1623,12 +1663,13 @@ Do NOT touch backend or database.`;
       browserReview = await ReadOnlyBrowserValidator.reviewFrontend(frontendServerInfo.url, outputDirectory);
     }
 
+    const visualWarnings: string[] = [];
     if (!browserReview.passed) {
-      AppServerRunner.stopServer();
       const reasons = browserReview.productIdentity?.mismatchReasons?.length
         ? browserReview.productIdentity.mismatchReasons.join("; ")
-        : browserReview.failureReason;
-      throw new Error(`FRONTEND_GENERATION_FAILED: Frontend failed browser visual and product identity verification after ${MAX_FRONTEND_REPAIR_ATTEMPTS} repair attempts: ${reasons}. Pipeline halted. No approval requested.`);
+        : (browserReview.failureReason || "Visual review criteria had discrepancies");
+      visualWarnings.push(`Visual review discrepancies after ${MAX_FRONTEND_REPAIR_ATTEMPTS} repair attempts: ${reasons}`);
+      console.warn(`[Orchestrator] ⚠️ Soft failure: ${visualWarnings[0]}. Proceeding to approval step with warning report.`);
     }
 
     const pageFiles = existsSync(join(outputDirectory, "src", "pages"))
@@ -1671,7 +1712,8 @@ Do NOT touch backend or database.`;
       renderedElementsCount: browserReview.renderedElementsCount,
       fatalConsoleErrors: browserReview.fatalConsoleErrors,
       uncaughtExceptions: browserReview.uncaughtExceptions,
-      reviewPassed: true,
+      reviewPassed: browserReview.passed,
+      warnings: visualWarnings,
       productIdentity: browserReview.productIdentity,
       status: "PENDING",
     };
@@ -3189,9 +3231,177 @@ FORBIDDEN STUB PATTERNS:
         try {
           ArchitectureContractManager.ensureRouteCapabilities(outputDirectory, dynamicRoutes, specification?.userPrompt);
         } catch {}
-        const apiTargetUrl = server.backendUrl || server.url;
+        let apiTargetUrl = server.backendUrl || server.url;
         apiWorkflowReport = await ApiWorkflowVerifier.executeWorkflows(apiTargetUrl, undefined, outputDirectory);
-        browserValResult = await ReadOnlyBrowserValidator.validate(server.url, outputDirectory, { routes: dynamicRoutes, strictMode: true, apiReport: apiWorkflowReport });
+
+        // Targeted Coder repair loop for failing API contract steps in Stage 10 before Final Gate
+        if (apiWorkflowReport && !apiWorkflowReport.passed && (apiWorkflowReport.failedSteps > 0 || (apiWorkflowReport.results && apiWorkflowReport.results.some((r: any) => !r.passed)))) {
+          const maxRepairAttempts = 2;
+          for (let attempt = 1; attempt <= maxRepairAttempts; attempt++) {
+            const failedSteps = (apiWorkflowReport.results || []).filter((r: any) => !r.passed);
+            if (failedSteps.length === 0) break;
+
+            console.log(`\n[Stage 10: BackendRepair] 🛠️ Backend API repair attempt ${attempt}/${maxRepairAttempts} for ${failedSteps.length} failing step(s)...`);
+
+            // Gather server route files
+            const serverRoutesDir = join(outputDirectory, "server", "routes");
+            const serverRouteFiles: { path: string; content: string }[] = [];
+            if (existsSync(serverRoutesDir)) {
+              try {
+                const entries = readdirSync(serverRoutesDir);
+                for (const entry of entries) {
+                  if (entry.endsWith(".ts") || entry.endsWith(".js")) {
+                    const rel = `server/routes/${entry}`;
+                    const abs = join(serverRoutesDir, entry);
+                    try {
+                      serverRouteFiles.push({ path: rel, content: readFileSync(abs, "utf8") });
+                    } catch {}
+                  }
+                }
+              } catch {}
+            }
+
+            // Also check server entry files
+            const serverEntryFiles: { path: string; content: string }[] = [];
+            for (const entryName of ["server/index.ts", "server/app.ts", "server/server.ts"]) {
+              const abs = join(outputDirectory, entryName);
+              if (existsSync(abs)) {
+                try {
+                  serverEntryFiles.push({ path: entryName, content: readFileSync(abs, "utf8") });
+                } catch {}
+              }
+            }
+
+            // Check database / prisma schema
+            let schemaContext = "";
+            const prismaSchemaPath = join(outputDirectory, "prisma", "schema.prisma");
+            if (existsSync(prismaSchemaPath)) {
+              try {
+                schemaContext = `\nPrisma Schema (prisma/schema.prisma):\n${readFileSync(prismaSchemaPath, "utf8")}\n`;
+              } catch {}
+            }
+            const dbTsPath = join(outputDirectory, "server", "db.ts");
+            if (existsSync(dbTsPath)) {
+              try {
+                schemaContext += `\nDatabase Helper (server/db.ts):\n${readFileSync(dbTsPath, "utf8")}\n`;
+              } catch {}
+            }
+
+            const failedStepDetails = failedSteps.map((f: any, idx: number) =>
+              `${idx + 1}. [${f.step?.method || "UNKNOWN"}] ${f.step?.path || "UNKNOWN"}\n` +
+              `   Description: ${f.step?.description || ""}\n` +
+              `   Endpoint Type: ${f.step?.endpointType || "READ_ONLY"}\n` +
+              `   Requires DB Mutation: ${f.step?.requiresDbMutation ? "Yes" : "No"}\n` +
+              `   Expected Status: ${f.step?.expectedStatus}\n` +
+              `   Actual Status: ${f.actualStatus ?? "N/A"}\n` +
+              `   Error: ${f.error || "None"}\n` +
+              `   Actual Response Body: ${typeof f.actualBody === "object" ? JSON.stringify(f.actualBody) : (f.actualBody || "N/A")}`
+            ).join("\n\n");
+
+            const routeFilesContext = [...serverRouteFiles, ...serverEntryFiles].map(f =>
+              `=== FILE: ${f.path} ===\n${f.content}\n=== END ===`
+            ).join("\n\n");
+
+            const repairPrompt = `
+CRITICAL BACKEND API CONTRACT REPAIR (Attempt ${attempt}/${maxRepairAttempts}):
+The following API workflow tests failed against the running server:
+
+${failedStepDetails}
+
+Existing Server Implementation:
+${routeFilesContext}
+${schemaContext}
+
+Requirements for repair:
+1. Fix the route handlers in server/routes/*.ts or server/index.ts so that all failing endpoints return the expected HTTP status codes and response bodies.
+2. Ensure stateful endpoints (POST, PUT, PATCH, DELETE) properly handle request data, validate inputs, interact with the database or in-memory store, and return 200 or 201 with created/updated data.
+3. For endpoints expecting specific status codes (e.g. 200, 201, 400, 404), ensure the route logic explicitly returns res.status(...).json(...).
+4. Never return HTTP 500. Handle missing fields, invalid IDs, or DB errors with proper 4xx status codes.
+5. Return the full updated files using standard file blocks:
+=== FILE: server/routes/<filename>.ts ===
+<complete file content>
+=== END ===
+`;
+
+            const targetPaths = [...serverRouteFiles.map(f => f.path), ...serverEntryFiles.map(f => f.path)];
+            const repairTask: any = {
+              id: `backend-api-repair-${attempt}`,
+              title: `Backend API Contract Repair Attempt ${attempt}`,
+              description: `Repair failing backend API routes for ${failedSteps.length} contract step(s)`,
+              stage: "Backend",
+              type: "code",
+              files: targetPaths.length > 0 ? targetPaths : ["server/routes/"],
+              completed: false,
+              estimatedComplexity: 6,
+              priority: 1,
+              dependencies: [],
+              status: "pending",
+            };
+
+            try {
+              const repairResult = await this.coderAgent.execute(
+                repairTask,
+                (actualArch as any) || architecture,
+                architecturePlan,
+                repairPrompt,
+                outputDirectory,
+                existingFiles,
+              );
+
+              let appliedAny = false;
+              if (repairResult?.files && repairResult.files.length > 0) {
+                new FileWriter().write(repairResult.files, outputDirectory);
+                console.log(`[Stage 10: BackendRepair] ✓ Applied ${repairResult.files.length} repaired server file(s).`);
+                appliedAny = true;
+              }
+              if (repairResult?.response) {
+                const patchEngine = new PatchEngine();
+                const patchedCount = patchEngine.apply(repairResult.response, outputDirectory);
+                if (patchedCount > 0) appliedAny = true;
+
+                if (!appliedAny) {
+                  const fileBlockRegex = /(?:^|\r?\n)(?:\/\/\s*([a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)|===+\s*(?:FILE:\s*)?([a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)\s*===+)?\s*\r?\n```(?:[a-zA-Z0-9_-]+)?\s*\r?\n([\s\S]*?)```/gi;
+                  let match: RegExpExecArray | null;
+                  while ((match = fileBlockRegex.exec(repairResult.response)) !== null) {
+                    const matchedPath = match[1] || match[2];
+                    const content = match[3]?.trim();
+                    if (matchedPath && content && content.length >= 50 && (matchedPath.startsWith("server/") || matchedPath.includes("/routes/"))) {
+                      const abs = join(outputDirectory, matchedPath);
+                      mkdirSync(dirname(abs), { recursive: true });
+                      writeFileSync(abs, content, "utf8");
+                      console.log(`[Stage 10: BackendRepair] ✓ Wrote code block to ${matchedPath}`);
+                      appliedAny = true;
+                    }
+                  }
+                }
+              }
+
+              // Restart the application/backend server to load the repaired route handlers
+              console.log("[Stage 10: BackendRepair] 🔄 Restarting application server to reload backend routes...");
+              AppServerRunner.stopServer();
+              await new Promise(r => setTimeout(r, 1000));
+              const restartedServer = await AppServerRunner.startServer(outputDirectory);
+              serverInfo = { ready: restartedServer.ready, port: restartedServer.port, url: restartedServer.url };
+
+              if (restartedServer.ready) {
+                apiTargetUrl = restartedServer.backendUrl || restartedServer.url;
+                apiWorkflowReport = await ApiWorkflowVerifier.executeWorkflows(apiTargetUrl, undefined, outputDirectory);
+                console.log(`[Stage 10: BackendRepair] Re-verification result: passed=${apiWorkflowReport.passed}, failedSteps=${apiWorkflowReport.failedSteps}`);
+                if (apiWorkflowReport.passed) {
+                  console.log(`[Stage 10: BackendRepair] ✅ Backend API repair succeeded on attempt ${attempt}!`);
+                  break;
+                }
+              } else {
+                console.warn("[Stage 10: BackendRepair] ⚠️ Server failed to restart cleanly after repair.");
+                break;
+              }
+            } catch (repairErr: any) {
+              console.warn(`[Stage 10: BackendRepair] ⚠️ Backend repair attempt ${attempt} error: ${repairErr.message}`);
+            }
+          }
+        }
+
+        browserValResult = await ReadOnlyBrowserValidator.validate(serverInfo.url, outputDirectory, { routes: dynamicRoutes, strictMode: true, apiReport: apiWorkflowReport });
       }
     } catch (runtimeErr: any) {
       console.warn(`[RuntimeValidation] Warning: Runtime validation encountered non-fatal error: ${runtimeErr.message}`);

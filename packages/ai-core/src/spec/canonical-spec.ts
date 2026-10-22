@@ -35,39 +35,40 @@ export class SpecificationNormalizer {
     const promptClean = PromptConstraints.stripNegativeConstraints(combinedPrompt);
     const promptCleanLower = promptClean.toLowerCase();
 
-    // 1. Detect Domain Category dynamically
-    let domainCategory = "general-dashboard";
-    if (/\b(satellite|orbit|orbital|constellation|spacecraft|space\s*mission|telecommand|orbitalis)\b/i.test(promptCleanLower)) {
-      domainCategory = "satellite-telemetry";
-    } else if (/\b(observatory|astronomy|astrophysics|celestial|telescope|star\s*map|space\s*observation|sky\s*telemetry|deep\s*sky)\b/i.test(promptCleanLower)) {
-      domainCategory = "scientific-observatory";
-    } else if (
-      !promptLower.includes("solar") &&
-      (/\b(avionics|aeronautical|flight\s*operations|aircraft|flight-plan|flight\s*monitoring|waypoint|airframe|cockpit)\b/i.test(promptCleanLower) ||
-       (/\btelemetry\b/i.test(promptCleanLower) && /\b(flight|aircraft|avionics|airframe|squawk|stratos|airway)\b/i.test(promptCleanLower)))
-    ) {
-      domainCategory = "aeronautical-telemetry";
-    } else if (!PromptConstraints.isForbiddenByPrompt(combinedPrompt, "hotel") && !PromptConstraints.isForbiddenByPrompt(combinedPrompt, "hospitality") &&
-      (/\b(hotel|boutique hotel|resort|hospitality|luxury stay|luxury suites|villa resort)\b/i.test(promptCleanLower) || (promptCleanLower.includes("room reservation") || promptCleanLower.includes("room booking") || (promptCleanLower.includes("hotel") && promptCleanLower.includes("booking"))))) {
-      domainCategory = "luxury-hospitality";
-    } else if (promptLower.includes("real estate") || promptLower.includes("real-estate") || promptLower.includes("realestate") || promptLower.includes("realtor") || promptLower.includes("mortgage") || promptLower.includes("tour schedule") || promptLower.includes("tour booking") || promptLower.includes("listing") || (promptLower.includes("property") && !promptLower.includes("hotel") && !promptLower.includes("resort") && !promptLower.includes("boutique") && !promptLower.includes("suite"))) {
-      domainCategory = "real-estate";
-    } else if (promptLower.includes("pet") && (promptLower.includes("groom") || promptLower.includes("spa") || promptLower.includes("package") || promptLower.includes("booking") || promptLower.includes("service"))) {
-      domainCategory = "pet-grooming";
-    } else if (promptLower.includes("pet") || promptLower.includes("veterinar") || promptLower.includes("vet ") || (promptLower.includes("clinic") && !promptLower.includes("clinical")) || promptLower.includes("animal")) {
-      domainCategory = "pet-clinic";
-    } else if (promptLower.includes("music") || promptLower.includes("instrument") || promptLower.includes("lesson") || promptLower.includes("piano") || promptLower.includes("guitar")) {
-      domainCategory = "music-school";
-    } else if (promptLower.includes("photography") || promptLower.includes("photo studio") || promptLower.includes("photographer")) {
-      domainCategory = "photography-studio";
-    } else if (promptLower.includes("community garden") || promptLower.includes("garden") || promptLower.includes("plot allocation") || promptLower.includes("harvest")) {
-      domainCategory = "community-garden";
-    } else if ((promptLower.includes("bicycle") || promptLower.includes("bike")) && (promptLower.includes("rental") || promptLower.includes("rent") || promptLower.includes("fleet") || promptLower.includes("station") || promptLower.includes("checkout") || promptLower.includes("sharing"))) {
-      domainCategory = "bicycle-rental";
-    } else if ((promptLower.includes("bicycle") || promptLower.includes("bike")) && (promptLower.includes("repair") || promptLower.includes("mechanic") || promptLower.includes("fix") || promptLower.includes("tune-up") || promptLower.includes("shop") || promptLower.includes("service"))) {
-      domainCategory = "bicycle-repair";
-    } else if (!/\b(satellite|orbit|orbital|constellation|spacecraft)\b/i.test(promptLower) && (promptLower.includes("solar") || promptLower.includes("wind") || promptLower.includes("renewable") || promptLower.includes("greenpulse") || promptLower.includes("clean energy") || promptLower.includes("photovoltaic") || promptLower.includes("inverter") || (promptLower.includes("telemetry") && (promptLower.includes("sensor") || promptLower.includes("power") || promptLower.includes("grid") || promptLower.includes("kilowatt") || promptLower.includes("megawatt") || promptLower.includes("array"))))) {
-      domainCategory = "solar-telemetry";
+    // 1. Detect Domain Category dynamically (Authority: rawSpec.domainCategory > rawSpec.category > dynamic detector)
+    let domainCategory = (rawSpec as any)?.domainCategory || (rawSpec as any)?.category || "general-dashboard";
+    if (!((rawSpec as any)?.domainCategory) && !((rawSpec as any)?.category)) {
+      if (/\b(observatory|astronomy|astrophysics|celestial|telescope|star\s*map|space\s*observation|sky\s*telemetry|deep\s*sky)\b/i.test(promptCleanLower)) {
+        domainCategory = "scientific-observatory";
+      } else if (/\b(satellite|constellation|spacecraft|space\s*mission|telecommand|orbital\s+maneuver|ground\s+station)\b/i.test(promptCleanLower)) {
+        domainCategory = "satellite-telemetry";
+      } else if (
+        !promptLower.includes("solar") &&
+        (/\b(avionics|aeronautical|flight\s*operations|aircraft|flight-plan|flight\s*monitoring|waypoint|airframe|cockpit)\b/i.test(promptCleanLower) ||
+         (/\btelemetry\b/i.test(promptCleanLower) && /\b(flight|aircraft|avionics|airframe|squawk|stratos|airway)\b/i.test(promptCleanLower)))
+      ) {
+        domainCategory = "aeronautical-telemetry";
+      } else if (!PromptConstraints.isForbiddenByPrompt(combinedPrompt, "hotel") && !PromptConstraints.isForbiddenByPrompt(combinedPrompt, "hospitality") &&
+        (/\b(hotel|boutique hotel|resort|hospitality|luxury stay|luxury suites|villa resort)\b/i.test(promptCleanLower) || (promptCleanLower.includes("room reservation") || promptCleanLower.includes("room booking") || (promptCleanLower.includes("hotel") && promptCleanLower.includes("booking"))))) {
+        domainCategory = "luxury-hospitality";
+      } else if (promptLower.includes("real estate") || promptLower.includes("real-estate") || promptLower.includes("realestate") || promptLower.includes("realtor") || promptLower.includes("mortgage") || promptLower.includes("tour schedule") || promptLower.includes("tour booking") || promptLower.includes("listing") || (promptLower.includes("property") && !promptLower.includes("hotel") && !promptLower.includes("resort") && !promptLower.includes("boutique") && !promptLower.includes("suite"))) {
+        domainCategory = "real-estate";
+      } else if (promptLower.includes("pet") && (promptLower.includes("groom") || promptLower.includes("spa") || promptLower.includes("package") || promptLower.includes("booking") || promptLower.includes("service"))) {
+        domainCategory = "pet-grooming";
+      } else if (promptLower.includes("pet") || promptLower.includes("veterinar") || promptLower.includes("vet ") || (promptLower.includes("clinic") && !promptLower.includes("clinical")) || promptLower.includes("animal")) {
+        domainCategory = "pet-clinic";
+      } else if (promptLower.includes("music") || promptLower.includes("instrument") || promptLower.includes("lesson") || promptLower.includes("piano") || promptLower.includes("guitar")) {
+        domainCategory = "music-school";
+      } else if (promptLower.includes("photography") || promptLower.includes("photo studio") || promptLower.includes("photographer")) {
+        domainCategory = "photography-studio";
+      } else if (promptLower.includes("community garden") || promptLower.includes("garden") || promptLower.includes("plot allocation") || promptLower.includes("harvest")) {
+        domainCategory = "community-garden";
+      } else if ((promptLower.includes("bicycle") || promptLower.includes("bike")) && (promptLower.includes("rental") || promptLower.includes("rent") || promptLower.includes("fleet") || promptLower.includes("station") || promptLower.includes("checkout") || promptLower.includes("sharing"))) {
+        domainCategory = "bicycle-rental";
+      } else if ((promptLower.includes("bicycle") || promptLower.includes("bike")) && (promptLower.includes("repair") || promptLower.includes("mechanic") || promptLower.includes("fix") || promptLower.includes("tune-up") || promptLower.includes("shop") || promptLower.includes("service"))) {
+        domainCategory = "bicycle-repair";
+      } else if (!/\b(satellite|constellation|spacecraft)\b/i.test(promptLower) && (promptLower.includes("solar") || promptLower.includes("wind") || promptLower.includes("renewable") || promptLower.includes("greenpulse") || promptLower.includes("clean energy") || promptLower.includes("photovoltaic") || promptLower.includes("inverter") || (promptLower.includes("telemetry") && (promptLower.includes("sensor") || promptLower.includes("power") || promptLower.includes("grid") || promptLower.includes("kilowatt") || promptLower.includes("megawatt") || promptLower.includes("array"))))) {
+        domainCategory = "solar-telemetry";
     } else if (promptLower.includes("museum") || (promptLower.includes("exhibition") && (promptLower.includes("curat") || promptLower.includes("artifact") || promptLower.includes("provenance") || promptLower.includes("collection")))) {
       domainCategory = "museum-collection";
     } else if (promptLower.includes("home repair") || promptLower.includes("handyman") || promptLower.includes("work order") || promptLower.includes("repair service")) {
@@ -113,6 +114,7 @@ export class SpecificationNormalizer {
     } else if (promptLower.includes("blog") || promptLower.includes("post") || promptLower.includes("article")) {
       domainCategory = "blog";
     }
+  }
 
     // 2. Lock Stack based on explicit user directives (Prompt > Spec > Defaults)
     let frontend = "React-Vite";
@@ -154,11 +156,26 @@ export class SpecificationNormalizer {
     }
 
     // 4. Deterministically extract Domain Vocabulary and Data Models
-    // If rawSpec or featureMatrix has authoritative dataModels/features, use them as single source of truth
+    // Authority order: Authoritative LLM spec > Synthesized from features/models > Category fallback
     let dataModels = rawSpec.dataModels && rawSpec.dataModels.length > 0 ? rawSpec.dataModels : [];
     let domainVocabulary: DomainVocabulary;
 
-    if (dataModels.length > 0) {
+    const hasAuthoritativeVocab = Boolean(
+      rawSpec.domainVocabulary &&
+      rawSpec.domainVocabulary.entityName &&
+      !["Specialty", "Item", "General", "Record"].includes(rawSpec.domainVocabulary.entityName) &&
+      Array.isArray(rawSpec.domainVocabulary.primaryMetrics) &&
+      rawSpec.domainVocabulary.primaryMetrics.length >= 3 &&
+      Array.isArray(rawSpec.domainVocabulary.actionVerbs) &&
+      rawSpec.domainVocabulary.actionVerbs.length >= 2
+    );
+
+    if (hasAuthoritativeVocab && rawSpec.domainVocabulary) {
+      domainVocabulary = rawSpec.domainVocabulary;
+      if (dataModels.length === 0) {
+        dataModels = SpecificationNormalizer.deriveDataModels(promptLower, domainCategory, domainVocabulary);
+      }
+    } else if (dataModels.length > 0) {
       const primaryModel = typeof dataModels[0] === "string" ? dataModels[0] : (dataModels[0] as any).name;
       const secondModel = dataModels[1] ? (typeof dataModels[1] === "string" ? dataModels[1] : (dataModels[1] as any).name) : null;
       const rawFeatures = rawSpec.features || [];
@@ -452,6 +469,16 @@ export class SpecificationNormalizer {
     domainCategory: string
   ): DomainVocabulary {
     switch (domainCategory) {
+      case "satellite-telemetry": {
+        return {
+          entityName: "Satellite",
+          entityPlural: "Satellites",
+          primaryMetrics: ["Constellation Health", "Orbital State Vectors", "Downlink Contacts", "Active Transponders"],
+          actionVerbs: ["Plan Maneuver", "Schedule Downlink", "Transmit Telecommand", "Inspect Subsystems", "Propagate Orbit"],
+          domainPrefix: "satellite"
+        };
+      }
+
       case "solar-telemetry": {
         return {
           entityName: "Asset",
@@ -559,16 +586,6 @@ export class SpecificationNormalizer {
           primaryMetrics: ["Total Bicycles", "Active Rentals", "Available Fleet", "Revenue Today"],
           actionVerbs: ["Rent Bicycle", "Return Bicycle", "Add Bike", "Schedule Service"],
           domainPrefix: "bicycle"
-        };
-      }
-
-      case "solar-telemetry": {
-        return {
-          entityName: "Inverter",
-          entityPlural: "Inverters",
-          primaryMetrics: ["Total Power Output", "Average Efficiency", "Active Inverters", "Alert Count"],
-          actionVerbs: ["Configure Setpoint", "Acknowledge Alert", "Calibrate Inverter", "Filter Window"],
-          domainPrefix: "telemetry"
         };
       }
 

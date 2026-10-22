@@ -1966,32 +1966,87 @@ ${routerClose}    </QueryClientProvider>
           });
         }
 
-        // Fix 1.66: Normalize broken site-content relative imports
-        if (content.includes("site-content") && (rel.endsWith(".tsx") || rel.endsWith(".ts"))) {
+        // Fix 1.66: Normalize broken site-content relative imports and auto-wire unimported siteContent references
+        const isSiteContentFile = /[\\/]content[\\/]site-content\.(ts|tsx)$|^content[\\/]site-content\.(ts|tsx)$/.test(rel) ||
+          rel.includes("site-content.ts") ||
+          rel.includes("site-content.tsx") ||
+          (content.includes("interface SiteContent") && /export\s+(?:const|default)\s+siteContent\b/.test(content));
+
+        if (isSiteContentFile) {
+          const strippedCircular = content.replace(/^[ \t]*import\s+siteContent\s+from\s+['"][^'"]*site-content(?:\.[a-z]+)?['"];?\r?\n?/gm, "");
+          if (strippedCircular !== content) {
+            content = strippedCircular;
+            changed = true;
+            fixed.push(`Removed circular self-import from ${rel}`);
+          }
+        } else if (rel.endsWith(".tsx") || rel.endsWith(".ts")) {
+          // Strip invalid dummy stubs
+          const stripped = content.replace(/^[ \t]*(?:export\s+)?(?:const|let|var)\s+siteContent\s*(?::\s*any)?\s*=\s*(?:null|undefined)\s*;?\s*$/gm, "");
+          if (stripped !== content) {
+            content = stripped;
+            changed = true;
+            fixed.push(`Removed null siteContent stub in ${rel}`);
+          }
+
           const fullFilePath = join(dir, rel);
           const fileDir = dirname(fullFilePath);
           const siteContentPath = join(dir, "src", "content", "site-content");
-          let accurateRel = relative(fileDir, siteContentPath).replace(/\\/g, "/");
-          if (!accurateRel.startsWith(".")) accurateRel = "./" + accurateRel;
-          content = content.replace(/import\s+([^'"]+)\s+from\s+['"][^'"]*site-content(?:\.[a-z]+)?['"];?/g, (_match, importSpec) => {
-            changed = true;
-            fixed.push(`Normalized site-content import in ${rel} to '${accurateRel}'`);
-            return `import ${importSpec} from '${accurateRel}';`;
-          });
+          const hasSiteContentFile = existsSync(siteContentPath + ".ts") || existsSync(siteContentPath + ".tsx");
+
+          if (hasSiteContentFile) {
+            let accurateRel = relative(fileDir, siteContentPath).replace(/\\/g, "/");
+            if (!accurateRel.startsWith(".")) accurateRel = "./" + accurateRel;
+
+            if (content.includes("site-content")) {
+              content = content.replace(/import\s+([^'"]+)\s+from\s+['"][^'"]*site-content(?:\.[a-z]+)?['"];?/g, (_match, importSpec) => {
+                changed = true;
+                fixed.push(`Normalized site-content import in ${rel} to '${accurateRel}'`);
+                return `import ${importSpec} from '${accurateRel}';`;
+              });
+            }
+
+            if (/\bsiteContent\b/.test(content) && !/from\s+['"][^'"]*site-content(?:\.[a-z]+)?['"]/.test(content)) {
+              content = `import siteContent from '${accurateRel}';\n` + content;
+              changed = true;
+              fixed.push(`Auto-wired missing siteContent import in ${rel}`);
+            }
+          }
+
+          if (content.includes("siteContent")) {
+            const safeContent = content
+              .replace(/\(siteContent\s+as\s+any\)/g, "siteContent")
+              .replace(/\bsiteContent\.pages\s*(?:\?\.)?\[([^\]]+)\](?:\?\.)?\.(\w+)/g, "((siteContent as any)?.pages?.[$1]?.$2 || '')")
+              .replace(/\bsiteContent\.pages\s*(?:\?\.)?\[([^\]]+)\]/g, "((siteContent as any)?.pages?.[$1] || {})")
+              .replace(/\bsiteContent\.pages\b/g, "((siteContent as any)?.pages || {})")
+              .replace(/\bsiteContent\.brand(?:\?\.)?\.(\w+)/g, "((siteContent as any)?.brand?.$1 || '')")
+              .replace(/\bsiteContent\.brand\b/g, "((siteContent as any)?.brand || {})")
+              .replace(/\bsiteContent\.mockRecords\b/g, "((siteContent as any)?.mockRecords || [])")
+              .replace(/\bsiteContent\.testimonials\b/g, "((siteContent as any)?.testimonials || [])")
+              .replace(/\bsiteContent\.highlights\b/g, "((siteContent as any)?.highlights || [])")
+              .replace(/\bsiteContent\.navigationLabels\b/g, "((siteContent as any)?.navigationLabels || {})")
+              .replace(/\bsiteContent\./g, "(siteContent as any)?.");
+            if (safeContent !== content) {
+              content = safeContent;
+              changed = true;
+            }
+          }
         }
 
-        // Fix 1.66b: Normalize over-nested relative imports escaping src/ (e.g. from src/pages/*)
-        const normRel = rel.replace(/\\/g, "/");
-        const relDirDepth = normRel.split("/").length - 1; // 1 for "pages/Foo.tsx"
-        if (relDirDepth === 1 && content.includes("../../")) {
-          const sanitizedOverNested = content.replace(
-            /(from\s+['"])\.\.\/\.\.\/(design-system|components|shared|content|services|hooks|types|utils|lib|features)(['"\/])/g,
-            "$1../$2$3"
-          );
-          if (sanitizedOverNested !== content) {
-            content = sanitizedOverNested;
+        // Fix 1.66b: Normalize over-nested relative imports escaping src/ or server/
+        if (rel.startsWith("src/") && content.includes("../")) {
+          const srcDir = join(dir, "src");
+          const fileDir = dirname(absPath);
+          const srcModules = "design-system|components|shared|content|services|hooks|types|utils|lib|features|pages|constants|context|store|routes";
+          const regex = new RegExp(`(from\\s+['"])((?:\\.\\.\\/)+)(${srcModules})(['"\\/])`, "g");
+          const sanitized = content.replace(regex, (_m, prefix, _dots, mod, suffix) => {
+            let correctRel = relative(fileDir, join(srcDir, mod)).replace(/\\/g, "/");
+            if (!correctRel.startsWith(".")) correctRel = "./" + correctRel;
+            return `${prefix}${correctRel}${suffix}`;
+          });
+          if (sanitized !== content) {
+            content = sanitized;
             changed = true;
-            fixed.push(`Normalized over-nested relative import (../../ -> ../) in ${rel}`);
+            fixed.push(`Normalized over-nested relative import in ${rel}`);
           }
         }
 
@@ -2114,6 +2169,37 @@ ${routerClose}    </QueryClientProvider>
             content = newContent;
             changed = true;
             fixed.push(`Added interactive handler to inert button in: ${rel}`);
+          }
+        }
+
+        // Fix 1.77: Nested object types in local interfaces/types missing 'id' or loose index signature
+        if (rel.startsWith("src/") && (rel.endsWith(".tsx") || rel.endsWith(".ts"))) {
+          let patched = content;
+          let fileHasFix = false;
+
+          // Match interface blocks
+          patched = patched.replace(/(interface\s+[a-zA-Z0-9_$]+\s*\{[\s\S]*?\n\})/g, (fullInterface) => {
+            let updatedInterface = fullInterface;
+            // Match nested object property definitions: propName: { innerFields }
+            const nestedPropRegex = /([a-zA-Z0-9_$]+)\s*:\s*\{\s*([^}]+?)\s*\}/g;
+            updatedInterface = updatedInterface.replace(nestedPropRegex, (nestedMatch, propName, innerFields) => {
+              if (!innerFields.includes("id:") && !innerFields.includes("id?:") && !innerFields.includes("[key: string]")) {
+                // Check if this file instantiates this property with an id field, e.g. book: { id: ... }
+                const propAssignRegex = new RegExp(`\\b${propName}\\s*:\\s*\\{[^}]*\\bid\\s*:`);
+                if (propAssignRegex.test(content)) {
+                  fileHasFix = true;
+                  return `${propName}: {\n    id?: string | number;\n    [key: string]: any;\n    ${innerFields.trim()}\n  }`;
+                }
+              }
+              return nestedMatch;
+            });
+            return updatedInterface;
+          });
+
+          if (fileHasFix && patched !== content) {
+            content = patched;
+            changed = true;
+            fixed.push(`Added id and index signature to nested interface object type in: ${rel}`);
           }
         }
 
@@ -3070,6 +3156,19 @@ export default DataTable;\n`;
           ? join(outputDirectory, "src", rawImportPath.slice(2))
           : resolve(fileDir, rawImportPath);
 
+        const relToProject = relative(outputDirectory, targetPath).replace(/\\/g, "/");
+        if (relToProject.startsWith("..")) {
+          if (diskFile.relPath.startsWith("src/")) {
+            const remainder = rawImportPath.replace(/^(\.\.\/)+/, "");
+            targetPath = join(outputDirectory, "src", remainder);
+          } else if (diskFile.relPath.startsWith("server/")) {
+            const remainder = rawImportPath.replace(/^(\.\.\/)+/, "");
+            targetPath = join(outputDirectory, "server", remainder);
+          } else {
+            continue;
+          }
+        }
+
         let targetFileExists = false;
         for (const ext of ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"]) {
           if (existsSync(targetPath + ext)) {
@@ -3087,8 +3186,9 @@ export default DataTable;\n`;
                               /(util|helper|service|api|cn|clsx|format|calc)/i.test(rawFileName);
 
           const isUiTarget = !isUtilTarget && (
-            /[\/\\](pages|components|views|ui|features|routes)[\/\\]/i.test(targetPath) ||
-            /(app|routes|button|card|component|page|container|navbar|spinner|dashboard|header|footer|modal|drawer|form|input)/i.test(targetPath) ||
+            /[\/\\](pages|components|views|ui|features|routes|design-system)[\/\\]/i.test(targetPath) ||
+            /(app|routes|button|card|component|page|container|navbar|spinner|dashboard|header|footer|modal|drawer|form|input|badge|skeleton|empty|timeline|grid|progress|select|alert)/i.test(targetPath) ||
+            /^[A-Z]/.test(rawFileName) ||
             (targetPath.includes("src") && !targetPath.includes("service") && !targetPath.includes("util") && !targetPath.includes("api") && !targetPath.includes("middleware"))
           );
 
@@ -3196,9 +3296,14 @@ export default DataTable;\n`;
               continue;
             }
 
+            const relUnresolved = relative(outputDirectory, fullStubPath).replace(/\\/g, "/");
+            if (relUnresolved.startsWith("..")) {
+              console.warn(`[Startup] ⛔ Blocked creation of stub outside project root: ${relUnresolved}`);
+              continue;
+            }
+
             mkdirSync(dirname(fullStubPath), { recursive: true });
             const validExportName = componentName.replace(/[^a-zA-Z0-9_$]/g, "_");
-            const relUnresolved = relative(outputDirectory, fullStubPath).replace(/\\/g, "/");
 
             if (componentName === "cn" || componentName === "clsx") {
               writeFileSync(fullStubPath, `export function cn(...inputs: any[]): string {\n  return inputs.flat().filter(Boolean).join(" ");\n}\nexport const clsx = cn;\nexport default cn;\n`, "utf8");
@@ -3238,8 +3343,13 @@ export default ${validExportName};
 `, "utf8");
               console.log(`[Startup] Auto-created service stub: ${relUnresolved}`);
             } else if (!isUiTarget) {
-              writeFileSync(fullStubPath, `export const ${validExportName} = (...args: any[]) => (args[0] ?? {});\nexport default ${validExportName};\n`, "utf8");
-              console.log(`[Startup] Auto-created utility function stub: ${relUnresolved}`);
+              if (/^[A-Z]/.test(validExportName)) {
+                writeFileSync(fullStubPath, `import React from 'react';\nexport function ${validExportName}(props: any = {}) {\n  return <div className={props?.className || ''} {...props}>{props?.children}</div>;\n}\nexport default ${validExportName};\n`, "utf8");
+                console.log(`[Startup] Auto-created component stub: ${relUnresolved}`);
+              } else {
+                writeFileSync(fullStubPath, `export const ${validExportName} = (...args: any[]) => {\n  const p = args[0];\n  if (p && typeof p === 'object' && ('children' in p || 'className' in p)) {\n    return p.children ?? null;\n  }\n  return p ?? {};\n};\nexport default ${validExportName};\n`, "utf8");
+                console.log(`[Startup] Auto-created safe utility stub: ${relUnresolved}`);
+              }
             } else {
               if (relUnresolved === "src/components/ui.tsx" || relUnresolved.endsWith("/ui.tsx") || relUnresolved.endsWith("/ui.ts") || validExportName === "ui") {
                 writeFileSync(fullStubPath, `import React from 'react';

@@ -308,8 +308,19 @@ export class DomainContractDeriver {
       .toLowerCase()
       .replace(/[^a-z\s]/g, " ")
       .split(/\s+/)
-      .filter(w => w.length > 4);
-    promptWords.slice(0, 50).forEach(w => terms.add(w));
+      .filter(w => w.length >= 3);
+    promptWords.forEach(w => terms.add(w));
+
+    // Domain-inferred natural vocabulary inclusions
+    const promptLower = (contract.prompt || "").toLowerCase();
+    const isBookstore = promptLower.includes("book") || promptLower.includes("reading") || promptLower.includes("literature");
+    if (isBookstore) {
+      ["author", "book", "books", "hardcover", "paperback", "isbn", "publisher", "edition", "genre", "synopsis", "literature", "reading", "storefront", "shoppingcart", "inventory", "stock", "catalog", "cart", "checkout", "order"].forEach(t => terms.add(t));
+    }
+    const isCommerce = promptLower.includes("cart") || promptLower.includes("checkout") || promptLower.includes("shop") || promptLower.includes("store");
+    if (isCommerce) {
+      ["product", "products", "cart", "checkout", "order", "orders", "shoppingcart", "sku", "inventory", "storefront", "discount", "coupon", "price", "subtotal", "shipping", "catalog"].forEach(t => terms.add(t));
+    }
 
     return Array.from(terms).sort();
   }

@@ -8,6 +8,8 @@
  * page experience plan, theme colors, and generation seed.
  */
 
+import { CanonicalArchitectureState } from "../../governance/canonical-architecture-state.js";
+
 export interface WorkspaceParameter {
   id: string;
   label: string;
@@ -36,6 +38,9 @@ export interface WorkspaceExperienceGeneratorOptions {
   prompt: string;
   seed?: number;
   domainKeywords?: string[];
+  primaryMetrics?: string[];
+  actionVerbs?: string[];
+  routeIndex?: number;
   theme?: {
     bg?: string;
     surface?: string;
@@ -48,10 +53,10 @@ export interface WorkspaceExperienceGeneratorOptions {
 
 export class WorkspaceExperienceGenerator {
   public static generate(options: WorkspaceExperienceGeneratorOptions): string {
-    const { componentName, brandName, prompt, seed = 42, route, pageRole, purpose } = options;
+    const { componentName, brandName, prompt, seed = 42, route, pageRole, purpose, primaryMetrics, actionVerbs, routeIndex } = options;
     const promptLower = prompt.toLowerCase();
 
-    const config = this.deriveConfig(promptLower, seed, route, pageRole, purpose);
+    const config = this.deriveConfig(promptLower, seed, route, pageRole, purpose, primaryMetrics, actionVerbs, routeIndex);
     const theme = options.theme || this.deriveTheme(promptLower);
 
     return `import React from "react";
@@ -63,6 +68,11 @@ export function ${componentName}() {
   const metricStreams = ${JSON.stringify(config.telemetryStreams, null, 4)};
   const summaryHeader = ${JSON.stringify(config.summaryHeader)};
   const summaryDescription = ${JSON.stringify(config.summaryDescription)};
+  const controlsTitle = ${JSON.stringify((config as any).controlsTitle || "Operational Controls")};
+  const actionButtonText = ${JSON.stringify((config as any).actionButtonText || "Execute Workflow ⚡")};
+  const feedbackTitle = ${JSON.stringify((config as any).feedbackTitle || "Real-Time System Feedback")};
+  const ledgerTitle = ${JSON.stringify((config as any).ledgerTitle || "Activity & Event Ledger")};
+  const convergenceMetricLabel = ${JSON.stringify((config as any).convergenceMetricLabel || "Operational Efficiency")};
   const [params, setParams] = React.useState<Record<string, number>>(() => {
     const acc: Record<string, number> = {};
     for (const p of initialParams) {
@@ -218,7 +228,7 @@ export function ${componentName}() {
               transition: "all 0.2s",
             }}
           >
-            {isRunningSim ? "Executing (" + simStep + "/5)..." : "Run Diagnostics ⚡"}
+            {isRunningSim ? "Executing (" + simStep + "/5)..." : actionButtonText}
           </button>
         </div>
       </header>
@@ -249,7 +259,7 @@ export function ${componentName}() {
             <span style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "${theme.accent}" }}>
               Parameter Controls
             </span>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: "0.25rem 0 0" }}>Calibration Knobs</h2>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: "0.25rem 0 0" }}>{controlsTitle}</h2>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
@@ -349,7 +359,7 @@ export function ${componentName}() {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h3 style={{ margin: 0, fontSize: "1.125rem", fontWeight: 700 }}>Real-Time System Feedback</h3>
+                <h3 style={{ margin: 0, fontSize: "1.125rem", fontWeight: 700 }}>{feedbackTitle}</h3>
                 <span style={{ fontSize: "0.75rem", color: "${theme.textMuted}" }}>60 FPS Vector Render</span>
               </div>
 
@@ -418,7 +428,7 @@ export function ${componentName}() {
                     fontSize: "0.75rem",
                   }}
                 >
-                  <span>Harmonic Convergence: {primaryEfficiency}%</span>
+                  <span>{convergenceMetricLabel}: {primaryEfficiency}%</span>
                   <span>Operational Load: {systemLoad}%</span>
                   <span>Vector Nodes: 7 Synchronized</span>
                 </div>
@@ -503,7 +513,7 @@ export function ${componentName}() {
                 gap: "1rem",
               }}
             >
-              <h3 style={{ margin: 0, fontSize: "1.125rem", fontWeight: 700 }}>Action & Calibration Ledger</h3>
+              <h3 style={{ margin: 0, fontSize: "1.125rem", fontWeight: 700 }}>{ledgerTitle}</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 {auditLog.map((log) => (
                   <div
@@ -552,7 +562,7 @@ export function ${componentName}() {
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8125rem", marginBottom: "0.35rem" }}>
-                <span style={{ color: "${theme.textMuted}" }}>Convergence Efficiency</span>
+                <span style={{ color: "${theme.textMuted}" }}>{convergenceMetricLabel}</span>
                 <span style={{ fontWeight: 700, color: "${theme.accent}" }}>{primaryEfficiency}%</span>
               </div>
               <div style={{ height: "6px", background: "rgba(255,255,255,0.08)", borderRadius: "9999px", overflow: "hidden" }}>
@@ -597,13 +607,21 @@ export default ${componentName};
 `;
   }
 
-  private static deriveConfig(promptLower: string, seed: number, route?: string, pageRole?: string, purpose?: string) {
-    const isOcean = /\b(underwater|marine|ocean|submersible|hadal|bathymetr|hydrophone|benthic|abyss)\b/i.test(promptLower);
+  private static deriveConfig(
+    promptLower: string,
+    seed: number,
+    route?: string,
+    pageRole?: string,
+    purpose?: string,
+    primaryMetrics?: string[],
+    actionVerbs?: string[],
+    routeIndex?: number
+  ) {
     const isFurniture = /furniture|chair|table|sofa|wood|interior|design|configurator/i.test(promptLower);
     const isMusic = /music|sound|audio|synthesizer|frequency|melody|harmonic/i.test(promptLower);
     const isClimate = /climate|weather|atmosphere|carbon|emissions|albedo|planet/i.test(promptLower);
     const isSpace = /\b(space|celestial|orbit|orbital|satellite|planetary|astro|astronomy|observatory|telescope|starmap|star map)\b/i.test(promptLower);
-    const isCleanEnergy = !isClimate && !isSpace && !isOcean && /\b(renewable|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine|wind farm)\b/i.test(promptLower);
+    const isCleanEnergy = !isClimate && !isSpace && /\b(renewable|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine|wind farm)\b/i.test(promptLower);
 
     const routeContext = `${route || ""} ${pageRole || ""} ${purpose || ""}`.toLowerCase();
     const isAnalyticsRoute = /analytic|trend|telemetry|waveform|performance|metric|spectral|photometry/i.test(routeContext);
@@ -981,32 +999,6 @@ export default ${componentName};
       };
     }
 
-    if (isOcean) {
-      return {
-        workspaceCategory: "Submersible Telemetry Console",
-        title: "Benthic Depth & Telemetry Workbench",
-        subtitle: "Fine-tune hydrostatic ballast, sonar array frequency, and deep-sea specimen illumination.",
-        summaryHeader: "Benthic & Hydrostatic Status",
-        summaryDescription: "Ballast tanks calibrated for abyssal descent. Sonar arrays scanning benthic trench contours in real-time.",
-        params: [
-          { id: "ballast", label: "Hydrostatic Ballast Level", min: 0, max: 100, step: 1, unit: "%", defaultValue: 65, description: "Controls negative buoyancy rate during trench descent." },
-          { id: "sonarFreq", label: "Multi-Beam Sonar Frequency", min: 12, max: 200, step: 2, unit: "kHz", defaultValue: 88, description: "Determines spatial resolution vs penetration through benthic sediment." },
-          { id: "lumenFlux", label: "Deep-Sea Luminescence Flux", min: 500, max: 12000, step: 250, unit: "lm", defaultValue: 4500, description: "Illuminates photophore pigmentation without blinding specimen optical nerves." },
-        ],
-        quickActions: [
-          { name: "Execute Sonar Ping", desc: "Pulse high-frequency chirp into sediment", effect: "Echo returned: 420m floor contact" },
-          { name: "Deploy Benthic Drone", desc: "Release autonomous specimen ROV", effect: "ROV unit online and tethered" },
-          { name: "Flush Ballast Chamber", desc: "Purge seawater for rapid ascent", effect: "Ascent rate nominal at +1.2 m/s" },
-        ],
-        telemetryStreams: [
-          { label: "Hydrostatic Pressure", value: "412.8 ATM", status: "Nominal Structural Stress" },
-          { label: "Ambient Water Temp", value: "2.1°C", status: "Benthic Thermal Stability" },
-          { label: "Salinity Gradient", value: "35.4 PSU", status: "Standard Halocline Layer" },
-          { label: "Acoustic Noise Floor", value: "-84 dB", status: "Ultra-Quiet Trench Ambient" },
-        ],
-      };
-    }
-
     if (isFurniture) {
       return {
         workspaceCategory: "Artisan Joinery Configurator",
@@ -1062,29 +1054,62 @@ export default ${componentName};
       };
     }
 
-    // Default General Purpose Domain Config (Domain-neutral, route-differentiated to prevent convergence)
-    const slug = (route || pageRole || "core").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8) || "core";
+    // Default General Purpose Domain Config (Domain-specific, route-differentiated by construction to prevent convergence)
+    let vocabMetrics = primaryMetrics || [];
+    let vocabVerbs = actionVerbs || [];
+    try {
+      const canonicalState = CanonicalArchitectureState.getInstance().getState() as any;
+      const vocab = canonicalState?.canonicalSpec?.domainVocabulary || canonicalState?.domainVocabulary;
+      if (vocabMetrics.length === 0 && vocab?.primaryMetrics?.length) {
+        vocabMetrics = vocab.primaryMetrics;
+      }
+      if (vocabVerbs.length === 0 && vocab?.actionVerbs?.length) {
+        vocabVerbs = vocab.actionVerbs;
+      }
+    } catch {}
+
+    const slug = (route || pageRole || "core").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 10) || "core";
     const slugLabel = slug.charAt(0).toUpperCase() + slug.slice(1);
+
+    const computedIdx = typeof routeIndex === "number"
+      ? routeIndex
+      : Math.abs(slug.split("").reduce((acc, c, idx) => acc + c.charCodeAt(0) * (idx + 1), 0)) % 10;
+
+    const toParamId = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
+
+    const m1 = vocabMetrics.length > 0 ? vocabMetrics[computedIdx % vocabMetrics.length] : `${slugLabel} Intensity`;
+    const m2 = vocabMetrics.length > 0 ? vocabMetrics[(computedIdx + 1) % vocabMetrics.length] : `${slugLabel} Sensitivity`;
+    const m3 = vocabMetrics.length > 0 ? vocabMetrics[(computedIdx + 2) % vocabMetrics.length] : `${slugLabel} Damping`;
+
+    const v1 = vocabVerbs.length > 0 ? vocabVerbs[computedIdx % vocabVerbs.length] : `Calibrate`;
+    const v2 = vocabVerbs.length > 0 ? vocabVerbs[(computedIdx + 1) % vocabVerbs.length] : `Inspect`;
+    const v3 = vocabVerbs.length > 0 ? vocabVerbs[(computedIdx + 2) % vocabVerbs.length] : `Export`;
+
     return {
       workspaceCategory: `${slugLabel} Interactive Studio Workbench`,
       title: `${slugLabel} Workspace & Parameter Console`,
-      subtitle: "Calibrate operational thresholds, analyze dynamic indicators, and inspect active feedback loops.",
+      subtitle: `Calibrate ${m1.toLowerCase()}, analyze dynamic indicators, and inspect active feedback loops.`,
       summaryHeader: `${slugLabel} Readiness & Status`,
-      summaryDescription: "All core subsystems online. Parameters are continuously monitored and validated against safe operating boundaries.",
+      summaryDescription: `All core ${slugLabel} subsystems online. Parameters are continuously monitored and validated against safe operating boundaries.`,
+      controlsTitle: `${slugLabel} Controls & Parameters`,
+      actionButtonText: `${v1} ${slugLabel} ⚡`,
+      feedbackTitle: `${slugLabel} Real-Time Feedback`,
+      convergenceMetricLabel: `${m1} Integrity`,
+      ledgerTitle: `${slugLabel} Event & Action Ledger`,
       params: [
-        { id: `${slug}Intensity`, label: `${slugLabel} Processing Intensity`, min: 10, max: 100, step: 5, unit: "%", defaultValue: 60, description: "Regulates throughput speed and resource allocation." },
-        { id: `${slug}Sensitivity`, label: `${slugLabel} Detection Sensitivity`, min: 1, max: 10, step: 0.5, unit: "index", defaultValue: 6.5, description: "Adjusts threshold to balance noise reduction with coverage." },
-        { id: `${slug}Damping`, label: `${slugLabel} Harmonic Damping`, min: 0.1, max: 1.0, step: 0.05, unit: "ratio", defaultValue: 0.7, description: "Prevents operational oscillation during rapid state transitions." },
+        { id: `${slug}_${toParamId(m1)}`, label: m1, min: 10, max: 100, step: 5, unit: "%", defaultValue: 60, description: `Calibrates target ${m1.toLowerCase()} across active operations.` },
+        { id: `${slug}_${toParamId(m2)}`, label: m2, min: 1, max: 10, step: 0.5, unit: "index", defaultValue: 6.5, description: `Adjusts threshold to balance noise reduction with coverage.` },
+        { id: `${slug}_${toParamId(m3)}`, label: m3, min: 0.1, max: 1.0, step: 0.05, unit: "ratio", defaultValue: 0.7, description: `Prevents operational oscillation during rapid state transitions.` },
       ],
       quickActions: [
-        { name: `Run ${slugLabel} Diagnostic Audit`, desc: "Run comprehensive diagnostic pass", effect: "All nodes passed verification" },
-        { name: `Calibrate ${slugLabel} Parameters`, desc: "Zero out drift across input channels", effect: "Calibration completed nominal" },
-        { name: `Export ${slugLabel} State Snapshot`, desc: "Download timestamped system state", effect: "Configuration packet saved" },
+        { name: `${v1} ${slugLabel}`, desc: `Execute ${v1.toLowerCase()} procedure`, effect: `${slugLabel} procedure completed nominal` },
+        { name: `${v2} ${slugLabel}`, desc: `Run ${v2.toLowerCase()} calibration pass`, effect: `${slugLabel} optimized within bounds` },
+        { name: `${v3} ${slugLabel} State`, desc: `Export timestamped snapshot`, effect: `Configuration packet saved` },
       ],
       telemetryStreams: [
-        { label: "Operational Integrity", value: "98.4%", status: "Optimal Balance" },
-        { label: "Response Latency", value: "1.2 ms", status: "Nominal Baseline" },
-        { label: "Operating Capacity", value: "58.4%", status: "Within Target Bounds" },
+        { label: m1, value: "98.4%", status: "Optimal Baseline" },
+        { label: m2, value: "1.2 ms", status: "Nominal Range" },
+        { label: m3, value: "58.4%", status: "Within Target Bounds" },
         { label: "Active Stability", value: "99.2%", status: "Verified Stable" },
       ],
     };

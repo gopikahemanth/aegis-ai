@@ -118,14 +118,15 @@ export class NavigationDesignResolver {
       /\b(watch|watches|horology|timepiece|timepieces|watchmaker|artisan watch)\b/i.test(lower);
     const isPerfume =
       /\b(perfume|flacon|fragrance|scent|eau de|cologne|olfactory|luxury house)\b/i.test(lower);
+    const isStorefront =
+      /\b(storefront|bakery|menu|shop|boutique|order|cart|checkout|patisserie|bookstore|bookseller|book\s*shop)\b/i.test(lower);
     const isEditorial =
       !is3DWorld &&
+      !isStorefront &&
       (/\b(magazine|monograph|photography journal|photo essay|fashion journal|architecture journal)\b/i.test(lower) ||
        (!isWatch && !isPerfume && /\b(editorial|journal)\b/i.test(lower)));
     const isDashboard =
       /\b(dashboard|telemetry|dispatch|fleet|metrics|monitoring|operations|trading|analytics)\b/i.test(lower);
-    const isStorefront =
-      /\b(storefront|bakery|menu|shop|boutique|order|cart|checkout|patisserie)\b/i.test(lower);
     const isPersonalTracker =
       /\b(diary|journal|habit|wellness|tracker|mood|meditation)\b/i.test(lower);
 
@@ -235,7 +236,7 @@ export class NavigationDesignResolver {
     );
 
     // 3. Derive Visual Treatments tailored to Emotional Tone & Model
-    const visualTreatment = this.deriveVisualTreatment(model, emotionalTone, isEditorial, isPerfume, is3DWorld);
+    const visualTreatment = this.deriveVisualTreatment(model, emotionalTone, isEditorial, isPerfume, is3DWorld, isStorefront, prompt);
 
     const brandTreatment: NavigationBrandTreatment = {
       name: cleanBrandName,
@@ -259,6 +260,51 @@ export class NavigationDesignResolver {
 
     design.fingerprintHash = this.computeFingerprint(design).fingerprintHash;
     return design;
+  }
+
+  /**
+   * Format a clean, human-readable navigation label from a route path and raw title.
+   */
+  public static formatCleanLabel(
+    cleanPath: string,
+    rawTitle?: string,
+    context?: { isStorefront?: boolean; isEditorial?: boolean; is3DWorld?: boolean; isWatch?: boolean; isPerfume?: boolean }
+  ): string {
+    if (cleanPath === "/") {
+      return context?.is3DWorld
+        ? "3D Stage"
+        : context?.isStorefront
+        ? "Home"
+        : context?.isEditorial
+        ? "Monograph"
+        : context?.isWatch
+        ? "Collection"
+        : context?.isPerfume
+        ? "The Flacon"
+        : "Home";
+    }
+
+    const cleanPathLower = cleanPath.toLowerCase();
+    if (cleanPathLower.includes("explore-longform") || cleanPathLower.includes("read-longform")) return "Longform";
+    if (cleanPathLower.includes("city-map")) return "City Map";
+    if (cleanPathLower.includes("portfolios") || cleanPathLower.includes("dialogues")) return "Portfolios";
+    if (cleanPathLower.includes("archive") || cleanPathLower.includes("typology")) return "Archive";
+    if (cleanPathLower.includes("soundboard") || cleanPathLower.includes("hydrophone")) return "Hydrophone";
+
+    let clean = (rawTitle || "")
+      .replace(/Page$/, "")
+      .replace(/View$/, "")
+      .replace(/([A-Z])/g, " $1")
+      .trim();
+
+    if (!clean || /^(home|dashboard|profile|settings|more|bookmark|portfolioitem|primaryworkspace|curatedarchivalfolio|editorialmonographcover|admincontent)$/i.test(clean.replace(/\s+/g, ""))) {
+      clean = cleanPath
+        .replace(/^\//, "")
+        .split(/[-_]+/)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+    }
+    return clean;
   }
 
   /**
@@ -293,10 +339,10 @@ export class NavigationDesignResolver {
       }
     }
 
-    const unquotedCalledMatch = cleanPrompt.match(/\b(?:called|named|titled|known as)\s+([A-Z0-9][A-Za-z0-9&'’\-]*(?:\s+[A-Z0-9][A-Za-z0-9&'’\-]*){0,3})(?=[\s.,;:!?\n]|$)/i);
+    const unquotedCalledMatch = cleanPrompt.match(/\b(?:called|named|titled|known as)\s+([A-Z0-9][A-Za-z0-9&'’\-]*(?:\s+(?:&|and)\s+[A-Za-z0-9&'’\-]+|\s+[A-Z0-9][A-Za-z0-9&'’\-]*){0,3})(?=[\s.,;:!?\n]|$)/i);
     if (unquotedCalledMatch) {
       let candidate = unquotedCalledMatch[1].trim();
-      candidate = candidate.replace(/\s+(?:with|and|featuring|showcasing|for|in|that|where|by)\b[\s\S]*$/i, "").trim();
+      candidate = candidate.replace(/\s+(?:with|featuring|showcasing|for|in|that|where|by)\b[\s\S]*$/i, "").trim();
       if (candidate && !/^(a|an|the|this|that|an?y|our|my|one)\b/i.test(candidate)) {
         return candidate.toUpperCase();
       }
@@ -310,8 +356,13 @@ export class NavigationDesignResolver {
       }
     }
 
+    // Direct match for compound brand names like "PAGE & PETAL"
+    if (/\bpage\s*&\s*petal\b/i.test(cleanPrompt)) {
+      return "PAGE & PETAL";
+    }
+
     // 4. "for <Name>, a/an ..."
-    const forMatch = cleanPrompt.match(/\bfor\s+["']?([A-Za-z0-9&'-]{2,24})["']?,\s+(?:a|an)\b/i);
+    const forMatch = cleanPrompt.match(/\bfor\s+["']?([A-Za-z0-9&'’\-]+(?:\s+(?:&|and)\s+[A-Za-z0-9&'’\-]+|\s+[A-Za-z0-9&'’\-]+){0,3})["']?(?:,\s+|\s+-\s+|\s+a\b|\s+an\b|\s+the\b)/i);
     if (forMatch && !/^(the|a|an|all|each|every)\b/i.test(forMatch[1])) {
       return forMatch[1].trim().toUpperCase();
     }
@@ -395,6 +446,9 @@ export class NavigationDesignResolver {
     if (isAviation) {
       return lower.includes("stratos") ? "STRATOS AVIONICS" : "AERO TELEMETRY";
     }
+    if (lower.includes("bookstore") || lower.includes("bookseller") || lower.includes("book shop") || lower.includes("page & petal")) {
+      return "PAGE & PETAL";
+    }
     if (lower.includes("plant") || lower.includes("botanical")) {
       return "LEAF SANCTUARY";
     }
@@ -439,32 +493,13 @@ export class NavigationDesignResolver {
     }
 
     const formatCleanLabel = (cleanPath: string, rawTitle?: string): string => {
-      if (cleanPath === "/") {
-        return is3DWorld ? "3D Stage" : isEditorial ? "Monograph" : isWatch ? "Collection" : isPerfume ? "The Flacon" : "Overview";
-      }
-
-      // Domain-specific clean route overrides
-      const cleanPathLower = cleanPath.toLowerCase();
-      if (cleanPathLower.includes("explore-longform") || cleanPathLower.includes("read-longform")) return "Longform";
-      if (cleanPathLower.includes("city-map")) return "City Map";
-      if (cleanPathLower.includes("portfolios") || cleanPathLower.includes("dialogues")) return "Portfolios";
-      if (cleanPathLower.includes("archive") || cleanPathLower.includes("typology")) return "Archive";
-      if (cleanPathLower.includes("soundboard") || cleanPathLower.includes("hydrophone")) return "Hydrophone";
-
-      let clean = (rawTitle || "")
-        .replace(/Page$/, "")
-        .replace(/View$/, "")
-        .replace(/([A-Z])/g, " $1")
-        .trim();
-
-      if (!clean || /^(home|dashboard|profile|settings|more|bookmark|portfolioitem|primaryworkspace|curatedarchivalfolio|editorialmonographcover|admincontent)$/i.test(clean.replace(/\s+/g, ""))) {
-        clean = cleanPath
-          .replace(/^\//, "")
-          .split(/[-_]+/)
-          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(" ");
-      }
-      return clean;
+      return NavigationDesignResolver.formatCleanLabel(cleanPath, rawTitle, {
+        isStorefront,
+        isEditorial,
+        is3DWorld,
+        isWatch,
+        isPerfume,
+      });
     };
 
     // 1. If planned routes exist, prioritize curating them into clean domain labels
@@ -551,7 +586,7 @@ export class NavigationDesignResolver {
     // 3. Fallback: Derive navigation items dynamically from prompt capabilities & semantic features
     primary.push({
       path: "/",
-      label: is3DWorld ? "3D Stage" : isEditorial ? "Monograph" : isWatch ? "Collection" : isPerfume ? "The Flacon" : "Explore",
+      label: is3DWorld ? "3D Stage" : isStorefront ? "Home" : isEditorial ? "Monograph" : isWatch ? "Collection" : isPerfume ? "The Flacon" : "Explore",
       isPrimary: true,
     });
 
@@ -605,8 +640,39 @@ export class NavigationDesignResolver {
     tone: string | undefined,
     isEditorial: boolean,
     isPerfume: boolean,
-    is3DWorld: boolean
+    is3DWorld: boolean,
+    isStorefront: boolean = false,
+    prompt: string = ""
   ): NavigationVisualTreatment {
+    if (isStorefront) {
+      const lower = prompt.toLowerCase();
+      const isWarmEditorial = lower.includes("cream") || lower.includes("forest") || lower.includes("editorial") || lower.includes("book") || lower.includes("botanical") || lower.includes("bakery") || lower.includes("petal");
+      if (isWarmEditorial) {
+        return {
+          typography: "font-serif tracking-normal text-xs sm:text-sm",
+          geometry: "border-b border-[#1C3D2E]/15 px-6 sm:px-12 py-4",
+          surface: "bg-[#FAF7F2]/95 backdrop-blur-md border-b border-[#1C3D2E]/10 shadow-xs",
+          activeState: "text-[#1C3D2E] font-semibold underline underline-offset-8 decoration-[#1C3D2E]",
+          motion: "transition-all duration-200 ease-in-out",
+          containerClass: "sticky top-0 z-50 w-full",
+          navClass: "max-w-7xl mx-auto flex items-center justify-between",
+          activeItemClass: "text-[#1C3D2E] font-medium underline underline-offset-8 decoration-[#1C3D2E]",
+          inactiveItemClass: "text-[#4A5E53] hover:text-[#1C3D2E] transition-colors"
+        };
+      }
+      return {
+        typography: "font-sans font-medium text-sm",
+        geometry: "border-b border-stone-200 px-6 sm:px-10 py-3.5",
+        surface: "bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-xs",
+        activeState: "text-stone-900 font-semibold border-b-2 border-stone-900",
+        motion: "transition-colors duration-200",
+        containerClass: "sticky top-0 z-50 w-full",
+        navClass: "max-w-7xl mx-auto flex items-center justify-between",
+        activeItemClass: "text-stone-950 font-semibold",
+        inactiveItemClass: "text-stone-600 hover:text-stone-900 transition-colors"
+      };
+    }
+
     if (isPerfume) {
       return {
         typography: "font-serif tracking-widest text-xs uppercase",

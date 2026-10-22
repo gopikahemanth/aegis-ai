@@ -28,11 +28,21 @@ export class PatchEngine {
 
       // Check semantic duplicates and path authorization
       const check = SemanticDuplicateDetector.checkBeforeWrite(f.path);
+      const isPageRoute = f.path.startsWith("src/pages/");
+      const isTargetFeature = check.canonicalPath?.startsWith("src/features/");
       if (check.canonicalPath && check.canonicalPath !== f.path) {
-        console.log(`[PatchEngine] 🔀 Redirecting patch for alias "${f.path}" to canonical "${check.canonicalPath}"`);
-        f.path = check.canonicalPath;
+        if (isPageRoute && isTargetFeature) {
+          console.log(`[PatchEngine] 🛡️ Preserving page path "${f.path}" without redirecting to feature "${check.canonicalPath}"`);
+        } else {
+          console.log(`[PatchEngine] 🔀 Redirecting patch for alias "${f.path}" to canonical "${check.canonicalPath}"`);
+          f.path = check.canonicalPath;
+        }
       } else if (check.action === "REDIRECT_TO_CANONICAL" && check.canonicalPath) {
-        f.path = check.canonicalPath;
+        if (isPageRoute && isTargetFeature) {
+          console.log(`[PatchEngine] 🛡️ Preserving page path "${f.path}" without redirecting to feature "${check.canonicalPath}"`);
+        } else {
+          f.path = check.canonicalPath;
+        }
       } else if (check.action === "DELETE_ORPHAN" && !check.allowed) {
         console.warn(`[PatchEngine] ⛔ Skipping unauthorized file: ${f.path}`);
         continue;

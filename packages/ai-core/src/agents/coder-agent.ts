@@ -67,7 +67,7 @@ export class CoderAgent extends BaseAgent {
     const codebaseEntries = new CodebaseIndex().build(allFiles);
 
     const selector = new FileSelector();
-    const selectedEntries = selector.select(request, codebaseEntries, outputDirectory, `${task.title} ${task.description}`);
+    const selectedEntries = selector.select(request, codebaseEntries, outputDirectory, `${task.title || ""} ${task.description || ""}`);
 
     const candidateFiles: Array<{ path: string; content: string }> = [];
     for (const entry of selectedEntries) {
@@ -85,8 +85,8 @@ export class CoderAgent extends BaseAgent {
 
     // ── Build canonical file contract context for this task ──────────────────────
     // Determine which canonical files this task is responsible for
-    const taskTitle = task.title.toLowerCase();
-    const taskDesc = task.description.toLowerCase();
+    const taskTitle = (task.title || task.description || "").toLowerCase();
+    const taskDesc = (task.description || "").toLowerCase();
     const isShellTask = taskTitle.includes("shell") || taskTitle.includes("navigation") || taskTitle.includes("scaffold") || taskTitle.includes("routing") || task.id === 1;
     const promptLower = (request || "").toLowerCase();
 

@@ -139,10 +139,13 @@ export class PrismaDelegateOperationRegistry {
 
 export class CanonicalPrismaFieldRegistry {
   public static getFields(modelName: string): Set<string> | null {
-    // Generic field registry: standard ID, timestamp, domain and auth fields
+    // Generic field registry: standard ID, timestamp, domain and auth fields (supports both camelCase and snake_case database conventions)
     return new Set([
-      "id", "createdAt", "updatedAt", "userId", "name", "title", "content", "status", "user",
-      "email", "passwordHash", "password", "role", "data", "metadata", "description", "category"
+      "id", "createdAt", "updatedAt", "created_at", "updated_at",
+      "userId", "user_id", "user",
+      "name", "title", "content", "status",
+      "email", "passwordHash", "password_hash", "password", "role",
+      "data", "metadata", "description", "category"
     ]);
   }
 }

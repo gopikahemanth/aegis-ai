@@ -58,6 +58,9 @@ export interface ProjectSpecification {
   /** Deployment target (e.g. "vercel", "docker", "railway", "none") */
   deployment?: string;
 
+  /** Domain category inferred or discovered from user request (e.g. 'marine-engineering', 'satellite-telemetry') */
+  domainCategory?: string;
+
   /** Domain vocabulary extracted from user request — must be threaded through all agent prompts */
   domainVocabulary?: DomainVocabulary;
 }

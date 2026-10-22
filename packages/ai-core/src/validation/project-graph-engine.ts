@@ -262,7 +262,15 @@ export class ProjectGraphEngine {
 
               for (const field of [...new Set(topLevelKeys)]) {
                 if (field && !prismaKeywords.has(field) && !schemaFields.has(field)) {
-                  const canonicalField = delegateAliases[field] || (field === "title" && schemaFields.has("name") ? "name" : undefined);
+                  const canonicalField = delegateAliases[field] ||
+                    (field === "title" && schemaFields.has("name") ? "name" : undefined) ||
+                    (field === "name" && schemaFields.has("title") ? "title" : undefined) ||
+                    (field === "user_id" && schemaFields.has("userId") ? "userId" : undefined) ||
+                    (field === "userId" && schemaFields.has("user_id") ? "user_id" : undefined) ||
+                    (field === "created_at" && schemaFields.has("createdAt") ? "createdAt" : undefined) ||
+                    (field === "createdAt" && schemaFields.has("created_at") ? "created_at" : undefined) ||
+                    (field === "updated_at" && schemaFields.has("updatedAt") ? "updatedAt" : undefined) ||
+                    (field === "updatedAt" && schemaFields.has("updated_at") ? "updated_at" : undefined);
                   if (canonicalField && schemaFields.has(canonicalField)) {
                     // Auto-fix field alias in file on disk
                     try {
@@ -276,7 +284,7 @@ export class ProjectGraphEngine {
                       console.warn(`[ProjectGraphEngine] Failed to write field fix to ${relPath}: ${err.message}`);
                     }
                   } else {
-                    // Unknown field not in schema — only strip if it is a safe, self-contained single-line property
+                    // Unknown field not in schema — strip safely whether on own line or inline in object literal
                     try {
                       let fileContent = readFileSync(sourceAbs, "utf8");
                       const safeLineRegex = new RegExp(`^[ \\t]*${field}\\s*:[^,\\r\\n]+,?[ \\t]*(?:\\r?\\n|$)`, "gm");
@@ -284,6 +292,13 @@ export class ProjectGraphEngine {
                         fileContent = fileContent.replace(safeLineRegex, "");
                         writeFileSync(sourceAbs, fileContent, "utf8");
                         console.log(`[ProjectGraphEngine] 🧹 Removed unknown Prisma field "${field}" from ${relPath} (not present in model ${delegate})`);
+                        continue;
+                      }
+                      const inlineRegex = new RegExp(`(?<=[{,]\\s*)${field}\\s*:[^,{}]+,?\\s*`, "g");
+                      if (inlineRegex.test(fileContent)) {
+                        fileContent = fileContent.replace(inlineRegex, "");
+                        writeFileSync(sourceAbs, fileContent, "utf8");
+                        console.log(`[ProjectGraphEngine] 🧹 Removed unknown inline Prisma field "${field}" from ${relPath} (not present in model ${delegate})`);
                         continue;
                       }
                     } catch (err: any) {
@@ -428,6 +443,15 @@ export class ProjectGraphEngine {
             const isFrontendSource2 = relPath.startsWith("src/");
             const isAts = ProjectGraphEngine.isAtsProject(projectRoot);
 
+            const dsCompsDir = join(projectRoot, "src", "design-system", "components");
+            const extraDs = existsSync(dsCompsDir)
+              ? readdirSync(dsCompsDir).filter(f => f.endsWith(".tsx") || f.endsWith(".ts")).map(f => `src/design-system/components/${f}`)
+              : [];
+            const sharedCompsDir = join(projectRoot, "src", "shared", "components");
+            const extraShared = existsSync(sharedCompsDir)
+              ? readdirSync(sharedCompsDir).filter(f => f.endsWith(".tsx") || f.endsWith(".ts")).map(f => `src/shared/components/${f}`)
+              : [];
+
             const possibleCanonicals = [
               "server/db/index.ts",
               "server/lib/prisma.ts",
@@ -445,6 +469,8 @@ export class ProjectGraphEngine {
               "src/shared/components/Layout.tsx",
               "src/design-system/components/Button.tsx",
               "src/design-system/components/GlassCard.tsx",
+              ...extraDs,
+              ...extraShared,
               "src/components/ui.tsx",
               "src/services/api.ts",
             ].filter(relP => {

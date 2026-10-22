@@ -17,6 +17,22 @@ export class FailoverProvider implements AIProvider {
   private static readonly permanentlyDisabled = new Set<string>();
   private static readonly sessionDisabled = new Set<string>();
   private static readonly healthStates = new Map<string, ProviderHealthState>();
+  private activeProviderIndex = 0;
+
+  public static resetState(): void {
+    FailoverProvider.disabledUntil.clear();
+    FailoverProvider.permanentlyDisabled.clear();
+    FailoverProvider.sessionDisabled.clear();
+    FailoverProvider.healthStates.clear();
+  }
+
+  public getActiveProviderIndex(): number {
+    return this.activeProviderIndex;
+  }
+
+  public setActiveProviderIndex(index: number): void {
+    this.activeProviderIndex = index;
+  }
 
   constructor(
     private readonly providers: AIProvider[],
@@ -79,7 +95,12 @@ export class FailoverProvider implements AIProvider {
       }
     }
 
-    for (const provider of this.providers) {
+    const startIndex = (this.activeProviderIndex % this.providers.length + this.providers.length) % this.providers.length;
+
+    for (let offset = 0; offset < this.providers.length; offset++) {
+      const providerIndex = (startIndex + offset) % this.providers.length;
+      const provider = this.providers[providerIndex];
+
       if (FailoverProvider.sessionDisabled.has(provider.name) || FailoverProvider.permanentlyDisabled.has(provider.name)) {
         continue;
       }
@@ -129,6 +150,7 @@ export class FailoverProvider implements AIProvider {
           );
           const result = await provider.chat(messages, activeOptions);
           FailoverProvider.healthStates.set(provider.name, "HEALTHY");
+          this.activeProviderIndex = providerIndex;
           return result;
         } catch (error: any) {
           lastError = error;
@@ -157,6 +179,7 @@ export class FailoverProvider implements AIProvider {
           const is404 = error.message?.includes("404") || error.message?.includes("NOT_FOUND") || error.message?.toLowerCase().includes("no longer available") || error.message?.toLowerCase().includes("does not exist");
           const is503 = error.message?.includes("503") || error.message?.toLowerCase().includes("high demand") || error.message?.includes("UNAVAILABLE") || error.message?.toLowerCase().includes("temporarily unavailable");
           const isFetchFailed = error.message?.includes("fetch failed") || error.message?.includes("ECONNREFUSED");
+          const isTimeout = error.message?.includes("timed out") || error.message?.includes("ETIMEDOUT");
           const is429 = error.message?.includes("429") || error.message?.includes("quota") ||
             error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.toLowerCase().includes("rate limit");
           const isUnsupportedModality = options?.image && (
@@ -207,17 +230,27 @@ export class FailoverProvider implements AIProvider {
             break;
           }
 
+          if (isTimeout && this.providers.length > 1) {
+            console.warn(`[FailoverProvider] ⚡ Request timed out on provider "${provider.name}". Failing over to next provider immediately...`);
+            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 60000);
+            FailoverProvider.healthStates.set(provider.name, "DEGRADED");
+            break;
+          }
+
           if (is503) {
             console.warn(`[FailoverProvider] 503 High Demand / Unavailable on provider "${provider.name}". Failing over to next provider/key...`);
-            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 15000);
+            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 60000);
             FailoverProvider.healthStates.set(provider.name, "UNAVAILABLE");
             break;
           }
 
           if (isFetchFailed) {
-            console.warn(`[FailoverProvider] Connection failed on provider "${provider.name}". Pausing for 15s before retry...`);
-            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 15000);
+            console.warn(`[FailoverProvider] Connection failed on provider "${provider.name}". Pausing before retry...`);
+            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 60000);
             FailoverProvider.healthStates.set(provider.name, "DEGRADED");
+            if (this.providers.length > 1) {
+              break;
+            }
             if (providerAttempts < this.maxRetries) {
               await new Promise((resolve) => setTimeout(resolve, 2000));
               continue;
@@ -226,9 +259,32 @@ export class FailoverProvider implements AIProvider {
           }
 
           if (is429) {
-            console.warn(`[FailoverProvider] ⚡ 429 Rate Limit on provider "${provider.name}". Setting temporary 15s cooldown...`);
-            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 15000);
-            FailoverProvider.healthStates.set(provider.name, "DEGRADED");
+            const errorMsgLower = (error.message || "").toLowerCase();
+            const isDailyQuotaExhausted = errorMsgLower.includes("per day") ||
+              errorMsgLower.includes("daily") ||
+              errorMsgLower.includes("day limit") ||
+              (errorMsgLower.includes("quota exceeded") && !errorMsgLower.includes("per minute"));
+
+            if (isDailyQuotaExhausted) {
+              console.warn(`[FailoverProvider] 🛑 Daily quota exhausted on provider "${provider.name}". Session-disabling provider for current run.`);
+              FailoverProvider.sessionDisabled.add(provider.name);
+              FailoverProvider.healthStates.set(provider.name, "QUOTA_EXHAUSTED");
+              break;
+            }
+
+            let cooldownSeconds = 60;
+            if (error instanceof ProviderError && error.retryAfter && error.retryAfter > 0) {
+              cooldownSeconds = Math.max(cooldownSeconds, error.retryAfter);
+            } else {
+              const retryMatch = error.message?.match(/"retryDelay":\s*"(\d+)s?"/i) || error.message?.match(/retry in ([0-9.]+)\s*s/i);
+              if (retryMatch) {
+                cooldownSeconds = Math.max(cooldownSeconds, Math.ceil(parseFloat(retryMatch[1])));
+              }
+            }
+            cooldownSeconds = Math.min(3600, Math.max(60, cooldownSeconds));
+            console.warn(`[FailoverProvider] ⚡ 429 Rate Limit on provider "${provider.name}". Setting ${cooldownSeconds}s cooldown and continuing with next provider...`);
+            FailoverProvider.disabledUntil.set(provider.name, Date.now() + cooldownSeconds * 1000);
+            FailoverProvider.healthStates.set(provider.name, "RATE_LIMITED");
             break;
           }
 
@@ -240,7 +296,7 @@ export class FailoverProvider implements AIProvider {
         }
       }
 
-      FailoverProvider.disabledUntil.set(provider.name, Date.now() + 10000);
+      FailoverProvider.disabledUntil.set(provider.name, Date.now() + 60000);
       FailoverProvider.healthStates.set(provider.name, "DEGRADED");
     }
 

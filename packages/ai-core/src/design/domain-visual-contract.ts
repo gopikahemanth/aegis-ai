@@ -6,6 +6,8 @@ import {
   type VisualArtDirectionContract,
 } from "./visual-art-direction.js";
 
+import { NavigationDesignResolver } from "./navigation-design.js";
+
 export { CompositionGraph, CompositionGraphSynthesizer, deriveArtDirection, type VisualArtDirectionContract };
 
 export interface DomainVisualDesignContract {
@@ -532,6 +534,51 @@ export class DomainVisualContractGenerator {
       alerts = ["Autumn Culinary Folio is live: Discover the volcanic terroirs of Sicily and Hokkaido."];
       primaryWidget = "EDITORIAL_STORY";
       components = ["ShowcaseGrid", "Timeline", "StatusPipeline"];
+    } else if (
+      rawText.includes("bookstore") ||
+      rawText.includes("bookseller") ||
+      rawText.includes("book shop") ||
+      rawText.includes("page & petal") ||
+      (rawText.includes("book") && (rawText.includes("catalog") || rawText.includes("cart") || rawText.includes("checkout") || rawText.includes("author") || rawText.includes("literature") || rawText.includes("reading") || rawText.includes("store") || rawText.includes("petal")))
+    ) {
+      domain = "Independent Bookseller & Literary Salon";
+      productType = "Curated Online Bookstore & Literary Catalog";
+      layoutFamily = "EDITORIAL_CATALOG";
+      navStrategy = "TOPBAR_PILL";
+      density = "balanced";
+      formality = "expressive";
+      mood = "Warm cream backgrounds, forest green accents, antique terracotta, refined literary typography, and tactile book cover displays with botanical pairings";
+
+      mode = "light";
+      bgClass = "bg-[#FAF7F2]";
+      surfaceClass = "bg-[#FFFFFF] border-[rgba(28,61,46,0.14)]";
+      cardClass = "bg-[#FFFFFF] border border-[rgba(28,61,46,0.12)] rounded-xl shadow-xs hover:shadow-md transition-shadow";
+      primary = "emerald";
+      secondary = "amber";
+      accent = "from-[#1C3D2E] via-[#2D5A43] to-[#C87A54]";
+      textPrimary = "text-[#1C2822]";
+      textMuted = "text-[#62736A]";
+      badgeStyle = "bg-[#1C3D2E]/10 text-[#1C3D2E] border border-[#1C3D2E]/20 rounded-full font-serif text-xs px-2.5 py-0.5";
+      activeNavStyle = "bg-[#1C3D2E] text-[#FAF7F2] rounded-lg shadow-xs";
+      fontFamily = "Playfair Display, Plus Jakarta Sans, serif";
+      headingStyle = "font-serif tracking-tight font-medium text-[#1C2822]";
+      bodyStyle = "text-sm text-[#3E4D45] font-normal leading-relaxed";
+      emphasis = "font-semibold text-[#1C3D2E]";
+
+      const bookBrand = spec?.name && !spec.name.toLowerCase().includes("app") && !spec.name.toLowerCase().includes("project")
+        ? spec.name
+        : (NavigationDesignResolver.extractBrandFromPrompt(prompt) || "PAGE & PETAL");
+      headline = `${bookBrand} — Curated Literature, Rare Editions & Living Botanicals`;
+      primaryMetric = { label: "Curated Titles", value: "248 Volumes", trend: "Hand-selected editions", icon: "BookOpen" };
+      secondaryMetrics = [
+        { label: "Signed First Editions", value: "34 Vault Drops", trend: "Author annotated", icon: "Bookmark" },
+        { label: "Staff Selections", value: "18 Highlights", trend: "Independent presses", icon: "Star" },
+        { label: "Botanical Pairings", value: "52 Living Complements", trend: "Potted pairings", icon: "Sprout" },
+      ];
+      heroAction = { label: "Browse Book Catalog", targetRoute: "/catalog", icon: "BookOpen" };
+      alerts = ["Autumn Literary Folio is live: Explore signed translated poetry and living botanical pairings."];
+      primaryWidget = "SHOWCASE";
+      components = ["BookCatalogGrid", "StaffPicksShelf", "CartDrawer"];
     } else if (rawText.includes("plant") || rawText.includes("botanical") || rawText.includes("houseplant") || rawText.includes("garden") || rawText.includes("foliage") || (rawText.includes("watering") && !rawText.includes("vehicle"))) {
       domain = "Houseplant Care & Botanical Companion";
       productType = "Plant Care & Growth Companion";
@@ -1255,27 +1302,51 @@ export class DomainVisualContractGenerator {
           title: headline,
           subtitle: rawText.includes("synth") || rawText.includes("sound") || rawText.includes("oscillator")
             ? "Artisanal analog synthesizer laboratory & bespoke acoustic monograph"
+            : (rawText.includes("book") || rawText.includes("literature") || rawText.includes("reading") || rawText.includes("petal"))
+            ? "Curated literature, signed first editions, author salons & living botanical pairings"
             : `${domain} bespoke collection & provenance monograph`,
-          badge: rawText.includes("synth") || rawText.includes("sound") ? "Analog Sound Lab" : "Atelier Collection",
+          badge: rawText.includes("synth") || rawText.includes("sound")
+            ? "Analog Sound Lab"
+            : (rawText.includes("book") || rawText.includes("literature") || rawText.includes("reading") || rawText.includes("petal"))
+            ? "Independent Bookseller"
+            : "Atelier Collection",
           cta: heroAction,
         },
         primaryWorkspace: {
           type: "catalog_grid",
           title: rawText.includes("synth") || rawText.includes("sound") || rawText.includes("oscillator")
             ? "Modular Oscillator & Enclosure Collection"
+            : (rawText.includes("book") || rawText.includes("literature") || rawText.includes("reading") || rawText.includes("petal"))
+            ? "Curated Book Catalog & Reading Vault"
             : "Masterworks Collection & Finish Matrix",
           description: rawText.includes("synth") || rawText.includes("sound") || rawText.includes("oscillator")
             ? "Discrete analog oscillator topologies, handcrafted wood finishes, and custom voice architectures."
+            : (rawText.includes("book") || rawText.includes("literature") || rawText.includes("reading") || rawText.includes("petal"))
+            ? "Browse curated literature across genres, inspect author synopses, explore botanical pairings, and add books to your shopping bag."
             : `Handcrafted ${domain.toLowerCase()} collection, material finishes, and bespoke architectural specifications.`,
           density: "spacious",
         },
         secondaryWorkspace: {
           type: "financial_summary",
-          title: "Bespoke Commissions & Atelier Intake",
+          title: (rawText.includes("book") || rawText.includes("literature") || rawText.includes("reading") || rawText.includes("petal"))
+            ? "Shopping Bag & Current Orders"
+            : "Bespoke Commissions & Atelier Intake",
         },
         supportingWidgets: [
-          { type: "metric_cluster", title: rawText.includes("synth") || rawText.includes("sound") ? "Harmonic Waveform Spectrum" : "Material & Finish Integrity" },
-          { type: "gauge_dial", title: "Craft Purity Index" },
+          {
+            type: "metric_cluster",
+            title: rawText.includes("synth") || rawText.includes("sound")
+              ? "Harmonic Waveform Spectrum"
+              : (rawText.includes("book") || rawText.includes("literature") || rawText.includes("reading") || rawText.includes("petal"))
+              ? "Literary Catalog Index"
+              : "Material & Finish Integrity"
+          },
+          {
+            type: "gauge_dial",
+            title: (rawText.includes("book") || rawText.includes("literature") || rawText.includes("reading") || rawText.includes("petal"))
+              ? "Staff Pick Recommendation"
+              : "Craft Purity Index"
+          },
         ],
         interactionModel: "general_operations",
       } : (layoutFamily === "MEDIA_SHOWCASE") ? {

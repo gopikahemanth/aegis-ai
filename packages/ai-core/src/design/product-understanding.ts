@@ -438,7 +438,11 @@ function detectExperiencePattern(
     lower.includes("ecommerce") ||
     lower.includes("shopping") ||
     lower.includes("online store") ||
-    (/\b(?:cart|carts|shopping cart)\b/i.test(lower) && /\b(?:product|products|merchandise|retail|shop|items|goods)\b/i.test(lower)) ||
+    lower.includes("bookstore") ||
+    lower.includes("bookseller") ||
+    lower.includes("book shop") ||
+    (/\b(?:cart|carts|shopping cart)\b/i.test(lower) && /\b(?:product|products|merchandise|retail|shop|items|goods|book|books)\b/i.test(lower)) ||
+    ((lower.includes("book") || lower.includes("reading")) && (lower.includes("catalog") || lower.includes("cart") || lower.includes("order") || lower.includes("shop"))) ||
     ((lower.includes("bakery") || lower.includes("bread") || lower.includes("pastry") || lower.includes("cake") || lower.includes("cafe")) &&
      (lower.includes("menu") || lower.includes("order") || lower.includes("ordering") || /\bcart\b/i.test(lower) || lower.includes("catalog")));
 

@@ -31,6 +31,7 @@ Return ONLY valid JSON matching this schema exactly — no extra text, no markdo
   "featureDescriptions": { [featureName: string]: string },
   "auth": string | null,
   "deployment": string | null,
+  "domainCategory": string,
   "domainVocabulary": {
     "entityName": string,
     "entityPlural": string,
@@ -41,6 +42,7 @@ Return ONLY valid JSON matching this schema exactly — no extra text, no markdo
 }
 
 Rules for each field:
+- "domainCategory": The precise domain category (e.g. "marine-engineering", "satellite-telemetry", "luxury-hospitality", "scientific-observatory", "automotive-engineering").
 - "features": Every meaningful feature the user described (e.g. ["upload", "parsing", "scoring", "history", "export", "auth"]). Each entry becomes a folder under src/features/.
 - "inferredLibraries": npm packages the project will need. Infer from the feature set even if not explicitly mentioned (e.g. PDF upload → "pdfjs-dist", charts → "recharts", auth → "jsonwebtoken"). Be exhaustive.
 - "userFlows": Top-level user journeys as kebab-case strings (e.g. ["upload-resume", "scan-keywords", "view-history", "export-pdf"]).

@@ -355,11 +355,17 @@ export class ExperienceArchitect {
     domainContract?: any
   ): CompositionGraph {
     const isBakery = rawPrompt.includes("bakery") || rawPrompt.includes("bread") || rawPrompt.includes("pastry");
+    const isBookstore = rawPrompt.includes("bookstore") || rawPrompt.includes("bookseller") || rawPrompt.includes("book shop") ||
+      (rawPrompt.includes("book") && (rawPrompt.includes("catalog") || rawPrompt.includes("cart") || rawPrompt.includes("author") || rawPrompt.includes("reading") || rawPrompt.includes("petal")));
     const experienceIntent = isBakery
       ? "Artisan bakery storefront with daily fresh bake schedule, sourdough catalog, and cart bag"
+      : isBookstore
+      ? "Curated independent bookstore with literature catalog, staff selections, signed first editions, and shopping bag"
       : "Continuous retail storefront with category exploration, curated product grid, and sliding cart drawer";
     const focalElement = isBakery
       ? "Warm artisanal hero with freshly baked morning bread highlights and oven batch countdown"
+      : isBookstore
+      ? "Warm editorial bookstore masthead showcasing featured staff selections, signed edition lotteries, and botanical pairings"
       : "Editorial retail storefront banner with category pills and promotional product carousel";
     const navigationModel = "top-nav-cart";
     const cardDensityRatio = 0.55;
@@ -368,45 +374,45 @@ export class ExperienceArchitect {
       {
         id: "sec_hero",
         order: 1,
-        name: isBakery ? "Hearth & Fresh Bake Hero" : "Storefront Showcase Banner",
+        name: isBakery ? "Hearth & Fresh Bake Hero" : isBookstore ? "Curated Reading & Literary Masthead" : "Storefront Showcase Banner",
         focalElement,
         layoutFamily: "STOREFRONT",
         gridStructure: "full-width-banner",
         contentPurpose: "Brand introduction and immediate catalog entry point",
-        primaryAction: { label: isBakery ? "Explore Today's Bakes" : "Shop Collection", action: "scroll_catalog" },
-        secondaryElements: [isBakery ? "6 AM Fresh Batch Badge" : "Free Shipping Over $50", "Cart Icon with live badge"],
+        primaryAction: { label: isBakery ? "Explore Today's Bakes" : isBookstore ? "Browse Book Catalog" : "Shop Collection", action: "scroll_catalog" },
+        secondaryElements: [isBakery ? "6 AM Fresh Batch Badge" : isBookstore ? "Complimentary Bookmarks & Tote Over $40" : "Free Shipping Over $50", "Cart Icon with live badge"],
       },
       {
         id: "sec_categories",
         order: 2,
-        name: "Departmental Category Rail",
+        name: isBookstore ? "Literary Genre & Category Rail" : "Departmental Category Rail",
         focalElement: "Interactive horizontal filter pills with category icons",
         layoutFamily: "STOREFRONT",
         gridStructure: "horizontal-pill-row",
-        contentPurpose: "Quick-filter catalog by department or bake type",
+        contentPurpose: isBookstore ? "Quick-filter books by literary genre or format" : "Quick-filter catalog by department or bake type",
         secondaryElements: ["Active filter count", "Clear filters button"],
       },
       {
         id: "sec_catalog",
         order: 3,
-        name: isBakery ? "Daily Oven Catalog & Loaves Grid" : "Curated Product Grid",
+        name: isBakery ? "Daily Oven Catalog & Loaves Grid" : isBookstore ? "Curated Book Catalog & Cover Gallery" : "Curated Product Grid",
         focalElement: "Responsive grid of authentic domain product cards with instant Add to Cart action",
         layoutFamily: "GRID_CATALOG",
         gridStructure: "grid-4-col",
         contentPurpose: "Browse and add items to purchase bag",
-        primaryAction: { label: "Add to Bag", action: "add_to_cart" },
-        secondaryElements: ["Price display", "Inventory status", "Dietary/material badges"],
+        primaryAction: { label: isBookstore ? "Add to Bag" : "Add to Bag", action: "add_to_cart" },
+        secondaryElements: ["Price display", "Inventory status", isBookstore ? "Format & Staff Pick badges" : "Dietary/material badges"],
       },
       {
         id: "sec_custom_order",
         order: 4,
-        name: isBakery ? "Custom Cake & Celebration Builder" : "Featured Spotlight Story",
-        focalElement: isBakery ? "Interactive cake builder with flavor, size, and inscription selectors" : "Artisan provenance story",
+        name: isBakery ? "Custom Cake & Celebration Builder" : isBookstore ? "Staff Picks & Author Salons" : "Featured Spotlight Story",
+        focalElement: isBakery ? "Interactive cake builder with flavor, size, and inscription selectors" : isBookstore ? "Curated staff recommendations and signed author salon tickets" : "Artisan provenance story",
         layoutFamily: isBakery ? "FORM_CENTRIC" : "EDITORIAL",
         gridStructure: "split-customizer",
-        contentPurpose: isBakery ? "Order personalized celebration bake" : "Brand story and material lineage",
-        primaryAction: { label: isBakery ? "Add Custom Cake to Bag" : "Learn More", action: "submit_custom" },
-        secondaryElements: ["Dynamic price estimator", "Lead-time badge"],
+        contentPurpose: isBakery ? "Order personalized celebration bake" : isBookstore ? "Staff recommendations and signed edition drops" : "Brand story and material lineage",
+        primaryAction: { label: isBakery ? "Add Custom Cake to Bag" : isBookstore ? "Explore Salons" : "Learn More", action: "submit_custom" },
+        secondaryElements: [isBookstore ? "Curator's Note" : "Dynamic price estimator", isBookstore ? "Rare Signed Copy Vault" : "Lead-time badge"],
       },
     ];
 

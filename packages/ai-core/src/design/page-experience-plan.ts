@@ -1855,7 +1855,7 @@ export class PageExperiencePlanner {
     // =========================================================================
     const isOperationalDomain = /\b(avionics|aerospace|aircraft|flight|aviation|cockpit|airframe|airspace|transponder|squawk|rnav|airway)\b/i.test(promptLower);
 
-    if (genre === "HIGH_DENSITY_CONSOLE" || isOperationalDomain) {
+    if (isOperationalDomain) {
       if (route === "/" || slug === "home" || slug === "overview" || slug === "dashboard" || slug === "console") {
         return {
           route,
@@ -1990,9 +1990,10 @@ export class PageExperiencePlanner {
 
       // Operational domain fallback for any other route
       const naturalTitle = titleHint || slug.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+      const roleSuffix = isOperationalDomain ? "Telemetry & Operations Console" : "Operations Console";
       return {
         route,
-        pageRole: `${naturalTitle} Telemetry & Operations Console`,
+        pageRole: `${naturalTitle} ${roleSuffix}`,
         purpose: `Dedicated operational telemetry console for ${naturalTitle} at ${brandName}`,
         experienceIntent: `Inspect operational parameters and real-time instrumentation for ${naturalTitle}`,
         focalElement: `Interactive ${naturalTitle} operations console and high-density telemetry instrumentation`,
@@ -2011,7 +2012,9 @@ export class PageExperiencePlanner {
           scroll: "fixed command layout with high-density data scroll",
           transitions: ["instant view state transition"],
         },
-        contentPresentation: `High-density avionics console layout for ${naturalTitle} with monospace data indicators and status badges`,
+        contentPresentation: isOperationalDomain
+          ? `High-density avionics console layout for ${naturalTitle} with monospace data indicators and status badges`
+          : `High-density operations console layout for ${naturalTitle} with data indicators and status badges`,
         visualHierarchy: {
           primary: `${naturalTitle} Core Instrumentation`,
           secondary: ["Subsystem Readouts", "Diagnostics Log"],

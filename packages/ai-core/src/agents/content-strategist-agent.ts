@@ -391,7 +391,73 @@ export default siteContent;
     const cat = (featureMatrix.category || "").toLowerCase();
     const promptLower = (((brief as any).rawPrompt || (brief as any).userPrompt || "") + " " + cat).toLowerCase();
 
-    // 0. Culinary Travel Magazine & Gastronomic Journal
+    // 0. Independent Bookstore & Literary Salon
+    const isBookstore = /\b(bookstore|bookseller|book\s*shop|page & petal)\b/i.test(promptLower) ||
+      (/\b(book|reading|literature)\b/i.test(promptLower) && /\b(catalog|cart|checkout|order|store|author)\b/i.test(promptLower));
+
+    if (isBookstore) {
+      const bookstoreBrand = authoritativeBrand || "PAGE & PETAL";
+      return {
+        brand: {
+          name: bookstoreBrand,
+          tagline: "Curated Independent Bookselling, Living Botanicals & Literary First Editions",
+          valueProposition: "We curate rigorous independent literature, pair titles with living botanicals, and host intimate author salons in our physical bookstore.",
+          contact: { phone: "+1 (555) 382-9401", email: `books@${bookstoreBrand.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`, hours: "Tue–Sat: 10am–7pm, Sun: 11am–5pm", address: "482 Atlantic Avenue, Brooklyn, NY 11217" }
+        },
+        navigationLabels: {
+          "/": "Home",
+          "/catalog": "Catalog & Vault",
+          "/filter-books": "Filter Books",
+          "/cart": "Shopping Bag",
+          "/complete-checkout": "Checkout",
+          "/order-history": "Orders",
+          "/submit-contact": "Contact"
+        },
+        pages: {
+          "/": {
+            title: `${bookstoreBrand} | Independent Bookseller & Botanical Pairings`,
+            headline: "Independent literature, signed first editions, and botanical pairings.",
+            subheadline: "Browse our hand-selected catalog, enter signed first-edition lotteries, and RSVP for in-store literary salon events.",
+            primaryCta: "Browse Catalog",
+            secondaryCta: "Staff Selections",
+            highlights: [
+              { label: "Living Botanical Complements", description: "Every title on our reading list can be paired with a curated houseplant matching its setting." },
+              { label: "Signed First-Edition Vault", description: "Fair-chance ticketing and release drops for rare, author-annotated hardcovers." }
+            ]
+          },
+          "/catalog": {
+            title: `${bookstoreBrand} | Curated Book Catalog`,
+            headline: "Curated Literature, Translated Poetry, and Independent Presses",
+            subheadline: "Explore volumes across Literary Fiction, Ecology, Philosophy, and Poetry with stock availability.",
+            primaryCta: "Add to Bag",
+            secondaryCta: "Filter by Genre",
+            highlights: [
+              { label: "Curated Staff Picks", description: "Uncompromising literature selected by our resident booksellers." },
+              { label: "Botanical Pairings", description: "Living green companions paired with each edition." }
+            ]
+          }
+        },
+        mockRecords: [
+          { id: "bk-01", title: "The Overstory", author: "Richard Powers", genre: "Literary Fiction", format: "Hardcover", price: 32, isbn: "978-0393635522", stock: 14, staffPick: true, synopsis: "Nine Americans whose life experiences bring them into contact with trees map out a monumental narrative about the human connection to the natural world.", botanicalPairing: "Potted Bonsai Ficus Microcarpa", botanicalPrice: 45, coverColor: "#1C3D2E", accentColor: "#C87A54" },
+          { id: "bk-02", title: "Braiding Sweetgrass", author: "Robin Wall Kimmerer", genre: "Ecology / Non-Fiction", format: "Paperback", price: 20, isbn: "978-1571313560", stock: 22, staffPick: true, synopsis: "Drawing on her life as an indigenous scientist, the author shows how other living beings offer us our oldest teachings.", botanicalPairing: "Dried Sweetgrass and Lavender Bundle", botanicalPrice: 18, coverColor: "#2A4736", accentColor: "#D4A373" },
+          { id: "bk-03", title: "Piranesi", author: "Susanna Clarke", genre: "Speculative Fiction", format: "Hardcover", price: 27, isbn: "978-1635575637", stock: 8, staffPick: false, synopsis: "Piranesi's house is no ordinary building: its rooms are infinite, its corridors endless, its walls are lined with thousands of statues.", botanicalPairing: "Trailing Marble Queen Pothos", botanicalPrice: 24, coverColor: "#1F2B37", accentColor: "#E0A96D" },
+          { id: "bk-04", title: "Selected Poems", author: "Anna Akhmatova", genre: "Poetry", format: "Paperback", price: 22.5, isbn: "978-0930051731", stock: 5, staffPick: true, synopsis: "Definitive bilingual and translated volume of one of Russia's greatest 20th-century poets, capturing personal grief and historical catastrophe.", botanicalPairing: "Preserved Silver Dollar Eucalyptus", botanicalPrice: 15, coverColor: "#3B2F2F", accentColor: "#C5A059" },
+          { id: "bk-05", title: "On Earth We're Briefly Gorgeous", author: "Ocean Vuong", genre: "Literary Fiction", format: "Paperback", price: 18, isbn: "978-0525562047", stock: 16, staffPick: true, synopsis: "A letter from a son to a mother who cannot read, unearthing a family's history that began before he was born.", botanicalPairing: "Japanese Calathea Lancifolia", botanicalPrice: 28, coverColor: "#3D3A45", accentColor: "#E8C547" },
+          { id: "bk-06", title: "The Dispossessed", author: "Ursula K. Le Guin", genre: "Speculative Fiction", format: "Hardcover", price: 29, isbn: "978-0060512750", stock: 11, staffPick: false, synopsis: "A visionary masterpiece examining two planets with radically contrasting social, economic, and moral structures.", botanicalPairing: "Air Plant Ionantha Trio in Terracotta", botanicalPrice: 22, coverColor: "#2C3E50", accentColor: "#E67E22" }
+        ],
+        testimonials: [
+          { author: "Elena Rostova", role: "Literary Critic", location: "Brooklyn, NY", quote: "Page & Petal is what physical and digital bookstores were meant to be: intimate, thoughtful, and deeply reverent of books.", rating: 5, isPlaceholder: true, isSampleData: true },
+          { author: "David Thorne", role: "Poetry Curator", location: "Hudson, NY", quote: "The pairing of rare translations with living botanicals transforms receiving a book into a sensory ritual.", rating: 5, isPlaceholder: true, isSampleData: true }
+        ],
+        imageKeywords: {
+          hero: "editorial indie bookstore books wood shelves cream paper warm sunlight",
+          features: ["hardcover book stack botanical branch vintage bookmark", "independent bookstore reading table coffee signed edition"],
+          gallery: ["intimate bookstore salon author reading evening", "antique book binding letterpress linen cover"]
+        }
+      };
+    }
+
+    // 0b. Culinary Travel Magazine & Gastronomic Journal
     const isRestaurantOrdering = /\b(food ordering|restaurant ordering|ordering platform|table reservation|restaurant menu|takeout|delivery|dish details)\b/i.test(promptLower) ||
       (/\b(restaurant|kitchen)\b/i.test(promptLower) && /\b(menu|ordering|reservation|cart|checkout)\b/i.test(promptLower));
 

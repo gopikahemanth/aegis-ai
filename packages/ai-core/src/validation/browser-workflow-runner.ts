@@ -88,14 +88,14 @@ export class BrowserWorkflowRunner {
           page.on("console", (msg) => {
             if (msg.type() === "error") {
               const text = msg.text();
-              if (!/Error creating WebGL context|CONTEXT_LOST_WEBGL/i.test(text)) {
+              if (!/WebGL.*context|context.*WebGL|CONTEXT_LOST_WEBGL|THREE\.WebGLRenderer|Could not create a WebGL context|A WebGL context could not be created|BindToCurrentSequence failed/i.test(text)) {
                 consoleErrors.push(text);
               }
             }
           });
           page.on("pageerror", (err: any) => {
             const text = err?.message || String(err);
-            if (!/Error creating WebGL context|CONTEXT_LOST_WEBGL/i.test(text)) {
+            if (!/WebGL.*context|context.*WebGL|CONTEXT_LOST_WEBGL|THREE\.WebGLRenderer|Could not create a WebGL context|A WebGL context could not be created|BindToCurrentSequence failed/i.test(text)) {
               uncaughtExceptions.push(text);
             }
           });

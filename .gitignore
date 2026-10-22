@@ -19,6 +19,9 @@ projects/
 scratch/
 **/scratch/
 **/scratch/**
+temp-*/
+**/temp-*/
+**/temp-*/**
 
 # Environment
 .env

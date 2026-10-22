@@ -319,6 +319,38 @@ export class CompositionVariantResolver {
           },
         ];
 
+      case "STOREFRONT_CATALOG":
+        return [
+          {
+            id: "editorial_grid",
+            name: "Editorial Catalog Grid & Bag Drawer",
+            capability: "STOREFRONT_CATALOG",
+            dominantAxis: "vertical",
+            focalRegion: "center_stage",
+            sectionTopology: "editorial_grid",
+            panelTopology: "floating_cards",
+            navigationTopology: "top_floating_pills",
+            scrollModel: "continuous_scroll",
+            contentToCanvasRatio: "canvas_dominant",
+            structuralFingerprint: "STOREFRONT_CATALOG:vertical:editorial_grid:top_floating_pills",
+            description: "Curated physical product grid with tactile cover displays, category pills, and slideout shopping bag.",
+          },
+          {
+            id: "spotlight_carousel",
+            name: "Spotlight Showcase & Cover Vault",
+            capability: "STOREFRONT_CATALOG",
+            dominantAxis: "split",
+            focalRegion: "split_screen",
+            sectionTopology: "spotlight_split",
+            panelTopology: "overlay_drawer",
+            navigationTopology: "minimal_header",
+            scrollModel: "pinned_scene_replace",
+            contentToCanvasRatio: "balanced_split",
+            structuralFingerprint: "STOREFRONT_CATALOG:split:spotlight_split:minimal_header",
+            description: "Featured edition spotlight with deep reading synopses and side catalog browser.",
+          },
+        ];
+
       default:
         return [
           {

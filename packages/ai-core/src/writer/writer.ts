@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { ASTSafeTransformer } from "../governance/ast-safe-transformer.js";
 
@@ -16,12 +16,17 @@ export class FileWriter {
         .replace(/^(\.\/|\/)+/, "")
         .replace(/^(generated\/project\/|apps\/cli\/generated\/project\/)+/i, "");
 
-      // Rule 2: Protect canonical prisma/schema.prisma from LLM overwrite
+      // Rule 2: Protect canonical prisma/schema.prisma from LLM overwrite (only if existing file contains valid models)
       if (cleanRelativePath === "prisma/schema.prisma" || cleanRelativePath.endsWith("schema.prisma")) {
         const fullSchemaPath = join(outputDir, "prisma/schema.prisma");
         if (existsSync(fullSchemaPath)) {
-          console.log(`[PRISMA-SCHEMA-WRITE] 🔒 Blocked unauthorized LLM overwrite of canonical prisma/schema.prisma.`);
-          continue;
+          try {
+            const existingContent = readFileSync(fullSchemaPath, "utf8").trim();
+            if (existingContent.length > 0 && /model\s+[A-Z]/.test(existingContent)) {
+              console.log(`[PRISMA-SCHEMA-WRITE] 🔒 Blocked unauthorized LLM overwrite of canonical prisma/schema.prisma.`);
+              continue;
+            }
+          } catch {}
         }
       }
 

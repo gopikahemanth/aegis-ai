@@ -576,29 +576,51 @@ export class DynamicCanonicalFileGraphBuilder {
       const features = domain.features.filter(f => f.entities.includes(entity.name));
       const featureId = features[0]?.featureId;
 
-      entries.push({
-        canonicalPath: `src/features/${entitySlug}/index.tsx`,
-        semanticRole: `${entity.name} Feature Module`,
-        semanticAliases: [
-          `src/pages/${entity.name}Page.tsx`,
-          `src/pages/${entity.name}.tsx`,
-          `src/features/${entitySlug}/${entity.name}Page.tsx`,
-        ],
-        requiredExports: [`${entity.name}Page`],
-        allowedImports: [
-          "src/services/api.ts",
-          "src/components/",
-          "src/hooks/",
-          `src/features/${entitySlug}/`,
-        ],
-        required: true,
-        category: "frontend-page",
-        layer: "frontend",
-        domain: entity.name,
-        featureId,
-        entityName: entity.name,
-        status: "required",
-      });
+      entries.push(
+        {
+          canonicalPath: `src/features/${entitySlug}/index.tsx`,
+          semanticRole: `${entity.name} Feature Module`,
+          semanticAliases: [
+            `src/features/${entitySlug}/${entity.name}Page.tsx`,
+            `src/features/${entitySlug}/${entity.name}.tsx`,
+          ],
+          requiredExports: [`${entity.name}Page`],
+          allowedImports: [
+            "src/services/api.ts",
+            "src/components/",
+            "src/hooks/",
+            `src/features/${entitySlug}/`,
+          ],
+          required: true,
+          category: "frontend-page",
+          layer: "frontend",
+          domain: entity.name,
+          featureId,
+          entityName: entity.name,
+          status: "required",
+        },
+        {
+          canonicalPath: `src/pages/${entity.name}Page.tsx`,
+          semanticRole: `${entity.name} Page Route`,
+          semanticAliases: [
+            `src/pages/${entity.name}.tsx`,
+          ],
+          requiredExports: [`${entity.name}Page`],
+          allowedImports: [
+            "src/services/api.ts",
+            "src/components/",
+            "src/hooks/",
+            `src/features/${entitySlug}/`,
+          ],
+          required: true,
+          category: "frontend-page",
+          layer: "frontend",
+          domain: entity.name,
+          featureId,
+          entityName: entity.name,
+          status: "required",
+        }
+      );
     }
 
     // Layout component

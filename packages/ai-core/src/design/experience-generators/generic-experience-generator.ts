@@ -23,6 +23,7 @@ import { Product3DExperienceGenerator, Product3DGeneratorOptions } from "./produ
 import { WorkspaceExperienceGenerator, WorkspaceExperienceGeneratorOptions } from "./workspace-experience-generator.js";
 import { CollectionHubExperienceGenerator, CollectionHubGeneratorOptions } from "./collection-hub-generator.js";
 import { ItineraryPlannerExperienceGenerator, ItineraryPlannerGeneratorOptions } from "./itinerary-planner-generator.js";
+import { StorefrontCatalogExperienceGenerator, StorefrontCatalogGeneratorOptions } from "./storefront-catalog-generator.js";
 import { CompositionVariantResolver, CompositionVariant } from "../composition-variant-resolver.js";
 
 export type ExperienceCapabilityType =
@@ -33,7 +34,8 @@ export type ExperienceCapabilityType =
   | "IMMERSIVE_3D"
   | "WORKSPACE_TOOL"
   | "COLLECTION_HUB"
-  | "ITINERARY_PLANNER";
+  | "ITINERARY_PLANNER"
+  | "STOREFRONT_CATALOG";
 
 export interface GenericExperienceOptions {
   componentName: string;
@@ -46,6 +48,9 @@ export interface GenericExperienceOptions {
   experienceCapability?: ExperienceCapabilityType | string;
   composition?: CompositionVariant;
   domainKeywords?: string[];
+  primaryMetrics?: string[];
+  actionVerbs?: string[];
+  routeIndex?: number;
   theme?: {
     bg?: string;
     surface?: string;
@@ -69,6 +74,19 @@ export class GenericExperienceGenerator {
   }): ExperienceCapabilityType {
     const { route, pageRole = "", purpose = "", experienceCapability = "" } = options;
     const combined = `${route} ${pageRole} ${purpose} ${experienceCapability}`.toLowerCase();
+
+    // 0. Storefront, Catalog & Service Offerings match
+    const isCatalogOrOfferingsPrompt = Boolean(
+      options.prompt &&
+      /bookstore|bookseller|book\s*shop|page & petal|storefront|retail|shop|market|store|boutique|merch|apparel|clothing|bakery|bakes|pastry|cafe|coffee|carwash|wash|auto|detailing|fleet|clinic|wellness|medical|dental|salon|spa|studio|offerings|packages|services/i.test(options.prompt)
+    );
+    if (
+      /storefront_catalog|storefront-catalog|book-catalog|product-catalog|curated-catalog|shop-grid|bookstore-catalog|service-catalog|packages-catalog|offerings-grid/i.test(combined) ||
+      (isCatalogOrOfferingsPrompt && (/catalog|book|shop|store|product|item|service|package|menu|bake|treatment|showcase|edition|vault|home|reading|salon|volume|author|order/i.test(combined) || route === "/" || !combined.trim())) ||
+      (!/sky-object|astronom/i.test(combined) && (/catalog/i.test(route) || /catalog/i.test(pageRole) || /services/i.test(route) || /packages/i.test(route) || /menu/i.test(route)))
+    ) {
+      return "STOREFRONT_CATALOG";
+    }
 
     // 1. Explicit capability match
     if (/collection_hub|collection-folder|discovery-bookmark|saved-discover|bookmark-hub|curated-collection|saved-items/i.test(combined)) return "COLLECTION_HUB";
@@ -157,6 +175,9 @@ export class GenericExperienceGenerator {
 
       case "IMMERSIVE_3D":
         return Product3DExperienceGenerator.generate(enrichedOptions as Product3DGeneratorOptions);
+
+      case "STOREFRONT_CATALOG":
+        return StorefrontCatalogExperienceGenerator.generate(enrichedOptions as StorefrontCatalogGeneratorOptions);
 
       case "WORKSPACE_TOOL":
       default:

@@ -338,6 +338,14 @@ export class ApiWorkflowVerifier {
         if (!sampleBody.quantity) sampleBody.quantity = 1;
         if (!sampleBody.category) sampleBody.category = "Main Courses";
         if (!sampleBody.status) sampleBody.status = "Confirmed";
+        if (!sampleBody.bookId) sampleBody.bookId = "1";
+        if (!sampleBody.productId) sampleBody.productId = "1";
+        if (!sampleBody.itemId) sampleBody.itemId = "1";
+        if (!sampleBody.orderId) sampleBody.orderId = "1";
+        if (!sampleBody.userId) sampleBody.userId = "1";
+        if (!sampleBody.items) sampleBody.items = [{ id: "1", name: sampleBody.name, price: 10, quantity: 1 }];
+        if (!sampleBody.totalAmount) sampleBody.totalAmount = 24.50;
+        if (!sampleBody.shippingAddress) sampleBody.shippingAddress = "123 Spice Route Way, Kochi";
       }
 
       if (ep.responseSchema && ep.responseSchema.length > 0) {
@@ -353,10 +361,18 @@ export class ApiWorkflowVerifier {
         sampleBody.password = sharedAuthPassword;
       }
 
-      // If stateful POST, identify corresponding read-back route
+      // If stateful POST, identify corresponding read-back route IF a matching GET endpoint exists
       let readBackPath: string | undefined;
       if (ep.method === "POST" && !ep.path.includes("/auth/")) {
-        readBackPath = ep.path;
+        const normPath = ep.path.toLowerCase().replace(/\/$/, "");
+        const hasGetRoute = endpoints.some(e => {
+          if (e.method !== "GET") return false;
+          const eNorm = e.path.toLowerCase().replace(/\/$/, "");
+          return eNorm === normPath || eNorm === `${normPath}s` || eNorm.replace(/s$/, "") === normPath;
+        });
+        if (hasGetRoute) {
+          readBackPath = ep.path;
+        }
       }
 
       const expectedStatus = ep.method === "POST"

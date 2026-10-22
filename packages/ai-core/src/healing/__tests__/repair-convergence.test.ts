@@ -203,4 +203,43 @@ export default function App() { return <Button />; }
     expect(evalResult.accepted).toBe(true);
     expect(evalResult.nextBaseline.blockingErrorCount).toBe(0);
   });
+
+  it("Test 8 — TS2353 Object literal excess property repair (nested inline type)", () => {
+    const workspaceFile = join(testDir, "src/CartWorkspace.tsx");
+    writeFileSync(
+      workspaceFile,
+      `import React from "react";
+interface CartItem {
+  id: string;
+  book: {
+    title: string;
+    author: string;
+  };
+}
+export function CartWorkspace() {
+  const item: CartItem = {
+    id: "1",
+    book: {
+      id: "bk-1",
+      title: "Book",
+      author: "Author"
+    }
+  };
+  return <div>{item.id}</div>;
+}
+`,
+      "utf8"
+    );
+
+    const stderr = `src/CartWorkspace.tsx(12,7): error TS2353: Object literal may only specify known properties, and 'id' does not exist in type '{ title: string; author: string; }'.`;
+    const actions = TsSymbolRepairEngine.repair(testDir, stderr);
+
+    expect(actions.length).toBeGreaterThan(0);
+    expect(actions[0].applied).toBe(true);
+
+    const updated = readFileSync(workspaceFile, "utf8");
+    expect(updated).toContain("id?: string | number | any;");
+    expect(updated).toContain("[key: string]: any;");
+  });
 });
+

@@ -364,7 +364,7 @@ model User {
 `;
       for (const model of domainSpec.allModels) {
         if (!new RegExp(`model\\s+${model}\\s*\\{`, "m").test(prismaContent)) {
-          prismaContent += `\nmodel ${model} {\n  id          String   @id @default(uuid())\n  name        String   @default("${model}")\n  description String?  @default("")\n  category    String?  @default("Standard")\n  status      String   @default("Active")\n  createdAt   DateTime @default(now())\n  updatedAt   DateTime @updatedAt\n}\n`;
+          prismaContent += `\nmodel ${model} {\n  id          String   @id @default(uuid())\n  userId      String?  @map("user_id")\n  name        String   @default("${model}")\n  description String?  @default("")\n  category    String?  @default("Standard")\n  status      String   @default("Active")\n  data        Json?    @default("{}")\n  createdAt   DateTime @default(now())\n  updatedAt   DateTime @updatedAt\n}\n`;
         }
       }
       writeFileSync(prismaPath, prismaContent, "utf8");
@@ -1445,6 +1445,30 @@ export default Layout;
     return `import React, { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
+class SafeRouteErrorBoundary extends React.Component<any, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.warn("[SafeRouteErrorBoundary] Caught error in " + (this.props.fallbackTitle || "route") + ":", error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 text-center text-slate-300 font-sans">
+          <h2 className="text-xl font-bold mb-2">{this.props.fallbackTitle || "Interface"}</h2>
+          <p className="text-sm text-slate-400">Loading module interface...</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function resolveComponent(mod: any, fallbackTitle: string): React.ComponentType<any> {
   let Comp: any = null;
   if (typeof mod === "function") Comp = mod;
@@ -1521,7 +1545,11 @@ function resolveComponent(mod: any, fallbackTitle: string): React.ComponentType<
       onClick: () => {},
 ${discoveredLines ? discoveredLines + "\n" : ""}      ...props
     };
-    return <Comp {...safeProps} />;
+    return (
+      <SafeRouteErrorBoundary fallbackTitle={fallbackTitle}>
+        <Comp {...safeProps} />
+      </SafeRouteErrorBoundary>
+    );
   };
 }
 

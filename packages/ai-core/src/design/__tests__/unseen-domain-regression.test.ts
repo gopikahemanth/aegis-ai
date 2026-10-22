@@ -60,8 +60,8 @@ describe("Unseen-Domain Regression Tests — DesignDirector pipeline", () => {
     expect(chars.emotionalTone.primary).toBeTruthy();
     // Should NOT be recognized as a heavy industrial domain
     expect(chars.experiencePattern).not.toBe("realtime-console");
-    // Should have a content-focused or community feel
-    expect(["content-feed", "catalog-browser", "team-workspace", "operations-dashboard", "workspace-editor"])
+    // Should have a content-focused, commerce, or community feel
+    expect(["content-feed", "catalog-browser", "storefront-commerce", "team-workspace", "operations-dashboard", "workspace-editor"])
       .toContain(chars.experiencePattern);
   });
 

@@ -560,7 +560,18 @@ export class ArchitectureResolver {
     }
 
     // Natural Language Entity Extraction fallback from prose prompts (e.g. "explore handcrafted pendant lights, compare ceramic finishes, view maker profiles, ...")
-    if (explicitModels.length === 0) {
+    // Authority hierarchy: Authoritative LLM models/flows > Explicit Domain Matchers > Prose Verb Extraction Fallback
+    const hasAuthoritativeModels = Boolean(
+      (canonical.dataModels && canonical.dataModels.length > 0 && !canonical.dataModels.every(m => m === "User")) ||
+      (raw.dataModels && raw.dataModels.length > 0 && !raw.dataModels.every(m => m === "User"))
+    );
+
+    const hasAuthoritativeFlows = Boolean(
+      (canonical.userFlows && canonical.userFlows.length > 0) ||
+      (raw.userFlows && raw.userFlows.length > 0)
+    );
+
+    if (explicitModels.length === 0 && !hasAuthoritativeModels) {
       const manageMatch = cleanPrompt.match(/(?:show|shows|present|presents|display|displays|feature|featuring|manage|manages|track|tracking|monitor|monitoring|explore|exploring|browse|browsing|compare|comparing|inspect|inspecting|view|viewing|discover|discovering|purchase|purchasing|order|ordering|book|booking|reserve|reserving|submit|submitting|handling|coordinates|supporting|adjust|adjusting)\s+([a-zA-Z0-9_,\s]+?)(?:\.|\n|The dashboard|Create appropriate|with persistent|Do not|Make the)/i);
       if (manageMatch && manageMatch[1]) {
         const words = manageMatch[1].split(/,| and |\s+and\s+/).map(w => w.trim()).filter(Boolean);
@@ -579,8 +590,8 @@ export class ArchitectureResolver {
       }
     }
 
-    // Derive canonical routes from extracted models if explicit routes not provided
-    if (explicitRoutes.length === 0 && explicitModels.length > 0) {
+    // Derive canonical routes from extracted models if explicit routes not provided and no authoritative flows
+    if (explicitRoutes.length === 0 && explicitModels.length > 0 && !hasAuthoritativeFlows) {
       explicitRoutes.push("/");
       for (const m of explicitModels) {
         if (PromptConstraints.isGovernanceDirective(m)) continue;
@@ -592,26 +603,38 @@ export class ArchitectureResolver {
       }
     }
 
-    let resolvedRoutes = explicitRoutes.length > 0
-      ? explicitRoutes
-      : (canonical.userFlows && canonical.userFlows.length > 0
-        ? ["/", ...canonical.userFlows.map(f => f.startsWith("/") ? f : `/${f.replace(/^(manage|browse|track|view|handle|create|fulfill)-?/i, "").toLowerCase()}`)]
-        : (raw.userFlows && raw.userFlows.length > 0
-          ? ["/", ...raw.userFlows.map(f => f.startsWith("/") ? f : `/${f.replace(/^(manage|browse|track|view|handle|create|fulfill)-?/i, "").toLowerCase()}`)]
-          : (isStaticRequest ? ["/"] : ["/", "/dashboard"])));
+    const mapFlowToRoute = (f: string) => {
+      if (f.startsWith("/")) return f.toLowerCase();
+      const cleaned = f.replace(/^(manage|browse|track|view|handle|create|fulfill|explore|inspect|toggle|monitor)-?/i, "").toLowerCase();
+      return `/${cleaned}`;
+    };
+
+    let resolvedRoutes = (hasAuthoritativeFlows && explicitRoutes.length === 0)
+      ? (canonical.userFlows && canonical.userFlows.length > 0
+        ? ["/", ...canonical.userFlows.map(mapFlowToRoute)]
+        : ["/", ...(raw.userFlows || []).map(mapFlowToRoute)])
+      : (explicitRoutes.length > 0
+        ? explicitRoutes
+        : (isStaticRequest ? ["/"] : ["/", "/dashboard"]));
     resolvedRoutes = Array.from(new Set(resolvedRoutes)).filter(r => !PromptConstraints.isGovernanceDirective(r));
 
-    let resolvedModels = explicitModels.length > 0
-      ? ["User", ...explicitModels]
-      : (dbProvider === "None" ? [] : (canonical.dataModels || raw.dataModels || ["User"]));
+    let resolvedModels = hasAuthoritativeModels
+      ? (canonical.dataModels && canonical.dataModels.length > 0 ? canonical.dataModels : (raw.dataModels || ["User"]))
+      : (explicitModels.length > 0
+        ? ["User", ...explicitModels]
+        : (dbProvider === "None" ? [] : ["User"]));
     resolvedModels = Array.from(new Set(resolvedModels)).filter(m => !PromptConstraints.isGovernanceDirective(m));
 
-    const resolvedFeatures = canonical.features || raw.features || (explicitModels.length > 0
-      ? explicitModels.map(m => {
-          const plural = toModelPlural(m);
-          return plural.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
-        })
-      : []);
+    const resolvedFeatures = (canonical.features && canonical.features.length > 0)
+      ? canonical.features
+      : ((raw.features && raw.features.length > 0)
+        ? raw.features
+        : (explicitModels.length > 0
+          ? explicitModels.map(m => {
+              const plural = toModelPlural(m);
+              return plural.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+            })
+          : []));
 
     // Resolve authoritative primaryLandingFeature from canonical spec or primary discovered entity in prompt order
     let primaryLandingFeature = (canonical as any).primaryLandingFeature || (raw as any).primaryLandingFeature;

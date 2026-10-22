@@ -54,31 +54,31 @@ export class CollectionHubExperienceGenerator {
       ? "Bookmark recipes, culinary stories, or travel destinations to view them here."
       : isMuseum
       ? "Bookmark exhibitions, artworks, or artist monographs to view them here."
-      : "Bookmark artifacts, records, or curated items to view them here.";
+      : `Save records, bookmarks, or items for ${brandName} to view them here.`;
 
     const noteModalDesc = isCulinary
       ? "Record culinary observations, tasting memories, or regional travel notes for this bookmark."
       : isMuseum
       ? "Record curatorial observations, gallery thoughts, or exhibition notes for this piece."
-      : "Record notes, observations, or thoughts for this bookmark.";
+      : `Record operational notes, observations, or annotations for this item.`;
 
     const notePlaceholder = isCulinary
       ? "e.g. Try with wild lingonberry coulis; visit producer early morning..."
       : isMuseum
       ? "e.g. Pair with curatorial audio track 03; note shadow geometry in East Wing..."
-      : "e.g. Key observations and notes for future reference...";
+      : `Enter notes and observations for this item...`;
 
     const hubTitle = isMuseum
       ? "Saved Artworks & Curated Vault"
       : isCulinary
       ? "Saved Culinary Discoveries"
-      : (options.pageRole || "Saved Discoveries");
+      : (options.pageRole || `${brandName} Registry Hub`);
 
     const hubDescription = isMuseum
       ? `Curated artwork collection, exhibition bookmarks, artist monographs, and private study notes organized for ${brandName}.`
       : isCulinary
       ? `Curated regional food journeys, heirloom recipes, producer bookmarks, and private tasting notes organized for ${brandName}.`
-      : `Curated bookmarks, resources, and private notes organized for ${brandName}.`;
+      : `Operational records, reports, and telemetry snapshots organized for ${brandName}.`;
 
     const countLabel = isMuseum ? "Artworks" : "Items";
 
@@ -251,7 +251,7 @@ export function ${componentName}() {
           )}
         </section>
 
-        {/* Saved Discovery Cards Grid (discovery-bookmark-hub) */}
+        {/* Collection Items Grid */}
         {filteredItems.length === 0 ? (
           <div className="text-center py-16 border border-dashed ${theme.border} rounded-2xl ${theme.surface}">
             <p className="text-sm font-medium text-stone-300">No saved discoveries in folder "{activeFolder}".</p>
@@ -505,38 +505,39 @@ export default ${componentName};
     }
 
     // Default domain items
+    const entityName = brandName || "System";
     return {
-      folders: ["All", "Highlights", "Case Studies", "Archives"],
+      folders: ["All", "Primary", "Operational", "Archived"],
       items: [
         {
-          id: "disc-1",
-          title: `${brandName} Principal Showcase`,
-          subtitle: "Seminal curated selection reflecting authentic spatial and material craft.",
-          folder: "Highlights",
-          category: "Featured",
+          id: "item-1",
+          title: `${entityName} Overview`,
+          subtitle: `Active operational configuration and telemetry parameters for ${entityName}.`,
+          folder: "Primary",
+          category: "System",
           savedDate: "Oct 2026",
-          notes: "Essential reference for core aesthetic and technical composition.",
-          tags: ["core", "flagship"]
+          notes: `Baseline system profile verified.`,
+          tags: ["system", "verified"]
         },
         {
-          id: "disc-2",
-          title: "Monograph Archive Volume I",
-          subtitle: "Comprehensive theoretical and practical exploration with full annotations.",
-          folder: "Case Studies",
-          category: "Archive",
+          id: "item-2",
+          title: `${entityName} Diagnostic Log`,
+          subtitle: `Operational record of state transitions and sensor parameters.`,
+          folder: "Operational",
+          category: "Telemetry",
           savedDate: "Sep 2026",
-          notes: "Review methodology in section 3.",
-          tags: ["monograph", "documentation"]
+          notes: `Telemetry stream synced.`,
+          tags: ["telemetry", "log"]
         },
         {
-          id: "disc-3",
-          title: "Curatorial Field Study & Material Ledger",
-          subtitle: "Systematic investigation of regional materials and generational techniques.",
-          folder: "Archives",
-          category: "Research",
+          id: "item-3",
+          title: `${entityName} Archived Report`,
+          subtitle: `Consolidated performance summary and historical snapshot.`,
+          folder: "Archived",
+          category: "Report",
           savedDate: "Aug 2026",
-          notes: "Field observations verified on-site.",
-          tags: ["fieldwork", "materials"]
+          notes: `Archival record filed.`,
+          tags: ["archive", "report"]
         }
       ]
     };

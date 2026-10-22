@@ -533,9 +533,9 @@ export default ${componentName};
       placeholderLocation: "e.g. Room 101",
       placeholderNotes: "e.g. Key milestone notes and timing...",
       days: [
-        { dayNumber: 1, title: `${brandName} Phase I: Orientation & Immersion`, dateStr: "Day 1", theme: "Foundations & Origin" },
-        { dayNumber: 2, title: `${brandName} Phase II: Deep Dive Fieldwork`, dateStr: "Day 2", theme: "Practical Execution" },
-        { dayNumber: 3, title: `${brandName} Phase III: Synthesis & Review`, dateStr: "Day 3", theme: "Curatorial Conclusion" }
+        { dayNumber: 1, title: `${brandName} Phase I: Orientation & Immersion`, dateStr: "Day 1", theme: "Foundations & Baseline" },
+        { dayNumber: 2, title: `${brandName} Phase II: Operational Inspection`, dateStr: "Day 2", theme: "System Exploration" },
+        { dayNumber: 3, title: `${brandName} Phase III: Synthesis & Review`, dateStr: "Day 3", theme: "Consolidated Findings" }
       ],
       stops: [
         {

@@ -2143,7 +2143,11 @@ ${routerClose}    </QueryClientProvider>
           }
 
           if (content.includes("siteContent")) {
-            const safeContent = content
+            // First, protect type annotations: `typeof siteContent...` cannot be casted to expressions with `as any` or `||`
+            content = content.replace(/:\s*typeof\s+siteContent[^\n;,)>}]*/g, ": any");
+            content = content.replace(/typeof\s+siteContent\.mockRecords(?:\[[^\]]*\])?/g, "any");
+
+            let safeContent = content
               .replace(/\(siteContent\s+as\s+any\)/g, "siteContent")
               .replace(/\bsiteContent\.pages\s*(?:\?\.)?\[([^\]]+)\](?:\?\.)?\.(\w+)/g, "((siteContent as any)?.pages?.[$1]?.$2 || '')")
               .replace(/\bsiteContent\.pages\s*(?:\?\.)?\[([^\]]+)\]/g, "((siteContent as any)?.pages?.[$1] || {})")
@@ -2155,9 +2159,25 @@ ${routerClose}    </QueryClientProvider>
               .replace(/\bsiteContent\.highlights\b/g, "((siteContent as any)?.highlights || [])")
               .replace(/\bsiteContent\.navigationLabels\b/g, "((siteContent as any)?.navigationLabels || {})")
               .replace(/\bsiteContent\./g, "(siteContent as any)?.");
+
+            // Also clean any invalid typeof expressions resulting from complex expressions in type annotations
+            safeContent = safeContent.replace(/:\s*typeof\s*\(+[^)]+\)+(\[[^\]]*\])?/g, ": any");
+            safeContent = safeContent.replace(/typeof\s*\(\([^)]*\)\s*\|\|\s*\[\]\)\[[^\]]*\]/g, "any");
+            safeContent = safeContent.replace(/typeof\s*\([^)]*siteContent[^)]*\)(?:\[[^\]]*\])?/g, "any");
+
             if (safeContent !== content) {
               content = safeContent;
               changed = true;
+            }
+          }
+
+          // General cleanup for invalid TypeScript `typeof (complex_expr)[...]` type annotations
+          if (content.includes("typeof (") || content.includes("typeof((")) {
+            const cleanedTypeof = content.replace(/:\s*typeof\s*\(+[^\n;{}>)]+\)+(\[[^\]]*\])?/g, ": any");
+            if (cleanedTypeof !== content) {
+              content = cleanedTypeof;
+              changed = true;
+              fixed.push(`Cleaned invalid TypeScript typeof expression in ${rel}`);
             }
           }
         }

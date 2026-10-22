@@ -702,7 +702,7 @@ export class StorefrontCatalogExperienceGenerator {
         {
           id: "pr-03",
           title: "Bespoke Archive Reserve",
-          author: "Master Craftsman",
+          author: "Lead Artisan",
           category: "Reserve Tier",
           format: "Limited Edition",
           price: 185,

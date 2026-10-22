@@ -740,8 +740,8 @@ export class DomainVisualContractGenerator {
     }
 
     // B0-B. Heritage Craft Atelier / Artisan Studio & Contemporary Decor
-    else if (rawText.includes("ceramic") || rawText.includes("lighting") || rawText.includes("pendant") || rawText.includes("pottery") || rawText.includes("stoneware") || rawText.includes("porcelain") || rawText.includes("handicraft") || rawText.includes("craft") || rawText.includes("brass") || rawText.includes("textile") || rawText.includes("decor") || rawText.includes("atelier") || rawText.includes("artisan") || (rawText.includes("kerala") && rawText.includes("brand"))) {
-      domain = rawText.includes("ceramic") || rawText.includes("lighting") ? "Artisanal Ceramic Lighting Studio & Atelier" : rawText.includes("kerala") ? "Kerala Heritage Craft Atelier & Decor" : "Artisanal Craft Atelier & Contemporary Decor";
+    else if (rawText.includes("ceramic") || (rawText.includes("lighting") && (rawText.includes("fixture") || rawText.includes("sconce") || rawText.includes("pendant") || rawText.includes("chandelier") || rawText.includes("lamp") || rawText.includes("ceramic"))) || rawText.includes("pendant") || rawText.includes("pottery") || rawText.includes("stoneware") || rawText.includes("porcelain") || rawText.includes("handicraft") || rawText.includes("craft") || rawText.includes("brass") || rawText.includes("textile") || rawText.includes("decor") || rawText.includes("atelier") || rawText.includes("artisan") || (rawText.includes("kerala") && rawText.includes("brand"))) {
+      domain = (rawText.includes("ceramic") || (rawText.includes("lighting") && (rawText.includes("fixture") || rawText.includes("sconce") || rawText.includes("pendant") || rawText.includes("lamp")))) ? "Artisanal Ceramic Lighting Studio & Atelier" : rawText.includes("kerala") ? "Kerala Heritage Craft Atelier & Decor" : "Artisanal Craft Atelier & Contemporary Decor";
       productType = "Atelier Collection & Provenance Portal";
       layoutFamily = "EDITORIAL_CATALOG";
       navStrategy = "TOPBAR_PILL";
@@ -769,12 +769,12 @@ export class DomainVisualContractGenerator {
       headline = `${regionPrefix}Craft Atelier & Guild Provenance`;
       primaryMetric = { label: "Guild Masterworks", value: "48 Artifacts", trend: "100% Provenance Certified", icon: "Sparkles" };
       secondaryMetrics = [
-        { label: "Active Guilds", value: "8 Guilds", trend: "Master Artisan Provenance", icon: "Users" },
+        { label: "Active Guilds", value: "8 Guilds", trend: "Verified Artisan Provenance", icon: "Users" },
         { label: "Handcrafted Works", value: "14 Collections", trend: "Fair Trade Direct Dispatch", icon: "Package" },
         { label: "Bespoke Commissions", value: "6 Inquiries", trend: "Studio response < 24h", icon: "Mail" },
       ];
       heroAction = { label: "+ Discover Craft Collections", targetRoute: "/collections", icon: "Compass" };
-      alerts = ["Artisan monograph updated with master craftsman lineage and provenance record."];
+      alerts = [`${headline} updated with verified artisan lineage and provenance records.`];
       primaryWidget = "SHOWCASE";
       components = ["ShowcaseGrid", "AvailabilityGrid", "DocumentWorkspace"];
       antiPatterns.push("Generic SaaS blue", "Boring data spreadsheets", "Flashy neon cyberpunk styling", "Raw unstyled tables");

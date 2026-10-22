@@ -79,6 +79,26 @@ describe("FinalSuccessGate — Evidence-Based Acceptance", () => {
         report: "Clean",
         violations: [],
       },
+      testReport: {
+        status: "PASS",
+        executionStatus: "PASS",
+        framework: "vitest",
+        totalTests: 2,
+        passedTests: 2,
+        failedTests: 0,
+        skippedTests: 0,
+        errorCount: 0,
+        durationMs: 300,
+        failedTestNames: [],
+        output: "2 passed",
+        exitCode: 0,
+        failureCategory: "NONE",
+      },
+      runtimeReport: {
+        passed: true,
+        status: "SUCCESS",
+        evidenceSummary: "All acceptance tests verified.",
+      } as any,
       databaseBlocked: false,
     });
 

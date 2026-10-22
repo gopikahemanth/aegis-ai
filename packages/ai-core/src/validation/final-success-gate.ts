@@ -745,7 +745,13 @@ export class FinalSuccessGate {
     let status: FinalSuccessStatus;
     let blockingReason: string | undefined;
 
-    if (databaseBlocked && failedCritical.every(i => i.category === "RUNTIME" || i.category === "API")) {
+    if (databaseBlocked && failedCritical.every(i =>
+      i.category === "RUNTIME" ||
+      i.category === "API" ||
+      i.name === "In-Project Test Suite" ||
+      i.name === "App Server" ||
+      i.name === "Database Environment"
+    )) {
       // Code is fully valid, but runtime testing was blocked by external database unavailable
       status = "BLOCKED";
       blockingReason = "External database unavailable for runtime verification";

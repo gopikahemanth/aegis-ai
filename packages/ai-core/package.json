@@ -12,6 +12,7 @@
     ".": "./dist/index.js"
   },
   "scripts": {
+    "prebuild": "node scripts/build-template-blocklist.mjs",
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rimraf dist",

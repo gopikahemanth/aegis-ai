@@ -599,7 +599,11 @@ export class FinalSuccessGate {
     items.push({
       name: "Template Contamination",
       passed: contaminationReport.clean,
-      message: contaminationReport.summary,
+      message: contaminationReport.clean
+        ? contaminationReport.summary
+        : (contaminationReport.repairPrompt
+            ? `${contaminationReport.summary}\nRepair instruction: ${contaminationReport.repairPrompt}`
+            : contaminationReport.summary),
       critical: true,
       category: "CONTRACT",
     });

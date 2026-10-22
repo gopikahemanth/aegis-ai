@@ -7,12 +7,13 @@
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PromptConstraints } from "../governance/prompt-constraints.js";
 
 export interface TemplateContaminationViolation {
   file: string;
-  issueType: "CONTAMINATED_FILE" | "FORBIDDEN_KEYWORD" | "SOURCE_PATH_LEAK" | "UNRELATED_ROUTE" | "PLACEHOLDER_STUB";
+  issueType: "CONTAMINATED_FILE" | "FORBIDDEN_KEYWORD" | "SOURCE_PATH_LEAK" | "UNRELATED_ROUTE" | "PLACEHOLDER_STUB" | "TEMPLATE_PHRASE_LEAK";
   description: string;
   token?: string;
   expectedDomain?: string;
@@ -23,6 +24,8 @@ export interface TemplateContaminationReport {
   clean: boolean;
   violations: TemplateContaminationViolation[];
   summary: string;
+  leakedPhrases?: string[];
+  repairPrompt?: string;
 }
 
 export class TemplateContaminationChecker {
@@ -397,6 +400,138 @@ export class TemplateContaminationChecker {
       } catch {}
     }
 
+    // 4. Template Blocklist & Phrase Leak Audit (Real Template-Contamination Check)
+    const allowedCorpusParts: string[] = [];
+    if (contractToUse?.prompt) allowedCorpusParts.push(String(contractToUse.prompt));
+    if (prompt) allowedCorpusParts.push(prompt);
+    if (domainCategory) allowedCorpusParts.push(domainCategory);
+
+    if (contractToUse?.featureDescriptions) {
+      if (Array.isArray(contractToUse.featureDescriptions)) {
+        allowedCorpusParts.push(...contractToUse.featureDescriptions.map(String));
+      } else if (typeof contractToUse.featureDescriptions === "object") {
+        allowedCorpusParts.push(...Object.values(contractToUse.featureDescriptions).map(String));
+      } else {
+        allowedCorpusParts.push(String(contractToUse.featureDescriptions));
+      }
+    }
+
+    for (const key of ["requiredFeatures", "suggestedFeatures", "requiredModels", "features"]) {
+      if (Array.isArray(contractToUse?.[key])) {
+        allowedCorpusParts.push(...contractToUse[key].map(String));
+      }
+    }
+
+    if (contractToUse?.domainVocabulary) {
+      if (typeof contractToUse.domainVocabulary === "object") {
+        allowedCorpusParts.push(JSON.stringify(contractToUse.domainVocabulary));
+      } else {
+        allowedCorpusParts.push(String(contractToUse.domainVocabulary));
+      }
+    }
+
+    const aegisDir = join(this.projectRoot, ".aegis");
+    if (existsSync(aegisDir)) {
+      for (const fn of [
+        "feature-descriptions.json",
+        "product-discovery.json",
+        "features.json",
+        "domain-vocabulary.json",
+        "spec.json",
+        "canonical-spec.json",
+        "product-experience-plan.json",
+      ]) {
+        const fp = join(aegisDir, fn);
+        if (existsSync(fp)) {
+          try {
+            allowedCorpusParts.push(readFileSync(fp, "utf8"));
+          } catch {}
+        }
+      }
+    }
+
+    const siteContentParts: string[] = [];
+    for (const scPath of [
+      join(srcDir, "content", "site-content.ts"),
+      join(srcDir, "content", "site-content.tsx"),
+      join(srcDir, "content", "site-content.json"),
+      join(srcDir, "site-content.ts"),
+      join(srcDir, "site-content.tsx"),
+    ]) {
+      if (existsSync(scPath)) {
+        try {
+          const sc = readFileSync(scPath, "utf8");
+          siteContentParts.push(sc);
+          allowedCorpusParts.push(sc);
+        } catch {}
+      }
+    }
+
+    const allowedCorpusLower = allowedCorpusParts.join(" ").toLowerCase();
+    const promptVocabLower = allowedCorpusParts.filter(p => !siteContentParts.includes(p)).join(" ").toLowerCase();
+
+    const hardFlaggedPhrases = [
+      "Day 21",
+      "Practical Execution",
+      "Grid Stability Index",
+      "Renewable",
+      "Avionics Flight Deck",
+      "Telemetry & Operations Console",
+    ];
+
+    const blocklist = TemplateContaminationChecker.loadBlocklist();
+    const candidatePhrases = Array.from(new Set([...hardFlaggedPhrases, ...blocklist]));
+
+    const disallowedPhrases = candidatePhrases.filter(phrase => {
+      const pLower = phrase.toLowerCase().trim();
+      if (!pLower || pLower.length < 2) return false;
+      const isHardFlagged = hardFlaggedPhrases.some(hf => hf.toLowerCase() === pLower);
+      if (isHardFlagged) {
+        // Hard-flagged phrases are only allowed if explicitly in prompt, featureDescriptions, or domainVocabulary
+        return !promptVocabLower.includes(pLower);
+      }
+      return !allowedCorpusLower.includes(pLower);
+    });
+
+    const sourceCodeFiles = files.filter(f => f.endsWith(".ts") || f.endsWith(".tsx"));
+    const leakedPhrasesSet = new Set<string>();
+
+    for (const filePath of sourceCodeFiles) {
+      const relPath = relative(this.projectRoot, filePath).replace(/\\/g, "/");
+      try {
+        const fileContent = readFileSync(filePath, "utf8");
+        const lowerFileContent = fileContent.toLowerCase();
+
+        for (const phrase of disallowedPhrases) {
+          const phraseLower = phrase.toLowerCase();
+          let matched = false;
+
+          if (!phrase.includes(" ")) {
+            const regex = new RegExp(`\\b${phraseLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+            matched = regex.test(fileContent);
+          } else {
+            matched = lowerFileContent.includes(phraseLower);
+          }
+
+          if (matched) {
+            leakedPhrasesSet.add(phrase);
+            violations.push({
+              file: relPath,
+              issueType: "TEMPLATE_PHRASE_LEAK",
+              token: phrase,
+              expectedDomain: domain || "active-domain",
+              description: `Template phrase leak detected in ${relPath}: "${phrase}" (not in prompt, features, domain vocabulary, or site-content).`,
+            });
+          }
+        }
+      } catch {}
+    }
+
+    const leakedPhrases = Array.from(leakedPhrasesSet);
+    const repairPrompt = leakedPhrases.length > 0
+      ? `rewrite using domain vocabulary: ${leakedPhrases.map(p => `"${p}"`).join(", ")}`
+      : undefined;
+
     const clean = violations.length === 0;
     const summary = clean
       ? "No template contamination detected. Project is cleanly domain-scoped."
@@ -408,7 +543,33 @@ export class TemplateContaminationChecker {
       clean,
       violations,
       summary,
+      leakedPhrases,
+      repairPrompt,
     };
+  }
+
+  private static cachedBlocklist: string[] | null = null;
+
+  public static loadBlocklist(): string[] {
+    if (this.cachedBlocklist) return this.cachedBlocklist;
+    const candidates = [
+      join(dirname(fileURLToPath(import.meta.url)), "template-blocklist.generated.json"),
+      join(process.cwd(), "packages", "ai-core", "src", "validation", "template-blocklist.generated.json"),
+      join(process.cwd(), "packages", "ai-core", "dist", "validation", "template-blocklist.generated.json"),
+      join(process.cwd(), "src", "validation", "template-blocklist.generated.json"),
+    ];
+    for (const c of candidates) {
+      if (existsSync(c)) {
+        try {
+          const parsed = JSON.parse(readFileSync(c, "utf8"));
+          if (Array.isArray(parsed)) {
+            this.cachedBlocklist = parsed;
+            return parsed;
+          }
+        } catch {}
+      }
+    }
+    return [];
   }
 
   private collectSourceFiles(dir: string): string[] {

@@ -161,6 +161,7 @@ export {
   type FeatureAcceptanceTestRef,
 } from "./contracts/feature-matrix.js";
 export * from "./contracts/canonical-contract.js";
+export * from "./scenarios/golden-scenarios.js";
 
 
 

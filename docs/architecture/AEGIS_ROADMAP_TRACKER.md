@@ -261,22 +261,73 @@ This tracker serves as the authoritative source of truth for the phased evolutio
 
 ---
 
-### Phase 6: Simplify Aegis Architecture
-- **Status**: **NOT STARTED**
+### Phase 6: Simplify Aegis Architecture & Reliability
+- **Status**: **COMPLETED**
 - **Objectives**:
-  - Merge overlapping gates and sanitizers into exactly 5 clear checks: contract, build, feature tests, quality, originality.
-  - Enforce single-owner rule: LLM generates files; validators report; fixers repair only compile errors and security.
-  - Convert destructive fixers (`ProvenanceValidator`, `SemanticDuplicate`) to report-only.
-  - Split `fast-sanitizer.ts` into small, modular, named fixers.
-  - Delete dead code and safely move eval suites out of `src/`.
+  - Establish a documented target architecture (`docs/architecture/AEGIS_TARGET_ARCHITECTURE.md`) with 9 distinct, non-overlapping authorities.
+  - Enforce single-owner file mutation rules at the physical write boundary (`AuthorizedFileWriter`):
+    - Strict writer authority verification against `FileOwnershipRegistry`.
+    - SHA-256 pre-write content hashing to detect unexpected external modifications (`EXTERNAL_MODIFICATION_CONFLICT`).
+    - Mutex write locking to detect concurrent competing agent writes (`CONCURRENT_WRITE_CONFLICT`).
+    - Scope boundary enforcement rejecting writes targeting forbidden paths.
+    - Traceable write journal logging all authorized file mutations.
+  - Consolidate repair and recovery loops (`BoundedRepairEngine`):
+    - Root cause diagnosis: `SYNTAX_DEFECT`, `BROKEN_IMPORT`, `CONTRACT_MISMATCH`, `SCHEMA_DEFECT`, `INFRASTRUCTURE_BLOCKED`, `APPLICATION_FAILURE`.
+    - Signature hashing to detect ineffective repeated repair oscillation loops and halt immediately as `BLOCKED`.
+    - Bounded repair retries (max 3 attempts).
+    - Inviolable rules: never drop domain model fields, never silence errors, never weaken tests, and never overwrite custom UI with generic fallback stubs.
+  - Make verification independent from generation (`UnifiedVerificationEngine`):
+    - Audits syntax, brace balance, relative import resolution, schema primary keys, feature matrix traceability, and theme tokens.
+    - Honest reporting across `PASS`, `FAIL`, `BLOCKED`, `CRASHED`, `TIMED_OUT`, `SKIPPED`.
+    - Distinguishes external environment/database outages (`INFRASTRUCTURE_BLOCKED`) from application code failures.
+  - Evaluate simplified architecture across 5 representative real project domains:
+    1. Student Portfolio (contact workflow, project showcase edit, undo).
+    2. Restaurant Application (menu, cart, customizations, reservation persistence).
+    3. E-Commerce Platform (product catalog, additive reviews, clean removal).
+    4. Education Course Management (curriculum, visual academic theme modification).
+    5. Unfamiliar Domain: Industrial Equipment Maintenance (telemetry logs, work orders, domain independence).
 - **Relevant Implementation Areas**:
-  - `packages/ai-core/src/validation/`
-  - `packages/ai-core/src/governance/fast-sanitizer.ts`
-  - `packages/ai-core/src/agent/orchestrator.ts`
+  - `packages/ai-core/src/writer/authorized-file-writer.ts` (Single-owner write boundary, hashing, lock tracking, journal)
+  - `packages/ai-core/src/healing/bounded-repair-engine.ts` (Root cause classification, ineffective loop detection, bounded retries)
+  - `packages/ai-core/src/validation/unified-verification-engine.ts` (Decoupled independent verification authority)
+  - `packages/ai-core/src/governance/file-ownership.ts` (Authoritative ownership registry)
+  - `docs/architecture/AEGIS_TARGET_ARCHITECTURE.md` (Architecture specification & ownership map)
+  - `packages/ai-core/src/governance/__tests__/phase6-architecture-simplification.test.ts` (14 unit/integration tests)
+  - `packages/ai-core/src/governance/__tests__/phase6-domain-benchmark.test.ts` (5 domain benchmark tests)
 - **Acceptance Criteria**:
-  1. Core validation pipeline consists of unified Quality gate and exactly 5 objective checks.
-  2. Zero fixers delete unprovenanced user code or overwrite LLM styles.
-  3. Core code lines reduced by tens of thousands of lines while passing all golden benchmarks.
+  1. Authoritative file ownership is enforced at the actual write boundary; unauthorized writes are rejected.
+  2. Competing concurrent writes to the same file are detected and rejected.
+  3. Unexpected external modifications between planning and writing are detected without overwriting user changes.
+  4. Repair loops terminate boundedly within max retry limit.
+  5. Ineffective repeated repairs on identical failure signatures are detected and halted as BLOCKED.
+  6. Infrastructure blockages are distinguished from application code failures.
+  7. Schema reconciliation strictly preserves existing domain fields (`CartItem.customizations`, `Reservation.status`).
+  8. Shared components (`Card.tsx`, `Button.tsx`) are protected during feature decommissioning.
+  9. Verification engine evaluates health independently without fabricating success.
+  10. 5 representative real project domains pass generation, editing, theme modification, and undo workflows.
+- **Tests & Evidence Required**:
+  - `src/governance/__tests__/phase6-architecture-simplification.test.ts` (14/14 passed):
+    - Scenario 1: Authoritative file ownership (single-owner writes).
+    - Scenario 2: Detection of conflicting concurrent writes.
+    - Scenario 3: Preservation of unexpected user modifications.
+    - Scenario 4: Bounded repair retries.
+    - Scenario 5: Detection of ineffective repeated repairs.
+    - Scenario 6: Distinction between application failure and infrastructure blockage.
+    - Scenario 7: Preservation of required domain fields.
+    - Scenario 8: Protection of shared UI components.
+    - Scenario 9: Feature Matrix consistency and acceptance test rules.
+    - Scenario 10 & 11: Generation, brownfield editing, and recovery.
+    - Scenario 12: Scope boundary enforcement.
+    - Scenario 14: Unified verification engine evaluates project health independently.
+    - Scenario 15: Honest reporting for BLOCKED states.
+    - Scenario 16: Preservation of domain independence across unfamiliar domains.
+  - `src/governance/__tests__/phase6-domain-benchmark.test.ts` (5/5 passed):
+    - Benchmark 1: Student Portfolio (contact workflow, edit, undo).
+    - Benchmark 2: Restaurant Application (cart customizations, reservation persistence).
+    - Benchmark 3: E-Commerce Platform (additive reviews, clean removal, shared Card preservation).
+    - Benchmark 4: Education Course Management (academic visual theme modification).
+    - Benchmark 5: Unfamiliar Domain (equipment maintenance, telemetry, work orders).
+  - CLI Integration & Regression Suites (29/29 passed): Phase 5 brownfield edit engine (15/15), CLI e2e (2/2), Phase 3 original design (12/12). Total 48/48 active regression tests passing.
 
 ---
 

@@ -179,6 +179,9 @@ export * from "./edit/feature-adder.js";
 export * from "./edit/feature-remover.js";
 export * from "./edit/theme-modifier.js";
 export * from "./edit/undo-manager.js";
+export * from "./writer/authorized-file-writer.js";
+export * from "./healing/bounded-repair-engine.js";
+export * from "./validation/unified-verification-engine.js";
 
 
 

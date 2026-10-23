@@ -79,7 +79,7 @@ export class DynamicDataModelContract {
     };
   }
 
-  private static buildFields(entity: DomainEntity, domain: DomainContract): DataField[] {
+  public static buildFields(entity: DomainEntity, domain: DomainContract): DataField[] {
     const fields: DataField[] = [];
 
     // Always: id, createdAt, updatedAt

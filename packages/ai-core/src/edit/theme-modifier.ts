@@ -21,6 +21,19 @@ export interface ThemeModifyResult {
 
 export class ThemeModifier {
   /**
+   * Directly applies explicit theme tokens to src/index.css (:root { ... }).
+   */
+  public static applyTheme(
+    projectRoot: string,
+    theme: { primaryColor: string; backgroundColor: string }
+  ): { success: boolean; modifiedFiles: string[] } {
+    const cleanRoot = projectRoot.replace(/\\/g, "/");
+    const cssPath = join(cleanRoot, "src", "index.css");
+    const css = `:root {\n  --color-primary: ${theme.primaryColor};\n  --color-background: ${theme.backgroundColor};\n  --color-surface: #1e293b;\n  --color-text: #f8fafc;\n}\n`;
+    writeFileSync(cssPath, css, "utf8");
+    return { success: true, modifiedFiles: ["src/index.css"] };
+  }
+  /**
    * Modifies the visual theme of the project based on natural language instructions.
    */
   public static async modifyTheme(

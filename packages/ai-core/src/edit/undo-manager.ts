@@ -196,8 +196,14 @@ export class UndoManager {
     const restoredFiles: string[] = [];
     const removedCreatedFiles: string[] = [];
 
-    // 1. Remove files that were created by this edit
-    for (const rel of checkpoint.createdFiles) {
+    // 1. Remove files that were created by this edit (or candidate files created after checkpoint)
+    const filesToRemove = new Set<string>(checkpoint.createdFiles);
+    for (const [rel, snap] of Object.entries(checkpoint.snapshots)) {
+      if (!snap.existedBefore) {
+        filesToRemove.add(rel);
+      }
+    }
+    for (const rel of filesToRemove) {
       const full = join(cleanRoot, rel);
       if (existsSync(full)) {
         try {

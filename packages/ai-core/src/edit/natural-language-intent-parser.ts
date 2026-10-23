@@ -73,8 +73,8 @@ export class NaturalLanguageIntentParser {
 
     // 3. Remove / Cleanup Feature
     if (/^(remove|delete|drop|decommission|purge|clean\s*up)\b/i.test(lower)) {
-      const matchTarget = lower.match(/(?:remove|delete|drop|purge)\s+(?:the\s+)?([a-z0-9_-]+)(?:\s+page|\s+feature|\s+component|\s+workflow)?/i);
-      const target = matchTarget ? matchTarget[1] : "obsolete_feature";
+      const matchTarget = lower.match(/(?:remove|delete|drop|purge|clean\s*up)\s+(?:the\s+)?([a-z0-9_-]+(?:\s+[a-z0-9_-]+)*?)(?:\s+(?:page|feature|component|workflow))?$/i);
+      const target = matchTarget ? matchTarget[1].trim() : "obsolete_feature";
 
       return {
         intentId,
@@ -167,7 +167,7 @@ export class NaturalLanguageIntentParser {
         target = fallbackMatch[1].trim();
       }
     }
-    target = target.replace(/\s+feature$/i, "").trim();
+    target = target.replace(/\s+(feature|page|view|screen)$/i, "").trim();
 
     return {
       intentId,

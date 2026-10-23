@@ -182,6 +182,9 @@ export * from "./edit/undo-manager.js";
 export * from "./writer/authorized-file-writer.js";
 export * from "./healing/bounded-repair-engine.js";
 export * from "./validation/unified-verification-engine.js";
+export * from "./benchmark/benchmark-types.js";
+export * from "./benchmark/functional-completeness-auditor.js";
+export * from "./benchmark/real-project-benchmark-harness.js";
 
 
 

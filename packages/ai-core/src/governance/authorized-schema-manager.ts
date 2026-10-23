@@ -19,6 +19,7 @@ import { dirname, join } from "node:path";
 import { DynamicDataModelContract } from "./dynamic-data-model.js";
 
 export type AuthorizedSchemaRole =
+  | "AuthorizedSchemaManager"
   | "SchemaEngine"
   | "DatabaseAgent"
   | "DataArchitectureAgent"
@@ -52,6 +53,7 @@ export interface ParsedPrismaModel {
 
 export class AuthorizedSchemaManager {
   private static readonly AUTHORIZED_ROLES: Set<AuthorizedSchemaRole> = new Set([
+    "AuthorizedSchemaManager",
     "SchemaEngine",
     "DatabaseAgent",
     "DataArchitectureAgent",
@@ -79,7 +81,13 @@ export class AuthorizedSchemaManager {
     const enums = new Map<string, string>();
     let header = "";
 
-    const lines = schemaContent.split(/\r?\n/);
+    // Normalize inline model/enum/block braces so fields are on their own lines
+    const normalizedContent = schemaContent.replace(/\{\s*([^\n}]+)\s*\}/g, (_match, body) => {
+      const statements = body.trim().split(/(?<=[^\s])\s+(?=[a-zA-Z_]\w*\s+[A-Za-z])/);
+      return `{\n  ${statements.join("\n  ")}\n}`;
+    });
+
+    const lines = normalizedContent.split(/\r?\n/);
     let currentModel: ParsedPrismaModel | null = null;
     let currentEnumName: string | null = null;
     let currentEnumBody: string[] = [];

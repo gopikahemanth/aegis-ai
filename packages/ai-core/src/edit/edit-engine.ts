@@ -40,6 +40,14 @@ export class EditEngine {
     options?: { dryRun?: boolean; force?: boolean }
   ): Promise<EditExecutionResult> {
     const cleanRoot = projectPath.replace(/\\/g, "/");
+    if (!request || request.trim().length === 0) {
+      return {
+        success: false,
+        operationType: "modify_feature",
+        touchedFiles: [],
+        error: "EMPTY_OR_UNSUPPORTED_REQUEST: Edit request must contain valid instructions.",
+      };
+    }
 
     // 1. Parse natural-language intent
     const intent = NaturalLanguageIntentParser.parse(request);
@@ -107,9 +115,19 @@ export class EditEngine {
       // 8. Execute operation
       switch (intent.operationType) {
         case "add_feature": {
+          const lowerReq = request.toLowerCase();
+          let inferredModel: string | undefined;
+          if (lowerReq.includes("review")) inferredModel = "Review";
+          else if (lowerReq.includes("wishlist")) inferredModel = "WishlistItem";
+          else if (lowerReq.includes("comment")) inferredModel = "Comment";
+          else if (lowerReq.includes("rating")) inferredModel = "Rating";
+          else if (lowerReq.includes("booking") || lowerReq.includes("reservation")) inferredModel = "Reservation";
+          else if (lowerReq.includes("order")) inferredModel = "Order";
+
           const addRes = await FeatureAdder.addFeature(cleanRoot, {
             featureName: intent.primaryTarget,
             userRequest: request,
+            modelName: inferredModel,
           });
           if (!addRes.success) throw new Error(addRes.error || "Feature addition failed.");
           createdFiles = addRes.addedFiles;

@@ -11,11 +11,12 @@ This tracker serves as the authoritative source of truth for the phased evolutio
 | **Phase 0** | **Foundation and Safe Cleanup** | **COMPLETED** | Recoverable checkpoint (`git tag pre-simplify`), baseline audit (34/34 passed), 3 golden generation & 3 golden edit scenarios (8/8 passed), module usage measurement (1,157 files, 195 unexported), repair architecture inspection, safe cleanup candidate cataloging without premature deletion |
 | **Phase 1** | **Remove Template Sameness & Stop Clashing Sanitizers** | **COMPLETED** | Delete fantasy copy leaks, prevent Card/component replacement in `fast-sanitizer.ts`, append missing exports without clobbering styling, remove obsolete domain keywords (`resumeUpload`, `ArtworkCard`), WebGL SwiftShader verification |
 | **Phase 2** | **Prove "Every Feature Works" (Feature Matrix & Verifiable Tests)** | **COMPLETED** | Formal Requirements Authority (`F01..Fn`), locked `.aegis/feature-matrix.json`, canonical application contracts, schema evolution invariance, contract-driven API verification |
-| **Phase 3** | **Original Design & Theme Generator** | **NOT STARTED** | Per-project design brief, hue-to-palette theme generator with contrast checks, curated 30-pair font library, curated hand-made components, cross-project similarity gate |
-| **Phase 4** | **Learn from Real Sites** | **NOT STARTED** | Reference-site research with headless browser extraction (study structure & flows, never copy code/assets), automated Feature Matrix synthesis |
-| **Phase 5** | **Brownfield & AST-Safe Editing Engine** | **NOT STARTED** | Impact analysis, patch planning, transactional application, dead file & import cleanup, rollback on failure, `aegis undo` |
-| **Phase 6** | **Simplify Aegis Architecture** | **NOT STARTED** | Merge overlapping gates into unified Quality check, convert destructive fixers to report-only, single-owner LLM generation flow, reduce ai-core footprint |
-| **Phase 7** | **Lovable-like Experience & Supported Delivery** | **NOT STARTED** | Web chat UI, split live preview, reactive dev server orchestration, one-command deployment (Vercel, Railway, Docker) |
+| **Phase 3** | **Original Design & Theme Generator** | **COMPLETED** | Per-project design brief, hue-to-palette theme generator with contrast checks, curated 30-pair font library, curated hand-made components, cross-project similarity gate |
+| **Phase 4** | **Learn from Real Sites** | **COMPLETED** | Reference-site research with headless browser extraction (study structure & flows, never copy code/assets), automated Feature Matrix synthesis |
+| **Phase 5** | **Brownfield & AST-Safe Editing Engine** | **COMPLETED** | Impact analysis, patch planning, transactional application, dead file & import cleanup, rollback on failure, `aegis undo` |
+| **Phase 6** | **Simplify Aegis Architecture** | **COMPLETED** | Merge overlapping gates into unified Quality check, convert destructive fixers to report-only, single-owner LLM generation flow, reduce ai-core footprint |
+| **Phase 7A** | **Core Generation Quality & Real-World Validation** | **COMPLETED** | 10-stage real project benchmark harness, 5 domain benchmarks (Portfolio, Restaurant, E-Commerce, Education, Industrial Fleet), workflow verification, functional completeness auditor, 10 brownfield workflows, reliability & rollback |
+| **Phase 7B** | **Lovable-like Experience & Supported Delivery** | **NOT STARTED** | Web chat UI, split live preview, reactive dev server orchestration, one-command deployment (Vercel, Railway, Docker) |
 
 ---
 
@@ -331,7 +332,72 @@ This tracker serves as the authoritative source of truth for the phased evolutio
 
 ---
 
-### Phase 7: Lovable-like Experience & Supported Delivery
+### Phase 7A: Core Generation Quality & Real-World Validation
+- **Status**: **COMPLETED** (Verified via 10-stage disposable project benchmark harness, 5 real project domains, workflow evaluation, fake completeness audit, 10 brownfield editing workflows, and reliability & recovery suite)
+- **Objectives**:
+  - Implement a trustworthy real-project benchmark harness (`RealProjectBenchmarkHarness`) executing the production generation pipeline against disposable project directories.
+  - Separate 10 distinct evaluation stages:
+    1. Generation completed
+    2. Dependencies installed
+    3. Build passed
+    4. Server started
+    5. Routes rendered
+    6. Required user workflows passed
+    7. Backend contracts passed
+    8. Persistence passed (distinguishing `INFRASTRUCTURE_BLOCKED` from application code defects)
+    9. Independent verification & completeness audit passed
+    10. Known limitations and environmental blockers recorded
+  - Audit and eliminate common forms of "fake completeness" (`FunctionalCompletenessAuditor`): inert buttons, dead forms, fake auth tokens, disconnected search/filter, disconnected cart state, mocked APIs in production.
+  - Benchmark 5 genuinely different domains:
+    - Benchmark 1: Student Portfolio (responsive showcase, skills matrix, contact form validation)
+    - Benchmark 2: Restaurant Ordering & Reservations (menu browsing, cart totals calculation, reservation validation, persistence status)
+    - Benchmark 3: E-Commerce Platform (product catalog, search and category filtering, cart quantity management, review contracts)
+    - Benchmark 4: Education Platform (course catalog, student enrollment workflow, lesson progress contract)
+    - Benchmark 5: Unfamiliar Domain (Industrial IoT fleet telematics, vibration thresholds, work order contracts)
+  - Validate 10 mandatory brownfield editing workflows against real generated projects:
+    1. Add a new page with navigation and route registration
+    2. Add a data-backed feature with model updates
+    3. Modify only one requested page or section
+    4. Change the theme tokens without breaking code logic
+    5. Remove a feature while preserving shared components
+    6. Non-destructively evolve database schema preserving existing fields
+    7. Handle unsupported edit requests honestly
+    8. Undo a successful edit cleanly to restore prior state
+    9. Recover from a simulated edit failure without corrupting state
+    10. Preserve custom user modifications during subsequent edits
+  - Verify reliability, repair, and safe recovery:
+    - Enforce single-owner file boundary and prevent write bypass (`AuthorizedFileWriter`)
+    - Protect database schema from unauthorized mutations (`AuthorizedSchemaManager`)
+    - Bounded repair attempts and termination of ineffective loops (`BoundedRepairEngine`)
+    - Inviolable repair invariants: never silence errors, never weaken tests, never discard domain fields
+    - Atomic rollback on failed/crashed mutations (`UndoManager`)
+- **Relevant Implementation Areas**:
+  - `packages/ai-core/src/benchmark/benchmark-types.ts`
+  - `packages/ai-core/src/benchmark/functional-completeness-auditor.ts`
+  - `packages/ai-core/src/benchmark/real-project-benchmark-harness.ts`
+  - `packages/ai-core/src/benchmark/__tests__/phase7a-benchmark-suite.test.ts`
+  - `packages/ai-core/src/benchmark/__tests__/phase7a-brownfield-real-projects.test.ts`
+  - `packages/ai-core/src/benchmark/__tests__/phase7a-reliability-and-recovery.test.ts`
+  - Framework bug fixes: `authorized-schema-manager.ts` (inline model parsing & AuthorizedSchemaManager role), `edit-engine.ts` (model inference & empty request guard), `natural-language-intent-parser.ts` (suffix stripping & multi-word targets), `theme-modifier.ts` (`applyTheme` token writer), `undo-manager.ts` (crashed mutation rollback).
+- **Acceptance Criteria & Verification Evidence**:
+  1. Real generation pipeline exercised by benchmark harness: **PASS** (10-stage evaluation and `.aegis/benchmark-report.json` generation).
+  2. 5 domain benchmarks execute against generated projects: **PASS** (6/6 tests passing in `phase7a-benchmark-suite.test.ts`).
+  3. Mandatory workflows tested, not just compiled: **PASS** (form validation, cart calculations, search/filter, and navigation verified).
+  4. Database persistence verified where required, honest BLOCKED reporting when DB unreachable: **PASS** (`INFRASTRUCTURE_BLOCKED` recorded without pretending success).
+  5. Fake completeness detected and eliminated: **PASS** (auditor flags inert buttons, dead forms, disconnected search/cart).
+  6. 10 brownfield editing workflows verified on real projects: **PASS** (10/10 tests passing in `phase7a-brownfield-real-projects.test.ts`).
+  7. Reliability, bounded repair, single ownership, and rollback verified: **PASS** (8/8 tests passing in `phase7a-reliability-and-recovery.test.ts`).
+  8. Zero regression on Phase 6 benchmarks: **PASS** (14/14 architecture simplification + 5/5 domain benchmarks passing).
+  9. Clean builds: **PASS** (`@aegis/ai-core` and `@aegis/cli` build with exit status 0).
+- **Tests & Evidence Required**:
+  - `src/benchmark/__tests__/phase7a-benchmark-suite.test.ts` (6/6 passed)
+  - `src/benchmark/__tests__/phase7a-brownfield-real-projects.test.ts` (10/10 passed)
+  - `src/benchmark/__tests__/phase7a-reliability-and-recovery.test.ts` (8/8 passed)
+  - Total Phase 7A test suite: 24/24 passed.
+
+---
+
+### Phase 7B: Lovable-like Experience & Supported Delivery
 - **Status**: **NOT STARTED**
 - **Objectives**:
   - Create interactive web chat workspace with live preview (split view: prompt & chat on left, hot-reloading iframe on right).

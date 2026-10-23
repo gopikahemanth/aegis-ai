@@ -151,18 +151,53 @@ This tracker serves as the authoritative source of truth for the phased evolutio
 ---
 
 ### Phase 4: Learn from Real Sites (Reference Research)
-- **Status**: **NOT STARTED**
+- **Status**: **COMPLETED**
 - **Objectives**:
-  - Implement Stage 1 reference-site research using headless browser.
-  - Extract feature list, page structure, main user flows, UI patterns, content types.
-  - Strictly observe copyright rules: study structure and concepts only; never copy code, text, logos, or assets.
-  - Automatically synthesize the extracted findings into the Feature Matrix (`F01..Fn`).
+  - Implement Stage 1 reference-site research engine using headless browser (`playwright-core` Chromium/Edge) and resilient HTTP fallback.
+  - Select 3 to 5 publicly accessible reference websites tailored to domain, audience, and functional goals (e.g. Sweetgreen/OpenTable/Toast for dining, Coursera/Khan Academy/edX for education, Redfin/StreetEasy/Zillow for real estate, dynamic knowledge synthesis for unfamiliar domains).
+  - Inspect public page structures and workflows (navigation, route hierarchies, primary CTAs, forms & validation, filtering & search, user journeys, responsive indicators).
+  - Distinctly separate directly observed DOM/CSS facts (`isDirectObservation: true`) from inferred ideas/workflows (`isDirectObservation: false`).
+  - Enforce strict copyright safeguards: study structural UX patterns and functional requirements; never copy proprietary code, text, logos, or protected media assets.
+  - Persist versioned, machine-readable research artifacts to `.aegis/reference-research.json`.
+  - Harmonize research discoveries with explicit user must-haves and standard domain baselines in `.aegis/feature-matrix.json` with deterministic IDs (`F01..Fn`), provenance attribution, confidence scores, and valid acceptance test references.
+  - Enforce budget controls (bounded timeout, per-run budget, caching) and honest status reporting (`SUCCESS`, `PARTIAL`, `BLOCKED`, `NOT_PERFORMED`).
+  - Wire directly into the core generation pipeline in `Orchestrator.generateProject()`.
 - **Relevant Implementation Areas**:
-  - `packages/ai-core/src/research/`
-  - `packages/ai-core/src/contracts/feature-matrix.ts`
+  - `packages/ai-core/src/research/reference-research-types.ts` (Artifact schemas, source & pattern interfaces)
+  - `packages/ai-core/src/research/reference-source-selector.ts` (Curated domain catalog & dynamic unfamiliar domain selector)
+  - `packages/ai-core/src/research/reference-page-inspector.ts` (Playwright headless Chromium / Edge inspector & resilient fetch fallback)
+  - `packages/ai-core/src/research/feature-matrix-harmonizer.ts` (Requirements synthesis, deduplication, stable IDs, user priority preservation)
+  - `packages/ai-core/src/research/reference-research-engine.ts` (Research coordinator, budget controls, caching, artifact persistence)
+  - `packages/ai-core/src/agent/orchestrator.ts` (Direct pipeline integration)
 - **Acceptance Criteria**:
-  1. Research agent generates categorized feature list from target reference sites.
-  2. Output cleanly converts into validated `FeatureMatrix` without manual intervention.
+  1. Research engine inspects permitted public pages using real browser or network access without fabricating results.
+  2. Structured research artifact `.aegis/reference-research.json` generated with honest status and copyright safeguards.
+  3. Authoritative `.aegis/feature-matrix.json` harmonizes user must-haves, domain baselines, and research findings with zero dropped user requirements.
+  4. Out-of-scope or bloated features are filtered and recorded in `irrelevantFeatures` with clear exclusion rationales.
+  5. Representative real domains (Restaurant, Education, Real Estate, Unfamiliar/Novel) verified through end-to-end integration tests.
+- **Tests & Evidence Required**:
+  - `src/research/__tests__/phase4-reference-research.test.ts` (15/15 passed):
+    - Requirement 1: Domain-specific reference selection.
+    - Requirement 2: Absolute preservation of explicit user requirements (`must-have`, `source: "user-request"`).
+    - Requirement 3: Stable deterministic feature IDs (`F01..Fn`).
+    - Requirement 4: Traceable evidence, source URLs, and confidence scores.
+    - Requirement 5: Clear separation between observed facts and inferred concepts.
+    - Requirement 6: Honest error handling for inaccessible websites (no fake visits).
+    - Requirement 7: Graceful handling of malformed URLs.
+    - Requirement 8: Bounded browser timeouts and total budget enforcement.
+    - Requirement 9: Deduplication enriching overlapping features without clobbering.
+    - Requirement 10: Relevance filtering and documented bloat rejection.
+    - Requirement 11: Validation compliance with `FeatureMatrixManager.validate()`.
+    - Requirement 12: Machine-readable `.aegis/reference-research.json` persistence.
+    - Requirement 13: Copyright safeguards and originality attestations.
+    - Requirement 14: Honest research status reporting (`SUCCESS`, `PARTIAL`, `BLOCKED`, `NOT_PERFORMED`).
+    - Requirement 15: Adaptive reference synthesis for unfamiliar domains.
+  - `src/scenarios/__tests__/phase4-cli-integration.test.ts` (4/4 passed):
+    - Domain 1: Restaurant ordering & reservations (Trattoria Bella).
+    - Domain 2: Education & course management (ByteForge Academy).
+    - Domain 3: Real estate property discovery (Skyline Haven).
+    - Domain 4: Unfamiliar astrophysics radiotelescope console (PulsarGrid).
+  - Regression Suites (45/45 passed): Phase 3 original design, golden scenarios, canonical contracts, final success gate, template phrase blocklist. Total 64/64 passing tests across the active test surface.
 
 ---
 

@@ -376,6 +376,30 @@ export class Orchestrator {
       }
     }
 
+    // ── Phase 4: Real Reference Research & Feature Discovery ────────────────
+    try {
+      const { ReferenceResearchEngine } = await import("../research/reference-research-engine.js");
+      const researchResult = await ReferenceResearchEngine.executeResearch({
+        prompt: request,
+        domain: specification.domainCategory || specification.name,
+        projectName: specification.name || "AegisApp",
+        projectRoot: outputDirectory,
+        explicitRequirements: (specification.features || []).map((f: any) => ({
+          title: typeof f === "string" ? f : f.name || f.title || "Feature",
+          description: typeof f === "string" ? f : f.description || f.name || "Core feature",
+        })),
+      });
+
+      if (researchResult.research.relevantFeatures.length > 0) {
+        console.log(`[Orchestrator] 🌐 Reference Research completed: ${researchResult.research.relevantFeatures.length} relevant features discovered (Status: ${researchResult.research.overallStatus}).`);
+        (specification as any).discoveredFeatures = researchResult.research.relevantFeatures.map((f) => f.name);
+        (this as any)._referenceResearch = researchResult.research;
+        (this as any)._harmonizedFeatureMatrix = researchResult.featureMatrix;
+      }
+    } catch (resErr: any) {
+      console.warn(`[Orchestrator] ⚠️ Reference research non-blocking notice: ${resErr.message}`);
+    }
+
     // ── Canonical Specification Normalization & Architecture Lock ────────────────
     const canonicalSpec = SpecificationNormalizer.normalize(request, specification);
 

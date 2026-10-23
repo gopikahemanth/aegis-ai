@@ -78,6 +78,14 @@ export interface FeatureDefinition {
   verificationStatus: FeatureVerificationStatus;
   /** Verification evidence notes or report reference */
   evidenceNotes?: string;
+  /** Provenance source of this feature */
+  source?: "user-request" | "domain-convention" | "reference-research";
+  /** Confidence score of the discovery (0.0 to 1.0) */
+  confidence?: number;
+  /** Supporting evidence or reference source URL attribution */
+  sourceAttribution?: string;
+  /** Clear user value statement */
+  userValue?: string;
 }
 
 export interface FeatureMatrix {

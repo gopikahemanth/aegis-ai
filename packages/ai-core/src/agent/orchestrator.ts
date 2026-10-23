@@ -58,6 +58,10 @@ import { DesignSystemGenerator } from "../design/design-system-generator.js";
 import { ProductUnderstanding } from "../design/product-understanding.js";
 import { CapabilityPlanner } from "../design/capability-planner.js";
 import { DesignDirector, DesignBriefLock, type DesignSelectionMode } from "../design/design-director.js";
+import { ThemeGenerator } from "../design/theme-generator.js";
+import { DesignBriefGenerator } from "../design/design-brief-generator.js";
+import { CrossProjectSimilarityDetector } from "../design/similarity-detector.js";
+import { CrossProjectSimilarityGate } from "../validation/cross-project-similarity-gate.js";
 import { DesignIntentGate } from "../validation/design-intent-gate.js";
 import { DefinitionOfDone } from "../validation/definition-of-done.js";
 import { ProjectStartupAgent } from "../startup/project-startup-agent.js";
@@ -888,7 +892,42 @@ export class Orchestrator {
       designBrief = brief;
       console.log(`[DesignPipeline] Art direction: ${brief.artDirectionName} (${brief.artDirectionRationale})`);
 
-      // [4] Write locked brief to disk for DesignIntentGate and future runs
+      // [4] Generate and persist reliable Theme (.aegis/theme.json) with WCAG AA contrast check
+      const generatedTheme = ThemeGenerator.generateTheme({
+        domain: resolvedContract?.domainCategory || specification.name,
+        prompt: rawPrompt,
+        seed: genIdentity.seed,
+      });
+      ThemeGenerator.save(outputDirectory, generatedTheme);
+      console.log(`[DesignPipeline] ✓ Theme generated & locked: Hue ${generatedTheme.brandHue}°, Contrast ${generatedTheme.contrastAudit.textOnSurface.ratio}:1 AA`);
+
+      // [4a] Generate version 2.0 Structured Design Brief (.aegis/design-brief.json)
+      const candidateBriefV2 = DesignBriefGenerator.generateBrief({
+        prompt: rawPrompt,
+        domain: resolvedContract?.domainCategory || specification.name,
+        theme: generatedTheme,
+        seed: genIdentity.seed,
+        routes: featurePriority.informationArchitecture.pages.map((p) => p.route),
+      });
+
+      // [4b] Run Cross-Project Similarity Gate with bounded regeneration against project history
+      const historySignatures = CrossProjectSimilarityDetector.loadSignatures(outputDirectory);
+      const similarityGateResult = CrossProjectSimilarityGate.execute({
+        candidateBrief: candidateBriefV2,
+        historySignatures,
+        prompt: rawPrompt,
+        domain: resolvedContract?.domainCategory || specification.name,
+        routes: featurePriority.informationArchitecture.pages.map((p) => p.route),
+      });
+      const resolvedBriefV2 = similarityGateResult.resolvedBrief;
+      DesignBriefGenerator.save(outputDirectory, resolvedBriefV2);
+      CrossProjectSimilarityDetector.recordSignature(
+        outputDirectory,
+        CrossProjectSimilarityDetector.extractSignature(resolvedBriefV2)
+      );
+      console.log(`[SimilarityGate] ✓ Originality Gate verified (${similarityGateResult.report.status}, Similarity: ${similarityGateResult.report.finalSimilarity})`);
+
+      // [4c] Write locked brief to disk for DesignIntentGate and provenance checks
       DesignBriefLock.write(brief, outputDirectory);
       console.log(`[DesignPipeline] ✓ Brief locked: ${brief.briefId}`);
 

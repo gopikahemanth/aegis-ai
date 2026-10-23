@@ -106,20 +106,47 @@ This tracker serves as the authoritative source of truth for the phased evolutio
 ---
 
 ### Phase 3: Original Design & Theme Generator
-- **Status**: **NOT STARTED**
+- **Status**: **COMPLETED**
 - **Objectives**:
-  - Build structured design brief generator per project (brand hue, palette, font pair, radius, shadow style, density, layout motif, signature interaction).
-  - Implement theme generator converting hue into full palette with WCAG AA contrast validation.
-  - Curate font library with ~30 pairs tailored to specific domains.
-  - Curated component library with theme-aware tokens.
-  - Cross-project similarity gate comparing last 5 projects (hue, fonts, layout, section titles) to reject derivative outputs.
+  - Build structured design brief generator per project with 16 pillars (brand hue, palette, font pair, radius, shadow style, density, layout motif, hero composition, page section plans, signature interaction, avoid list, rationale).
+  - Implement dynamic theme generator generating 50..950 scales, WCAG AA contrast calculation/auto-tuning (>= 4.5:1 text, >= 3.0:1 focus), component tokens, and CSS custom properties.
+  - Curate font library with 30 pairings tailored to specific domains with system fallback stacks and Google Fonts URLs.
+  - Curated, theme-aware component system without destructive sanitizer overrides.
+  - Cross-project similarity detector comparing against last 5 projects across 8 axes (Hue, Typography, Hero, Section Sequence, Navigation, Density, Interaction, Motif) with bounded regeneration (max 3 retries).
+  - Direct pipeline integration into Orchestrator and CLI before code synthesis.
 - **Relevant Implementation Areas**:
-  - `packages/ai-core/src/design/` (`design-system-generator.ts`, `theme-generator.ts`)
-  - `packages/ai-core/src/validation/similarity-gate.ts`
+  - `packages/ai-core/src/design/typography-catalog.ts` (30 curated domain font pairings & TypographyManager)
+  - `packages/ai-core/src/design/theme-generator.ts` (Dynamic theme generation, WCAG AA auto-contrast, `.aegis/theme.json`)
+  - `packages/ai-core/src/design/design-brief-generator.ts` (16-pillar `AegisDesignBriefV2`, validation engine, `.aegis/design-brief.json`)
+  - `packages/ai-core/src/design/similarity-detector.ts` (8-axis similarity analysis, signature extraction, `.aegis/project-signatures.json`)
+  - `packages/ai-core/src/validation/cross-project-similarity-gate.ts` (Bounded regeneration gate with avoid list)
+  - `packages/ai-core/src/agent/orchestrator.ts` (Wired Theme, Brief, and Similarity Gate directly into core pipeline)
 - **Acceptance Criteria**:
   1. Theme generator produces valid WCAG AA contrast ratios across all semantic roles.
   2. Projects generated from different domains show distinct palettes, typography, and layout topologies.
-  3. Similarity gate detects and rejects near-duplicate layouts from recent project history.
+  3. Similarity gate detects and rejects near-duplicate layouts from recent project history with bounded retries.
+  4. Real Golden Scenarios (Marine, Aerospace, Luxury, Education) pass automated design evaluation.
+- **Tests & Evidence Required**:
+  - `src/design/__tests__/phase3-original-design.test.ts` (12/12 passed):
+    - Requirement 1: Domain-tailored design briefs.
+    - Requirement 2: Variance across repeated generations.
+    - Requirement 3: Theme tokens and complete CSS custom properties.
+    - Requirement 4: Required palette tokens (primary, secondary, accent, neutrals, surfaces, semantic).
+    - Requirement 5: Strict WCAG AA contrast enforcement and auto-tuning.
+    - Requirement 6: All 30 typography pairings contain complete system fallbacks.
+    - Requirement 7: Multi-axis similarity detection across structural layouts.
+    - Requirement 8: Bounded regeneration terminating within retry limit.
+    - Requirement 9: Unknown domains receive original tailored designs.
+    - Requirement 10: Non-destructive sanitizer preserves custom LLM Card/Table styling.
+    - Requirement 11: Route coverage in page section plans.
+    - Requirement 12: Design brief and theme JSON persistence in `.aegis/`.
+  - `src/scenarios/__tests__/phase3-golden-evaluation.test.ts` (5/5 passed):
+    - Golden Scenario 1: Thalassa Habitat (Marine Engineering, obsidian abyss, 3D spatial cutaway).
+    - Golden Scenario 2: OrbitalSync (Aerospace Operations, dark telemetry console, pass scheduler).
+    - Golden Scenario 3: Veloce Atelier (Luxury Automotive, obsidian noir/amber, cinematic aerodynamic configurator).
+    - Golden Scenario 4: CodeCraft Academy (Education, light mode accessible, interactive curriculum graph).
+    - Differentiation: Pairwise cross-project similarity strictly < 0.70 across all 4 domains.
+  - Regression Suites (28/28 passed): Golden Scenarios, Canonical Contracts, Final Success Gate, Template Blocklist. Total 45/45 passing tests.
 
 ---
 

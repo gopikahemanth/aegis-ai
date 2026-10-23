@@ -162,6 +162,11 @@ export {
 } from "./contracts/feature-matrix.js";
 export * from "./contracts/canonical-contract.js";
 export * from "./scenarios/golden-scenarios.js";
+export * from "./design/typography-catalog.js";
+export * from "./design/theme-generator.js";
+export * from "./design/design-brief-generator.js";
+export * from "./design/similarity-detector.js";
+export * from "./validation/cross-project-similarity-gate.js";
 
 
 

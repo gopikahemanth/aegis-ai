@@ -140,6 +140,29 @@ export const typography = {
   bodyStyle: "${contract.typography.bodyStyle}",
   emphasis: "${contract.typography.emphasis}",
 } as const;
+
+export const designTokens = {
+  colors: {
+    primary: "${resolved.primaryColor}",
+    primaryLight: "${resolved.primaryHoverColor}",
+    primaryDark: "${resolved.primaryColor}",
+    background: "${resolved.backgroundColor}",
+    surface: "${resolved.surfaceColor}",
+    surfaceMuted: "${resolved.surfaceElevatedColor}",
+    border: "${resolved.borderColor}",
+    text: "${resolved.textPrimaryColor}",
+    textMuted: "${resolved.textMutedColor}",
+  },
+  typography: {
+    fontFamilySans: "${resolved.fontBody}, -apple-system, sans-serif",
+    fontFamilyMono: "JetBrains Mono, monospace",
+  },
+  radii: {
+    sm: "${resolved.radiusSm}",
+    md: "${resolved.radiusMd}",
+    lg: "${resolved.radiusLg}",
+  },
+} as const;
 `,
     });
 

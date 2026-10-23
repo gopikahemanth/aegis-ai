@@ -11,9 +11,10 @@ import { auditTrailCommand } from "./commands/audit-trail.js";
 import { chatCommand } from "./commands/chat.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { refactorCommand } from "./commands/refactor.js";
+import { undoCommand } from "./commands/undo.js";
 
 const KNOWN_COMMANDS = new Set([
-  "create", "edit", "rename", "refactor", "chat", "doctor",
+  "create", "edit", "undo", "rename", "refactor", "chat", "doctor",
   "analytics", "audit", "audit-trail",
   "benchmark", "query", "version", "help",
   "--help", "-h", "--version", "-v",
@@ -30,6 +31,7 @@ export async function runCLI() {
     switch (arg) {
       case "create":      return createCommand();
       case "edit":        return editCommand();
+      case "undo":        return undoCommand();
       case "rename":      return renameCommand();
       case "refactor":    return refactorCommand();
       case "chat":        return chatCommand();

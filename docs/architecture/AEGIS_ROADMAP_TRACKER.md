@@ -202,22 +202,62 @@ This tracker serves as the authoritative source of truth for the phased evolutio
 ---
 
 ### Phase 5: Brownfield & AST-Safe Editing Engine
-- **Status**: **NOT STARTED**
+- **Status**: **COMPLETED**
 - **Objectives**:
-  - Build robust, natural-language editing engine on top of verified `brownfield/` AST tools (`ExistingSymbolModifier`, `PatchPreviewEngine`, `RepositoryScanner`).
-  - Support the 4 primary edit modes: Add a page/route, Change visual theme/tokens, Remove/replace a feature, Evolve data model & schema.
-  - Provide transactional rollback: any edit that breaks TypeScript, tests, or runtime reverts automatically to a clean checkpoint.
-  - Support `aegis undo` via Git checkpoints.
-  - Project hygiene: detect and remove orphan routes, dead imports, and duplicate components.
+  - Build robust, natural-language editing engine converting instructions into structured, versioned change specifications (`AegisEditPlanV1`).
+  - Scan existing projects to build comprehensive dependency graph (`ProjectDependencyGraph`) distinguishing feature-owned files, entry points, and shared components (`Card`, `Button`, `Table`).
+  - Implement full-stack additive feature engine (`FeatureAdder`): UI component, router registration, navbar link, persistence model evolution, and acceptance test.
+  - Implement safe feature decommissioning (`FeatureRemover`): unregister routes, prune navigation links, remove feature-owned files, cleanly prune dangling imports, and strictly preserve shared components.
+  - Implement visual theme modification (`ThemeModifier`): updates `:root` CSS custom properties and `.aegis/theme.json` without modifying routes or logic.
+  - Implement strict single-page isolation (e.g. "Only redesign the home page hero section") leaving all other routes and pages untouched.
+  - Provide durable multi-run checkpoints and atomic rollback (`UndoManager`, `aegis undo`) without discarding unrelated user modifications.
+  - Integrate `BrownfieldGitGuard` to evaluate preflight worktree states (`CLEAN`, `DIRTY_SAFE`, `DIRTY_TARGET_CONFLICT`) and stage only explicitly touched files.
+  - Integrate `AuthorizedSchemaManager` for non-destructive Prisma database model evolution.
+  - Synchronize project memory: `.aegis/feature-matrix.json`, `.aegis/theme.json`, and `.aegis/edit-history.json`.
+  - Provide CLI commands: `aegis edit "<instruction>"` and `aegis undo`.
 - **Relevant Implementation Areas**:
-  - `packages/ai-core/src/edit/` (`edit-engine.ts`)
-  - `packages/ai-core/src/brownfield/`
-  - `apps/cli/src/commands/edit.ts`
+  - `packages/ai-core/src/edit/edit-types.ts` (`EditIntentSpecification`, `AegisEditPlanV1`, `EditExecutionResult`, `EditCheckpointData`)
+  - `packages/ai-core/src/edit/natural-language-intent-parser.ts` (Classification: add, remove, modify_theme, modify_feature, evolve_model, fix_workflow, undo)
+  - `packages/ai-core/src/edit/project-dependency-graph.ts` (Dependency scanner, shared vs feature-owned file isolation)
+  - `packages/ai-core/src/edit/feature-adder.ts` (Full-stack additive feature wiring)
+  - `packages/ai-core/src/edit/feature-remover.ts` (Safe feature decommissioning, import cleanup, shared component protection)
+  - `packages/ai-core/src/edit/theme-modifier.ts` (CSS token & theme.json updates)
+  - `packages/ai-core/src/edit/undo-manager.ts` (Durable checkpoints in `.aegis/checkpoints/` and `.aegis/edit-history.json`)
+  - `packages/ai-core/src/edit/edit-engine.ts` (Master orchestrator & verification/repair loop)
+  - `apps/cli/src/commands/edit.ts` (CLI edit entrypoint with dry-run and full plan output)
+  - `apps/cli/src/commands/undo.ts` (CLI undo entrypoint)
+  - `apps/cli/src/cli.ts` (Added "undo" to known commands and routed dispatch)
 - **Acceptance Criteria**:
-  1. Adding a page creates component, route entry, navigation link, and tests cleanly.
-  2. Modifying a theme updates tokens consistently across components without breaking styles.
-  3. Removing a feature safely removes route, components, and references without dangling imports.
-  4. Broken edits rollback cleanly to the pre-edit checkpoint with zero leftover artifacts.
+  1. Natural-language requests are converted into structured, classified plans with strict scope boundaries.
+  2. Adding a page/feature creates component, route entry, navigation link, schema model, and tests cleanly.
+  3. Modifying a theme updates `:root` tokens and `.aegis/theme.json` without breaking page contracts.
+  4. Targeted single-page redesigns modify only the target page, leaving other pages untouched.
+  5. Feature removal cleanly removes route, navigation links, and feature files while strictly preserving shared components.
+  6. Uncommitted user modifications in unrelated files are preserved.
+  7. Broken edits or syntax errors roll back automatically to the pre-change checkpoint.
+  8. `aegis undo` safely reverts the last eligible edit without discarding subsequent unrelated user work.
+  9. Project memory (`.aegis/feature-matrix.json`, `.aegis/theme.json`, `.aegis/edit-history.json`) remains synchronized.
+- **Tests & Evidence Required**:
+  - `src/edit/__tests__/phase5-editing-engine.test.ts` (15/15 passed):
+    - Scenario 1: Adds a fully connected page, route, and navbar link.
+    - Scenario 2: Adds a backend-backed feature with database model evolution.
+    - Scenario 3 & 18: Modifies only the home page hero section without modifying other pages.
+    - Scenario 4: Modifies global theme tokens and persists `.aegis/theme.json`.
+    - Scenario 5 & 6: Removes a feature cleanly while strictly preserving shared components (`Card.tsx`).
+    - Scenario 7: Preserves user modifications in unrelated files.
+    - Scenario 8: Updates data model while preserving all prior domain fields.
+    - Scenario 9: Prevents unauthorized destructive schema mutations.
+    - Scenario 10: Handles missing routes file gracefully without crashing.
+    - Scenario 11 & 14: Rejects syntax errors and rolls back cleanly to checkpoint.
+    - Scenario 12: Detects imports and distinguishes shared vs feature-owned components.
+    - Scenario 13: Stops gracefully on impossible operations.
+    - Scenario 15: Undo restores edited files and deletes created files.
+    - Scenario 16: Avoids creating duplicate routes if feature already exists.
+    - Scenario 17: Updates Feature Matrix on additions and removals.
+  - `src/edit/__tests__/cli-brownfield-e2e.test.ts` (2/2 passed):
+    - CLI Dry-Run: Validates `--dry-run` outputs full execution plan with zero files modified.
+    - CLI Real Workflow: Executes real `aegis edit "Add a wishlist..."`, `aegis edit "Change the theme..."`, `aegis edit "Remove the blog..."`, and `aegis undo` on compiled CLI binary.
+  - Regression Suites (47/47 passed): Phase 3 original design, Phase 4 reference research, and AuthorizedSchemaManager governance. Total 64/64 active regression tests passing.
 
 ---
 

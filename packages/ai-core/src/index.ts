@@ -172,6 +172,13 @@ export * from "./design/theme-generator.js";
 export * from "./design/design-brief-generator.js";
 export * from "./design/similarity-detector.js";
 export * from "./validation/cross-project-similarity-gate.js";
+export * from "./edit/edit-types.js";
+export * from "./edit/natural-language-intent-parser.js";
+export * from "./edit/project-dependency-graph.js";
+export * from "./edit/feature-adder.js";
+export * from "./edit/feature-remover.js";
+export * from "./edit/theme-modifier.js";
+export * from "./edit/undo-manager.js";
 
 
 

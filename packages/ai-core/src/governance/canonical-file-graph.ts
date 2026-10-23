@@ -893,7 +893,7 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
     ],
     requiredExports: ["useResumeUpload"],
     allowedImports: ["src/services/api", "src/types/index"],
-    required: true,
+    required: false,
     category: "frontend-hook",
   },
   {

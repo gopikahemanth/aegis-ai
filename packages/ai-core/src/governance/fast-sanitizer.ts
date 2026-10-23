@@ -386,36 +386,8 @@ export default CircularProgress;
     }
 
     // Enforce Card subcomponents (CardHeader, CardTitle, CardDescription, CardContent, CardFooter)
-    // IDEMPOTENCY RULE: Never append to card files — always rewrite with a complete canonical version.
-    // This prevents accumulation of duplicate declarations across multiple sanitizer invocations.
-    const isBotanicalOrLightCard = (existsSync(join(root, ".aegis", "prompt.txt")) && /botanical|plant|sage|cream|ivory/i.test(readFileSync(join(root, ".aegis", "prompt.txt"), "utf8"))) || /plant|botanical|leaf/i.test(root);
-    const canonicalCardContent = isBotanicalOrLightCard ? `import React from "react";
-
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  title?: string;
-  value?: string | number;
-}
-
-export const Card: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <div className={\`bg-white/85 border border-[#5b7f6e]/15 rounded-2xl p-6 shadow-sm \${className}\`} {...props}>{children}</div>;
-
-export const CardHeader: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <div className={\`mb-4 \${className}\`} {...props}>{children}</div>;
-
-export const CardTitle: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <h3 className={\`text-lg font-bold text-[#2d2420] \${className}\`} {...props}>{children}</h3>;
-
-export const CardDescription: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <p className={\`text-sm text-[#8a7968] \${className}\`} {...props}>{children}</p>;
-
-export const CardContent: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <div className={\`\${className}\`} {...props}>{children}</div>;
-
-export const CardFooter: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <div className={\`mt-4 pt-4 border-t border-[#5b7f6e]/10 flex items-center \${className}\`} {...props}>{children}</div>;
-
-export default Card;
-` : `import React from "react";
+    // Non-destructive export reconciliation: Never clobber existing LLM components or styles.
+    const canonicalCardContent = `import React from "react";
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   title?: string;
@@ -424,12 +396,10 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export const Card: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
   <div
-    className={\`rounded-xl p-6 shadow-lg backdrop-blur \${className}\`}
+    className={\`rounded-xl p-6 shadow-md border \${className}\`}
     style={{
-      backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.6))",
-      borderColor: "var(--color-border, rgba(51, 65, 85, 0.5))",
-      borderWidth: 1,
-      borderStyle: "solid",
+      backgroundColor: "var(--color-surface, transparent)",
+      borderColor: "var(--color-border, currentColor)",
       color: "var(--color-text-primary, inherit)",
       ...style,
     }}
@@ -445,13 +415,13 @@ export const CardTitle: React.FC<any> = ({ children, className = '', style, ...p
   <h3 className={\`text-lg font-bold \${className}\`} style={{ color: "var(--color-text-primary, inherit)", ...(style || {}) }} {...props}>{children}</h3>;
 
 export const CardDescription: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
-  <p className={\`text-sm \${className}\`} style={{ color: "var(--color-text-secondary, #94a3b8)", ...(style || {}) }} {...props}>{children}</p>;
+  <p className={\`text-sm opacity-80 \${className}\`} style={{ color: "var(--color-text-secondary, inherit)", ...(style || {}) }} {...props}>{children}</p>;
 
 export const CardContent: React.FC<any> = ({ children, className = '', ...props }: any) =>
   <div className={\`\${className}\`} {...props}>{children}</div>;
 
 export const CardFooter: React.FC<any> = ({ children, className = '', style, ...props }: any) =>
-  <div className={\`mt-4 pt-4 flex items-center \${className}\`} style={{ borderTop: "1px solid var(--color-border, rgba(51, 65, 85, 0.4))", ...(style || {}) }} {...props}>{children}</div>;
+  <div className={\`mt-4 pt-4 flex items-center border-t border-current/15 \${className}\`} style={style} {...props}>{children}</div>;
 
 export default Card;
 `;
@@ -553,17 +523,17 @@ export default Card;
     }
 
     // Enforce Tabs subcomponents (TabsList, TabsTrigger, TabsContent)
-    // IDEMPOTENCY RULE: Rewrite the whole file if subcomponents are missing, never append.
+    // Non-destructive reconciliation: append missing subcomponents, never clobber existing styling.
     const canonicalTabsContent = `import React from "react";
 
 export const Tabs: React.FC<any> = ({ children, className = '', ...props }: any) =>
   <div className={\`w-full \${className}\`} {...props}>{children}</div>;
 
 export const TabsList: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <div className={\`flex gap-2 p-1 bg-slate-800 rounded-lg \${className}\`} {...props}>{children}</div>;
+  <div className={\`flex gap-2 p-1 bg-current/10 rounded-lg \${className}\`} {...props}>{children}</div>;
 
 export const TabsTrigger: React.FC<any> = ({ children, className = '', onClick = () => {}, ...props }: any) =>
-  <button type="button" onClick={onClick} className={\`px-3 py-1.5 rounded-md text-sm font-medium transition text-slate-300 hover:text-white \${className}\`} {...props}>{children}</button>;
+  <button type="button" onClick={onClick} className={\`px-3 py-1.5 rounded-md text-sm font-medium transition hover:bg-current/10 \${className}\`} {...props}>{children}</button>;
 
 export const TabsContent: React.FC<any> = ({ children, className = '', ...props }: any) =>
   <div className={\`mt-4 \${className}\`} {...props}>{children}</div>;
@@ -581,10 +551,27 @@ export default Tabs;
           const existing = readFileSync(tp, "utf8");
           const defaultExportCount = (existing.match(/\bexport\s+default\b/g) || []).length;
           const tabsDeclCount = (existing.match(/\b(?:export\s+)?(?:const|function)\s+Tabs\b/g) || []).length;
-          const missingSubcomponents = !existing.includes("TabsContent");
-          if (defaultExportCount > 1 || tabsDeclCount > 1 || missingSubcomponents) {
-            writeFileSync(tp, canonicalTabsContent, "utf8");
-            console.log(`[FastSanitizer] 🔧 Rewrote corrupted/incomplete Tabs: ${tp}`);
+          if (defaultExportCount > 1 || tabsDeclCount > 1) {
+            // Deduplicate without destroying styling
+            const dedupResult = ASTSafeTransformer.deduplicateTopLevelIdentifiers(existing, tp);
+            writeFileSync(tp, dedupResult.code, "utf8");
+            console.log(`[FastSanitizer] 🔧 Deduplicated declarations in Tabs: ${tp}`);
+          } else {
+            const tabsSubcomponentsToAppend: string[] = [];
+            if (!/\bexport\s+(?:const|function)\s+TabsList\b/.test(existing)) {
+              tabsSubcomponentsToAppend.push(`export const TabsList: React.FC<any> = ({ children, className = '', ...props }: any) => <div className={\`flex gap-2 p-1 bg-current/10 rounded-lg \${className}\`} {...props}>{children}</div>;`);
+            }
+            if (!/\bexport\s+(?:const|function)\s+TabsTrigger\b/.test(existing)) {
+              tabsSubcomponentsToAppend.push(`export const TabsTrigger: React.FC<any> = ({ children, className = '', onClick = () => {}, ...props }: any) => <button type="button" onClick={onClick} className={\`px-3 py-1.5 rounded-md text-sm font-medium transition hover:bg-current/10 \${className}\`} {...props}>{children}</button>;`);
+            }
+            if (!/\bexport\s+(?:const|function)\s+TabsContent\b/.test(existing)) {
+              tabsSubcomponentsToAppend.push(`export const TabsContent: React.FC<any> = ({ children, className = '', ...props }: any) => <div className={\`mt-4 \${className}\`} {...props}>{children}</div>;`);
+            }
+            if (tabsSubcomponentsToAppend.length > 0) {
+              const updated = existing.trimEnd() + "\n\n// Subcomponents appended to preserve existing Tabs styling\n" + tabsSubcomponentsToAppend.join("\n\n") + "\n";
+              writeFileSync(tp, updated, "utf8");
+              console.log(`[FastSanitizer] 🔧 Appended missing Tabs subcomponents to ${tp} without overwriting styling`);
+            }
           }
         } catch {}
       }
@@ -597,25 +584,25 @@ export const Table: React.FC<any> = ({ children, className = '', ...props }: any
   <div className="relative w-full overflow-auto"><table className={"w-full caption-bottom text-sm " + className} {...props}>{children}</table></div>;
 
 export const TableHeader: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <thead className={"[&_tr]:border-b " + className} {...props}>{children}</thead>;
+  <thead className={"[&_tr]:border-b border-current/15 " + className} {...props}>{children}</thead>;
 
 export const TableBody: React.FC<any> = ({ children, className = '', ...props }: any) =>
   <tbody className={"[&_tr:last-child]:border-0 " + className} {...props}>{children}</tbody>;
 
 export const TableFooter: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <tfoot className={"border-t font-medium " + className} {...props}>{children}</tfoot>;
+  <tfoot className={"border-t border-current/15 font-medium " + className} {...props}>{children}</tfoot>;
 
 export const TableRow: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <tr className={"border-b transition-colors hover:bg-slate-800/50 " + className} {...props}>{children}</tr>;
+  <tr className={"border-b border-current/10 transition-colors hover:bg-current/5 " + className} {...props}>{children}</tr>;
 
 export const TableHead: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <th className={"h-10 px-4 text-left align-middle font-medium text-slate-400 " + className} {...props}>{children}</th>;
+  <th className={"h-10 px-4 text-left align-middle font-medium opacity-75 " + className} {...props}>{children}</th>;
 
 export const TableCell: React.FC<any> = ({ children, className = '', ...props }: any) =>
   <td className={"p-4 align-middle " + className} {...props}>{children}</td>;
 
 export const TableCaption: React.FC<any> = ({ children, className = '', ...props }: any) =>
-  <caption className={"mt-4 text-sm text-slate-400 " + className} {...props}>{children}</caption>;
+  <caption className={"mt-4 text-sm opacity-70 " + className} {...props}>{children}</caption>;
 
 export { Table as table };
 export default Table;
@@ -629,10 +616,26 @@ export default Table;
       if (existsSync(tp)) {
         try {
           const existing = readFileSync(tp, "utf8");
-          const missingSubcomponents = !existing.includes("TableBody");
-          if (missingSubcomponents) {
-            writeFileSync(tp, canonicalTableContent, "utf8");
-            console.log(`[FastSanitizer] 🔧 Rewrote corrupted/incomplete Table: ${tp}`);
+          const tableSubcomponentsToAppend: string[] = [];
+          if (!/\bexport\s+(?:const|function)\s+TableHeader\b/.test(existing)) {
+            tableSubcomponentsToAppend.push(`export const TableHeader: React.FC<any> = ({ children, className = '', ...props }: any) => <thead className={"[&_tr]:border-b border-current/15 " + className} {...props}>{children}</thead>;`);
+          }
+          if (!/\bexport\s+(?:const|function)\s+TableBody\b/.test(existing)) {
+            tableSubcomponentsToAppend.push(`export const TableBody: React.FC<any> = ({ children, className = '', ...props }: any) => <tbody className={"[&_tr:last-child]:border-0 " + className} {...props}>{children}</tbody>;`);
+          }
+          if (!/\bexport\s+(?:const|function)\s+TableRow\b/.test(existing)) {
+            tableSubcomponentsToAppend.push(`export const TableRow: React.FC<any> = ({ children, className = '', ...props }: any) => <tr className={"border-b border-current/10 transition-colors hover:bg-current/5 " + className} {...props}>{children}</tr>;`);
+          }
+          if (!/\bexport\s+(?:const|function)\s+TableCell\b/.test(existing)) {
+            tableSubcomponentsToAppend.push(`export const TableCell: React.FC<any> = ({ children, className = '', ...props }: any) => <td className={"p-4 align-middle " + className} {...props}>{children}</td>;`);
+          }
+          if (!/\bexport\s+(?:const|function)\s+TableHead\b/.test(existing)) {
+            tableSubcomponentsToAppend.push(`export const TableHead: React.FC<any> = ({ children, className = '', ...props }: any) => <th className={"h-10 px-4 text-left align-middle font-medium opacity-75 " + className} {...props}>{children}</th>;`);
+          }
+          if (tableSubcomponentsToAppend.length > 0) {
+            const updated = existing.trimEnd() + "\n\n// Subcomponents appended to preserve existing Table styling\n" + tableSubcomponentsToAppend.join("\n\n") + "\n";
+            writeFileSync(tp, updated, "utf8");
+            console.log(`[FastSanitizer] 🔧 Appended missing Table subcomponents to ${tp} without overwriting styling`);
           }
         } catch {}
       }

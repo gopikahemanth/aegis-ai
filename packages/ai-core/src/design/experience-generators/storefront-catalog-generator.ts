@@ -53,10 +53,160 @@ export class StorefrontCatalogExperienceGenerator {
   public static deriveDomainCatalog(prompt: string, brandName: string) {
     const promptLower = (prompt || "").toLowerCase();
 
-    const isBookstore = /book|reading|literature|author|poetry|novel|publishing|petal/i.test(promptLower);
-    const isCarwash = /wash|car|auto|vehicle|detailing|fleet/i.test(promptLower);
-    const isBakery = /bakery|bread|pastry|cake|sourdough|bakes|culinary|cafe|coffee|roast/i.test(promptLower);
-    const isClinic = /clinic|health|medical|doctor|patient|dental|wellness|therapy/i.test(promptLower);
+    const isCoffee = /\b(coffee|roaster\w*|espresso|pour-over|brew\w*|barista|cafe\b)/i.test(promptLower);
+    const isBookstore = !isCoffee && (
+      /\b(bookstore|bookseller|book\s*shop|literature|publishing|poetry|novel)\b/i.test(promptLower) ||
+      (/\b(books?|author)\b/i.test(promptLower) && !/\b(booking|booked|book\s*a\s*table|book\s*an?\s*appointment|car\s*wash|wash)\b/i.test(promptLower))
+    );
+    const isBakery = !isCoffee && /\b(bakery|bread|pastry|cake|sourdough|bakes|croissant|patisserie)\b/i.test(promptLower);
+    const isClinic = /\b(clinic|health|medical|doctor|patient|dental|wellness|therapy)\b/i.test(promptLower);
+    const isCarwash = !isCoffee && !isBakery && !isBookstore && (
+      /\b(car\s*wash|auto\s*spa|auto\s*detail\w*|car\s*detail\w*|wash\s*bay|ceramic\s*coat\w*|vehicle\s*detailing|fleet\s*wash)\b/i.test(promptLower) ||
+      (/\b(detailing|ceramic\s*coating)\b/i.test(promptLower) && /\b(car|auto|vehicle)\b/i.test(promptLower)) ||
+      (/\b(car|auto|vehicle)\b/i.test(promptLower) && /\b(wash|mechanic|tire|oil\s*change)\b/i.test(promptLower))
+    );
+
+    if (isCoffee) {
+      return {
+        domainCategory: "luxury-coffee-hospitality",
+        domainLabel: "Artisanal Coffee & Roast Reserves",
+        badge: "Single-Origin Micro-Lot Roastery",
+        badgeIcon: "Coffee",
+        heroTitle: `${brandName} Micro-Lot Roasts & Brew Equipment`,
+        heroSubtitle: "Direct-trade single-origin harvests, precision small-batch roasts, artisanal pour-overs, and specialized brew gear.",
+        itemNoun: "Roast",
+        itemNounPlural: "Roasts",
+        actionLabel: "Select Roast",
+        cartLabel: "Roastery Cart",
+        searchPlaceholder: "Search origin, roast profile, or tasting notes...",
+        emptyTitle: "No Roasts Found",
+        emptyDesc: 'No offerings match your current selection. Try selecting "All Roasts" or clearing your search.',
+        secondaryFeatureLabel: "Roast Profile & Origin Notes",
+        secondaryFeatureKey: "highlightDetail",
+        secondaryFeatureIcon: "Sparkles",
+        isPhysicalCover: false,
+        theme: {
+          bg: "#0C0A09",
+          cardBg: "bg-stone-900/90",
+          cardBorder: "border-stone-800",
+          cardBorderHover: "hover:border-amber-500/50",
+          textPrimary: "text-stone-100",
+          textSecondary: "text-stone-400",
+          fontFamily: "font-sans",
+          accent: "#D97706",
+          accentSecondary: "#F59E0B",
+          btnPrimary: "bg-amber-600 text-stone-950 font-bold hover:bg-amber-500",
+          btnCart: "bg-amber-600 text-stone-950 font-bold hover:bg-amber-500",
+          cartBg: "bg-stone-900",
+          heroBannerBg: "bg-stone-900/80",
+          heroBannerBorder: "border-stone-800",
+        },
+        products: [
+          {
+            id: "cf-01",
+            title: "Ethiopia Yirgacheffe Washed",
+            author: "Gedeo Zone, 2,100m",
+            category: "Light Roast",
+            format: "12 oz · Whole Bean",
+            price: 22,
+            isbn: "RST-YIRGA",
+            stock: 18,
+            staffPick: true,
+            synopsis: "Bright, floral, and tea-like with distinct notes of wild jasmine, bergamot citrus, and candied lemon peel. Clean washed process.",
+            highlightTag: "Single Origin",
+            highlightDetail: "Jasmine Blossom & Bergamot",
+            coverColor: "#78350F",
+            accentColor: "#F59E0B",
+            rating: 5,
+          },
+          {
+            id: "cf-02",
+            title: "Colombia Huila Geisha Reserve",
+            author: "Pitalito Farm, 1,850m",
+            category: "Medium-Light Roast",
+            format: "10 oz · Whole Bean",
+            price: 28,
+            isbn: "RST-GEISHA",
+            stock: 8,
+            staffPick: true,
+            synopsis: "Elegant micro-lot exhibiting silky body, fragrant white peach, wild honeycomb sweetness, and a crisp Meyer lemon acidity.",
+            highlightTag: "Micro-Lot Reserve",
+            highlightDetail: "White Peach & Wild Honey",
+            coverColor: "#92400E",
+            accentColor: "#FBBF24",
+            rating: 5,
+          },
+          {
+            id: "cf-03",
+            title: "Guatemala Antigua Estate",
+            author: "Volcano Valley, 1,600m",
+            category: "Medium Roast",
+            format: "12 oz · Whole Bean",
+            price: 20,
+            isbn: "RST-ANTIGUA",
+            stock: 24,
+            staffPick: false,
+            synopsis: "Balanced and comforting with rich dark chocolate, roasted almond, warm caramel sweetness, and a subtle orange zest finish.",
+            highlightTag: "Estate Grown",
+            highlightDetail: "Dark Chocolate & Toasted Almond",
+            coverColor: "#451A03",
+            accentColor: "#D97706",
+            rating: 4.9,
+          },
+          {
+            id: "cf-04",
+            title: "Sumatra Mandheling Triple-Picked",
+            author: "Lake Toba, 1,500m",
+            category: "Dark Roast",
+            format: "12 oz · Whole Bean",
+            price: 21,
+            isbn: "RST-SUMATRA",
+            stock: 15,
+            staffPick: false,
+            synopsis: "Heavy-bodied and earthy with intense cedar aromatics, molasses sweetness, baker's cocoa, and low acidity. Wet-hulled process.",
+            highlightTag: "Aged Wet-Hulled",
+            highlightDetail: "Cedar & Dark Molasses",
+            coverColor: "#292524",
+            accentColor: "#78716C",
+            rating: 4.8,
+          },
+          {
+            id: "cf-05",
+            title: "Aura Signature Espresso Blend",
+            author: "Roastery Master Blend",
+            category: "Espresso Roast",
+            format: "16 oz · Whole Bean",
+            price: 24,
+            isbn: "RST-AURA-ESP",
+            stock: 30,
+            staffPick: true,
+            synopsis: "Developed specifically for pulling thick, velvety crema. Notes of salted caramel, dark chocolate truffle, and ripe blackberry.",
+            highlightTag: "House Signature",
+            highlightDetail: "Salted Caramel & Dark Truffle",
+            coverColor: "#1C1917",
+            accentColor: "#F59E0B",
+            rating: 5,
+          },
+          {
+            id: "cf-06",
+            title: "Cold Brew Reserve Concentrate",
+            author: "Slow Steeped 24h",
+            category: "Cold Brew",
+            format: "32 fl oz · Bottle",
+            price: 16,
+            isbn: "DRK-COLDBREW",
+            stock: 12,
+            staffPick: false,
+            synopsis: "Steeped slowly for 24 hours at 38°F using our dark roast single origin. Ultra-smooth, zero bitterness, notes of cocoa nib and vanilla bean.",
+            highlightTag: "Small Batch",
+            highlightDetail: "Cocoa Nib & Bourbon Vanilla",
+            coverColor: "#0C0A09",
+            accentColor: "#FBBF24",
+            rating: 4.9,
+          },
+        ],
+      };
+    }
 
     if (isBookstore) {
       return {
@@ -979,7 +1129,7 @@ export function ${componentName}(props: any) {
               <span>${catalogConfig.cartLabel}</span>
               {totalCartCount > 0 && (
                 <span
-                  className="ml-1 px-2 py-0.5 rounded-full text-white text-xs font-bold font-sans"
+                  className="ml-1 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-white text-xs font-bold font-sans tabular-nums leading-none shrink-0"
                   style={{ backgroundColor: "${theme.accentSecondary}" }}
                 >
                   {totalCartCount}

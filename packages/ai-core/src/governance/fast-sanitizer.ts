@@ -1935,10 +1935,18 @@ export { App };
         const primaryModel = reqModels[0] || "Record";
 
         // Derive authentic domain configuration dynamically
-        const isBook = /bookstore|bookseller|book\s*shop|literature|publishing|poetry|novel/i.test(promptLower);
-        const isCarwash = /wash|car|auto|vehicle|detailing|fleet/i.test(promptLower);
-        const isBake = /bakery|bread|pastry|cake|sourdough|bakes|culinary|food|cafe|coffee/i.test(promptLower);
-        const isClinic = /clinic|health|medical|doctor|patient|dental|wellness|therapy/i.test(promptLower);
+        const isCoffee = /\b(coffee|roaster\w*|espresso|pour-over|brew\w*|barista|cafe\b)/i.test(promptLower);
+        const isBook = !isCoffee && (
+          /\b(bookstore|bookseller|book\s*shop|literature|publishing|poetry|novel)\b/i.test(promptLower) ||
+          (/\b(books?|author)\b/i.test(promptLower) && !/\b(booking|booked|book\s*a\s*table|book\s*an?\s*appointment|car\s*wash|wash)\b/i.test(promptLower))
+        );
+        const isCarwash = !isCoffee && !isBook && (
+          /\b(car\s*wash|auto\s*spa|auto\s*detail\w*|car\s*detail\w*|wash\s*bay|ceramic\s*coat\w*|vehicle\s*detailing|fleet\s*wash)\b/i.test(promptLower) ||
+          (/\b(detailing|ceramic\s*coating)\b/i.test(promptLower) && /\b(car|auto|vehicle)\b/i.test(promptLower)) ||
+          (/\b(car|auto|vehicle)\b/i.test(promptLower) && /\b(wash|mechanic|tire|oil\s*change)\b/i.test(promptLower))
+        );
+        const isBake = !isCoffee && /\b(bakery|bread|pastry|cake|sourdough|bakes|croissant|patisserie)\b/i.test(promptLower);
+        const isClinic = /\b(clinic|health|medical|doctor|patient|dental|wellness|therapy)\b/i.test(promptLower);
 
         let domainTitle = `${brand} ${primaryModel} Operations & Management`;
         let domainSubtitle = "Central dashboard, real-time status tracking, record administration, and operational coordination.";
@@ -1958,7 +1966,7 @@ export { App };
         let records: Array<{ id: string; name: string; code: string; status: string; category: string; metricA: string; metricB: string }> = [];
 
         // Dynamic theme derived from prompt
-        const isWarm = /cream|warm|ivory|sand|paper|linen/i.test(promptLower) || isBook || isBake;
+        const isWarm = /cream|warm|ivory|sand|paper|linen/i.test(promptLower) || isBook || isBake || isCoffee;
         const isDark = !isWarm && (/dark|black|obsidian|night|cyber/i.test(promptLower) || isCarwash);
 
         const themeBg = isWarm ? "bg-[#FAF7F2]" : isDark ? "bg-slate-950" : "bg-stone-50";
@@ -1970,7 +1978,29 @@ export { App };
         const themeBtnActive = isWarm ? "bg-[#1C3D2E] text-white font-bold" : isDark ? "bg-sky-500 text-slate-950 font-bold" : "bg-stone-900 text-white font-bold";
         const themeAccent = isWarm ? "#1C3D2E" : isDark ? "#38bdf8" : "#2563eb";
 
-        if (isBook) {
+        if (isCoffee) {
+          domainTitle = `${brand} Roastery Operations & Cafe Ledger`;
+          domainSubtitle = "Batch roast management, single-origin inventory, table reservations, and barista order fulfillment.";
+          colIdentifier = "Roast Batch / SKU";
+          colName = "Coffee Offering";
+          colCategory = "Roast Profile";
+          colMetricA = "Bag / Drink Price";
+          colStatus = "Status";
+          tabs = ["all", "active", "roasting", "reserved"];
+          metric1Title = "DAILY ROASTS";
+          metric1Sub = "Single-origin micro-lots roasted fresh on-site.";
+          metric2Title = "RESERVATIONS";
+          metric2Sub = "Cafe tasting tables confirmed for today.";
+          metric3Title = "ACTIVE ORDERS";
+          metric3Sub = "Bagged beans and beverage tickets in bar queue.";
+          records = [
+            { id: 'CF-01', name: 'Ethiopia Yirgacheffe Washed', code: 'RST-YIRGA', status: 'active', category: 'Light Roast', metricA: '$22.00', metricB: '18 Bags' },
+            { id: 'CF-02', name: 'Colombia Huila Geisha Reserve', code: 'RST-GEISHA', status: 'active', category: 'Medium-Light', metricA: '$28.00', metricB: '8 Bags' },
+            { id: 'CF-03', name: 'Guatemala Antigua Estate', code: 'RST-ANTIGUA', status: 'roasting', category: 'Medium Roast', metricA: '$20.00', metricB: '24 Bags' },
+            { id: 'CF-04', name: 'Aura Signature Espresso Blend', code: 'RST-AURA-ESP', status: 'active', category: 'Espresso', metricA: '$24.00', metricB: '30 Bags' },
+            { id: 'CF-05', name: 'Cold Brew Reserve Concentrate', code: 'DRK-COLDBREW', status: 'active', category: 'Cold Brew', metricA: '$16.00', metricB: '12 Bottles' }
+          ];
+        } else if (isBook) {
           domainTitle = `${brand} Curated Inventory & Literary Vault`;
           domainSubtitle = "Catalog administration, verified acquisitions, botanical editions, and archival shelf management.";
           colIdentifier = "ISBN / Code";

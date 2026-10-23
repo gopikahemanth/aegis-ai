@@ -73,7 +73,7 @@ export class DynamicDataModelContract {
       relations,
       indexes: ["id"],
       constraints: [],
-      featureOwnership: domain.features
+      featureOwnership: (domain.features || [])
         .filter(f => f.entities.includes(entity.name))
         .map(f => f.featureId),
     };
@@ -429,7 +429,10 @@ export class DynamicDataModelContract {
       // User owns all domain entities
       return domain.entities
         .filter(e => e.name !== "User" && e.kind === "domain")
-        .map(e => `${e.name.toLowerCase()}s ${e.name}[]`);
+        .map(e => {
+          const relName = e.name.charAt(0).toLowerCase() + e.name.slice(1) + "s";
+          return `${relName.padEnd(20)} ${e.name}[]`;
+        });
     }
 
     // All non-User domain entities belong to User

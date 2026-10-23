@@ -176,15 +176,6 @@ export class AuthorizedSchemaManager {
       return { valid: false, error: "Schema does not define any valid Prisma models (model Name { ... })." };
     }
 
-    // Every model must have an @id field
-    const { models } = this.parseSchema(schemaContent);
-    for (const [name, model] of models) {
-      const hasId = Array.from(model.fields.values()).some(f => f.attributes.includes("@id") || f.name === "id");
-      if (!hasId) {
-        return { valid: false, error: `Model "${name}" does not define a primary key (@id).` };
-      }
-    }
-
     // Bracket balance check
     const openBraces = (schemaContent.match(/\{/g) || []).length;
     const closeBraces = (schemaContent.match(/\}/g) || []).length;
@@ -192,7 +183,151 @@ export class AuthorizedSchemaManager {
       return { valid: false, error: `Unbalanced braces in schema: ${openBraces} '{' vs ${closeBraces} '}'.` };
     }
 
+    const { models } = this.parseSchema(schemaContent);
+
+    // Every model must have an @id field
+    for (const [name, model] of models) {
+      const hasId = Array.from(model.fields.values()).some(f => f.attributes.includes("@id") || f.name === "id");
+      if (!hasId) {
+        return { valid: false, error: `Model "${name}" does not define a primary key (@id).` };
+      }
+    }
+
+    // Check for duplicate ambiguous relation fields (P1012)
+    const modelNames = new Set(models.keys());
+    for (const [name, model] of models) {
+      const targetCount = new Map<string, number>();
+      for (const field of model.fields.values()) {
+        if (modelNames.has(field.type)) {
+          const isNamed = /@relation\s*\(\s*["'][^"']+["']/.test(field.attributes);
+          if (!isNamed && field.isArray) {
+            const count = (targetCount.get(field.type) || 0) + 1;
+            if (count > 1) {
+              return { valid: false, error: `Model "${name}" contains duplicate ambiguous relation to "${field.type}" (P1012).` };
+            }
+            targetCount.set(field.type, count);
+          }
+        }
+      }
+    }
+
     return { valid: true };
+  }
+
+  /**
+   * Canonicalize and deduplicate relation fields across all models in a Prisma schema.
+   * Ensures single canonical camelCase plural for arrays and singular for 1-1 relations,
+   * avoiding P1012 duplicate relation declaration errors.
+   */
+  public static canonicalizeAndDeduplicateRelations(schemaContent: string): string {
+    if (!schemaContent || schemaContent.trim().length === 0) return schemaContent;
+
+    const parsed = this.parseSchema(schemaContent);
+    const modelNames = new Set(parsed.models.keys());
+
+    for (const [modelName, model] of parsed.models) {
+      const fieldsByTarget = new Map<string, ParsedPrismaField[]>();
+      const scalarFields: ParsedPrismaField[] = [];
+
+      for (const [fName, field] of model.fields) {
+        if (modelNames.has(field.type)) {
+          const list = fieldsByTarget.get(field.type) || [];
+          list.push(field);
+          fieldsByTarget.set(field.type, list);
+        } else {
+          scalarFields.push(field);
+        }
+      }
+
+      const newFields = new Map<string, ParsedPrismaField>();
+
+      // Preserve scalar fields, deduplicating case-insensitively
+      for (const sf of scalarFields) {
+        const lower = sf.name.toLowerCase();
+        const existingKey = Array.from<string>(newFields.keys()).find(k => k.toLowerCase() === lower);
+        if (!existingKey) {
+          newFields.set(sf.name, sf);
+        }
+      }
+
+      // Process relation fields by target model
+      for (const [targetModel, relFields] of fieldsByTarget) {
+        const canonicalArrayName = targetModel.charAt(0).toLowerCase() + targetModel.slice(1) + "s";
+        const canonicalSingularName = targetModel.charAt(0).toLowerCase() + targetModel.slice(1);
+
+        const namedRelations: ParsedPrismaField[] = [];
+        const unnamedArrayRelations: ParsedPrismaField[] = [];
+        const unnamedSingularRelations: ParsedPrismaField[] = [];
+
+        for (const rf of relFields) {
+          const hasNamedRelation = /@relation\s*\(\s*["'][^"']+["']/.test(rf.attributes);
+          if (hasNamedRelation) {
+            namedRelations.push(rf);
+          } else if (rf.isArray) {
+            unnamedArrayRelations.push(rf);
+          } else {
+            unnamedSingularRelations.push(rf);
+          }
+        }
+
+        // Deduplicate unnamed array relations into a single canonical camelCase plural
+        if (unnamedArrayRelations.length > 0) {
+          const exactCanonical = unnamedArrayRelations.find(r => r.name === canonicalArrayName);
+          const chosen = exactCanonical || unnamedArrayRelations[0];
+          const chosenName = canonicalArrayName;
+          const pad = Math.max(20, chosenName.length + 2);
+          const attrs = chosen.attributes ? ` ${chosen.attributes}` : "";
+          const rawLine = `  ${chosenName.padEnd(pad)} ${targetModel}[]${attrs}`.trimEnd();
+
+          newFields.set(chosenName, {
+            ...chosen,
+            name: chosenName,
+            rawLine,
+          });
+        }
+
+        // Deduplicate unnamed singular relations
+        if (unnamedSingularRelations.length > 0) {
+          const exactCanonical = unnamedSingularRelations.find(r => r.name === canonicalSingularName);
+          const chosen = exactCanonical || unnamedSingularRelations[0];
+          const chosenName = chosen.name.toLowerCase() === targetModel.toLowerCase() ? canonicalSingularName : chosen.name;
+          const pad = Math.max(20, chosenName.length + 2);
+          const opt = chosen.isOptional ? "?" : "";
+          const attrs = chosen.attributes ? ` ${chosen.attributes}` : "";
+          const rawLine = `  ${chosenName.padEnd(pad)} ${targetModel}${opt}${attrs}`.trimEnd();
+
+          newFields.set(chosenName, {
+            ...chosen,
+            name: chosenName,
+            rawLine,
+          });
+        }
+
+        // Keep all explicitly named relations (e.g. @relation("author"))
+        for (const nr of namedRelations) {
+          newFields.set(nr.name, nr);
+        }
+      }
+
+      model.fields = newFields;
+    }
+
+    const serializedModels: string[] = [];
+    for (const [mName, m] of parsed.models) {
+      const fieldLines: string[] = [];
+      for (const field of m.fields.values()) {
+        fieldLines.push(field.rawLine);
+      }
+      const directiveLines = m.modelDirectives;
+      serializedModels.push(`model ${mName} {\n${[...fieldLines, ...directiveLines].join("\n")}\n}`);
+    }
+
+    const serializedEnums = Array.from(parsed.enums.values()).join("\n\n");
+    return [
+      parsed.header,
+      serializedEnums,
+      serializedModels.join("\n\n"),
+    ].filter(Boolean).join("\n\n") + "\n";
   }
 
   /**
@@ -204,8 +339,15 @@ export class AuthorizedSchemaManager {
     incomingSchemaOrModels: string | string[],
     databaseProvider: string = "postgresql"
   ): SchemaReconciliationResult {
-    const existing = existingSchemaContent.trim().length > 0
-      ? this.parseSchema(existingSchemaContent)
+    const cleanExisting = existingSchemaContent.trim().length > 0
+      ? this.canonicalizeAndDeduplicateRelations(existingSchemaContent)
+      : existingSchemaContent;
+    const cleanIncoming = typeof incomingSchemaOrModels === "string"
+      ? this.canonicalizeAndDeduplicateRelations(incomingSchemaOrModels)
+      : incomingSchemaOrModels;
+
+    const existing = cleanExisting.trim().length > 0
+      ? this.parseSchema(cleanExisting)
       : { header: "", models: new Map(), enums: new Map() };
 
     const preservedFields: string[] = [];
@@ -217,11 +359,11 @@ export class AuthorizedSchemaManager {
     let incomingEnums = new Map<string, string>();
     let targetModelNames: string[] = [];
 
-    if (Array.isArray(incomingSchemaOrModels)) {
-      targetModelNames = incomingSchemaOrModels;
+    if (Array.isArray(cleanIncoming)) {
+      targetModelNames = cleanIncoming;
     } else {
       // Validate incoming schema syntax first
-      const incomingValidation = this.validateSchemaContent(incomingSchemaOrModels);
+      const incomingValidation = this.validateSchemaContent(cleanIncoming);
       if (!incomingValidation.valid) {
         return {
           success: false,
@@ -234,7 +376,7 @@ export class AuthorizedSchemaManager {
         };
       }
 
-      const parsedIncoming = this.parseSchema(incomingSchemaOrModels);
+      const parsedIncoming = this.parseSchema(cleanIncoming);
       incomingModels = parsedIncoming.models;
       incomingEnums = parsedIncoming.enums;
       targetModelNames = Array.from(incomingModels.keys());
@@ -261,9 +403,16 @@ export class AuthorizedSchemaManager {
         if (incomingModel) {
           // Reconcile with incoming schema fields
           for (const [fName, inField] of incomingModel.fields) {
-            if (!existingModel.fields.has(fName)) {
+            const existingFieldKey = Array.from<string>(existingModel.fields.keys()).find(
+              k => k.toLowerCase() === fName.toLowerCase()
+            );
+            if (!existingFieldKey) {
               existingModel.fields.set(fName, inField);
               addedFields.push(`${modelName}.${fName}`);
+            } else if (existingFieldKey !== fName && typeof existingFieldKey === "string" && existingFieldKey === existingFieldKey.toLowerCase()) {
+              // Existing was all-lowercase (e.g. coffeeitems), incoming is canonical camelCase (e.g. coffeeItems)
+              existingModel.fields.delete(existingFieldKey);
+              existingModel.fields.set(fName, inField);
             }
           }
         }
@@ -275,7 +424,10 @@ export class AuthorizedSchemaManager {
         } as any;
         const dynamicFields = (DynamicDataModelContract as any).buildFields?.({ name: modelName, kind: "domain" }, domainContract) || [];
         for (const df of dynamicFields) {
-          if (!existingModel.fields.has(df.name)) {
+          const hasField = Array.from<string>(existingModel.fields.keys()).some(
+            k => k.toLowerCase() === df.name.toLowerCase()
+          );
+          if (!hasField) {
             const rawType = df.type + (df.nullable ? "?" : "");
             const validation = df.validation || (df.default ? `@default(${df.default})` : "");
             const rawLine = `  ${df.name.padEnd(16)} ${rawType.padEnd(10)} ${validation}`.trimEnd();
@@ -341,11 +493,14 @@ export class AuthorizedSchemaManager {
     }
 
     const serializedEnums = Array.from(existing.enums.values()).join("\n\n");
-    const fullSchema = [
+    const rawMergedSchema = [
       existing.header || `datasource db {\n  provider = "${databaseProvider}"\n  url      = env("DATABASE_URL")\n}\n\ngenerator client {\n  provider = "prisma-client-js"\n}`,
       serializedEnums,
       serializedModels.join("\n\n"),
     ].filter(Boolean).join("\n\n") + "\n";
+
+    // Deduplicate and canonicalize relations in the merged schema
+    const fullSchema = this.canonicalizeAndDeduplicateRelations(rawMergedSchema);
 
     // Validate merged schema
     const validation = this.validateSchemaContent(fullSchema);

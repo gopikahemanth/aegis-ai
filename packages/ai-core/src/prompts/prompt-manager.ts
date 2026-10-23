@@ -602,15 +602,16 @@ DO NOT INCLUDE ANY OTHER MARKDOWN HEADINGS (like ### Repair 1: or File:). ONLY U
   }
 
   public getDataArchitecturePrompt(spec?: ProjectSpecification): string {
-    const dbProvider = (spec?.database ?? "sqlite").toLowerCase().includes("postgres") ? "postgresql" : "sqlite";
+    const rawDb = spec?.database || (spec as any)?.lockedStack?.database || "PostgreSQL";
+    const dbProvider = rawDb.toLowerCase().includes("sqlite") ? "sqlite" : "postgresql";
     return `${this.getBaseSystemPrompt("Data Architecture / Schema Agent")}
 
 STRICT ARCHITECTURE LOCK:
-- Database Engine: ${spec?.database ?? "SQLite"}
+- Database Engine: ${rawDb}
 - Prisma Datasource Provider: MUST BE provider = "${dbProvider}"
 
 CRITICAL SCHEMA RULE:
-- Your Prisma schema MUST use provider = "${dbProvider}". Do NOT use postgresql if database is SQLite.
+- Your Prisma schema MUST use provider = "${dbProvider}". Do NOT use postgresql if database is SQLite, and do NOT use sqlite if database is PostgreSQL.
 
 Analyze the requirements and design a robust, complete full-stack data architecture.
 Define the models, database schemas, REST APIs, and client-side hooks needed.

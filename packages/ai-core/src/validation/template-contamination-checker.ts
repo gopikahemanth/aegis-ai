@@ -10,6 +10,19 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PromptConstraints } from "../governance/prompt-constraints.js";
+import { StorefrontCatalogExperienceGenerator } from "../design/experience-generators/storefront-catalog-generator.js";
+
+function extractAllStrings(obj: any): string[] {
+  const strings: string[] = [];
+  if (typeof obj === "string") {
+    strings.push(obj);
+  } else if (Array.isArray(obj)) {
+    for (const item of obj) strings.push(...extractAllStrings(item));
+  } else if (obj && typeof obj === "object") {
+    for (const val of Object.values(obj)) strings.push(...extractAllStrings(val));
+  }
+  return strings;
+}
 
 export interface TemplateContaminationViolation {
   file: string;
@@ -437,18 +450,37 @@ export class TemplateContaminationChecker {
         "product-discovery.json",
         "features.json",
         "domain-vocabulary.json",
+        "domain-contract.json",
+        "website-experience-identity.json",
+        "design-brief.json",
+        "page-experience-plans.json",
+        "product-experience-plan.json",
         "spec.json",
         "canonical-spec.json",
-        "product-experience-plan.json",
       ]) {
         const fp = join(aegisDir, fn);
         if (existsSync(fp)) {
           try {
-            allowedCorpusParts.push(readFileSync(fp, "utf8"));
+            const raw = readFileSync(fp, "utf8");
+            allowedCorpusParts.push(raw);
+            try {
+              const parsed = JSON.parse(raw);
+              allowedCorpusParts.push(...extractAllStrings(parsed));
+            } catch {}
           } catch {}
         }
       }
     }
+
+    try {
+      const derivedCatalog = StorefrontCatalogExperienceGenerator.deriveDomainCatalog(
+        prompt || contractToUse?.prompt || "",
+        contractToUse?.name || domainCategory || ""
+      );
+      if (derivedCatalog) {
+        allowedCorpusParts.push(...extractAllStrings(derivedCatalog));
+      }
+    } catch {}
 
     const siteContentParts: string[] = [];
     for (const scPath of [

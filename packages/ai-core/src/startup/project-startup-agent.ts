@@ -12,6 +12,7 @@ import { ASTSafeTransformer } from "../governance/ast-safe-transformer.js";
 import { DependencyInstallationOptimizer } from "./dependency-installation-optimizer.js";
 import { GeneratedTestGenerator } from "../testing/generated-test-generator.js";
 import { InteractionProvenanceTracker } from "../governance/interaction-provenance-tracker.js";
+import { AuthorizedSchemaManager } from "../governance/authorized-schema-manager.js";
 
 export interface StartupResult {
   success: boolean;
@@ -1796,7 +1797,7 @@ interface ImportMeta {
               const targetRegex = new RegExp(`(model\\s+${targetModel}\\s*\\{[^}]*)(\\})`, "s");
               const targetMatch = schemaContent.match(targetRegex);
               if (targetMatch && !targetMatch[1].includes(sourceModel)) {
-                const fieldName = sourceModel.toLowerCase() + "s";
+                const fieldName = sourceModel.charAt(0).toLowerCase() + sourceModel.slice(1) + "s";
                 schemaContent = schemaContent.replace(targetRegex, `$1  ${fieldName} ${sourceModel}[]\n$2`);
                 schemaModified = true;
               }
@@ -1824,6 +1825,13 @@ interface ImportMeta {
             }
           }
 
+          // Canonicalize and deduplicate relation fields across entire schema to prevent P1012
+          const deduplicated = AuthorizedSchemaManager.canonicalizeAndDeduplicateRelations(schemaContent);
+          if (deduplicated !== schemaContent) {
+            schemaContent = deduplicated;
+            schemaModified = true;
+          }
+
           if (schemaModified) {
             writeFileSync(absSchema, schemaContent, "utf8");
             patches.push("Auto-repaired Prisma schema relations (P1012)");
@@ -1833,14 +1841,48 @@ interface ImportMeta {
         const localPrismaBin = join(absDir, "node_modules", ".bin", "prisma");
         const prismaBin = existsSync(localPrismaBin) ? `"${localPrismaBin}"` : "npx --yes prisma@6";
 
-        // Always run prisma generate (requires no live database connection)
+        let clientGenerated = false;
+        let schemaValid = false;
+        let prismaError: string | null = null;
+
+        // Step 1: Validate Prisma schema first before attempting client generation
         try {
-          execSync(`${prismaBin} generate --schema="${schemaRelativePath}"`, { cwd: absDir, stdio: "pipe" });
-          patches.push(`Generated Prisma client from ${schemaRelativePath}`);
-          console.log(`[Startup] ✓ Generated Prisma client from ${schemaRelativePath}`);
-        } catch (genErr: any) {
-          console.warn(`[Startup] Warning: Prisma client generation failed: ${genErr.message}`);
+          execSync(`${prismaBin} validate --schema="${schemaRelativePath}"`, { cwd: absDir, stdio: "pipe" });
+          schemaValid = true;
+          console.log(`[Startup] ✓ Prisma schema validated successfully (${schemaRelativePath})`);
+        } catch (valErr: any) {
+          prismaError = valErr.stderr?.toString() || valErr.stdout?.toString() || valErr.message;
+          console.error(`[Startup] ❌ Prisma schema validation failed:\n${prismaError}`);
         }
+
+        // Step 2: Attempt client generation if schema is valid
+        if (schemaValid) {
+          try {
+            execSync(`${prismaBin} generate --schema="${schemaRelativePath}"`, { cwd: absDir, stdio: "pipe" });
+            clientGenerated = true;
+            patches.push(`Generated Prisma client from ${schemaRelativePath}`);
+            console.log(`[Startup] ✓ Generated Prisma client from ${schemaRelativePath}`);
+          } catch (genErr: any) {
+            prismaError = genErr.stderr?.toString() || genErr.stdout?.toString() || genErr.message;
+            console.error(`[Startup] ❌ Prisma client generation failed: ${prismaError}`);
+          }
+        }
+
+        // Record Prisma status to .aegis/prisma-status.json
+        try {
+          const aegisDir = join(absDir, ".aegis");
+          if (!existsSync(aegisDir)) mkdirSync(aegisDir, { recursive: true });
+          writeFileSync(
+            join(aegisDir, "prisma-status.json"),
+            JSON.stringify({
+              valid: schemaValid,
+              clientGenerated,
+              error: prismaError,
+              timestamp: new Date().toISOString(),
+            }, null, 2),
+            "utf8"
+          );
+        } catch {}
 
         // Attempt db push (requires live database connection) — P1000 is classified as non-fatal warning
         try {

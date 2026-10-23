@@ -106,7 +106,23 @@ export class AppServerRunner {
     }
 
     const serverIndex = join(absDir, "server", "index.ts");
-    if (existsSync(serverIndex)) {
+    const prismaSchema = join(absDir, "prisma", "schema.prisma");
+    const prismaStatusFile = join(absDir, ".aegis", "prisma-status.json");
+
+    let prismaBlockedReason: string | null = null;
+    if (existsSync(prismaSchema) && existsSync(prismaStatusFile)) {
+      try {
+        const pStatus = JSON.parse(readFileSync(prismaStatusFile, "utf8"));
+        if (pStatus.clientGenerated === false || pStatus.valid === false) {
+          prismaBlockedReason = pStatus.error || "Prisma schema validation or client generation failed.";
+        }
+      } catch {}
+    }
+
+    if (prismaBlockedReason) {
+      console.error(`[AppServerRunner] ❌ PRISMA_CLIENT_BLOCKED: Backend requires generated Prisma client, but generation failed:\n${prismaBlockedReason}`);
+      console.error(`[AppServerRunner] 🛑 Aborting backend startup to prevent crash loop.`);
+    } else if (existsSync(serverIndex)) {
       const backendEnv = { ...process.env, ...projectEnv, PORT: "5000" };
       const localTsxBin = join(absDir, "node_modules", "tsx", "dist", "cli.mjs");
       if (existsSync(localTsxBin)) {
@@ -148,8 +164,11 @@ export class AppServerRunner {
     const timeoutMs = 20_000;
 
     while (Date.now() - startTime < timeoutMs) {
+      if (prismaBlockedReason) {
+        break;
+      }
       const frontendHealthy = await this.checkHealth(port, ["/"]);
-      const backendHealthy = existsSync(serverIndex) ? await this.checkHealth(5000, ["/api/health", "/"]) : true;
+      const backendHealthy = existsSync(serverIndex) && !prismaBlockedReason ? await this.checkHealth(5000, ["/api/health", "/"]) : true;
       if (frontendHealthy && backendHealthy) {
         isReady = true;
         break;
@@ -164,7 +183,7 @@ export class AppServerRunner {
     if (isReady) {
       console.log(`[AppServerRunner] ✓ Server is live and ready at ${url}`);
     } else {
-      console.warn(`[AppServerRunner] ⚠️ Server health check timed out after 20s. Proceeding with validation on ${url}...`);
+      console.warn(`[AppServerRunner] ⚠️ Server readiness verification failed on ${url}.`);
     }
 
     const hasBackend = existsSync(serverIndex);

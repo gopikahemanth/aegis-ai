@@ -17,6 +17,7 @@ import {
   TestGeneratorAgent,
 } from "../agents/index.js";
 import { InProjectTestRunner } from "../validation/in-project-test-runner.js";
+import { RuntimeAcceptanceRunner } from "../testing/runtime-acceptance-runner.js";
 import { DependencyInstallationOptimizer } from "../startup/dependency-installation-optimizer.js";
 
 import { ProjectMemoryEngine } from "../memory/memory-engine.js";
@@ -3499,6 +3500,15 @@ Requirements for repair:
       console.warn(`[TestGeneratorAgent] Warning: In-project test execution encountered non-fatal error: ${testErr.message}`);
     }
 
+    // ─── Runtime Acceptance & Scenario Verification (Release-Blocking Mandatory Gate) ───
+    let runtimeAcceptanceReport: any = null;
+    try {
+      const runtimeRunner = new RuntimeAcceptanceRunner(outputDirectory);
+      runtimeAcceptanceReport = await runtimeRunner.execute();
+    } catch (runtimeErr: any) {
+      console.warn(`[RuntimeAcceptance] Warning: Runtime acceptance runner encountered non-fatal error: ${runtimeErr.message}`);
+    }
+
     // ── Generate Execution Governance Report with Authentic Runtime Evidence ──
     const finalReport = ExecutionReportGenerator.generateReport(
       outputDirectory,
@@ -3545,6 +3555,7 @@ Requirements for repair:
       realityResult: realityAuditResult,
       databaseBlocked: dbIsBlocked,
       testReport: inProjectTestReport,
+      runtimeReport: runtimeAcceptanceReport,
       // Use STANDARD policy (or user-specified policy) so post-baseline repairs are marked ASSISTED rather than crashing the run
       provenancePolicy: (specification as any)?.provenancePolicy || "STANDARD",
     });
@@ -3649,11 +3660,12 @@ Requirements for repair:
         console.log("[VisualReviewer] Running multimodal layout quality review...");
         const visualIssues = await this.visualReviewerAgent.execute(request, screenshotFile);
         if (visualIssues.length > 0) {
+          const hasHighSeverity = visualIssues.some(i => i.severity === "high" || !i.isVisualOnly);
           console.warn(`[VisualReviewer] QA recorded ${visualIssues.length} visual layout observation(s):`);
           for (const issue of visualIssues) {
             console.warn(`  - [${issue.severity.toUpperCase()}] ${issue.element}: ${issue.bug}`);
           }
-          ValidationStateManager.getInstance().recordVisualReview(true, visualIssues.map(i => i.bug));
+          ValidationStateManager.getInstance().recordVisualReview(!hasHighSeverity, visualIssues.map(i => i.bug));
         } else {
           console.log("[VisualReviewer] ✓ Multimodal QA passed! No layout bugs observed.");
           ValidationStateManager.getInstance().recordVisualReview(true, []);

@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from "node:fs";
-import { extname } from "node:path";
+import { extname, join } from "node:path";
 import { createHash } from "node:crypto";
 import { BaseAgent } from "./base-agent.js";
 
@@ -29,10 +29,23 @@ export class VisualReviewerAgent extends BaseAgent {
   // In-memory cache for deterministic screenshot reviews
   private static readonly visualCache = new Map<string, { issues: VisualIssue[]; status: "PASS" | "FAIL"; screenshotHash: string }>();
 
-  public static computeVisualHash(imageBuffer: Buffer, request: string): string {
+  public static computeVisualHash(imageBuffer: Buffer, request: string, projectRoot?: string): string {
     const imgHash = createHash("sha256").update(imageBuffer).digest("hex").slice(0, 16);
     const reqHash = createHash("sha256").update(request.trim().toLowerCase()).digest("hex").slice(0, 16);
-    return `${imgHash}_${reqHash}`;
+    let artifactHash = "";
+    if (projectRoot && existsSync(projectRoot)) {
+      try {
+        const h = createHash("sha256");
+        const domainContract = join(projectRoot, ".aegis", "domain-contract.json");
+        if (existsSync(domainContract)) h.update(readFileSync(domainContract));
+        const theme = join(projectRoot, ".aegis", "theme.json");
+        if (existsSync(theme)) h.update(readFileSync(theme));
+        const pkg = join(projectRoot, "package.json");
+        if (existsSync(pkg)) h.update(readFileSync(pkg));
+        artifactHash = `_${h.digest("hex").slice(0, 12)}`;
+      } catch {}
+    }
+    return `${imgHash}_${reqHash}${artifactHash}`;
   }
 
   public static clearCache(): void {
@@ -42,6 +55,7 @@ export class VisualReviewerAgent extends BaseAgent {
   async executeDetailed(
     request: string,
     screenshotPath: string,
+    projectRoot?: string,
   ): Promise<VisualReviewResult> {
     if (!existsSync(screenshotPath)) {
       console.log(`[VisualReviewer] No screenshot found at ${screenshotPath}, skipping visual checks.`);
@@ -55,8 +69,16 @@ export class VisualReviewerAgent extends BaseAgent {
     }
 
     try {
+      let resolvedRoot = projectRoot;
+      if (!resolvedRoot) {
+        const parent2 = join(screenshotPath, "..", "..");
+        if (existsSync(join(parent2, ".aegis"))) {
+          resolvedRoot = parent2;
+        }
+      }
+
       const imageBuffer = readFileSync(screenshotPath);
-      const screenshotHash = VisualReviewerAgent.computeVisualHash(imageBuffer, request);
+      const screenshotHash = VisualReviewerAgent.computeVisualHash(imageBuffer, request, resolvedRoot);
 
       // Check cache
       if (VisualReviewerAgent.visualCache.has(screenshotHash)) {

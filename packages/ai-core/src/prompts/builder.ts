@@ -66,7 +66,7 @@ ARCHITECTURE LOCK (IMMUTABLE — DO NOT DEVIATE OR SUBSTITUTE)
 ═══════════════════════════════════════════════════════
 Frontend: ${spec.frontend || "React-Vite"}
 Backend:  ${spec.backend || "Express"}
-Database: ${spec.database || "SQLite"}
+Database: ${spec.database || (spec as any).lockedStack?.database || "PostgreSQL"}
 Language: ${spec.language || "TypeScript"}
 Styling:  ${spec.styling || "TailwindCSS"}
 

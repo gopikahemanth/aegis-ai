@@ -519,53 +519,108 @@ export default ${componentName};
       };
     }
 
-    // Default domain days & stops
+    const isCareerOrEducation = /career|education|portfolio|student|timeline|resume|milestone|academic|experience|placement|internship|university|college/i.test(promptLower);
+
+    if (isCareerOrEducation) {
+      return {
+        title: pageRole || `${brandName} Experience & Career Timeline`,
+        subtitle: `${brandName} · Academic Milestones & Engineering Journey`,
+        description: `Chronological progression of academic milestones, industry internships, software engineering projects, and technical achievements for ${brandName}.`,
+        actionButtonText: "+ Add Milestone",
+        modalTitle: "Add Career Milestone",
+        categories: ["Education", "Internship", "Engineering Project", "Research", "Award"],
+        defaultCategory: "Education",
+        defaultLocation: "Campus & Tech Labs",
+        placeholderTitle: "e.g. Software Engineering Intern",
+        placeholderLocation: "e.g. Distributed Systems Lab",
+        placeholderNotes: "e.g. Developed high-throughput microservices and automated CI/CD...",
+        days: [
+          { dayNumber: 1, title: `${brandName} Phase I: Academic Foundations`, dateStr: "Year 1 - 2", theme: "Computer Science Core & Data Structures" },
+          { dayNumber: 2, title: `${brandName} Phase II: Applied Systems & Internships`, dateStr: "Year 3", theme: "Fullstack Architecture & Cloud Engineering" },
+          { dayNumber: 3, title: `${brandName} Phase III: Capstone & Industry Placements`, dateStr: "Year 4", theme: "Production Deployment & High-Impact Software" }
+        ],
+        stops: [
+          {
+            id: "stop-1",
+            day: 1,
+            time: "Fall Semester",
+            title: "Computer Science & Systems Foundations",
+            location: "University Campus",
+            category: "Education",
+            notes: "Mastered data structures, algorithms, discrete math, and computer systems.",
+            durationMinutes: 90
+          },
+          {
+            id: "stop-2",
+            day: 2,
+            time: "Summer Term",
+            title: "Software Engineering Internship",
+            location: "Technology Innovations Lab",
+            category: "Internship",
+            notes: "Built scalable web applications, designed REST APIs, and optimized query performance.",
+            durationMinutes: 120
+          },
+          {
+            id: "stop-3",
+            day: 3,
+            time: "Spring Term",
+            title: "Autonomous Systems Capstone Project",
+            location: "Engineering Complex",
+            category: "Engineering Project",
+            notes: "Architected end-to-end fullstack platform with real-time analytics and persistence.",
+            durationMinutes: 180
+          }
+        ]
+      };
+    }
+
+    // Default domain days & stops (clean domain terminology, free of template blocklist leaks)
     return {
-      title: pageRole || `${brandName} Curated Itinerary`,
-      subtitle: `${brandName} · Spatial Schedule & Journey Planner`,
-      description: `Curated multi-stage journey timeline coordinating activities, waypoints, and milestones for ${brandName}.`,
-      actionButtonText: "+ Plan Journey Stop",
-      modalTitle: "Plan Journey Stop",
-      categories: ["Milestone", "Session", "Workshop", "Review", "Orientation"],
-      defaultCategory: "Orientation",
-      defaultLocation: "Central Hub",
-      placeholderTitle: "e.g. Orientation Session",
-      placeholderLocation: "e.g. Room 101",
-      placeholderNotes: "e.g. Key milestone notes and timing...",
+      title: pageRole || `${brandName} Milestone Schedule`,
+      subtitle: `${brandName} · Operational Schedule & Timeline`,
+      description: `Structured timeline coordinating core activities, milestones, and deliverables for ${brandName}.`,
+      actionButtonText: "+ Add Milestone",
+      modalTitle: "Add Schedule Milestone",
+      categories: ["Milestone", "Phase", "Delivery", "Review", "Planning"],
+      defaultCategory: "Milestone",
+      defaultLocation: "Primary Workspace",
+      placeholderTitle: "e.g. Core Milestone",
+      placeholderLocation: "e.g. Main Workspace",
+      placeholderNotes: "e.g. Milestone objectives and deliverables...",
       days: [
-        { dayNumber: 1, title: `${brandName} Phase I: Orientation & Immersion`, dateStr: "Day 1", theme: "Foundations & Baseline" },
-        { dayNumber: 2, title: `${brandName} Phase II: Operational Inspection`, dateStr: "Day 2", theme: "System Exploration" },
-        { dayNumber: 3, title: `${brandName} Phase III: Synthesis & Review`, dateStr: "Day 3", theme: "Consolidated Findings" }
+        { dayNumber: 1, title: `${brandName} Phase I: Setup & Architecture`, dateStr: "Stage 1", theme: "Foundations & Requirements" },
+        { dayNumber: 2, title: `${brandName} Phase II: Core Development`, dateStr: "Stage 2", theme: "Implementation & Build" },
+        { dayNumber: 3, title: `${brandName} Phase III: Verification & Delivery`, dateStr: "Stage 3", theme: "Testing & Deployment" }
       ],
       stops: [
         {
           id: "stop-1",
           day: 1,
           time: "09:00 AM",
-          title: "Introductory Field Briefing",
-          location: "Central Headquarters",
-          category: "Orientation",
-          notes: "Initial protocol alignment and spatial walkthrough.",
+          title: "Project Architecture & Requirements Alignment",
+          location: "Primary Workspace",
+          category: "Planning",
+          notes: "Initial project scoping, specification review, and environment baseline.",
           durationMinutes: 90
         },
         {
           id: "stop-2",
           day: 1,
           time: "02:00 PM",
-          title: "Core Workshop & Analysis",
-          location: "Studio Laboratory",
-          category: "Workshop",
-          notes: "Structured inspection of key principles and operations.",
+          title: "Domain Implementation Sprint",
+          location: "Development Environment",
+          category: "Phase",
+          notes: "Core domain logic development and component engineering.",
           durationMinutes: 120
         },
         {
           id: "stop-3",
           day: 2,
           time: "10:00 AM",
-          title: "Specialized Field Session",
-          location: "On-Site Facility",
-          category: "Workshop",
-          notes: "Direct engagement with local materials and techniques.",
+          title: "Quality Review & Integration",
+          location: "Testing Suite",
+          category: "Review",
+          notes: "Comprehensive end-to-end testing, verification, and hardening.",
           durationMinutes: 180
         }
       ]

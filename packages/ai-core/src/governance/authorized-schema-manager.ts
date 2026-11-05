@@ -241,12 +241,20 @@ export class AuthorizedSchemaManager {
 
       const newFields = new Map<string, ParsedPrismaField>();
 
-      // Preserve scalar fields, deduplicating case-insensitively
+      // Preserve scalar fields, deduplicating case-insensitively and across snake_case / camelCase variants
       for (const sf of scalarFields) {
-        const lower = sf.name.toLowerCase();
-        const existingKey = Array.from<string>(newFields.keys()).find(k => k.toLowerCase() === lower);
+        const norm = sf.name.replace(/_/g, "").toLowerCase();
+        const existingKey = Array.from<string>(newFields.keys()).find(k => k.replace(/_/g, "").toLowerCase() === norm);
         if (!existingKey) {
           newFields.set(sf.name, sf);
+        } else if (existingKey.includes("_") && !sf.name.includes("_")) {
+          // Upgrade snake_case field to canonical camelCase field
+          const existingField = newFields.get(existingKey)!;
+          newFields.delete(existingKey);
+          newFields.set(sf.name, {
+            ...sf,
+            attributes: sf.attributes || existingField.attributes,
+          });
         }
       }
 

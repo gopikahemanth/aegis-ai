@@ -3511,6 +3511,14 @@ Requirements for repair:
                 }
               }
 
+              if (appliedAny) {
+                try {
+                  FastDeterministicSanitizer.sanitizeProject(outputDirectory);
+                  await this.projectStartupAgent.prepare(outputDirectory);
+                  console.log("[Stage 10: BackendRepair] 🛡️ Sanitized and validated repaired backend routes and middleware.");
+                } catch {}
+              }
+
               // Restart the application/backend server to load the repaired route handlers
               console.log("[Stage 10: BackendRepair] 🔄 Restarting application server to reload backend routes...");
               AppServerRunner.stopServer();

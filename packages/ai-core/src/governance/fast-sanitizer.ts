@@ -5826,6 +5826,28 @@ export default defineConfig({
       }
     }
 
+    if (!matchingFeatureFile) {
+      const featuresDir = join(srcDir, "features");
+      if (existsSync(featuresDir)) {
+        try {
+          const featDirs = readdirSync(featuresDir);
+          const slugTokens = slug.split("-").filter(t => t.length >= 4);
+          for (const fd of featDirs) {
+            const fdLower = fd.toLowerCase();
+            const matchesToken = slugTokens.some(t => fdLower.includes(t) || t.includes(fdLower));
+            if (matchesToken) {
+              const featIndex = join(featuresDir, fd, "index.tsx");
+              if (existsSync(featIndex)) {
+                matchingFeatureFile = featIndex;
+                matchingFeatureImport = `../features/${fd}/index`;
+                break;
+              }
+            }
+          }
+        } catch {}
+      }
+    }
+
     const pageFile = join(srcDir, "pages", `${pascal}.tsx`);
     if (existsSync(pageFile)) {
       const existing = readFileSync(pageFile, "utf8");

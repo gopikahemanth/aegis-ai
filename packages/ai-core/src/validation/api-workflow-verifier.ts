@@ -64,6 +64,9 @@ export interface ApiWorkflowReport {
 }
 
 export class ApiWorkflowVerifier {
+  public static lastAuthEmail = `operator_test_${Date.now()}@test.internal`;
+  public static lastAuthPassword = "Secr3t_1234!";
+
   /**
    * Discover registered API endpoints directly from project source files (server/routes, server/index.ts).
    */
@@ -286,8 +289,10 @@ export class ApiWorkflowVerifier {
     }
 
     const steps: ApiWorkflowStep[] = [];
-    const sharedAuthEmail = `operator_test_${Date.now()}@test.internal`;
+    const sharedAuthEmail = `operator_test_${Date.now()}_${Math.random().toString(36).slice(2, 6)}@test.internal`;
     const sharedAuthPassword = "Secr3t_1234!";
+    ApiWorkflowVerifier.lastAuthEmail = sharedAuthEmail;
+    ApiWorkflowVerifier.lastAuthPassword = sharedAuthPassword;
 
     for (const ep of endpoints) {
       const isPostOrPut = ep.method === "POST" || ep.method === "PUT" || ep.method === "PATCH";
@@ -310,9 +315,12 @@ export class ApiWorkflowVerifier {
         }
       } else if (isPostOrPut) {
         // Fallback generic schema if endpoint contract did not declare inline requestSchema
-        sampleBody.name = `Sample_${ep.operationId || "item"}_${Date.now()}`;
+        const itemIdentifier = `Sample_${ep.operationId || "item"}_${Date.now()}`;
+        sampleBody.name = itemIdentifier;
+        sampleBody.title = itemIdentifier;
         sampleBody.status = "active";
         sampleBody.description = `Test payload for ${ep.path}`;
+        sampleBody.data = { summary: `Sample data for ${ep.path}` };
       }
 
       if (ep.responseSchema && ep.responseSchema.length > 0) {
@@ -533,20 +541,36 @@ export class ApiWorkflowVerifier {
           actualBody = null;
         }
 
-        // If a positive test received 401 Unauthorized (e.g. endpoint requires auth token), retry with captured auth token or fallback
-        if (actualStatus === 401 && !step.isNegativeTest && !step.path.includes("/auth/")) {
+        // If a positive test received 401 Unauthorized or 403 Forbidden (e.g. endpoint requires valid auth token), retry with captured auth token or fallback
+        if ((actualStatus === 401 || actualStatus === 403) && !step.isNegativeTest && !step.path.includes("/auth/")) {
           let retryToken = capturedAuthToken;
           if (!retryToken) {
             try {
-              const loginRes = await fetch(`${baseUrl.replace(/\/$/, "")}/api/auth/login`, {
+              let loginRes = await fetch(`${baseUrl.replace(/\/$/, "")}/api/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: `operator_test_${Date.now()}@test.internal`, password: "Secr3t_1234!" }),
+                body: JSON.stringify({ email: ApiWorkflowVerifier.lastAuthEmail, password: ApiWorkflowVerifier.lastAuthPassword }),
               });
-              const loginBody = await loginRes.json();
-              if (loginBody?.token) {
-                retryToken = loginBody.token;
-                capturedAuthToken = loginBody.token;
+              let loginBody = await loginRes.json();
+              if (!loginBody?.token && !loginBody?.data?.token) {
+                // If login failed, register a fresh user
+                const freshEmail = `operator_test_${Date.now()}_retry@test.internal`;
+                await fetch(`${baseUrl.replace(/\/$/, "")}/api/auth/register`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ email: freshEmail, password: ApiWorkflowVerifier.lastAuthPassword }),
+                });
+                loginRes = await fetch(`${baseUrl.replace(/\/$/, "")}/api/auth/login`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ email: freshEmail, password: ApiWorkflowVerifier.lastAuthPassword }),
+                });
+                loginBody = await loginRes.json();
+              }
+              const foundToken = loginBody?.token || loginBody?.data?.token;
+              if (foundToken) {
+                retryToken = foundToken;
+                capturedAuthToken = foundToken;
               }
             } catch {}
           }

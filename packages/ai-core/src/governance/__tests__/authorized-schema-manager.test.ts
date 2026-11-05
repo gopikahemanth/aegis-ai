@@ -201,4 +201,37 @@ model User {
     const onDisk = readFileSync(PRISMA_SCHEMA_PATH, "utf8");
     expect(onDisk).toBe(validInitialSchema);
   });
+
+  it("6. Deduplicates snake_case and camelCase scalar fields (password_hash vs passwordHash)", () => {
+    const mixedSchema = `
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String
+  password_hash String
+  createdAt     DateTime @default(now())
+  created_at    DateTime @default(now())
+}
+`;
+    writeFileSync(PRISMA_SCHEMA_PATH, mixedSchema, "utf8");
+
+    const res = AuthorizedSchemaManager.reconcileProjectSchema(
+      FIXTURE_DIR,
+      ["User"],
+      "postgresql"
+    );
+
+    expect(res.success).toBe(true);
+    const onDisk = readFileSync(PRISMA_SCHEMA_PATH, "utf8");
+    // Should keep camelCase and NOT duplicate with snake_case
+    expect(onDisk).toContain("passwordHash");
+    expect(onDisk).not.toContain("password_hash");
+    expect(onDisk).toContain("createdAt");
+    expect(onDisk).not.toContain("created_at");
+  });
 });

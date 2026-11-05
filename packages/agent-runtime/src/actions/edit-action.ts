@@ -23,7 +23,7 @@ export class EditAction {
       );
 
     return {
-      success: result.filesPatched > 0,
+      success: result.success,
       state,
     };
   }

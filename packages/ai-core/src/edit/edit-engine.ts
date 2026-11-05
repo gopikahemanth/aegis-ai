@@ -22,6 +22,7 @@ import { FeatureRemover } from "./feature-remover.js";
 import { ThemeModifier } from "./theme-modifier.js";
 import { UndoManager } from "./undo-manager.js";
 import { BrownfieldGitGuard } from "../brownfield/brownfield-git-guard.js";
+import type { AIProvider } from "../providers/base.js";
 import { AuthorizedSchemaManager } from "../governance/authorized-schema-manager.js";
 import type {
   EditExecutionResult,
@@ -31,6 +32,8 @@ import type {
 } from "./edit-types.js";
 
 export class EditEngine {
+  constructor(public readonly provider?: AIProvider) {}
+
   /**
    * Main entry point for natural-language project editing.
    */

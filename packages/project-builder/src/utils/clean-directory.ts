@@ -1,19 +1,36 @@
-import { existsSync, rmSync, readdirSync } from "node:fs";
+import { existsSync, rmSync, readdirSync, lstatSync, unlinkSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { join } from "node:path";
+
+/**
+ * Checks whether a path physically exists on disk, including broken/dangling symlinks and junctions.
+ */
+function pathExistsPhysically(p: string): boolean {
+  try {
+    lstatSync(p);
+    return true;
+  } catch {
+    return existsSync(p);
+  }
+}
 
 /**
  * Asserts that the target directory is empty or does not exist for a fresh generation.
  * If the target contains files and isIncremental is not true, throws GENERATION_TARGET_NOT_EMPTY.
  */
 export function assertCleanTargetDirectory(targetPath: string, isIncremental?: boolean): void {
-  if (!existsSync(targetPath)) return;
-  const entries = readdirSync(targetPath).filter((e) => e !== ".git" && e !== ".DS_Store");
-  if (entries.length > 0 && !isIncremental) {
-    throw new Error(
-      `GENERATION_TARGET_NOT_EMPTY: Target directory "${targetPath}" contains an existing project (${entries.length} files/folders). ` +
-      `Clean generation requires an empty or non-existent directory to prevent cross-domain contamination. ` +
-      `Pass --incremental to explicitly evolve an existing project, or specify a clean directory via --output <dir>.`
-    );
+  if (!pathExistsPhysically(targetPath)) return;
+  try {
+    const entries = readdirSync(targetPath).filter((e) => e !== ".git" && e !== ".DS_Store");
+    if (entries.length > 0 && !isIncremental) {
+      throw new Error(
+        `GENERATION_TARGET_NOT_EMPTY: Target directory "${targetPath}" contains an existing project (${entries.length} files/folders). ` +
+        `Clean generation requires an empty or non-existent directory to prevent cross-domain contamination. ` +
+        `Pass --incremental to explicitly evolve an existing project, or specify a clean directory via --output <dir>.`
+      );
+    }
+  } catch (err: any) {
+    if (err?.code === "ENOTDIR" || err?.message?.includes("GENERATION_TARGET_NOT_EMPTY")) throw err;
   }
 }
 
@@ -22,7 +39,7 @@ export function assertCleanTargetDirectory(targetPath: string, isIncremental?: b
  * (e.g., node, vite, prisma) and executing fallback OS commands if standard rmSync fails.
  */
 export function cleanDirectory(targetPath: string): void {
-  if (!existsSync(targetPath)) return;
+  if (!pathExistsPhysically(targetPath)) return;
 
   if (process.platform === "win32") {
     try {
@@ -55,6 +72,18 @@ export function cleanDirectory(targetPath: string): void {
       `;
       const b64 = Buffer.from(psScript, "utf16le").toString("base64");
       execSync(`powershell -NoProfile -NonInteractive -EncodedCommand ${b64}`, { stdio: "ignore" });
+    } catch {}
+
+    // Unlink any dangling junctions/symlinks inside targetPath before rmSync
+    try {
+      const entries = readdirSync(targetPath, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isSymbolicLink()) {
+          try {
+            unlinkSync(join(targetPath, entry.name));
+          } catch {}
+        }
+      }
     } catch {}
   }
 

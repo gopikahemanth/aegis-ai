@@ -3521,15 +3521,13 @@ export default apiClient;
   async delete(id: any) { return true; },
   async getDashboardStats() {
     return {
-      totalStudents: 0,
-      activeStudents: 0,
-      inactiveStudents: 0,
-      byDepartment: {},
-      bySemester: {},
-      recentStudents: [],
+      totalCount: 0,
+      activeCount: 0,
+      pendingCount: 0,
+      recentItems: [],
     };
   },
-  async getStudents(filters?: any) { return []; },
+  async query(filters?: any) { return []; },
 };
 export default ${validExportName};
 `, "utf8");

@@ -340,7 +340,7 @@ Arguments:
   console.log("Generating project...");
 
   try {
-    const success = await engine.execute(prompt, imagePath, targetDir, {
+    const result = await engine.execute(prompt, imagePath, targetDir, {
       incremental,
       approveFrontend,
       onFrontendReview,
@@ -348,7 +348,18 @@ Arguments:
       generationMode,
     });
 
-    if (success) {
+    const isSuccess = typeof result === "boolean" ? result : result.success;
+    const status = typeof result === "object" ? result.status : (isSuccess ? "SUCCESS" : "FAILED");
+    const blockingReason = typeof result === "object" ? result.blockingReason : undefined;
+
+    if (status === "BLOCKED") {
+      console.log();
+      console.log("⚠️ Project generated with limitations (BLOCKED).");
+      if (blockingReason) {
+        console.log(`   Reason: ${blockingReason}`);
+      }
+      console.log("   The application code is compiled and ready, but external runtime services (e.g. database) were unavailable for automated verification.");
+    } else if (isSuccess) {
       console.log("🎉 Project generated successfully.");
     } else {
       console.log("❌ Project generation failed.");

@@ -89,6 +89,9 @@ import { ArtifactProvenanceValidator } from "../governance/artifact-provenance-v
 import { CapabilityCompletenessInvariant } from "../validation/capability-completeness-invariant.js";
 import { FrontendApprovalCheckpoint, type FrontendReviewSummary } from "../governance/frontend-approval-checkpoint.js";
 import { DatabaseVerifier } from "../database/database-verifier.js";
+import { FeatureMatrixManager } from "../contracts/feature-matrix.js";
+import { CanonicalContractManager } from "../contracts/canonical-contract.js";
+import { AuthorizedSchemaManager } from "../governance/authorized-schema-manager.js";
 
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
@@ -595,6 +598,8 @@ export class Orchestrator {
         "domain-contract.json",
         "file-graph.json",
         "domain-contamination.json",
+        "feature-matrix.json",
+        "canonical-contract.json",
         "architecture.json",
         "patterns.json",
         "conventions.json",
@@ -964,6 +969,58 @@ export class Orchestrator {
       try {
         ArchitectureContractManager.syncRouteCapabilitiesFromBrief(outputDirectory, brief, rawPrompt);
       } catch {}
+
+      // ── [4d] Synthesize and Persist Canonical Feature Matrix (.aegis/feature-matrix.json) ──
+      try {
+        const rawPlannedFeatures = (featurePriority.features || []).map((f) => {
+          const isCore = (featurePriority.core || []).some((c) => c.name === f.name) || f.visualPriority === "primary";
+          const route = f.suggestedPage || (f.visualPriority === "primary" ? "/" : `/${f.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`);
+          const modelName = (resolvedContract.requiredModels && resolvedContract.requiredModels.length > 0)
+            ? resolvedContract.requiredModels[0]
+            : "Item";
+          return {
+            title: f.name,
+            description: f.userIntent || `Feature implementation for ${f.name}`,
+            priority: (isCore ? "must-have" : "should-have") as "must-have" | "should-have" | "optional",
+            expectedBehavior: `User can interact with ${f.name} to accomplish intended workflow.`,
+            routes: [route],
+            components: [`${f.name.replace(/[^a-zA-Z0-9]/g, "")}Section`],
+            apiEndpoints: [
+              {
+                method: "GET" as const,
+                path: `/api/${f.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+                expectedStatus: 200,
+              },
+            ],
+            dataModels: [
+              {
+                model: modelName,
+                fields: ["id", "createdAt"],
+              },
+            ],
+            validationRules: [],
+            acceptanceTests: [
+              {
+                testId: `test_${f.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
+                strategy: "browser" as const,
+                description: `Verify ${f.name} render and interaction workflows`,
+              },
+            ],
+            verificationStatus: "UNVERIFIED" as const,
+          };
+        });
+
+        if (rawPlannedFeatures.length > 0) {
+          const matrix = FeatureMatrixManager.createMatrix(
+            resolvedContract.applicationType || specification.name || "AegisApp",
+            resolvedContract.domainCategory || specification.name || "general",
+            rawPlannedFeatures
+          );
+          FeatureMatrixManager.saveToProject(outputDirectory, matrix);
+        }
+      } catch (fmErr: any) {
+        console.warn(`[FeatureMatrix] Warning: Could not initialize feature matrix: ${fmErr.message}`);
+      }
 
       // Display Inspectable Creative Decisions
       console.log();
@@ -1976,6 +2033,18 @@ INSTRUCTIONS FOR FRONTEND REFINEMENT:
     const canonicalSchemaContent = CanonicalDataModelContract.getPrismaSchema(activeProjectContract, dbProvider);
     writeFileSync(schemaPath, canonicalSchemaContent, "utf8");
     console.log(`[Stage9] ✓ Database schema generated for models: ${canonicalModelNames.join(", ")}`);
+
+    // Reconcile Prisma schema against authorized schema governance rules
+    try {
+      const reconciled = AuthorizedSchemaManager.reconcileProjectSchema(outputDirectory, canonicalModelNames, dbProvider);
+      if (reconciled.success) {
+        console.log(`[Stage9] ✓ AuthorizedSchemaManager reconciled Prisma schema (models: ${canonicalModelNames.join(", ")})`);
+      } else {
+        console.warn(`[Stage9] ⚠️ AuthorizedSchemaManager warnings: ${reconciled.error || "Reconciliation failed"}`);
+      }
+    } catch (reconcileErr: any) {
+      console.warn(`[Stage9] Warning: Schema reconciliation skipped: ${reconcileErr.message}`);
+    }
 
     // ── STAGE 10: 16-POINT DATABASE INDEPENDENT VERIFICATION ──────────────────
     console.log("\n══════════════════════════════════════════════════════════════════════════════");
@@ -3559,6 +3628,27 @@ Requirements for repair:
       // Use STANDARD policy (or user-specified policy) so post-baseline repairs are marked ASSISTED rather than crashing the run
       provenancePolicy: (specification as any)?.provenancePolicy || "STANDARD",
     });
+
+    // ── Update Feature Matrix verification status with empirical evidence ──
+    try {
+      const existingMatrix = FeatureMatrixManager.loadFromProject(outputDirectory);
+      if (existingMatrix) {
+        const overallStatus = finalGateResult.status === "SUCCESS"
+          ? "VERIFIED"
+          : (finalGateResult.status === "BLOCKED" ? "BLOCKED" : "FAILED");
+        for (const feature of existingMatrix.features) {
+          feature.verificationStatus = overallStatus;
+          feature.evidenceNotes = finalGateResult.evidenceSummary;
+        }
+        existingMatrix.updatedAt = new Date().toISOString();
+        existingMatrix.verifiedCount = existingMatrix.features.filter(f => f.verificationStatus === "VERIFIED").length;
+        FeatureMatrixManager.saveToProject(outputDirectory, existingMatrix);
+        console.log(`[FeatureMatrix] ✓ Updated feature matrix verification status to "${overallStatus}" (${existingMatrix.verifiedCount}/${existingMatrix.totalFeatures} verified)`);
+      }
+    } catch (fmErr: any) {
+      console.warn(`[FeatureMatrix] Warning: Failed to update feature matrix status: ${fmErr.message}`);
+    }
+
     if (!finalGateResult.success && finalGateResult.status !== "BLOCKED") {
       this.execution.complete();
       console.error(`\n❌ FINAL SUCCESS GATE FAILED: ${finalGateResult.blockingReason}`);
@@ -3620,6 +3710,10 @@ Requirements for repair:
     this.execution.complete();
     return {
       filesCreated: files.length + deployFiles.length,
+      success: finalGateResult.success,
+      status: finalGateResult.status,
+      blockingReason: finalGateResult.blockingReason,
+      finalGateResult,
     };
   }
 

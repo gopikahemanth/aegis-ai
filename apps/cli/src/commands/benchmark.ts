@@ -103,7 +103,8 @@ export async function benchmarkCommand() {
   const engine = new ExecutionEngine();
 
   try {
-    const success = await engine.execute(project.prompt);
+    const execResult = await engine.execute(project.prompt);
+    const success = typeof execResult === "boolean" ? execResult : execResult.success;
     const duration = Math.ceil((Date.now() - startTime) / 1000);
 
     // Read metrics if available

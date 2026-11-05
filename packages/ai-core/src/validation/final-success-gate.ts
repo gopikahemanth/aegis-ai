@@ -14,6 +14,7 @@ import { TemplateConvergenceGate } from "./template-convergence-gate.js";
 import { PageExperienceQualityGate } from "./page-experience-quality-gate.js";
 import { CopyQualityGate } from "./copy-quality-gate.js";
 import { InteractionProvenanceTracker, type InteractionProvenanceReport } from "../governance/interaction-provenance-tracker.js";
+import { FunctionalCompletenessAuditor } from "../benchmark/functional-completeness-auditor.js";
 
 export type FinalSuccessStatus = "SUCCESS" | "FAILED" | "BLOCKED" | "INCOMPLETE" | "REPAIRING";
 
@@ -733,6 +734,18 @@ export class FinalSuccessGate {
       name: "Interaction Provenance (NIR)",
       passed: nirPassed,
       message: nirMessage,
+      critical: true,
+      category: "CONTRACT",
+    });
+
+    // ── 16. Functional Completeness Gate (Anti-Fake Completeness Audit) ────────
+    const completeness = FunctionalCompletenessAuditor.audit(projectRoot);
+    items.push({
+      name: "Functional Completeness",
+      passed: completeness.passed,
+      message: completeness.passed
+        ? "No fake completeness violations (no inert buttons, dead forms, or fake auth)"
+        : `${completeness.violationsCount} fake completeness violation(s) detected: ${completeness.violations.map(v => `${v.type} in ${v.file}`).join(", ")}`,
       critical: true,
       category: "CONTRACT",
     });

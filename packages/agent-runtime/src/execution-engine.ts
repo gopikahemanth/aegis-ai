@@ -24,6 +24,12 @@ function normalizeFrameworkName(framework: string): string {
   return "react-vite";
 }
 
+export interface ExecutionResult {
+  success: boolean;
+  status: "SUCCESS" | "BLOCKED" | "FAILED";
+  blockingReason?: string;
+}
+
 export class ExecutionEngine {
   private readonly provider =
     ProviderFactory.createDefaultProvider();
@@ -161,11 +167,24 @@ export class ExecutionEngine {
     // ── Step 5: generateApplication — staged code generation pipeline ────────
     console.log("Generating application...");
     const generated = await this.orchestrator.generateApplication(request, projectPath, imagePath, result.lockedPlan, options);
-    console.log(`[ExecutionEngine] generateApplication complete. Files: ${(generated as any)?.files?.length ?? "unknown"}`);
+    console.log(`[ExecutionEngine] generateApplication complete. Files: ${(generated as any)?.filesCreated ?? (generated as any)?.files?.length ?? "unknown"}`);
+
+    const genResult = generated as any;
+    if (genResult?.status === "BLOCKED") {
+      console.log(`[ExecutionEngine] ⚠️ Final gate reported BLOCKED: ${genResult.blockingReason}`);
+      return {
+        success: false,
+        status: "BLOCKED" as const,
+        blockingReason: genResult.blockingReason,
+      };
+    }
 
     // ── Step 6: Install, build, and self-heal ────────────────────────────────
     const pipeline = await this.pipeline.execute(request, projectPath);
 
-    return pipeline.success;
+    return {
+      success: pipeline.success,
+      status: (pipeline.success ? "SUCCESS" : "FAILED") as "SUCCESS" | "FAILED",
+    };
   }
 }

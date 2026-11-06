@@ -1068,14 +1068,18 @@ export default siteContent;
         if (content.includes("lucide-react")) {
           content = content.replace(/import\s*\{([^}]+)\}\s*from\s*['"]lucide-react['"]/g, (match, imports) => {
             let replaced = imports;
-            replaced = replaced.replace(/\bGithub\b/g, "GitBranch as Github");
-            replaced = replaced.replace(/\bTwitter\b/g, "MessageSquare as Twitter");
-            replaced = replaced.replace(/\bFacebook\b/g, "Share2 as Facebook");
-            replaced = replaced.replace(/\bLinkedin\b/g, "Share2 as Linkedin");
-            replaced = replaced.replace(/\bDiscord\b/g, "MessageSquare as Discord");
-            replaced = replaced.replace(/\bInstagram\b/g, "Camera as Instagram");
-            replaced = replaced.replace(/\bYoutube\b/g, "Video as Youtube");
-            replaced = replaced.replace(/\bGoogle\b/g, "Globe as Google");
+            // Clean up any previously doubled aliases like "GitBranch as GitBranch as Github"
+            replaced = replaced.replace(/(\b\w+\b)\s+as\s+(?:\b\w+\b\s+as\s+)+(\b\w+\b)/g, "$1 as $2");
+            replaced = replaced.replace(/(?<!\bas\s+)\bGithub\b/g, "GitBranch as Github");
+            replaced = replaced.replace(/(?<!\bas\s+)\bTwitter\b/g, "MessageSquare as Twitter");
+            replaced = replaced.replace(/(?<!\bas\s+)\bFacebook\b/g, "Share2 as Facebook");
+            replaced = replaced.replace(/(?<!\bas\s+)\bLinkedin\b/g, "Share2 as Linkedin");
+            replaced = replaced.replace(/(?<!\bas\s+)\bDiscord\b/g, "MessageSquare as Discord");
+            replaced = replaced.replace(/(?<!\bas\s+)\bInstagram\b/g, "Camera as Instagram");
+            replaced = replaced.replace(/(?<!\bas\s+)\bYoutube\b/g, "Video as Youtube");
+            replaced = replaced.replace(/(?<!\bas\s+)\bGoogle\b/g, "Globe as Google");
+            // Ensure no redundant alias chain exists
+            replaced = replaced.replace(/(\b\w+\b)\s+as\s+(?:\b\w+\b\s+as\s+)+(\b\w+\b)/g, "$1 as $2");
             if (replaced !== imports) {
               modified = true;
               return `import {${replaced}} from "lucide-react"`;

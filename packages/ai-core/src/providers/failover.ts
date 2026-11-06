@@ -67,6 +67,13 @@ export class FailoverProvider implements AIProvider {
     return FailoverProvider.healthStates.get(providerName) || "HEALTHY";
   }
 
+  public static getProviderFamily(providerName: string): string {
+    if (providerName === "gemini" || providerName.startsWith("gemini-")) {
+      return "gemini";
+    }
+    return providerName;
+  }
+
   async chat(
     messages: ChatMessage[],
     options?: ChatOptions,
@@ -76,6 +83,13 @@ export class FailoverProvider implements AIProvider {
     // 1. Conservative pre-dispatch prompt token estimation
     const totalPromptText = messages.map(m => m.content).join("\n");
     const estimatedPromptTokens = TokenBudgetManager.estimateTokens(totalPromptText, true);
+
+    // Pre-dispatch per-request prompt ceiling check for coder implementation tasks (hard regression gate at provider boundary)
+    if (options?.agentType === "coder" && estimatedPromptTokens > 12000) {
+      throw new BudgetExceededError(
+        `Coder implementation prompt (${estimatedPromptTokens.toLocaleString()} tokens) exceeds regression ceiling of 12,000 tokens at provider boundary!`
+      );
+    }
 
     // 2. Output token allowance check & clamping to remaining completion budget
     const remainingCompletionTokens = guard.getRemainingCompletionTokens();
@@ -120,6 +134,7 @@ export class FailoverProvider implements AIProvider {
     }
 
     const startIndex = (this.activeProviderIndex % this.providers.length + this.providers.length) % this.providers.length;
+    const skippedFamiliesOnTruncation = new Set<string>();
 
     for (let offset = 0; offset < this.providers.length; offset++) {
       const providerIndex = (startIndex + offset) % this.providers.length;
@@ -130,6 +145,12 @@ export class FailoverProvider implements AIProvider {
       }
       const until = FailoverProvider.disabledUntil.get(provider.name);
       if (until && Date.now() < until) {
+        continue;
+      }
+
+      const providerFamily = FailoverProvider.getProviderFamily(provider.name);
+      if (skippedFamiliesOnTruncation.has(providerFamily)) {
+        console.warn(`[FailoverProvider] ⏭️ Skipping equivalent sibling provider "${provider.name}" (family "${providerFamily}") due to previous MAX_TOKENS truncation on this request.`);
         continue;
       }
 
@@ -224,7 +245,8 @@ export class FailoverProvider implements AIProvider {
 
           const isMaxTokens = error.message?.includes("MAX_TOKENS") || error.message?.includes("truncated (MAX_TOKENS)");
           if (isMaxTokens) {
-            console.warn(`[FailoverProvider] ⚡ Provider "${provider.name}" hit MAX_TOKENS output limit. Failing over to next provider immediately...`);
+            console.warn(`[FailoverProvider] ⚡ Provider "${provider.name}" hit MAX_TOKENS output limit. Skipping equivalent sibling providers in family "${providerFamily}"...`);
+            skippedFamiliesOnTruncation.add(providerFamily);
             break;
           }
 
@@ -299,16 +321,16 @@ export class FailoverProvider implements AIProvider {
           }
 
           if (isFetchFailed) {
-            console.warn(`[FailoverProvider] Connection failed on provider "${provider.name}". Pausing before retry...`);
-            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 60000);
-            FailoverProvider.healthStates.set(provider.name, "DEGRADED");
-            if (this.providers.length > 1) {
-              break;
-            }
-            if (providerAttempts < this.maxRetries) {
-              await new Promise((resolve) => setTimeout(resolve, 2000));
+            console.warn(`[FailoverProvider] Connection failed on provider "${provider.name}". Transient error...`);
+            // Bounded retry: allow bounded retry before failing over
+            const maxTransientAttempts = this.providers.length > 1 ? Math.min(this.maxRetries, 2) : this.maxRetries;
+            if (providerAttempts < maxTransientAttempts) {
+              await new Promise((resolve) => setTimeout(resolve, Math.min(delay, 2000)));
+              delay = Math.min(delay * 2, 5000);
               continue;
             }
+            FailoverProvider.disabledUntil.set(provider.name, Date.now() + 60000);
+            FailoverProvider.healthStates.set(provider.name, "DEGRADED");
             break;
           }
 

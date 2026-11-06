@@ -16,6 +16,7 @@
  * - Regression ceiling: <= 12,000 tokens for representative benchmark tasks
  */
 import { TokenBudgetManager } from "../context/token-budget.js";
+import { BudgetExceededError } from "./generation-budget-guard.js";
 
 export interface PromptSectionBreakdown {
   routePlan?: string;
@@ -84,8 +85,8 @@ export class PromptBudgetInstrumenter {
 
   public static assertWithinCeiling(report: PromptMeasurementReport): void {
     if (!report.passedCeiling) {
-      throw new Error(
-        `[PromptBudgetInstrumenter] Prompt token count (${report.totalEstimatedPromptTokens.toLocaleString()} tokens) exceeds regression ceiling of ${this.REGRESSION_CEILING_TOKENS.toLocaleString()} tokens! System: ${report.systemPromptTokens}, User: ${report.userPromptTokens}, Files: ${report.fileContextTokens}. Request must be split or pruned; requirements cannot be silently truncated.`
+      throw new BudgetExceededError(
+        `Implementation prompt token count (${report.totalEstimatedPromptTokens.toLocaleString()} tokens) exceeds regression ceiling of ${this.REGRESSION_CEILING_TOKENS.toLocaleString()} tokens! System: ${report.systemPromptTokens}, User: ${report.userPromptTokens}, Files: ${report.fileContextTokens}. Request must be split or pruned; requirements cannot be silently truncated.`
       );
     }
   }

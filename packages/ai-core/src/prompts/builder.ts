@@ -51,11 +51,20 @@ build(
     try {
       const intelEngine = new WorkspaceIntelligenceEngine();
       const index = intelEngine.scan(projectPath);
+      const taskScope = activeTask ? {
+        ownedFiles: (activeTask as any).ownedFiles,
+        taskTitle: activeTask.title,
+        stage: (activeTask as any).stage,
+        taskKeywords: `${activeTask.title || ""} ${(activeTask as any).description || ""}`
+          .toLowerCase()
+          .split(/[^a-zA-Z0-9]+/)
+          .filter(w => w.length > 2),
+      } : undefined;
       workspaceSummary = `
 ═══════════════════════════════════════════════════════
 WORKSPACE INTELLIGENCE INDEX (CURRENT PROJECT STATE)
 ═══════════════════════════════════════════════════════
-${intelEngine.formatAsMarkdown(index)}
+${intelEngine.formatAsMarkdown(index, taskScope)}
 `;
     } catch (e: any) {
       console.warn(`[WorkspaceIntelligence] Warning: Scanning failed: ${e.message}`);

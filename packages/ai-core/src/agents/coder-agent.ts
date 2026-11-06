@@ -71,6 +71,11 @@ export class CoderAgent extends BaseAgent {
       ? [...task.ownedRoutes]
       : TaskNormalizer.resolveOwnedRoutes(task);
 
+    const taskTitle = (task.title || task.description || "").toLowerCase();
+    const taskDesc = (task.description || "").toLowerCase();
+    const isShellTask = taskTitle.includes("shell") || taskTitle.includes("navigation") || taskTitle.includes("scaffold") || taskTitle.includes("routing") || task.id === 1;
+    const isBackendOrDbTask = taskTitle.includes("backend") || taskTitle.includes("api") || taskTitle.includes("server") || taskTitle.includes("prisma") || taskTitle.includes("database") || (task as any).stage === "Backend" || (task as any).stage === "Database";
+
     const selector = new FileSelector();
     const taskQuery = `${task.title || ""} ${task.description || ""}`.trim();
     const selectedEntries = selector.select(taskQuery, codebaseEntries, outputDirectory, task.ownedFiles ? task.ownedFiles.join(" ") : "");
@@ -81,9 +86,42 @@ export class CoderAgent extends BaseAgent {
       const fullPath = join(outputDirectory, entry.path);
       if (existsSync(fullPath)) {
         try {
+          const isSiteContent = entry.path.endsWith("site-content.ts");
+          // Backend or database tasks do not need site copy
+          if (isSiteContent && isBackendOrDbTask) {
+            continue;
+          }
+
           const content = readFileSync(fullPath, "utf8");
-          const isDirect = ownedSet.has(entry.path) || entry.path.endsWith("site-content.ts");
-          candidateFiles.push({ path: entry.path, content, isDirect });
+          const taskNeedsDirectContent = ownedSet.has(entry.path) ||
+            taskTitle.includes("content") ||
+            taskTitle.includes("copy") ||
+            taskTitle.includes("marketing") ||
+            taskDesc.includes("content strategist");
+
+          const isDirect = ownedSet.has(entry.path) || (isSiteContent && taskNeedsDirectContent);
+
+          let fileContent = content;
+          if (isSiteContent && !taskNeedsDirectContent) {
+            const brandMatch = content.match(/name:\s*["']([^"']+)["']/);
+            const taglineMatch = content.match(/tagline:\s*["']([^"']+)["']/);
+            const bName = brandMatch ? brandMatch[1] : "FinTrack Pro";
+            const tLine = taglineMatch ? taglineMatch[1] : "Treasury Intelligence";
+            fileContent = `// Structured summary of src/content/site-content.ts
+export interface SiteContent {
+  brand: { name: string; tagline: string; description: string };
+  navigation: { items: Array<{ label: string; href: string }> };
+  pages: Record<string, any>;
+}
+export const siteContent: SiteContent = {
+  brand: { name: "${bName}", tagline: "${tLine}", description: "Authoritative domain copy" },
+  navigation: { items: [] },
+  pages: {},
+};
+export default siteContent;`;
+          }
+
+          candidateFiles.push({ path: entry.path, content: fileContent, isDirect });
         } catch {}
       }
     }
@@ -93,9 +131,6 @@ export class CoderAgent extends BaseAgent {
 
     // ── Build canonical file contract context for this task ──────────────────────
     // Determine which canonical files this task is responsible for
-    const taskTitle = (task.title || task.description || "").toLowerCase();
-    const taskDesc = (task.description || "").toLowerCase();
-    const isShellTask = taskTitle.includes("shell") || taskTitle.includes("navigation") || taskTitle.includes("scaffold") || taskTitle.includes("routing") || task.id === 1;
     const promptLower = (request || "").toLowerCase();
 
     const contract = ArchitectureResolver.loadContract(outputDirectory);
@@ -489,65 +524,20 @@ ${principles || "  • Domain authenticity and high-contrast usability"}
 
 
 
-    let contentContractContext = "";
+    let brandName = "";
+    let tagline = "";
     const siteContentPath = join(outputDirectory, "src", "content", "site-content.ts");
     if (existsSync(siteContentPath)) {
       try {
         const contentSource = readFileSync(siteContentPath, "utf8");
         const brandMatch = contentSource.match(/name:\s*["']([^"']+)["']/);
         const taglineMatch = contentSource.match(/tagline:\s*["']([^"']+)["']/);
-        const brandName = brandMatch ? brandMatch[1] : "";
-        const tagline = taglineMatch ? taglineMatch[1] : "";
-
-        contentContractContext = `
-══════════════════════════════════════════════════════════════════════════════
-AUTHORITATIVE DOMAIN CONTENT CONTRACT (MANDATORY IMPORT — HARD GATE)
-══════════════════════════════════════════════════════════════════════════════
-The project contains pre-approved, authentic domain copy at: "src/content/site-content.ts".
-Brand Name: "${brandName}"
-Tagline:    "${tagline}"
-
-MANDATORY CODING RULES:
-1. In Navigation (Navbar.tsx / Header.tsx) and primary pages, you MUST import:
-   import siteContent from "../../content/site-content"; // or relative path
-2. Render the authentic brand info:
-   {siteContent.brand.name}
-   {siteContent.brand.tagline}
-3. DO NOT invent arbitrary brand names, generic mock text, or placeholder marketing strings.
-4. Hard Check 11 will inspect every .tsx file. If ZERO files import siteContent, the entire build will be rejected.
-`;
+        brandName = brandMatch ? brandMatch[1] : "";
+        tagline = taglineMatch ? taglineMatch[1] : "";
       } catch {}
     }
 
     const isFrontendStage = (task as any)?.stage === "Frontend" || (task as any)?.stage === "frontend";
-    const STAGE_SPECIFIC_CODER_INSTRUCTION = isFrontendStage
-      ? `══════════════════════════════════════════════════════════════════════════════
-CURRENT ACTIVE STAGE: FRONTEND PROTOTYPE (PRE-APPROVAL)
-══════════════════════════════════════════════════════════════════════════════
-You are implementing a FRONTEND-ONLY task: "${task.title}".
-- DO NOT generate or modify backend files: NO server/, NO express, NO prisma/, NO database files.
-- Backend and database generation will happen in a later stage AFTER human review and approval.
-- Any backend/database files generated in this task WILL BE REJECTED by FrontendFilePolicy.
-- ALL interactive features, forms, filters, toggles, modals, and metric calculations MUST work immediately in the browser using React local state (useState, useReducer, or mock stores).
-- Prepopulate all state with realistic, rich domain seed data.
-- ANTI-AI-WEBSITE PRINCIPLE: Strictly adhere to design tokens in src/design-system/tokens.ts. Avoid random gradients, generic purple cards, and inconsistent border radii.
-- AUTHORITATIVE CONTENT CONTRACT: Import and render content from src/content/site-content.ts as-is. This copy is FINAL — do not rewrite, paraphrase, or regenerate it.
-- ANTI-TEMPLATE INVARIANT: You are not given a canned website template. Implement each page composition from the locked ProductExperiencePlan and CompositionGraph. Shared primitives (Button, Input, Modal, Icons, AudioPlayer, WebGLCanvas) are implementation tools only. DO NOT reproduce the structure, section order, hero geometry, navigation pattern, card arrangement, or visual rhythm of previously generated projects or standard Hero -> Cards -> CTA patterns.`
-      : `══════════════════════════════════════════════════════════════════════════════
-CURRENT ACTIVE STAGE: BACKEND & DATABASE (POST-APPROVAL)
-══════════════════════════════════════════════════════════════════════════════
-The frontend has been reviewed and approved by the human user.
-Implement the backend routes, controllers, services, and Prisma database schema to fulfill the approved frontend requirements.
-
-DATABASE IS A FIRST-CLASS STAGE.
-After the user approves the frontend, do NOT immediately write arbitrary backend code.
-First perform DATABASE DESIGN.
-Inspect the approved frontend and locked Product/Experience Brief.
-Derive ONLY the data actually required by the product:
-USER REQUIREMENT -> FRONTEND FEATURE -> REQUIRED DATA -> ENTITY -> RELATIONSHIP -> DATABASE MODEL
-
-Every backend API must trace to:
-FRONTEND ACTION -> API CONTRACT -> EXPRESS ROUTE -> CONTROLLER -> SERVICE -> PRISMA -> POSTGRESQL -> RESPONSE`;
 
     // ── Task-to-Route PageExperiencePlan Matching ────────────────────────────
     let taskPageExperienceContract = "";
@@ -1076,61 +1066,67 @@ EVERY ROUTE IS A FIRST-CLASS DESIGNED EXPERIENCE:
     }
 
     const CANONICAL_CODER_CONTEXT_HEADER = `
-${STAGE_SPECIFIC_CODER_INSTRUCTION}
-${taskPageExperienceContract}
-${contentContractContext}
-
 ══════════════════════════════════════════════════════════════════════════════
-CANONICAL PROJECT ARCHITECTURE CONSTRAINTS (MANDATORY & AUTHORITATIVE)
+CANONICAL PROJECT ARCHITECTURE & QUALITY CONSTRAINTS (AUTHORITATIVE)
 ══════════════════════════════════════════════════════════════════════════════
-AUTHORITATIVE CONTENT CONTRACT:
-Import and render content from src/content/site-content.ts as-is. This copy is FINAL — do not rewrite, paraphrase, or regenerate it.
+1. STAGE & DIRECTORY BOUNDARIES:
+${isFrontendStage ? `   - FRONTEND-ONLY TASK: You are implementing Task #${task.id}: "${task.title}". Output files EXCLUSIVELY inside src/.
+   - DO NOT generate or modify backend files: NO server/, NO express, NO prisma/, NO database files (FrontendFilePolicy will reject them).
+   - ALL interactive features, forms, filters, toggles, modals, and calculations MUST work in the browser with React state (useState/useReducer) and realistic domain seed data.` : `   - BACKEND & DATABASE STAGE: Implement Express routes, controllers, services, and Prisma schema to fulfill approved frontend requirements.
+   - Output backend files inside server/ and prisma/schema.prisma.`}
+   - NEVER import @prisma/client or server/** inside src/.
+   - MODULARITY & TOKEN LIMIT: Keep components focused, clean, and under 300 lines of code to avoid token truncation.
+   - NEVER regenerate untouched existing files from previous tasks (e.g. Navbar.tsx, App.tsx, routes.tsx) unless adding an import/route for this task.
+   - NEVER preemptively generate full files for future tasks.
 
-CANONICAL COMPONENTS (USE THESE — DO NOT INVENT ARBITRARY SHARED COMPONENTS):
-- Button Component:      src/design-system/components/Button.tsx
-- Skeleton Component:    src/design-system/components/Skeleton.tsx
-- EmptyState Component:  src/design-system/components/EmptyState.tsx
-- GlassCard Component:   src/design-system/components/GlassCard.tsx
-- Card Component:        src/shared/components/Card.tsx
-- Layout Shell:          src/shared/components/Layout.tsx
+2. AUTHORITATIVE DOMAIN CONTENT CONTRACT (MANDATORY IMPORT — HARD GATE):
+   - Brand Name: "${brandName || 'FinTrack Pro'}" | Tagline: "${tagline || 'Treasury Operations'}"
+   - In Navigation (Navbar.tsx / Header.tsx) and primary pages, you MUST import:
+     import siteContent from "../../content/site-content"; // or relative path
+   - Render the authentic brand info:
+     {siteContent.brand.name}
+     {siteContent.brand.tagline}
+   - IMMUTABLE AUTHORITATIVE COPY: NEVER generate, rewrite, or output src/content/site-content.ts. It is already generated by ContentStrategistAgent. ONLY import from it.
+   - DO NOT invent arbitrary brand names, generic mock text, or placeholder marketing strings.
+   - Hard Check 11 will inspect every .tsx file. At least one file MUST import siteContent.
 
-CANONICAL FRONTEND API CLIENT SERVICE:
-- Canonical API Service: src/services/api.ts (import { api, login, register } from "@/services/api" or "../../services/api")
-- FORBIDDEN IMPORT ALIASES: NEVER import "@/services/apiClient" or "src/services/apiClient.ts" or "src/services/api-client". The ONLY canonical API module is "src/services/api.ts".
-- FORBIDDEN INSECURE PROTOCOLS: NEVER call raw fetch('http://...') with plain http protocol. Always use the canonical api client (import { api } from "@/services/api") or relative paths (e.g. fetch('/api/...')). Insecure http:// calls fail the Definition of Done security gate.
-
-CANONICAL DATABASE CLIENT (EXPRESS BACKEND ONLY):
-- server/lib/prisma.ts  (import { prisma } from "../lib/prisma")
-- server/db/index.ts    (import { prisma } from "../db/index")
-
-CANONICAL DOMAIN MODELS:
+3. CANONICAL COMPONENTS & SERVICE ARCHITECTURE:
+   - Shared Components (USE THESE — DO NOT INVENT ARBITRARY SHARED COMPONENTS):
+     * Button:      src/design-system/components/Button.tsx
+     * Skeleton:    src/design-system/components/Skeleton.tsx
+     * EmptyState:  src/design-system/components/EmptyState.tsx
+     * GlassCard:   src/design-system/components/GlassCard.tsx
+     * Card:        src/shared/components/Card.tsx
+     * Layout:      src/shared/components/Layout.tsx
+   - Canonical Frontend API Service:
+     * Canonical API Service: src/services/api.ts (import { api, login, register } from "@/services/api" or "../../services/api")
+     * FORBIDDEN IMPORT ALIASES: NEVER import "@/services/apiClient" or "src/services/apiClient.ts" or "src/services/api-client". The ONLY canonical API module is "src/services/api.ts".
+     * FORBIDDEN INSECURE PROTOCOLS: NEVER call raw fetch('http://...') with plain http protocol. Always use the canonical api client or relative paths.
+   - Canonical Database Client (Express Backend Only):
+     * server/lib/prisma.ts  (import { prisma } from "../lib/prisma")
+     * server/db/index.ts    (import { prisma } from "../db/index")
+   - Canonical Domain Models:
 ${canonicalDomainModelsList}
 
-CANONICAL DIRECTORY BOUNDARIES:
-- src/       React frontend code ONLY (NEVER import @prisma/client or server/**). Frontend tasks MUST ONLY output files inside src/.
-- server/    Express backend code ONLY (routes, controllers, services, middleware). Backend tasks MUST ONLY output files inside server/.
-- prisma/    Prisma database schema (prisma/schema.prisma). Database tasks MUST ONLY output files inside prisma/ or server/lib/.
-- src/content/site-content.ts: IMMUTABLE AUTHORITATIVE COPY. NEVER generate, rewrite, or output src/content/site-content.ts. It is already generated by ContentStrategistAgent. ONLY import from it.
+4. BESPOKE PAGE EXPERIENCE & ANTI-TEMPLATE QUALITY (MANDATORY FOR ALL VIEWS):
+   - Adhere strictly to the PageExperiencePlan for each route in this task.
+   - Build the exact focal element specified in the plan with meaningful interactive state (working sliders, selectors, tables, modals).
+   - Set container root attribute: data-workspace="[workspace_identifier]" (e.g. data-workspace="character_stage", "operations_terminal").
+   - Every primary view MUST render a semantic <h1> containing the domain feature title followed by a descriptive <p> explaining its purpose.
+   - STRICTLY FORBIDDEN IN ALL VIEWS:
+     * NEVER render "Active Service View" as any badge, label, or heading text.
+     * NEVER render "Manage and interact with [feature] services and features." as description text.
+     * NEVER render "Submit your inquiry or update configuration for [feature].".
+     * NEVER render generic placeholder text ("Welcome to the application platform", "Dashboard placeholder", or unmounted views).
+     * NEVER render generic 3-column card grids as a substitute for rich feature composition.
+     * NEVER use hardcoded Tailwind color classes (stone-*, indigo-*); use CSS tokens in src/design-system/tokens.ts.
+     * NEVER use Next.js, NextAuth, App Router, MongoDB, Mongoose, or Drizzle.
 
+${taskPageExperienceContract}
 ${productExperiencePlanContext}
-
-CANONICAL UI & FEATURE RICHNESS (MANDATORY FOR ALL FRONTEND VIEWS):
-- MUST implement all required domain features and models with reachable, interactive UI (dedicated pages or rich embedded components/drawers/modals).
-- Every primary view/page MUST render a semantic <h1> containing the domain feature title (e.g. <h1>Glaze Chemistry Formulation</h1>) followed by a descriptive <p> explaining its purpose.
-- NEVER output generic placeholder text (e.g. "Welcome to the application platform", "Dashboard placeholder", or unmounted views).
-- For configurator workspaces, engineering studios, calculators, and design tools:
-  * Mount the primary tools directly into the workspace so the user can interact immediately on initial load.
-  * Implement active parameters with sliders, dropdowns, inputs, and real-time derived calculations/visualizations.
-  * Provide data-workspace="configurator_workspace" or "engineering_studio" on the root container.
 ${capabilityInstructions}
 ${designBriefContext}
 ${pageMetricGuidance}
-
-FORBIDDEN TECHNOLOGIES:
-- Next.js, NextAuth, App Router, Server Actions, Next.js API Routes
-- MongoDB, Mongoose, Drizzle
-- Generic placeholder fallback pages or empty stub components
-- Inventing arbitrary shared/components modules or duplicate API clients
 ══════════════════════════════════════════════════════════════════════════════
 `.trim();
 
@@ -1165,41 +1161,7 @@ FORBIDDEN TECHNOLOGIES:
         { skipFileContext: true },
       );
 
-    let finalPrompt = `${prompt}
-
-${CANONICAL_CODER_CONTEXT_HEADER}
-
-Existing relevant files content:
-${relevantFilesContent}
-
-All existing project files (manifest list):
-${manifestText}
-`;
-
-    // ── Prompt Budget Instrumentation & Regression Protection ───────────────────
-    try {
-      const { PromptBudgetInstrumenter } = await import("../governance/prompt-budget-instrumenter.js");
-      const { PromptManager } = await import("../prompts/prompt-manager.js");
-      const sysPrompt = new PromptManager().getCoderPrompt();
-      const instrumentReport = PromptBudgetInstrumenter.measurePrompt(
-        sysPrompt,
-        finalPrompt,
-        {
-          routePlan: productExperiencePlanContext,
-          designBrief: designBriefContext,
-          architectureContract: CANONICAL_CODER_CONTEXT_HEADER,
-          fileContext: relevantFilesContent,
-        }
-      );
-
-      console.log(`[PromptBudgetInstrumenter] Task #${task.id} Prompt Tokens: ${instrumentReport.totalEstimatedPromptTokens.toLocaleString()} (Target: < 8,500, Ceiling: 12,000) | Sys: ${instrumentReport.systemPromptTokens}, User: ${instrumentReport.userPromptTokens}, Files: ${instrumentReport.fileContextTokens}`);
-      if (instrumentReport.duplicateContentDetected) {
-        console.warn(`[PromptBudgetInstrumenter] ⚠️ Duplicate content detected in Task #${task.id}:`, instrumentReport.duplicateDetails);
-      }
-      if (!instrumentReport.passedCeiling) {
-        console.warn(`[PromptBudgetInstrumenter] ⚠️ Task #${task.id} prompt exceeded 12,000-token regression ceiling (${instrumentReport.totalEstimatedPromptTokens} tokens)!`);
-      }
-    } catch {}
+    let finalPrompt = "";
     if (task.id >= 9900 || request.includes("TARGETED CODER CAPABILITY REPAIR INSTRUCTION")) {
       // For targeted single-file repair, use a lean, focused prompt without dumping the entire project codebase
       finalPrompt = `${request}
@@ -1218,7 +1180,16 @@ CRITICAL TARGETED REPAIR CONSTRAINTS:
 ══════════════════════════════════════════════════════════════════════════════
 `;
     } else {
-      finalPrompt += `\n
+      finalPrompt = `${prompt}
+
+${CANONICAL_CODER_CONTEXT_HEADER}
+
+Existing relevant files content:
+${relevantFilesContent}
+
+All existing project files (manifest list):
+${manifestText}
+
 ══════════════════════════════════════════════════════════════════════════════
 CRITICAL TASK SCOPE & BOUNDARY RULES:
 1. You are implementing EXCLUSIVELY Task ${task.id}: "${task.title}".
@@ -1229,6 +1200,30 @@ CRITICAL TASK SCOPE & BOUNDARY RULES:
 ══════════════════════════════════════════════════════════════════════════════
 `;
     }
+
+    // ── Prompt Budget Instrumentation & Hard Regression Ceiling Enforcement ───
+    const { PromptBudgetInstrumenter } = await import("../governance/prompt-budget-instrumenter.js");
+    const { PromptManager } = await import("../prompts/prompt-manager.js");
+    const sysPrompt = new PromptManager().getCoderPrompt();
+    const instrumentReport = PromptBudgetInstrumenter.measurePrompt(
+      sysPrompt,
+      finalPrompt,
+      {
+        routePlan: productExperiencePlanContext,
+        designBrief: designBriefContext,
+        architectureContract: CANONICAL_CODER_CONTEXT_HEADER,
+        fileContext: relevantFilesContent,
+      }
+    );
+
+    console.log(`[PromptBudgetInstrumenter] Task #${task.id} Prompt Tokens: ${instrumentReport.totalEstimatedPromptTokens.toLocaleString()} (Target: < 8,500, Ceiling: 12,000) | Sys: ${instrumentReport.systemPromptTokens}, User: ${instrumentReport.userPromptTokens}, Files: ${instrumentReport.fileContextTokens}`);
+    if (instrumentReport.duplicateContentDetected) {
+      console.warn(`[PromptBudgetInstrumenter] ⚠️ Duplicate content detected in Task #${task.id}:`, instrumentReport.duplicateDetails);
+    }
+
+    // HARD GATE: Enforce 12,000-token maximum per implementation request.
+    // Rejects oversized prompts BEFORE any provider dispatch occurs.
+    PromptBudgetInstrumenter.assertWithinCeiling(instrumentReport);
 
     const response =
       await this.generator.generate(

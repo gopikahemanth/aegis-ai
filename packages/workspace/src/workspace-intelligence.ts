@@ -9,6 +9,13 @@ export interface WorkspaceIndex {
   endpoints: { file: string; method: string; path: string }[];
 }
 
+export interface TaskIntelligenceScope {
+  ownedFiles?: string[];
+  taskTitle?: string;
+  stage?: string;
+  taskKeywords?: string[];
+}
+
 export class WorkspaceIntelligenceEngine {
   scan(projectDirectory: string): WorkspaceIndex {
     const files = this.walk(projectDirectory);
@@ -149,22 +156,37 @@ export class WorkspaceIntelligenceEngine {
     return list;
   }
 
-  formatAsMarkdown(index: WorkspaceIndex): string {
+  formatAsMarkdown(index: WorkspaceIndex, scope?: TaskIntelligenceScope): string {
     const sections: string[] = [];
 
-    sections.push(`### 📦 Project Dependencies
-${index.dependencies.length > 0 ? index.dependencies.map(d => `- \`${d}\``).join("\n") : "None"}`);
+    // 1. Dependencies — filter build tooling if scoped
+    let deps = index.dependencies;
+    if (scope) {
+      const ignored = ["@types/", "@vitejs/", "vite", "typescript", "eslint", "postcss", "autoprefixer", "vitest", "prettier", "turbo", "@tailwindcss/"];
+      deps = deps.filter(d => !ignored.some(ig => d.startsWith(ig) || d === ig)).slice(0, 10);
+    }
+    if (deps.length > 0) {
+      sections.push(`### 📦 Project Dependencies\n${deps.map(d => `- \`${d}\``).join("\n")}`);
+    }
 
+    // 2. Database Models (Prisma) — task-scoped
     if (index.prismaModels.length > 0) {
-      sections.push(`### 🗄️ Database Models (Prisma Schema)
-${index.prismaModels.map(m => `- Model: \`${m}\``).join("\n")}`);
+      const isDbRelevant = !scope || scope.stage === "Database" || scope.stage === "Backend" || /prisma|database|schema|model/i.test(scope.taskTitle || "");
+      if (isDbRelevant) {
+        sections.push(`### 🗄️ Database Models (Prisma Schema)\n${index.prismaModels.map(m => `- Model: \`${m}\``).join("\n")}`);
+      }
     }
 
+    // 3. REST API Endpoints — task-scoped
     if (index.endpoints.length > 0) {
-      sections.push(`### 🌐 REST API Endpoints
-${index.endpoints.map(e => `- \`${e.method}\` \`${e.path}\` (defined in \`${e.file}\`)`).join("\n")}`);
+      const isApiRelevant = !scope || scope.stage === "Backend" || /api|backend|rest|endpoint|fetch/i.test(scope.taskTitle || "");
+      if (isApiRelevant) {
+        const epList = scope ? index.endpoints.slice(0, 6) : index.endpoints;
+        sections.push(`### 🌐 REST API Endpoints\n${epList.map(e => `- \`${e.method}\` \`${e.path}\` (defined in \`${e.file}\`)`).join("\n")}`);
+      }
     }
 
+    // 4. TypeScript Symbols & Exports — task-scoped
     if (index.exports.length > 0) {
       // Group exports by file
       const grouped: Record<string, typeof index.exports> = {};
@@ -173,16 +195,35 @@ ${index.endpoints.map(e => `- \`${e.method}\` \`${e.path}\` (defined in \`${e.fi
         grouped[exp.file].push(exp);
       }
 
-      const exportLines = Object.entries(grouped)
-        .slice(0, 30) // cap to avoid context size explosion
-        .map(([file, symbols]) => {
-          const symStr = symbols.slice(0, 8).map(s => `\`${s.symbol}\` (${s.type})`).join(", ");
-          const overflow = symbols.length > 8 ? ` (+${symbols.length - 8} more)` : "";
+      let fileEntries = Object.entries(grouped);
+
+      if (scope) {
+        const ownedSet = new Set((scope.ownedFiles || []).map(f => f.replace(/\\/g, "/")));
+        const keywords = (scope.taskKeywords || []).map(k => k.toLowerCase());
+
+        // Prioritize: owned files, shared UI/design-system, services, and files matching keywords
+        fileEntries = fileEntries.filter(([file]) => {
+          const normFile = file.replace(/\\/g, "/").toLowerCase();
+          if (ownedSet.has(normFile)) return true;
+          if (normFile.includes("design-system") || normFile.includes("shared/components")) return true;
+          if (normFile.includes("services/api")) return true;
+          if (keywords.some(k => normFile.includes(k))) return true;
+          return false;
+        }).slice(0, 8); // cap to at most 8 task-relevant files
+      } else {
+        fileEntries = fileEntries.slice(0, 30);
+      }
+
+      if (fileEntries.length > 0) {
+        const maxSymbolsPerFile = scope ? 5 : 8;
+        const exportLines = fileEntries.map(([file, symbols]) => {
+          const symStr = symbols.slice(0, maxSymbolsPerFile).map(s => `\`${s.symbol}\` (${s.type})`).join(", ");
+          const overflow = symbols.length > maxSymbolsPerFile ? ` (+${symbols.length - maxSymbolsPerFile} more)` : "";
           return `- File \`${file}\`: ${symStr}${overflow}`;
         });
 
-      sections.push(`### 🧩 TypeScript Symbols & Exports
-${exportLines.join("\n")}`);
+        sections.push(`### 🧩 TypeScript Symbols & Exports (Task-Relevant)\n${exportLines.join("\n")}`);
+      }
     }
 
     return sections.join("\n\n");

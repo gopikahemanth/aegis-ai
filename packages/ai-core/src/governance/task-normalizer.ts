@@ -106,12 +106,21 @@ export class TaskNormalizer {
     }
 
     // Generic multi-word slug matching for dynamic unknown routes
+    const ACTION_VERBS = new Set(["analyze", "execute", "configure", "filter", "view", "manage", "inspect", "track"]);
     for (const route of candidateRoutes) {
       if (route === "/" || routes.includes(route)) continue;
       if (ROUTE_DISCRIMINATORS[route]) continue; // already checked above
-      const slug = route.replace(/^\//, "").replace(/[-_]/g, " ").toLowerCase();
-      const words = slug.split(/\s+/).filter(w => w.length > 3);
-      if (words.length > 0 && words.every(w => taskText.includes(w))) {
+      const rawWords = route.replace(/^\//, "").replace(/[-_]/g, " ").toLowerCase().split(/\s+/).filter(w => w.length > 2);
+      const substantiveWords = rawWords.filter(w => !ACTION_VERBS.has(w) && w.length > 3);
+      const targetWords = substantiveWords.length > 0 ? substantiveWords : rawWords;
+
+      // Stem plurals and gerunds (e.g. budgets -> budget, transfers -> transfer, forecasting -> forecast)
+      const matchesSubstantive = targetWords.length > 0 && targetWords.every(w => {
+        const stem = w.endsWith("ing") ? w.slice(0, -3) : (w.endsWith("s") ? w.slice(0, -1) : w);
+        return taskText.includes(w) || taskText.includes(stem);
+      });
+
+      if (matchesSubstantive) {
         routes.push(route);
       }
     }

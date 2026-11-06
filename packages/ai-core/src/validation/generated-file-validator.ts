@@ -161,6 +161,19 @@ export class GeneratedFileValidator {
       }
     }
 
+    // 5. TypeScript AST Syntax Validation
+    // Validates source code using TypeScript compiler's parseDiagnostics.
+    // Deterministically catches unclosed JSX tags, malformed expressions, and syntax errors that have balanced braces.
+    if (isTs && issues.length === 0) {
+      const syntaxCheck = ASTSafeTransformer.validateSyntax(content, path);
+      if (!syntaxCheck.valid) {
+        issues.push({
+          type: "SYNTAX",
+          message: `TypeScript AST syntax validation failed in "${path}": ${syntaxCheck.errors.join("; ")}`,
+        });
+      }
+    }
+
     return {
       valid: issues.length === 0,
       issues

@@ -143,15 +143,32 @@ export class GeminiProvider implements AIProvider {
           }
 
           const finishReason = response.candidates?.[0]?.finishReason;
+          let candidateText = "";
+          try {
+            candidateText = response.text ?? "";
+          } catch {
+            // response.text getter in @google/genai can throw on truncated candidates
+          }
+          if (!candidateText && response.candidates?.[0]?.content?.parts) {
+            candidateText = response.candidates[0].content.parts
+              .map((p: any) => p.text || "")
+              .filter(Boolean)
+              .join("");
+          }
+
           if (finishReason === "MAX_TOKENS") {
-            const text = response.text ?? "";
+            const text = candidateText;
             const lastEndIdx = text.lastIndexOf("===END===");
             if (lastEndIdx !== -1) {
               const salvagedText = text.substring(0, lastEndIdx + 9);
               console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars). Salvaging completed files up to last ===END=== (${salvagedText.length} chars)...`);
               return salvagedText;
             }
-            if (text.length > 500) {
+            if (text.includes("===FILE:") && text.length > 200) {
+              console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars) with unclosed ===FILE: block. Salvaging candidate files with closing tag...`);
+              return text + "\n===END===";
+            }
+            if (text.length > 200) {
               console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars). Salvaging partial response...`);
               return text;
             }
@@ -161,7 +178,7 @@ export class GeminiProvider implements AIProvider {
             );
           }
 
-          return response.text ?? "";
+          return candidateText;
         } catch (err: any) {
           if (timeoutId) clearTimeout(timeoutId);
           lastGeminiError = err;

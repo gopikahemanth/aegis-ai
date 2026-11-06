@@ -1,3 +1,5 @@
+import { GenerationBudgetGuard } from "../governance/generation-budget-guard.js";
+
 export class MetricsTracker {
   private static instance: MetricsTracker;
   private totalTokens = 0;
@@ -16,10 +18,21 @@ export class MetricsTracker {
     this.promptTokens += prompt;
     this.completionTokens += completion;
     this.totalTokens += (prompt + completion);
+    try {
+      GenerationBudgetGuard.getInstance().recordUsage(prompt, completion);
+    } catch {}
   }
 
-  logUnmeteredRequest() {
+  logUnmeteredRequest(estimatedPrompt = 0, estimatedCompletion = 0) {
     this.unmeteredRequests += 1;
+    if (estimatedPrompt > 0 || estimatedCompletion > 0) {
+      this.promptTokens += estimatedPrompt;
+      this.completionTokens += estimatedCompletion;
+      this.totalTokens += (estimatedPrompt + estimatedCompletion);
+      try {
+        GenerationBudgetGuard.getInstance().recordUnmeteredUsage(estimatedPrompt, estimatedCompletion);
+      } catch {}
+    }
   }
 
   getMetrics() {
@@ -40,5 +53,8 @@ export class MetricsTracker {
     this.completionTokens = 0;
     this.totalTokens = 0;
     this.unmeteredRequests = 0;
+    // Note: GenerationBudgetGuard is intentionally NOT reset here.
+    // GenerationBudgetGuard enforces command-level centralized budget
+    // and must only be reset explicitly at the start of a generation command.
   }
 }

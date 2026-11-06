@@ -1,6 +1,13 @@
 import { ProviderError } from "./provider-error.js";
 import { Models } from "./models.js";
 import type { AIProvider, ChatMessage, ChatOptions } from "./base.js";
+import {
+  GenerationBudgetGuard,
+  BudgetExceededError,
+  ProviderOutageHaltError,
+} from "../governance/generation-budget-guard.js";
+import { TokenBudgetManager } from "../context/token-budget.js";
+import { MetricsTracker } from "./metrics-tracker.js";
 
 export type ProviderHealthState =
   | "HEALTHY"
@@ -64,6 +71,23 @@ export class FailoverProvider implements AIProvider {
     messages: ChatMessage[],
     options?: ChatOptions,
   ): Promise<string> {
+    const guard = GenerationBudgetGuard.getInstance();
+
+    // 1. Conservative pre-dispatch prompt token estimation
+    const totalPromptText = messages.map(m => m.content).join("\n");
+    const estimatedPromptTokens = TokenBudgetManager.estimateTokens(totalPromptText, true);
+
+    // 2. Output token allowance check & clamping to remaining completion budget
+    const remainingCompletionTokens = guard.getRemainingCompletionTokens();
+    if (remainingCompletionTokens <= 0) {
+      throw new BudgetExceededError(
+        `Maximum output token budget reached (remaining completion tokens: 0).`
+      );
+    }
+    const clampedMaxTokens = options?.maxTokens !== undefined
+      ? Math.min(options.maxTokens, remainingCompletionTokens)
+      : remainingCompletionTokens;
+
     let lastError: Error | null = null;
 
     let targetedClassification: "strong" | "balanced" | "fast" | "default" = "default";
@@ -131,7 +155,10 @@ export class FailoverProvider implements AIProvider {
       while (providerAttempts < this.maxRetries) {
         try {
           providerAttempts++;
-          let activeOptions = options;
+          let activeOptions: ChatOptions = {
+            ...options,
+            maxTokens: clampedMaxTokens,
+          };
           const providerName = provider.name as keyof typeof Models;
 
           if (!options?.model && providerName in Models) {
@@ -140,20 +167,47 @@ export class FailoverProvider implements AIProvider {
               `[FailoverProvider] Proactively routed agent "${options?.agentType || "default"}" (complexity: ${options?.complexity ?? "N/A"}) to model "${resolvedModel}" on provider "${provider.name}"`
             );
             activeOptions = {
-              ...options,
-              model: resolvedModel
+              ...activeOptions,
+              model: resolvedModel,
             };
           }
+
+          // Centralized fail-closed budget check before EVERY provider attempt (primary, retry, fallback)
+          guard.assertRequestAllowed(options?.agentType, estimatedPromptTokens);
+          guard.recordRequest();
 
           console.log(
             `[FailoverProvider] Attempting chat with provider: ${provider.name} (attempt ${providerAttempts}/${this.maxRetries})`
           );
+          const promptTokensBefore = guard.getStatus().promptTokens;
           const result = await provider.chat(messages, activeOptions);
           FailoverProvider.healthStates.set(provider.name, "HEALTHY");
           this.activeProviderIndex = providerIndex;
+
+          // Reconcile unmetered tokens if provider response metadata lacked token usage
+          const promptTokensAfter = guard.getStatus().promptTokens;
+          if (promptTokensAfter === promptTokensBefore) {
+            const estimatedCompletionTokens = TokenBudgetManager.estimateTokens(result, true);
+            MetricsTracker.getInstance().logUnmeteredRequest(estimatedPromptTokens, estimatedCompletionTokens);
+          }
+
           return result;
         } catch (error: any) {
           lastError = error;
+
+          // Fail closed immediately on budget exhaustion or deliberate outage halt — do not retry
+          if (
+            error instanceof BudgetExceededError ||
+            error instanceof ProviderOutageHaltError ||
+            error?.name === "BudgetExceededError" ||
+            error?.code === "BUDGET_EXHAUSTED" ||
+            error?.code === "PROVIDER_OUTAGE_HALT" ||
+            error?.message?.includes("BUDGET_EXHAUSTED") ||
+            error?.message?.includes("PROVIDER_OUTAGE_HALT")
+          ) {
+            throw error;
+          }
+
           console.warn(
             `[FailoverProvider] Provider ${provider.name} failed:`,
             error.message
@@ -300,22 +354,9 @@ export class FailoverProvider implements AIProvider {
       FailoverProvider.healthStates.set(provider.name, "DEGRADED");
     }
 
-    // Check if cooldown recovery is possible before giving up
-    const currentTime = Date.now();
-    const cooldownRetries = (options as any)?._cooldownRetries || 0;
-    const availableSoon = Array.from(FailoverProvider.disabledUntil.entries())
-      .filter(([name, expiry]) => !FailoverProvider.permanentlyDisabled.has(name) && !FailoverProvider.sessionDisabled.has(name) && expiry > currentTime)
-      .map(([_, expiry]) => expiry);
-
-    if (availableSoon.length > 0 && cooldownRetries < 3) {
-      const earliest = Math.min(...availableSoon);
-      const waitMs = Math.max(1000, Math.min(earliest - currentTime + 500, 20000));
-      console.log(`[FailoverProvider] All active providers in temporary cooldown. Waiting ${Math.ceil(waitMs / 1000)}s for cooldown recovery (attempt ${cooldownRetries + 1}/3)...`);
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
-      return this.chat(messages, { ...options, _cooldownRetries: cooldownRetries + 1 } as any);
-    }
-
-    throw new Error(
+    // Fail closed immediately on unrecoverable provider outage — do not consume remaining attempts waiting in loops
+    GenerationBudgetGuard.getInstance().haltOnProviderOutage(lastError?.message || "All providers failed.");
+    throw new ProviderOutageHaltError(
       `All providers failed. Last error: ${lastError?.message}`
     );
   }

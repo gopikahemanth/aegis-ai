@@ -44,7 +44,8 @@ import {
   ExecutionPhase,
 } from "../orchestrator/index.js";
 import type { AIProvider } from "../providers/base.js";
-import { ExecutionLoop } from "../execution/index.js";
+import { ExecutionLoop, ExecutionStage } from "../execution/index.js";
+import { GenerationBudgetGuard, BudgetExceededError, ProviderOutageHaltError } from "../governance/generation-budget-guard.js";
 import {
   BuildOrchestrator,
 } from "../build/index.js";
@@ -279,18 +280,23 @@ export class Orchestrator {
   ) {
     this.memory.add(request);
 
-    // ── Enforce pre-generation state and singleton sanitization ─────────────
-    ValidationStateManager.getInstance().reset();
-    MetricsTracker.getInstance().reset();
-    ProjectFileRegistry.getInstance().reset();
-    CanonicalArchitectureState.getInstance().reset();
-
     const genIdentity = GenerationSeedManager.resolveSeed({
       mode: this.generationMode,
       explicitSeed: this.generationSeed,
       prompt: request,
     });
     this.currentGenerationIdentity = genIdentity;
+
+    // ── Enforce pre-generation state and singleton sanitization ─────────────
+    if (!GenerationBudgetGuard.getInstance().isGenerationActive()) {
+      GenerationBudgetGuard.getInstance().acquireGenerationLock(String(genIdentity.seed || `gen_${Date.now()}`));
+    } else {
+      GenerationBudgetGuard.getInstance().assertGenerationAllowed();
+    }
+    ValidationStateManager.getInstance().reset();
+    MetricsTracker.getInstance().reset();
+    ProjectFileRegistry.getInstance().reset();
+    CanonicalArchitectureState.getInstance().reset();
 
     console.log();
     console.log("============================================================");
@@ -463,6 +469,7 @@ export class Orchestrator {
     let tasks =
       await this.plannerAgent.execute(
         specification,
+        "frontend",
       );
 
     const activeContract = resolvedContract || ArchitectureResolver.loadContract(outputDirectory);
@@ -471,30 +478,50 @@ export class Orchestrator {
     }
     tasks = PlannerArchitectureGuard.filterTasks(tasks, activeContract);
 
+    // Frontend-First Guarantee: partition and retain only frontend tasks in initial plan
+    const isInitialNonFrontendTask = (t: Task): boolean => {
+      const title = (t.title || "").toLowerCase();
+      const desc = (t.description || "").toLowerCase();
+      const stage = ((t as any).stage || "").toLowerCase();
+      return stage.includes("database") || stage.includes("datamodeling") ||
+        stage.includes("apidesign") || stage.includes("backend") ||
+        title.includes("prisma") || title.includes("schema") ||
+        title.includes("migration") || title.includes("postgresql") ||
+        title.includes("express") || title.includes("server") ||
+        title.includes("backend") || title.includes("api route") ||
+        desc.includes("prisma") || desc.includes("schema.prisma") ||
+        desc.includes("migration") || desc.includes("postgresql") ||
+        (desc.includes("express") && desc.includes("route")) ||
+        (desc.includes("server") && (desc.includes("controller") || desc.includes("service")));
+    };
+    tasks = tasks.filter(t => !isInitialNonFrontendTask(t));
+
     console.log(
-      "Implementation Tasks:",
+      "Planned Frontend Implementation Tasks:",
     );
 
     console.table(
       tasks,
     );
 
+    console.log("[Orchestrator] Staging canonical planned tasks for execution pipeline...");
     await this.executionLoop.execute(
       {
         request,
         outputDirectory,
         coder: this.coderAgent,
+        currentStage: ExecutionStage.Planning,
       },
-      tasks,
+      tasks.map(t => ({ ...t, stage: ExecutionStage.Planning })),
       async (task) => {
         console.log(
-          `Executing: ${task.title}`,
+          `[Task Staged] ${task.title}`,
         );
 
         return {
           taskId: task.id,
           success: true,
-          message: "Completed",
+          message: "Task planned and staged for execution pipeline",
         };
       },
     );
@@ -620,7 +647,6 @@ export class Orchestrator {
     } else {
       memoryEngine.initDefaults("project", request);
     }
-    MetricsTracker.getInstance().reset();
 
     const auditTrail = new AuditTrailEngine(outputDirectory);
     auditTrail.logEvent({
@@ -1129,15 +1155,17 @@ export class Orchestrator {
     // Deduplicate and cap initial tasks to max 6 canonical tasks
     tasks = TaskNormalizer.deduplicateAndCapTasks(tasks, 6);
 
-    // ── HARD TASK CONTRACT GATE — Reject forbidden tech, regenerate up to 3x ──
+    // ── HARD TASK CONTRACT GATE — Reject forbidden tech, regenerate up to 2x (bounded budget) ──
     {
-      const MAX_TASK_REGEN = 3;
+      const MAX_TASK_REGEN = 2;
       let gateResult = PlanContractGate.verify(tasks, activeContractApp);
 
       if (!gateResult.valid) {
         console.warn(`[TASK-CONTRACT] ${gateResult.rejected.length} task(s) rejected. Attempting regeneration...`);
 
         for (let regen = 0; regen < MAX_TASK_REGEN && !gateResult.valid; regen++) {
+          GenerationBudgetGuard.getInstance().assertRepairAllowed("TaskContractGate");
+          GenerationBudgetGuard.getInstance().recordRepairAttempt("TaskContractGate");
           console.log(`[TASK-CONTRACT] Regeneration attempt ${regen + 1}/${MAX_TASK_REGEN}...`);
 
           try {
@@ -1220,9 +1248,8 @@ export class Orchestrator {
     console.log("===================================\n");
 
     // ── FRONTEND-FIRST: Validate initial plan is frontend-only ─────────────────
-    // The initial plan MUST contain only frontend tasks.
-    // If any database/backend tasks are present, this is FRONTEND_PLAN_INVALID.
-    // We do NOT defer them — we reject the plan and regenerate (up to 3 attempts).
+    // The initial plan MUST contain only frontend tasks. Any non-frontend tasks
+    // are partitioned and deferred to Stage 11 post-approval planning without redundant LLM round-trips.
     const isNonFrontendTask = (t: Task): boolean => {
       const title = (t.title || "").toLowerCase();
       const desc = (t.description || "").toLowerCase();
@@ -1243,46 +1270,11 @@ export class Orchestrator {
     const invalidPlanTasks = tasks.filter(isNonFrontendTask);
 
     if (invalidPlanTasks.length > 0) {
-      console.warn(
-        `[FrontendFirst] ⚠️ FRONTEND_PLAN_INVALID: Initial planner returned ${invalidPlanTasks.length} non-frontend task(s):\n` +
-        invalidPlanTasks.map(t => `  - "${t.title}" (stage: ${(t as any).stage || "unset"})`).join("\n")
+      console.log(
+        `[FrontendFirst] ⚡ Consolidated planning: Partitioning ${invalidPlanTasks.length} non-frontend task(s) to Stage 11 post-approval planning. ` +
+        `Retaining ${tasks.length - invalidPlanTasks.length} frontend-only task(s) without redundant LLM replanning.`
       );
-
-      // Attempt to regenerate a frontend-only plan (max 3 times)
-      let regenAttempt = 0;
-      let regenSuccess = false;
-      while (regenAttempt < 3 && !regenSuccess) {
-        regenAttempt++;
-        console.log(`[FrontendFirst] Regenerating frontend-only plan (attempt ${regenAttempt}/3)...`);
-        try {
-          const regenRaw = await this.plannerAgent.execute(
-            {
-              ...specification,
-              request: (enrichedRequest + `\n\n[REGENERATION INSTRUCTION]: Your previous plan was FRONTEND_PLAN_INVALID because it contained backend/database tasks. ` +
-              `You MUST produce ONLY frontend tasks. NO Prisma, NO database, NO Express, NO server. Frontend only.`) as any,
-            }
-          );
-          const regenInvalid = regenRaw.filter(isNonFrontendTask);
-          if (regenInvalid.length === 0 && regenRaw.length > 0) {
-            validatedTasks = regenRaw;
-            regenSuccess = true;
-            console.log(`[FrontendFirst] ✓ Frontend-only plan accepted on attempt ${regenAttempt} (${validatedTasks.length} tasks).`);
-          } else {
-            console.warn(`[FrontendFirst] Attempt ${regenAttempt}: still contains ${regenInvalid.length} non-frontend task(s). Retrying...`);
-          }
-        } catch (regenErr: any) {
-          console.warn(`[FrontendFirst] Attempt ${regenAttempt} planner error: ${regenErr.message}`);
-        }
-      }
-
-      if (!regenSuccess) {
-        // Last resort: strip non-frontend tasks rather than halting generation
-        validatedTasks = tasks.filter(t => !isNonFrontendTask(t));
-        console.warn(
-          `[FrontendFirst] ⚠️ Could not regenerate a clean frontend plan after 3 attempts. ` +
-          `Proceeding with ${validatedTasks.length} frontend task(s) after stripping ${invalidPlanTasks.length} non-frontend task(s).`
-        );
-      }
+      validatedTasks = tasks.filter(t => !isNonFrontendTask(t));
     }
 
     // All tasks passed to executeTaskBatch during the frontend stage are guaranteed frontend-only.
@@ -1316,38 +1308,54 @@ export class Orchestrator {
 
         const promises = tier.map(async (task) => {
           let result: { response: string; files: GeneratedFile[] } = { response: "", files: [] };
+
+          // Contract Hash Resolution (strictly lexically scoped, safe against TDZ)
+          const activeContractHash =
+            activeContractApp?.contractHash ||
+            activeContractApp?.architectureHash ||
+            resolvedContract?.contractHash ||
+            resolvedContract?.architectureHash ||
+            (architecture as any)?.contractHash ||
+            (specification as any)?.contractHash ||
+            "default";
+
+          // Check Task Satisfaction: Verify syntax, import closure, and contract integrity (0 LLM tokens)
+          let satisfaction;
           try {
-            // Check Task Satisfaction: Verify syntax, import closure, and contract integrity (0 LLM tokens)
-            const activeContractHash = (actualArch as any)?.contractHash || (architecture as any)?.contractHash || (specification as any)?.contractHash;
-            const satisfaction = IncrementalGenerator.checkTaskSatisfaction(task, outputDirectory, {
+            satisfaction = IncrementalGenerator.checkTaskSatisfaction(task, outputDirectory, {
               contractHash: activeContractHash,
               isFrontend: isFrontendBatch,
               userPrompt: enrichedRequest,
             });
-            if (satisfaction.isSatisfied && satisfaction.existingFiles.length > 0) {
-              console.log(`[IncrementalGenerator] ✓ Reusing ${satisfaction.existingFiles.length} valid existing file(s) for "${task.title}" (0 LLM tokens).`);
-              result = { response: satisfaction.reason, files: satisfaction.existingFiles };
-              CostObservabilityReporter.getInstance().incrementReusedFiles(satisfaction.existingFiles.length);
-              CostObservabilityReporter.getInstance().recordSaving({
-                category: "TASK_SATISFACTION_REUSE",
-                description: `Reused ${satisfaction.existingFiles.length} valid file(s) for task "${task.title}"`,
-                estimatedTokensSaved: 8500,
-              });
-            } else {
-              console.log(`[Task: ${task.title}] Calling CoderAgent... Status: PENDING`);
-              result = await this.coderAgent.execute(
-                task,
-                architecture,
-                architecturePlan,
-                enrichedRequest,
-                outputDirectory,
-                existingFiles,
-                imagePayload,
-              );
-              console.log(`[Task: ${task.title}] Status: GENERATED`);
-              CostObservabilityReporter.getInstance().incrementRegeneratedFiles(result.files.length);
-              IncrementalGenerator.recordTaskFingerprint(task, outputDirectory, activeContractHash || "default");
-            }
+          } catch (satErr: any) {
+            console.warn(`[IncrementalGenerator] Warning: Task satisfaction check threw (${satErr.message}). Falling back to full generation.`);
+            satisfaction = { isSatisfied: false, reason: "Satisfaction check fallback", existingFiles: [] };
+          }
+
+          if (satisfaction.isSatisfied && satisfaction.existingFiles.length > 0) {
+            console.log(`[IncrementalGenerator] ✓ Reusing ${satisfaction.existingFiles.length} valid existing file(s) for "${task.title}" (0 LLM tokens).`);
+            result = { response: satisfaction.reason, files: satisfaction.existingFiles };
+            CostObservabilityReporter.getInstance().incrementReusedFiles(satisfaction.existingFiles.length);
+            CostObservabilityReporter.getInstance().recordSaving({
+              category: "TASK_SATISFACTION_REUSE",
+              description: `Reused ${satisfaction.existingFiles.length} valid file(s) for task "${task.title}"`,
+              estimatedTokensSaved: 8500,
+            });
+          } else {
+            console.log(`[Task: ${task.title}] Calling CoderAgent... Status: PENDING`);
+            result = await this.coderAgent.execute(
+              task,
+              architecture,
+              architecturePlan,
+              enrichedRequest,
+              outputDirectory,
+              existingFiles,
+              imagePayload,
+            );
+            console.log(`[Task: ${task.title}] Status: GENERATED`);
+            CostObservabilityReporter.getInstance().incrementRegeneratedFiles(result.files.length);
+            IncrementalGenerator.recordTaskFingerprint(task, outputDirectory, activeContractHash || "default");
+          }
 
             // ── STEP A: Hard Frontend File Policy (reject at write time) ──
             if (isFrontendBatch) {
@@ -1404,19 +1412,22 @@ export class Orchestrator {
               }
             }
 
-            if (invalidCandidates.length > 0) {
-              throw new Error(`INCOMPLETE_GENERATED_FILE: Candidate files failed completeness validation: ${invalidCandidates.join(", ")}`);
-            }
-          } catch (coderError: any) {
-            console.warn(`[Orchestrator] CoderAgent validation failed for task "${task.title}": ${coderError.message}`);
-            console.log(`[Orchestrator] Launching inline Coder self-healing loop...`);
-            let repairAttempts = 0;
-            let success = false;
-            let lastError = coderError;
+          if (invalidCandidates.length > 0) {
+            const validationErrMsg = `INCOMPLETE_GENERATED_FILE: Candidate files failed completeness validation: ${invalidCandidates.join(", ")}`;
+            console.warn(`[Orchestrator] Candidate validation failed for task "${task.title}": ${validationErrMsg}`);
+            console.log(`[Orchestrator] Launching inline Coder self-healing loop (max 2 repairs)...`);
 
-            while (repairAttempts < 3 && !success) {
-              repairAttempts++;
-              console.log(`[Self-Healing] Inline Coder repair attempt ${repairAttempts}/3...`);
+            const guard = GenerationBudgetGuard.getInstance();
+            const MAX_INLINE_REPAIRS = 2;
+            let inlineRepairAttempts = 0;
+            let success = false;
+            let lastError: Error = new Error(validationErrMsg);
+
+            while (inlineRepairAttempts < MAX_INLINE_REPAIRS && !success) {
+              inlineRepairAttempts++;
+              guard.assertRepairAllowed("InlineCoderRepair");
+              guard.recordRepairAttempt("InlineCoderRepair");
+              console.log(`[Self-Healing] Inline Coder repair attempt ${inlineRepairAttempts}/${MAX_INLINE_REPAIRS}...`);
               try {
                 const failingFileList = result.files
                   .filter(f => {
@@ -1471,20 +1482,30 @@ export class Orchestrator {
                   };
                   success = true;
                   console.log(`[Self-Healing] ✓ Coder repair succeeded! Validated completeness for ${validRepairedFiles.length} file(s).`);
-                } else if (repairAttempts < 3) {
-                  lastError = new Error(`REPAIR_RESPONSE_INVALID: Attempt ${repairAttempts} yielded no valid files. Retrying with stricter prompt.`);
+                } else if (inlineRepairAttempts < MAX_INLINE_REPAIRS) {
+                  lastError = new Error(`REPAIR_RESPONSE_INVALID: Attempt ${inlineRepairAttempts} yielded no valid files. Retrying with stricter prompt.`);
                 } else {
                   throw new Error("REPAIR_RESPONSE_INVALID: No syntactically complete candidate files parsed from repair response.");
                 }
               } catch (repairErr: any) {
                 lastError = repairErr;
-                console.error(`[Self-Healing] Inline repair attempt ${repairAttempts} failed:`, repairErr.message);
+                if (
+                  repairErr instanceof BudgetExceededError ||
+                  repairErr instanceof ProviderOutageHaltError ||
+                  repairErr?.code === "BUDGET_EXHAUSTED" ||
+                  repairErr?.code === "PROVIDER_OUTAGE_HALT" ||
+                  repairErr?.message?.includes("BUDGET_EXHAUSTED") ||
+                  repairErr?.message?.includes("PROVIDER_OUTAGE_HALT")
+                ) {
+                  throw repairErr;
+                }
+                console.error(`[Self-Healing] Inline repair attempt ${inlineRepairAttempts} failed:`, repairErr.message);
               }
             }
 
             if (!success) {
-              console.error(`[Self-Healing] ❌ Task candidate repair failed after ${repairAttempts} attempt(s). Failing task "${task.title}".`);
-              throw coderError;
+              console.error(`[Self-Healing] ❌ Task candidate repair failed after ${inlineRepairAttempts} attempt(s). Failing task "${task.title}".`);
+              throw lastError;
             }
           }
           console.log(`[Task: ${task.title}] Status: VALIDATED`);
@@ -1646,11 +1667,13 @@ export class Orchestrator {
       browserReview = await ReadOnlyBrowserValidator.reviewFrontend(frontendServerInfo.url, outputDirectory);
     }
 
-    // If review failed due to runtime errors or product mismatch, allow up to 3 targeted Coder repair attempts
-    const MAX_FRONTEND_REPAIR_ATTEMPTS = 3;
+    // If review failed due to runtime errors or product mismatch, allow up to 2 targeted Coder repair attempts (bounded budget)
+    const MAX_FRONTEND_REPAIR_ATTEMPTS = 2;
     let repairAttempts = 0;
     while (!browserReview.passed && repairAttempts < MAX_FRONTEND_REPAIR_ATTEMPTS) {
       repairAttempts++;
+      GenerationBudgetGuard.getInstance().assertRepairAllowed("FrontendVisualReview");
+      GenerationBudgetGuard.getInstance().recordRepairAttempt("FrontendVisualReview");
       console.warn(`[BrowserValidator] ⚠️ Frontend review failed (${browserReview.failureReason}). Triggering targeted frontend repair (Attempt ${repairAttempts}/${MAX_FRONTEND_REPAIR_ATTEMPTS})...`);
 
       const hasRuntimeError = Boolean(browserReview.failureReason && browserReview.failureReason.includes("Uncaught runtime exception"));
@@ -1789,6 +1812,15 @@ Do NOT touch backend or database.`;
           patchEngine.apply(fixResult.response, outputDirectory);
         }
       } catch (coderErr: any) {
+        if (
+          coderErr?.name === "BudgetExceededError" ||
+          coderErr?.code === "BUDGET_EXHAUSTED" ||
+          coderErr?.message?.includes("BUDGET_EXHAUSTED") ||
+          coderErr?.code === "PROVIDER_OUTAGE_HALT" ||
+          coderErr?.message?.includes("PROVIDER_OUTAGE_HALT")
+        ) {
+          throw coderErr;
+        }
         console.warn(`[Orchestrator] Targeted coder repair encountered error: ${coderErr.message}.`);
       }
 
@@ -2302,10 +2334,12 @@ INSTRUCTIONS FOR FRONTEND REFINEMENT:
 
     let capFailures = evaluateCapabilities();
     let capabilityRepairAttempts = 0;
-    const MAX_CAPABILITY_REPAIRS = 3;
+    const MAX_CAPABILITY_REPAIRS = 2;
 
     while (capFailures.length > 0 && capabilityRepairAttempts < MAX_CAPABILITY_REPAIRS) {
       capabilityRepairAttempts++;
+      GenerationBudgetGuard.getInstance().assertRepairAllowed("CapabilityCompleteness");
+      GenerationBudgetGuard.getInstance().recordRepairAttempt("CapabilityCompleteness");
       console.warn(`[CapabilityGate] ⚠️ Capability completeness failure (Attempt ${capabilityRepairAttempts}/${MAX_CAPABILITY_REPAIRS}): ${capFailures.length} incomplete page(s):`);
       for (const fail of capFailures) {
         console.warn(`  - ${relative(outputDirectory, fail.file)}: ${fail.reasons.join("; ")}`);
@@ -2371,19 +2405,19 @@ INSTRUCTIONS FOR FRONTEND REFINEMENT:
           const hasMissingFilter = fail.reasons.some(r => r.includes("Status Category Filtering") || r.includes("filter_status"));
           if (hasMissingSelection) {
             capabilityRequirements.push(
-              `- MANDATORY ITEM SELECTION & DETAIL INSPECTOR (YOU MUST INCLUDE THIS EXACT CODE PATTERN DIRECTLY IN THE COMPONENT):\n` +
-              `  1. State: const [selectedItem, setSelectedItem] = useState<any>(null);\n` +
-              `  2. On each table row or card item: <tr key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors">\n` +
-              `  3. Detail inspector view when item is selected: {selectedItem && (<div className="p-4 bg-stone-900/60 border border-stone-700 rounded-lg mt-4"><div className="flex justify-between"><h3>{selectedItem.name || selectedItem.title || selectedItem.kilnName || selectedItem.id} Details</h3><button onClick={() => setSelectedItem(null)} className="px-2 py-1 bg-stone-700 text-xs rounded">Close</button></div><p>Status: {selectedItem.status}</p></div>)}`
+              `- MANDATORY INTERACTIVE RECORD SELECTION & DETAIL INSPECTION:\n` +
+              `  1. State: Provide reactive selection state: const [selectedRecord, setSelectedRecord] = useState<any>(null);\n` +
+              `  2. Interactive trigger: On each domain record item (table row or card), add an onClick trigger: onClick={() => setSelectedRecord(item)} with cursor-pointer and hover styling matching the existing page theme.\n` +
+              `  3. Detail inspector: Render a dedicated inspector panel, drawer, or modal when a record is selected ({selectedRecord && ...}) displaying the record's domain properties, and a close button (onClick={() => setSelectedRecord(null)}) styled consistently with the page.`
             );
           }
           if (hasMissingFilter) {
             capabilityRequirements.push(
-              `- MANDATORY STATUS CATEGORY FILTERING (YOU MUST INCLUDE THIS EXACT CODE PATTERN DIRECTLY IN THE COMPONENT):\n` +
-              `  1. State: const [statusFilter, setStatusFilter] = useState('all');\n` +
-              `  2. Status buttons: <div className="flex gap-2 mb-4"><button onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'font-bold' : ''}>All</button><button onClick={() => setStatusFilter('active')} className={statusFilter === 'active' ? 'font-bold' : ''}>Active</button><button onClick={() => setStatusFilter('completed')} className={statusFilter === 'completed' ? 'font-bold' : ''}>Completed</button></div>\n` +
-              `  3. Filtered record set calculation: const filteredItems = (data || pieces || records || []).filter((r: any) => statusFilter === 'all' || (r.status || '').toLowerCase() === statusFilter.toLowerCase());\n` +
-              `  4. Map and render filteredItems in table/list: {filteredItems.map(item => (...))}`
+              `- MANDATORY STATUS CATEGORY FILTERING:\n` +
+              `  1. State: Provide reactive filter state: const [statusFilter, setStatusFilter] = useState('all');\n` +
+              `  2. Status controls: Render interactive filter buttons, tabs, or a dropdown with domain-appropriate status options (including an 'all' option).\n` +
+              `  3. Reactive calculation: Filter the active domain dataset reactively: const filteredRecords = (records || items || []).filter((r: any) => statusFilter === 'all' || (r.status || r.category || '').toLowerCase() === statusFilter.toLowerCase());\n` +
+              `  4. Presentation: Map and render filteredRecords in the primary view table or card list.`
             );
           }
         }
@@ -2869,7 +2903,7 @@ FORBIDDEN STUB PATTERNS:
 
     if (!build.success) {
       let attempts = 0;
-      const maxRepairAttempts = 3;
+      const maxRepairAttempts = 2;
 
       console.error("\n===== BUILD FAILURE DIAGNOSTICS =====");
       if (build.stderr) {
@@ -2990,6 +3024,9 @@ FORBIDDEN STUB PATTERNS:
               rootCause.summary ? `=== STRUCTURED ROOT CAUSE DIAGNOSIS ===\n${rootCause.summary}` : "",
               brokenFileSnippets.join("\n\n")
             ].filter(Boolean).join("\n\n");
+
+            GenerationBudgetGuard.getInstance().assertRepairAllowed("BuildSelfHealing");
+            GenerationBudgetGuard.getInstance().recordRepairAttempt("BuildSelfHealing");
 
             const repairResponse =
               await this.repairCoordinator.repair(
@@ -3186,6 +3223,16 @@ FORBIDDEN STUB PATTERNS:
             }
           } catch (error: any) {
             console.error(`[Self-Healing] Error occurred during repair attempt ${attempts}:`, error.message);
+            if (
+              error instanceof BudgetExceededError ||
+              error instanceof ProviderOutageHaltError ||
+              error?.code === "BUDGET_EXHAUSTED" ||
+              error?.code === "PROVIDER_OUTAGE_HALT" ||
+              error?.message?.includes("BUDGET_EXHAUSTED") ||
+              error?.message?.includes("PROVIDER_OUTAGE_HALT")
+            ) {
+              throw error;
+            }
             break;
           }
         } // end while repair attempts
@@ -3407,6 +3454,8 @@ FORBIDDEN STUB PATTERNS:
             const failedSteps = (apiWorkflowReport.results || []).filter((r: any) => !r.passed);
             if (failedSteps.length === 0) break;
 
+            GenerationBudgetGuard.getInstance().assertRepairAllowed("BackendApiRepair");
+            GenerationBudgetGuard.getInstance().recordRepairAttempt("BackendApiRepair");
             console.log(`\n[Stage 10: BackendRepair] 🛠️ Backend API repair attempt ${attempt}/${maxRepairAttempts} for ${failedSteps.length} failing step(s)...`);
 
             // Step 1: Diagnose failure origin and check recurring error circuit breaker
@@ -3612,6 +3661,15 @@ Requirements for repair:
                 break;
               }
             } catch (repairErr: any) {
+              if (
+                repairErr?.name === "BudgetExceededError" ||
+                repairErr?.code === "BUDGET_EXHAUSTED" ||
+                repairErr?.message?.includes("BUDGET_EXHAUSTED") ||
+                repairErr?.code === "PROVIDER_OUTAGE_HALT" ||
+                repairErr?.message?.includes("PROVIDER_OUTAGE_HALT")
+              ) {
+                throw repairErr;
+              }
               console.warn(`[Stage 10: BackendRepair] ⚠️ Backend repair attempt ${attempt} error: ${repairErr.message}`);
             }
           }
@@ -3620,6 +3678,15 @@ Requirements for repair:
         browserValResult = await ReadOnlyBrowserValidator.validate(serverInfo.url, outputDirectory, { routes: dynamicRoutes, strictMode: true, apiReport: apiWorkflowReport });
       }
     } catch (runtimeErr: any) {
+      if (
+        runtimeErr?.name === "BudgetExceededError" ||
+        runtimeErr?.code === "BUDGET_EXHAUSTED" ||
+        runtimeErr?.message?.includes("BUDGET_EXHAUSTED") ||
+        runtimeErr?.code === "PROVIDER_OUTAGE_HALT" ||
+        runtimeErr?.message?.includes("PROVIDER_OUTAGE_HALT")
+      ) {
+        throw runtimeErr;
+      }
       console.warn(`[RuntimeValidation] Warning: Runtime validation encountered non-fatal error: ${runtimeErr.message}`);
     } finally {
       AppServerRunner.stopServer();
@@ -3894,7 +3961,7 @@ Requirements for repair:
         const initialPreDiag = [preReviewBuild.stdout || "", preReviewBuild.stderr || ""].filter(Boolean).join("\n");
         console.warn(`[StageReview:Self-Healing] ⚠️ Pre-review build not clean after deterministic passes. Invoking bounded transactional healing...`);
 
-        const MAX_PRE_REVIEW_REPAIR_ATTEMPTS = 3;
+        const MAX_PRE_REVIEW_REPAIR_ATTEMPTS = 2;
         const preConvergenceTracker = new RepairConvergenceTracker(initialPreDiag);
 
         while (!preReviewBuild.success && preRepairAttempts < MAX_PRE_REVIEW_REPAIR_ATTEMPTS) {
@@ -3941,6 +4008,9 @@ Requirements for repair:
               rootCause.summary ? `=== STRUCTURED ROOT CAUSE DIAGNOSIS ===\n${rootCause.summary}` : "",
               brokenFileSnippets.join("\n\n")
             ].filter(Boolean).join("\n\n");
+
+            GenerationBudgetGuard.getInstance().assertRepairAllowed("PreReviewRepair");
+            GenerationBudgetGuard.getInstance().recordRepairAttempt("PreReviewRepair");
 
             const repairResponse = await this.repairCoordinator.repair(
               request,
@@ -4039,6 +4109,16 @@ Requirements for repair:
             }
           } catch (repairErr: any) {
             console.warn(`[StageReview:Self-Healing] Error during pre-review repair attempt: ${repairErr.message}`);
+            if (
+              repairErr instanceof BudgetExceededError ||
+              repairErr instanceof ProviderOutageHaltError ||
+              repairErr?.code === "BUDGET_EXHAUSTED" ||
+              repairErr?.code === "PROVIDER_OUTAGE_HALT" ||
+              repairErr?.message?.includes("BUDGET_EXHAUSTED") ||
+              repairErr?.message?.includes("PROVIDER_OUTAGE_HALT")
+            ) {
+              throw repairErr;
+            }
             break;
           }
         }

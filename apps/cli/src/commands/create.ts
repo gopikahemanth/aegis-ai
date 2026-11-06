@@ -354,11 +354,17 @@ Arguments:
 
     if (status === "BLOCKED") {
       console.log();
-      console.log("⚠️ Project generated with limitations (BLOCKED).");
+      console.log("⚠️ Project generation halted or limited (BLOCKED).");
       if (blockingReason) {
         console.log(`   Reason: ${blockingReason}`);
       }
-      console.log("   The application code is compiled and ready, but external runtime services (e.g. database) were unavailable for automated verification.");
+      if (blockingReason?.includes("BUDGET_EXHAUSTED")) {
+        console.log("   The AI token or request budget was reached. All generated code and configuration have been preserved on disk.");
+      } else if (blockingReason?.includes("PROVIDER_OUTAGE_HALT")) {
+        console.log("   An AI provider outage or rate limit was encountered. All generated code and configuration have been preserved on disk.");
+      } else {
+        console.log("   The application code is compiled and ready, but external runtime services (e.g. database) were unavailable for automated verification.");
+      }
     } else if (isSuccess) {
       console.log("🎉 Project generated successfully.");
     } else {
@@ -368,6 +374,26 @@ Arguments:
     }
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : String(error);
+
+    if (errMessage.includes("CONCURRENT_GENERATION_REJECTED")) {
+      console.log();
+      console.log("❌ Concurrent Generation Blocked");
+      console.log();
+      console.log(errMessage);
+      console.log();
+      console.log("Another project generation is currently active in this process. Please wait for it to complete.");
+      return;
+    }
+
+    if (errMessage.includes("BUDGET_EXHAUSTED")) {
+      console.log();
+      console.log("⚠️ Budget Exhausted");
+      console.log();
+      console.log(errMessage);
+      console.log();
+      console.log("All generated files have been preserved on disk. No further AI calls were made.");
+      return;
+    }
 
     if (errMessage.includes("GENERATION_TARGET_NOT_EMPTY")) {
       console.log();

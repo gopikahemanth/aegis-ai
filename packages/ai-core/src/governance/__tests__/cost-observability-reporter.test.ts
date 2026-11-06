@@ -99,3 +99,4 @@ describe("CostObservabilityReporter — Telemetry and Savings Measurement", () =
     expect(markdown).toContain("PlannerAgent");
   });
 });
+

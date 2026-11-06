@@ -95,6 +95,7 @@ import { AuthorizedSchemaManager } from "../governance/authorized-schema-manager
 import { IncrementalGenerator } from "../generator/incremental-generator.js";
 import { ErrorDiagnosisEngine } from "../healing/error-diagnosis-engine.js";
 import { CostObservabilityReporter } from "../governance/cost-observability-reporter.js";
+import { TestPyramidRunner } from "../validation/test-pyramid-runner.js";
 
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
@@ -1316,11 +1317,17 @@ export class Orchestrator {
         const promises = tier.map(async (task) => {
           let result: { response: string; files: GeneratedFile[] } = { response: "", files: [] };
           try {
-            // Check Task Satisfaction: If owned files already exist and pass deterministic Level 1 syntax checks, reuse them (0 LLM tokens)
-            const satisfaction = IncrementalGenerator.checkTaskSatisfaction(task, outputDirectory);
+            // Check Task Satisfaction: Verify syntax, import closure, and contract integrity (0 LLM tokens)
+            const activeContractHash = (actualArch as any)?.contractHash || (architecture as any)?.contractHash || (specification as any)?.contractHash;
+            const satisfaction = IncrementalGenerator.checkTaskSatisfaction(task, outputDirectory, {
+              contractHash: activeContractHash,
+              isFrontend: isFrontendBatch,
+              userPrompt: enrichedRequest,
+            });
             if (satisfaction.isSatisfied && satisfaction.existingFiles.length > 0) {
               console.log(`[IncrementalGenerator] ✓ Reusing ${satisfaction.existingFiles.length} valid existing file(s) for "${task.title}" (0 LLM tokens).`);
               result = { response: satisfaction.reason, files: satisfaction.existingFiles };
+              CostObservabilityReporter.getInstance().incrementReusedFiles(satisfaction.existingFiles.length);
               CostObservabilityReporter.getInstance().recordSaving({
                 category: "TASK_SATISFACTION_REUSE",
                 description: `Reused ${satisfaction.existingFiles.length} valid file(s) for task "${task.title}"`,
@@ -1338,6 +1345,8 @@ export class Orchestrator {
                 imagePayload,
               );
               console.log(`[Task: ${task.title}] Status: GENERATED`);
+              CostObservabilityReporter.getInstance().incrementRegeneratedFiles(result.files.length);
+              IncrementalGenerator.recordTaskFingerprint(task, outputDirectory, activeContractHash || "default");
             }
 
             // ── STEP A: Hard Frontend File Policy (reject at write time) ──
@@ -3342,6 +3351,14 @@ FORBIDDEN STUB PATTERNS:
       throw new Error(`Project generation failed: Clean compilation build required before runtime evaluation: ${build.stderr || "Compilation failed."}`);
     }
 
+    // ─── Test Pyramid Level 1: Deterministic Static Checks (0 LLM tokens) ────
+    const pyramidLevel1 = TestPyramidRunner.runLevel1DeterministicChecks(outputDirectory);
+    if (!pyramidLevel1.passed) {
+      console.warn(`[TestPyramid] ⚠️ Level 1 deterministic static issues found: ${pyramidLevel1.errors.join("; ")}`);
+    } else {
+      console.log(`[TestPyramid] ✓ Level 1 deterministic static checks passed (${pyramidLevel1.checksExecuted.length} checks in ${pyramidLevel1.durationMs}ms, 0 tokens).`);
+    }
+
     // ─── End-to-End Runtime Validation (AppServerRunner, ReadOnlyBrowserValidator, ApiWorkflowVerifier) ────
     console.log("\n[RuntimeValidation] 🚀 Starting application server & runtime validation...");
     let serverInfo = { ready: false, port: 5173, url: "http://localhost:5173" };
@@ -3471,6 +3488,7 @@ FORBIDDEN STUB PATTERNS:
               } catch {}
             }
 
+            CostObservabilityReporter.getInstance().incrementRepairCalls(1);
             CostObservabilityReporter.getInstance().recordSaving({
               category: "TARGETED_REPAIR_PRUNING",
               description: `Pruned repair context to ${serverRouteFiles.length} targeted route file(s) for ${failedSteps.length} failing step(s)`,

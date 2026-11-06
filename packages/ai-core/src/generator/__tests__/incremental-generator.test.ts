@@ -57,6 +57,98 @@ describe("IncrementalGenerator — File Satisfaction, Caching, and Targeted Repa
     expect(check.missingOrInvalidFiles.length).toBe(0);
   });
 
+  it("checkTaskSatisfaction rejects Vite template scaffold counter boilerplate", () => {
+    const filePath = join(testDir, "src", "App.tsx");
+    mkdirSync(join(testDir, "src"), { recursive: true });
+    writeFileSync(filePath, `
+      import { useState } from 'react';
+      export default function App() {
+        const [count, setCount] = useState(0);
+        return <h1>Vite + React count is {count}</h1>;
+      }
+    `, "utf8");
+
+    const task: any = {
+      id: 1,
+      title: "App Shell",
+      ownedFiles: ["src/App.tsx"],
+    };
+
+    const check = IncrementalGenerator.checkTaskSatisfaction(task, testDir);
+    expect(check.isSatisfied).toBe(false);
+    expect(check.missingOrInvalidFiles[0]).toContain("unmodified template scaffold");
+  });
+
+  it("checkTaskSatisfaction rejects files with unresolved relative imports", () => {
+    const filePath = join(testDir, "src", "App.tsx");
+    mkdirSync(join(testDir, "src"), { recursive: true });
+    writeFileSync(filePath, `
+      import React from "react";
+      import { AppRoutes } from "./routes";
+      export default function App() {
+        return <AppRoutes />;
+      }
+    `, "utf8");
+
+    const task: any = {
+      id: 1,
+      title: "App Shell",
+      ownedFiles: ["src/App.tsx"],
+    };
+
+    // ./routes does NOT exist on disk
+    const check = IncrementalGenerator.checkTaskSatisfaction(task, testDir);
+    expect(check.isSatisfied).toBe(false);
+    expect(check.missingOrInvalidFiles[0]).toContain("unresolved relative import");
+  });
+
+  it("checkTaskSatisfaction rejects frontend files that violate server/client boundary", () => {
+    const filePath = join(testDir, "src", "components", "BadComponent.tsx");
+    mkdirSync(join(testDir, "src", "components"), { recursive: true });
+    writeFileSync(filePath, `
+      import React from "react";
+      import { PrismaClient } from "@prisma/client";
+      export const BadComponent = () => <div>Leaking prisma to client</div>;
+    `, "utf8");
+
+    const task: any = {
+      id: 1,
+      title: "Bad Component",
+      ownedFiles: ["src/components/BadComponent.tsx"],
+    };
+
+    const check = IncrementalGenerator.checkTaskSatisfaction(task, testDir);
+    expect(check.isSatisfied).toBe(false);
+    expect(check.missingOrInvalidFiles[0]).toContain("server/client boundary violation");
+  });
+
+  it("checkTaskSatisfaction invalidates satisfaction when contract hash changes", () => {
+    const filePath = join(testDir, "src", "components", "Hero.tsx");
+    mkdirSync(join(testDir, "src", "components"), { recursive: true });
+    writeFileSync(filePath, `
+      import React from "react";
+      export const Hero = () => <section>Valid Hero</section>;
+    `, "utf8");
+
+    const task: any = {
+      id: 1,
+      title: "Create Hero Component",
+      ownedFiles: ["src/components/Hero.tsx"],
+    };
+
+    // Record fingerprint with contractHash "contract_v1"
+    IncrementalGenerator.recordTaskFingerprint(task, testDir, "contract_v1");
+
+    // Check with matching contractHash -> SATISFIED
+    const check1 = IncrementalGenerator.checkTaskSatisfaction(task, testDir, { contractHash: "contract_v1" });
+    expect(check1.isSatisfied).toBe(true);
+
+    // Check with new contractHash -> INVALIDATED
+    const check2 = IncrementalGenerator.checkTaskSatisfaction(task, testDir, { contractHash: "contract_v2" });
+    expect(check2.isSatisfied).toBe(false);
+    expect(check2.reason).toContain("Contract hash changed");
+  });
+
   it("checkTaskSatisfaction flags unbalanced braces as unsatisfied", () => {
     const filePath = join(testDir, "src", "components", "Broken.tsx");
     mkdirSync(join(testDir, "src", "components"), { recursive: true });

@@ -3,19 +3,24 @@
  *
  * Implements the 5-level test verification pyramid for AEGIS AI:
  * - LEVEL 1: Cheap Deterministic Checks (0 LLM tokens, < 1s)
+ *            Verifies file structure, brace balance, syntax completeness, and relative import closure.
+ *            NOTE: Level 1 does NOT claim semantic correctness or business logic validity.
  * - LEVEL 2: Focused Automated Unit / Contract Tests (0 LLM tokens, 1-3s)
+ *            Runs Vitest on relevant units and API contracts.
  * - LEVEL 3: Targeted Browser Testing on Affected Routes (0 LLM tokens, 2-5s)
+ *            Verifies that targeted routes respond on an active application server.
  * - LEVEL 4: Full End-to-End Application Workflow & Final Gates (0 tokens)
+ *            Executes full in-project test suite and FinalSuccessGate.
  * - LEVEL 5: Fresh Full Website Generation (LLM tokens, release validation only)
  *
- * Enables testing framework fixes and code repairs at the lowest viable level,
- * saving thousands of AI tokens and minutes of execution time.
+ * Rule: A lower-level test must never replace a higher-level test when higher-level behavior is required.
  */
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join, dirname, resolve } from "node:path";
 import { execSync } from "node:child_process";
 import { InProjectTestRunner } from "./in-project-test-runner.js";
+import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
 
 export type TestPyramidLevel = 1 | 2 | 3 | 4 | 5;
 
@@ -42,6 +47,7 @@ export interface PyramidVerificationOptions {
   targetTestFile?: string;
   targetRoutes?: string[];
   serverUrl?: string;
+  requireActiveServer?: boolean;
 }
 
 export class TestPyramidRunner {
@@ -82,7 +88,12 @@ export class TestPyramidRunner {
 
     // ── LEVEL 3: Targeted Browser Testing (0 tokens, 2-5s) ───────────────────
     if (targetLevel >= 3 && allPassedSoFar) {
-      const l3 = await this.runLevel3TargetedBrowserTests(projectRoot, options.targetRoutes, options.serverUrl);
+      const l3 = await this.runLevel3TargetedBrowserTests(
+        projectRoot,
+        options.targetRoutes,
+        options.serverUrl,
+        options.requireActiveServer
+      );
       levelResults.push(l3);
       if (!l3.passed) {
         allPassedSoFar = false;
@@ -118,7 +129,8 @@ export class TestPyramidRunner {
   }
 
   /**
-   * LEVEL 1: File existence, completeness, brace balance, TypeScript checks, and schema validity.
+   * LEVEL 1: File existence, completeness, brace balance, import closure, and schema validity.
+   * NOTE: Level 1 does NOT prove semantic correctness or business logic validity.
    */
   public static runLevel1DeterministicChecks(
     projectRoot: string,
@@ -127,6 +139,10 @@ export class TestPyramidRunner {
     const start = Date.now();
     const checksExecuted: string[] = [];
     const errors: string[] = [];
+
+    checksExecuted.push(
+      "Level 1 static validation: verifies file existence, bracket balance, and relative import closure (does NOT prove semantic correctness or business logic)"
+    );
 
     // 1. Core directory and package.json check
     const pkgPath = join(projectRoot, "package.json");
@@ -149,7 +165,7 @@ export class TestPyramidRunner {
           continue;
         }
 
-        // Fast brace / paren delta check
+        // Specific delimiter delta checks
         const openBraces = (content.match(/\{/g) || []).length;
         const closeBraces = (content.match(/\}/g) || []).length;
         if (openBraces !== closeBraces) {
@@ -161,11 +177,22 @@ export class TestPyramidRunner {
         if (openParens !== closeParens) {
           errors.push(`Unbalanced parentheses in ${filePath} (open: ${openParens}, close: ${closeParens})`);
         }
+
+        // Full syntactic completeness & AST truncation check
+        if (!isLikelySyntacticallyComplete(content) && openBraces === closeBraces && openParens === closeParens) {
+          errors.push(`Syntactic incompleteness detected in ${filePath} (unbalanced brackets or truncated AST expression)`);
+        }
+
+        // Relative import closure check
+        const unresolved = this.checkLocalImportClosure(filePath, content);
+        if (unresolved) {
+          errors.push(`Unresolved relative import in ${filePath}: "${unresolved}" target does not exist on disk`);
+        }
       } catch (err: any) {
         errors.push(`File read error for ${filePath}: ${err.message}`);
       }
     }
-    checksExecuted.push(`Brace & syntax balance checked for ${filesToCheck.length} files`);
+    checksExecuted.push(`Brace, syntax & import closure checked for ${filesToCheck.length} files`);
 
     // 3. Prisma schema check if present
     const prismaPath = join(projectRoot, "prisma", "schema.prisma");
@@ -185,7 +212,6 @@ export class TestPyramidRunner {
     const nodeModulesPath = join(projectRoot, "node_modules");
     if (existsSync(tsconfigPath) && existsSync(nodeModulesPath)) {
       try {
-        const isWin = process.platform === "win32";
         const tscBin = join(nodeModulesPath, "typescript", "bin", "tsc");
         if (existsSync(tscBin)) {
           execSync(`node "${tscBin}" --noEmit`, { cwd: projectRoot, stdio: "pipe", timeout: 20000 });
@@ -193,7 +219,6 @@ export class TestPyramidRunner {
         }
       } catch (tscErr: any) {
         const stderr = tscErr.stderr?.toString() || tscErr.stdout?.toString() || tscErr.message;
-        // Capture up to 3 TS errors for brevity
         const firstErrors = (stderr.match(/error TS\d+:.*$/gm) || []).slice(0, 3);
         errors.push(`TypeScript typecheck failed: ${firstErrors.join("; ") || stderr.slice(0, 200)}`);
       }
@@ -262,17 +287,15 @@ export class TestPyramidRunner {
   public static async runLevel3TargetedBrowserTests(
     projectRoot: string,
     targetRoutes?: string[],
-    serverUrl: string = "http://localhost:5173"
+    serverUrl: string = "http://localhost:5173",
+    requireActiveServer: boolean = false
   ): Promise<LevelResult> {
     const start = Date.now();
     const checksExecuted: string[] = [];
     const errors: string[] = [];
 
     const routes = (targetRoutes && targetRoutes.length > 0) ? targetRoutes : ["/"];
-    checksExecuted.push(`Targeted routes verified: [${routes.join(", ")}]`);
 
-    // In a live environment, ReadOnlyBrowserValidator verifies these target routes.
-    // If serverUrl is reachable, ping routes:
     for (const r of routes) {
       try {
         const url = `${serverUrl.replace(/\/$/, "")}${r.startsWith("/") ? r : `/${r}`}`;
@@ -283,8 +306,11 @@ export class TestPyramidRunner {
           checksExecuted.push(`Route ${r} responded with HTTP ${res.status}`);
         }
       } catch (fetchErr: any) {
-        // Non-fatal if server is not active during unit tests
-        checksExecuted.push(`Route ping skipped (server inactive: ${fetchErr.message})`);
+        if (requireActiveServer) {
+          errors.push(`Targeted route ${r} could not be verified: server unreachable at ${serverUrl} (${fetchErr.message}). Level 3 requires an active application server.`);
+        } else {
+          checksExecuted.push(`Route ping skipped (server inactive: ${fetchErr.message})`);
+        }
       }
     }
 
@@ -328,22 +354,57 @@ export class TestPyramidRunner {
     };
   }
 
-  private static findSourceFiles(projectRoot: string): string[] {
-    const results: string[] = [];
-    const scanDir = (dir: string) => {
-      if (!existsSync(dir)) return;
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        if (entry.name.startsWith(".") || entry.name === "node_modules" || entry.name === "dist") continue;
-        const full = join(dir, entry.name);
-        if (entry.isDirectory()) {
-          scanDir(full);
-        } else if (/\.(tsx?|jsx?|prisma)$/i.test(entry.name)) {
-          results.push(full);
-        }
+  private static checkLocalImportClosure(fileAbsPath: string, content: string): string | null {
+    const importRegex = /(?:import|export)\s+(?:[\w*\s{},]*\s+from\s+)?['"](\.[^'"]+)['"]/g;
+    let match: RegExpExecArray | null;
+    const fileDir = dirname(fileAbsPath);
+
+    while ((match = importRegex.exec(content)) !== null) {
+      const relTarget = match[1];
+      const targetBase = resolve(fileDir, relTarget);
+
+      const candidateExtensions = [
+        "",
+        ".tsx",
+        ".ts",
+        ".jsx",
+        ".js",
+        ".json",
+        ".css",
+        "/index.tsx",
+        "/index.ts",
+        "/index.jsx",
+        "/index.js",
+      ];
+
+      const exists = candidateExtensions.some(ext => existsSync(targetBase + ext));
+      if (!exists) {
+        return relTarget;
       }
+    }
+
+    return null;
+  }
+
+  private static findSourceFiles(dir: string): string[] {
+    const results: string[] = [];
+    const walk = (d: string) => {
+      try {
+        const entries = readdirSync(d);
+        for (const e of entries) {
+          if (e === "node_modules" || e === ".git" || e === "dist" || e === ".aegis") continue;
+          const full = join(d, e);
+          const st = statSync(full);
+          if (st.isDirectory()) {
+            walk(full);
+          } else if (/\.(tsx?|jsx?|prisma)$/.test(e)) {
+            results.push(full);
+          }
+        }
+      } catch {}
     };
-    scanDir(join(projectRoot, "src"));
-    scanDir(join(projectRoot, "server"));
+
+    walk(dir);
     return results;
   }
 }

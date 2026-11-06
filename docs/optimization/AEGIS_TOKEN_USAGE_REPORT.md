@@ -150,3 +150,4 @@ With `CostObservabilityReporter`, `IncrementalGenerator`, and `TestPyramidRunner
 - Generation costs are reduced by **over 95%** on subsequent edits.
 - Deterministic checks prevent token-wasting calls for already-working code.
 - Developers and CI/CD pipelines receive transparent cost records in `.aegis/cost-observability.json`.
+

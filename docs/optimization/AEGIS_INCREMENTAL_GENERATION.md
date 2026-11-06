@@ -120,3 +120,4 @@ Through pre-execution satisfaction checks and artifact caching:
 - Unchanged files are never rewritten by agents.
 - Iterative code repairs consume tokens strictly proportional to the changed lines.
 - Redundant LLM calls are eliminated by default.
+

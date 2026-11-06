@@ -102,7 +102,10 @@ export class ErrorClassifier {
       lower.includes("server is not running on host") ||
       lower.includes("enotfound") ||
       lower.includes("system limit for number of file watchers reached") ||
-      lower.includes("eacces: permission denied")
+      lower.includes("eacces: permission denied") ||
+      lower.includes("eperm: operation not permitted") ||
+      lower.includes("eperm") ||
+      lower.includes("ebusy")
     ) {
       return {
         category: "ENVIRONMENT_ERROR",

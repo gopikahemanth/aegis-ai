@@ -92,6 +92,9 @@ import { DatabaseVerifier } from "../database/database-verifier.js";
 import { FeatureMatrixManager } from "../contracts/feature-matrix.js";
 import { CanonicalContractManager } from "../contracts/canonical-contract.js";
 import { AuthorizedSchemaManager } from "../governance/authorized-schema-manager.js";
+import { IncrementalGenerator } from "../generator/incremental-generator.js";
+import { ErrorDiagnosisEngine } from "../healing/error-diagnosis-engine.js";
+import { CostObservabilityReporter } from "../governance/cost-observability-reporter.js";
 
 
 const VALID_DEPENDENCIES_WHITELIST = new Set([
@@ -1311,20 +1314,31 @@ export class Orchestrator {
         console.log(`\nRunning execution tier ${i + 1}/${parallelTiers.length} with ${tier.length} parallel tasks...`);
 
         const promises = tier.map(async (task) => {
-          console.log(`[Task: ${task.title}] Calling CoderAgent... Status: PENDING`);
           let result: { response: string; files: GeneratedFile[] } = { response: "", files: [] };
           try {
-            result = await this.coderAgent.execute(
-              task,
-              architecture,
-              architecturePlan,
-              enrichedRequest,
-              outputDirectory,
-              existingFiles,
-              imagePayload,
-            );
-
-            console.log(`[Task: ${task.title}] Status: GENERATED`);
+            // Check Task Satisfaction: If owned files already exist and pass deterministic Level 1 syntax checks, reuse them (0 LLM tokens)
+            const satisfaction = IncrementalGenerator.checkTaskSatisfaction(task, outputDirectory);
+            if (satisfaction.isSatisfied && satisfaction.existingFiles.length > 0) {
+              console.log(`[IncrementalGenerator] ✓ Reusing ${satisfaction.existingFiles.length} valid existing file(s) for "${task.title}" (0 LLM tokens).`);
+              result = { response: satisfaction.reason, files: satisfaction.existingFiles };
+              CostObservabilityReporter.getInstance().recordSaving({
+                category: "TASK_SATISFACTION_REUSE",
+                description: `Reused ${satisfaction.existingFiles.length} valid file(s) for task "${task.title}"`,
+                estimatedTokensSaved: 8500,
+              });
+            } else {
+              console.log(`[Task: ${task.title}] Calling CoderAgent... Status: PENDING`);
+              result = await this.coderAgent.execute(
+                task,
+                architecture,
+                architecturePlan,
+                enrichedRequest,
+                outputDirectory,
+                existingFiles,
+                imagePayload,
+              );
+              console.log(`[Task: ${task.title}] Status: GENERATED`);
+            }
 
             // ── STEP A: Hard Frontend File Policy (reject at write time) ──
             if (isFrontendBatch) {
@@ -3378,7 +3392,36 @@ FORBIDDEN STUB PATTERNS:
 
             console.log(`\n[Stage 10: BackendRepair] 🛠️ Backend API repair attempt ${attempt}/${maxRepairAttempts} for ${failedSteps.length} failing step(s)...`);
 
-            // Gather server route files
+            // Step 1: Diagnose failure origin and check recurring error circuit breaker
+            const primaryFailingStep = failedSteps[0];
+            const failureError = primaryFailingStep?.error || `HTTP ${primaryFailingStep?.actualStatus} (Expected ${primaryFailingStep?.step?.expectedStatus})`;
+            const diagnosis = ErrorDiagnosisEngine.diagnose({
+              phase: "Stage 10 Backend API Verification",
+              stdout: typeof primaryFailingStep?.actualBody === "object" ? JSON.stringify(primaryFailingStep.actualBody) : String(primaryFailingStep?.actualBody || ""),
+              stderr: String(failureError),
+              projectRoot: outputDirectory,
+            });
+
+            if (diagnosis.circuitBreakerTripped) {
+              console.warn(`[Stage 10: CircuitBreaker] ⚠️ Halting repeated repair: ${diagnosis.recommendedAction}`);
+              break;
+            }
+
+            // Step 2: Identify targeted route files and prisma snippets for failing steps
+            const targetedFilesSet = new Set<string>();
+            let targetedSchemaContext = "";
+            for (const f of failedSteps) {
+              const path = f.step?.path || "";
+              const targeted = IncrementalGenerator.getTargetedRepairContext(outputDirectory, path);
+              if (targeted.targetRouteFile) {
+                targetedFilesSet.add(targeted.targetRouteFile);
+              }
+              if (targeted.prismaSnippet && !targetedSchemaContext.includes(targeted.prismaSnippet)) {
+                targetedSchemaContext += `\n${targeted.prismaSnippet}\n`;
+              }
+            }
+
+            // Gather only targeted server route files (pruning irrelevant routes to save tokens)
             const serverRoutesDir = join(outputDirectory, "server", "routes");
             const serverRouteFiles: { path: string; content: string }[] = [];
             if (existsSync(serverRoutesDir)) {
@@ -3387,33 +3430,39 @@ FORBIDDEN STUB PATTERNS:
                 for (const entry of entries) {
                   if (entry.endsWith(".ts") || entry.endsWith(".js")) {
                     const rel = `server/routes/${entry}`;
-                    const abs = join(serverRoutesDir, entry);
-                    try {
-                      serverRouteFiles.push({ path: rel, content: readFileSync(abs, "utf8") });
-                    } catch {}
+                    if (targetedFilesSet.size === 0 || targetedFilesSet.has(rel)) {
+                      const abs = join(serverRoutesDir, entry);
+                      try {
+                        serverRouteFiles.push({ path: rel, content: readFileSync(abs, "utf8") });
+                      } catch {}
+                    }
                   }
                 }
               } catch {}
             }
 
-            // Also check server entry files
+            // Only check server entry files if no specific route was targeted
             const serverEntryFiles: { path: string; content: string }[] = [];
-            for (const entryName of ["server/index.ts", "server/app.ts", "server/server.ts"]) {
-              const abs = join(outputDirectory, entryName);
-              if (existsSync(abs)) {
-                try {
-                  serverEntryFiles.push({ path: entryName, content: readFileSync(abs, "utf8") });
-                } catch {}
+            if (targetedFilesSet.size === 0) {
+              for (const entryName of ["server/index.ts", "server/app.ts", "server/server.ts"]) {
+                const abs = join(outputDirectory, entryName);
+                if (existsSync(abs)) {
+                  try {
+                    serverEntryFiles.push({ path: entryName, content: readFileSync(abs, "utf8") });
+                  } catch {}
+                }
               }
             }
 
-            // Check database / prisma schema
-            let schemaContext = "";
-            const prismaSchemaPath = join(outputDirectory, "prisma", "schema.prisma");
-            if (existsSync(prismaSchemaPath)) {
-              try {
-                schemaContext = `\nPrisma Schema (prisma/schema.prisma):\n${readFileSync(prismaSchemaPath, "utf8")}\n`;
-              } catch {}
+            // Targeted database / prisma schema context
+            let schemaContext = targetedSchemaContext;
+            if (!schemaContext) {
+              const prismaSchemaPath = join(outputDirectory, "prisma", "schema.prisma");
+              if (existsSync(prismaSchemaPath)) {
+                try {
+                  schemaContext = `\nPrisma Schema (prisma/schema.prisma):\n${readFileSync(prismaSchemaPath, "utf8")}\n`;
+                } catch {}
+              }
             }
             const dbTsPath = join(outputDirectory, "server", "db.ts");
             if (existsSync(dbTsPath)) {
@@ -3421,6 +3470,12 @@ FORBIDDEN STUB PATTERNS:
                 schemaContext += `\nDatabase Helper (server/db.ts):\n${readFileSync(dbTsPath, "utf8")}\n`;
               } catch {}
             }
+
+            CostObservabilityReporter.getInstance().recordSaving({
+              category: "TARGETED_REPAIR_PRUNING",
+              description: `Pruned repair context to ${serverRouteFiles.length} targeted route file(s) for ${failedSteps.length} failing step(s)`,
+              estimatedTokensSaved: Math.max(3000, 25000 - (serverRouteFiles.length * 3000)),
+            });
 
             const failedStepDetails = failedSteps.map((f: any, idx: number) =>
               `${idx + 1}. [${f.step?.method || "UNKNOWN"}] ${f.step?.path || "UNKNOWN"}\n` +
@@ -3710,6 +3765,16 @@ Requirements for repair:
       console.log("[GitEngine] ✓ All changes, documentation, and PR summary staged and committed to Git.");
     } catch (gitErr: any) {
       console.warn(`[GitEngine] Warning: Git commit operations failed: ${gitErr.message}`);
+    }
+
+    // ─── Cost Observability Telemetry ───
+    try {
+      CostObservabilityReporter.getInstance().setProjectRoot(outputDirectory);
+      CostObservabilityReporter.getInstance().persistToProject(outputDirectory);
+      const costSummary = CostObservabilityReporter.getInstance().getSummary();
+      console.log(`[CostObservability] ✓ Saved .aegis/cost-observability.json: ${costSummary.totalTokensConsumed.toLocaleString()} tokens consumed, ${costSummary.totalTokensSaved.toLocaleString()} tokens saved (${costSummary.efficiencyRatioPercentage}% efficiency).`);
+    } catch (costErr: any) {
+      console.warn(`[CostObservability] Warning: Failed to persist cost observability data: ${costErr.message}`);
     }
 
     console.log(`\n[Startup] 🚀 Ready! Open: http://localhost:5173`);

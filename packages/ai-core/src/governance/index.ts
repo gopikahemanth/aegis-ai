@@ -58,3 +58,6 @@ export * from "./frontend-file-policy.js";
 export * from "./frontend-experience-contract.js";
 export * from "./prompt-constraints.js";
 
+// -- Cost & Observability -----------------------------------------------------
+export * from "./cost-observability-reporter.js";
+

@@ -186,6 +186,12 @@ export * from "./benchmark/benchmark-types.js";
 export * from "./benchmark/functional-completeness-auditor.js";
 export * from "./benchmark/real-project-benchmark-harness.js";
 
+// -- Framework-Level Optimization & Cost Efficiency --------------------------
+export * from "./generator/incremental-generator.js";
+export * from "./healing/error-diagnosis-engine.js";
+export * from "./validation/test-pyramid-runner.js";
+export * from "./governance/cost-observability-reporter.js";
+
 
 
 

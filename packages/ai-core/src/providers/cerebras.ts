@@ -57,6 +57,8 @@ export class CerebrasProvider implements AIProvider {
         const prompt = data.usage.prompt_tokens || 0;
         const completion = data.usage.completion_tokens || 0;
         MetricsTracker.getInstance().logUsage(prompt, completion);
+      } else {
+        MetricsTracker.getInstance().logUnmeteredRequest();
       }
 
       const finishReason = data.choices?.[0]?.finish_reason;

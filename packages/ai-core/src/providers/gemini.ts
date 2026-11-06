@@ -138,6 +138,8 @@ export class GeminiProvider implements AIProvider {
             const promptCount = response.usageMetadata.promptTokenCount || 0;
             const completionCount = response.usageMetadata.candidatesTokenCount || 0;
             MetricsTracker.getInstance().logUsage(promptCount, completionCount);
+          } else {
+            MetricsTracker.getInstance().logUnmeteredRequest();
           }
 
           const finishReason = response.candidates?.[0]?.finishReason;

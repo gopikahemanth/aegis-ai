@@ -150,6 +150,20 @@ describe("ErrorDiagnosisEngine — 11-Step Intelligent Diagnosis & Circuit Break
     expect(rep4.circuitBreakerTripped).toBe(false);
   });
 
+  it("Correctly diagnoses missing third-party packages as EXTERNAL_DEPENDENCY_ISSUE with DEPENDENCY_INSTALL", () => {
+    const errorText = "Error: Cannot find module 'lucide-react' imported from src/components/Hero.tsx";
+    const report = ErrorDiagnosisEngine.diagnose({
+      phase: "Stage 3: Frontend",
+      stderr: errorText,
+      projectRoot: "./test-project",
+    });
+
+    expect(report.origin).toBe("EXTERNAL_DEPENDENCY_ISSUE");
+    expect(report.recommendedStrategy).toBe("DEPENDENCY_INSTALL");
+    expect(report.responsibleModule).toContain("DependencyResolver");
+    expect(report.recommendedAction).toContain("Install missing package");
+  });
+
   it("Step 7: Recommends SCOPED_SINGLE_FILE_REPAIR for ordinary code defects", () => {
     const errorText = "src/components/Card.tsx(15,1): error TS2322: Type 'number' is not assignable to type 'string'.";
     const report = ErrorDiagnosisEngine.diagnose({

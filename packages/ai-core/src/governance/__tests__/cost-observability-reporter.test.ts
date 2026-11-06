@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { CostObservabilityReporter } from "../cost-observability-reporter.js";
+import { MetricsTracker } from "../../providers/metrics-tracker.js";
 import { mkdirSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -97,6 +98,28 @@ describe("CostObservabilityReporter — Telemetry and Savings Measurement", () =
     const markdown = reporter.renderMarkdownSummary();
     expect(markdown).toContain("## Aegis AI Cost & Token Observability Report");
     expect(markdown).toContain("PlannerAgent");
+  });
+
+  it("Marks unmetered provider requests as unknown rather than assuming zero tokens", () => {
+    const reporter = CostObservabilityReporter.getInstance();
+    reporter.recordAgentCall({
+      agent: "CoderAgent",
+      phase: "Backend",
+      model: "openrouter/free",
+      promptTokens: 1200,
+      completionTokens: 400,
+      durationMs: 700,
+    });
+
+    // Simulate an unmetered request from a provider where usage metadata is absent
+    MetricsTracker.getInstance().logUnmeteredRequest();
+
+    const summary = reporter.getSummary();
+    expect(summary.actualMeasuredUsage.unmeteredRequestsCount).toBe(1);
+    expect(summary.actualMeasuredUsage.isUsageComplete).toBe(false);
+
+    const markdown = reporter.renderMarkdownSummary();
+    expect(markdown).toContain("Unmetered Provider Requests");
   });
 });
 

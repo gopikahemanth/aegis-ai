@@ -55,6 +55,8 @@ export interface CostObservabilitySummary {
     measuredPromptTokens: number;
     measuredCompletionTokens: number;
     measuredTotalTokens: number;
+    unmeteredRequestsCount: number;
+    isUsageComplete: boolean;
     measuredCostUsd: number;
     providerErrorsCount: number;
     providerRetriesCount: number;
@@ -155,7 +157,6 @@ export class CostObservabilityReporter {
     };
 
     this.records.push(fullRecord);
-    MetricsTracker.getInstance().logUsage(record.promptTokens, record.completionTokens);
   }
 
   public recordSaving(saving: Omit<OptimizationSavingRecord, "timestamp" | "estimatedUsdSaved">): void {
@@ -252,6 +253,8 @@ export class CostObservabilityReporter {
         measuredPromptTokens: measuredPrompt,
         measuredCompletionTokens: measuredCompletion,
         measuredTotalTokens: measuredTotal,
+        unmeteredRequestsCount: trackedMetrics.unmeteredRequests || 0,
+        isUsageComplete: (trackedMetrics.unmeteredRequests || 0) === 0,
         measuredCostUsd,
         providerErrorsCount: this.providerErrorsCount,
         providerRetriesCount: this.providerRetriesCount,
@@ -308,6 +311,9 @@ export class CostObservabilityReporter {
     rows.push(`| Total Measured Output Tokens | **${s.actualMeasuredUsage.measuredCompletionTokens.toLocaleString()}** |`);
     rows.push(`| Total Measured Tokens Consumed | **${s.actualMeasuredUsage.measuredTotalTokens.toLocaleString()}** |`);
     rows.push(`| Total Measured Cost (USD) | **$${s.actualMeasuredUsage.measuredCostUsd.toFixed(4)}** |`);
+    if (s.actualMeasuredUsage.unmeteredRequestsCount > 0) {
+      rows.push(`| Unmetered Provider Requests (Tokens Unknown) | **${s.actualMeasuredUsage.unmeteredRequestsCount}** (metadata omitted by provider; not counted as 0) |`);
+    }
     rows.push(`| Provider Error Count | **${s.actualMeasuredUsage.providerErrorsCount}** |`);
     rows.push(`| Provider Retry Count | **${s.actualMeasuredUsage.providerRetriesCount}** |`);
     rows.push(``);

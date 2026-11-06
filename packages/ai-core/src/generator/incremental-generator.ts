@@ -37,16 +37,23 @@ export interface IncrementalCacheEntry<T = any> {
 
 export interface TaskSatisfactionOptions {
   contractHash?: string;
+  requirementHash?: string;
   userPrompt?: string;
   isFrontend?: boolean;
+  expectedDomain?: string;
+  requiredFeatures?: string[];
+  dependencyHashes?: Record<string, string>;
 }
 
 interface TaskFingerprintRegistry {
   contractHash: string;
+  requirementHash?: string;
+  promptHash?: string;
   lastUpdated: string;
   taskFingerprints: Record<string, {
     taskTitle: string;
     fileHashes: Record<string, string>;
+    dependencyHashes?: Record<string, string>;
     verifiedAt: string;
   }>;
 }
@@ -89,6 +96,18 @@ export class IncrementalGenerator {
       };
     }
 
+    // Fail-closed guard: Tasks that explicitly failed validation cannot be satisfied
+    if ((task as any).validationStatus === "FAIL" || (task as any).hasFailedValidation === true) {
+      return {
+        taskId: task.id,
+        taskTitle: task.title,
+        isSatisfied: false,
+        reason: "Task has previous failed validation status — cannot be reused without regeneration.",
+        existingFiles: [],
+        missingOrInvalidFiles: ownedFiles.map(f => `${f} (failed prior validation)`),
+      };
+    }
+
     // 1. Contract Hash Validation: Check if active contract has changed
     const fingerprintFile = join(projectRoot, ".aegis", "cache", "task-fingerprints.json");
     let registry: TaskFingerprintRegistry | null = null;
@@ -107,6 +126,59 @@ export class IncrementalGenerator {
         existingFiles: [],
         missingOrInvalidFiles: ownedFiles.map(f => `${f} (invalidated by contract change)`),
       };
+    }
+
+    if (options?.requirementHash && registry?.requirementHash && registry.requirementHash !== options.requirementHash) {
+      return {
+        taskId: task.id,
+        taskTitle: task.title,
+        isSatisfied: false,
+        reason: `Requirement hash changed (${registry.requirementHash.slice(0, 8)} -> ${options.requirementHash.slice(0, 8)}) — invalidating task satisfaction cache.`,
+        existingFiles: [],
+        missingOrInvalidFiles: ownedFiles.map(f => `${f} (invalidated by requirement change)`),
+      };
+    }
+
+    if (options?.userPrompt && registry?.promptHash) {
+      const promptHash = createHash("sha256").update(options.userPrompt.trim().toLowerCase()).digest("hex").slice(0, 16);
+      if (registry.promptHash !== promptHash) {
+        return {
+          taskId: task.id,
+          taskTitle: task.title,
+          isSatisfied: false,
+          reason: `User prompt changed — invalidating task satisfaction cache.`,
+          existingFiles: [],
+          missingOrInvalidFiles: ownedFiles.map(f => `${f} (invalidated by prompt change)`),
+        };
+      }
+    }
+
+    // Dependency Hashes Invalidation: Check if explicit dependencies have changed
+    if (options?.dependencyHashes) {
+      for (const [depPath, expectedHash] of Object.entries(options.dependencyHashes)) {
+        const fullDep = join(projectRoot, depPath);
+        if (!existsSync(fullDep)) {
+          return {
+            taskId: task.id,
+            taskTitle: task.title,
+            isSatisfied: false,
+            reason: `Required dependency ${depPath} missing on disk — invalidating task satisfaction.`,
+            existingFiles: [],
+            missingOrInvalidFiles: ownedFiles.map(f => `${f} (invalidated by missing dependency ${depPath})`),
+          };
+        }
+        const currentDepHash = createHash("sha256").update(readFileSync(fullDep, "utf8")).digest("hex").slice(0, 16);
+        if (currentDepHash !== expectedHash) {
+          return {
+            taskId: task.id,
+            taskTitle: task.title,
+            isSatisfied: false,
+            reason: `Dependency ${depPath} modified (${expectedHash} -> ${currentDepHash}) — invalidating task satisfaction.`,
+            existingFiles: [],
+            missingOrInvalidFiles: ownedFiles.map(f => `${f} (invalidated by changed dependency ${depPath})`),
+          };
+        }
+      }
     }
 
     const existingFiles: GeneratedFile[] = [];
@@ -162,12 +234,31 @@ export class IncrementalGenerator {
           continue;
         }
 
+        // 6. Cross-Domain Contamination Guard
+        if (options?.expectedDomain) {
+          const isContaminated = this.detectCrossDomainContamination(content, options.expectedDomain, options?.userPrompt);
+          if (isContaminated) {
+            missingOrInvalidFiles.push(`${relPath} (cross-domain contamination: incompatible with domain "${options.expectedDomain}")`);
+            continue;
+          }
+        }
+
         existingFiles.push({
           path: relPath,
           content,
         });
       } catch (readErr: any) {
         missingOrInvalidFiles.push(`${relPath} (read error: ${readErr.message})`);
+      }
+    }
+
+    // 7. Required Feature Compliance Check (evaluated across task owned files)
+    const reqFeatures = options?.requiredFeatures || (task as any).requiredFeatures;
+    if (reqFeatures && Array.isArray(reqFeatures) && reqFeatures.length > 0 && existingFiles.length === ownedFiles.length) {
+      const combinedContent = existingFiles.map(f => f.content).join("\n").toLowerCase();
+      const missingFeats = reqFeatures.filter(feat => !combinedContent.includes(feat.toLowerCase()));
+      if (missingFeats.length > 0) {
+        missingOrInvalidFiles.push(`Task files missing newly required feature(s): ${missingFeats.join(", ")}`);
       }
     }
 
@@ -189,7 +280,28 @@ export class IncrementalGenerator {
   /**
    * Records verified task fingerprints into .aegis/cache/task-fingerprints.json
    */
-  public static recordTaskFingerprint(task: Task, projectRoot: string, contractHash: string): void {
+  public static recordTaskFingerprint(
+    task: Task,
+    projectRoot: string,
+    contractHash: string,
+    options?: { requirementHash?: string; userPrompt?: string; dependencyHashes?: Record<string, string> }
+  ): void {
+    // Fail-closed rule: Do NOT cache if task has failed validation
+    if ((task as any).validationStatus === "FAIL" || (task as any).hasFailedValidation === true) {
+      return;
+    }
+
+    // Fail-closed rule: Do NOT cache if satisfaction fails
+    const satisfaction = this.checkTaskSatisfaction(task, projectRoot, {
+      contractHash,
+      requirementHash: options?.requirementHash,
+      userPrompt: options?.userPrompt,
+      dependencyHashes: options?.dependencyHashes,
+    });
+    if (!satisfaction.isSatisfied) {
+      return;
+    }
+
     try {
       const cacheDir = join(projectRoot, ".aegis", "cache");
       if (!existsSync(cacheDir)) mkdirSync(cacheDir, { recursive: true });
@@ -197,6 +309,8 @@ export class IncrementalGenerator {
       const file = join(cacheDir, "task-fingerprints.json");
       let registry: TaskFingerprintRegistry = {
         contractHash,
+        requirementHash: options?.requirementHash,
+        promptHash: options?.userPrompt ? createHash("sha256").update(options.userPrompt.trim().toLowerCase()).digest("hex").slice(0, 16) : undefined,
         lastUpdated: new Date().toISOString(),
         taskFingerprints: {},
       };
@@ -206,6 +320,10 @@ export class IncrementalGenerator {
           const loaded = JSON.parse(readFileSync(file, "utf8"));
           if (loaded && loaded.contractHash === contractHash) {
             registry = loaded;
+            if (options?.requirementHash) registry.requirementHash = options.requirementHash;
+            if (options?.userPrompt) {
+              registry.promptHash = createHash("sha256").update(options.userPrompt.trim().toLowerCase()).digest("hex").slice(0, 16);
+            }
           }
         } catch {}
       }
@@ -221,12 +339,55 @@ export class IncrementalGenerator {
       registry.taskFingerprints[task.title] = {
         taskTitle: task.title,
         fileHashes,
+        dependencyHashes: options?.dependencyHashes,
         verifiedAt: new Date().toISOString(),
       };
       registry.lastUpdated = new Date().toISOString();
 
       writeFileSync(file, JSON.stringify(registry, null, 2), "utf8");
     } catch {}
+  }
+
+  private static readonly DOMAIN_EXCLUSIVE_PATTERNS: Record<string, string[]> = {
+    portfolio: [
+      "usecart",
+      "addtocart",
+      "checkoutsession",
+      "roomreservation",
+      "luxurydial",
+      "cryptowallet",
+    ],
+    ecommerce: [
+      "curriculumvitae",
+      "undergraduatedegree",
+      "academichonors",
+      "phdthesis",
+    ],
+    hospitality: [
+      "usecart",
+      "cryptowallet",
+    ],
+  };
+
+  private static detectCrossDomainContamination(content: string, expectedDomain: string, userPrompt?: string): boolean {
+    const normDomain = expectedDomain.toLowerCase();
+    const normPrompt = userPrompt ? userPrompt.toLowerCase().replace(/[\s_-]/g, "") : "";
+
+    for (const [domainKey, forbiddenPatterns] of Object.entries(this.DOMAIN_EXCLUSIVE_PATTERNS)) {
+      if (normDomain.includes(domainKey)) {
+        const lowerContent = content.toLowerCase().replace(/[\s_-]/g, "");
+        for (const pattern of forbiddenPatterns) {
+          // If explicitly mentioned or requested in user prompt, do not flag as cross-domain contamination
+          if (normPrompt && normPrompt.includes(pattern)) {
+            continue;
+          }
+          if (lowerContent.includes(pattern)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   /**

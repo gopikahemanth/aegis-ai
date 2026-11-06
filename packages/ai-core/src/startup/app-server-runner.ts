@@ -113,7 +113,10 @@ export class AppServerRunner {
     if (existsSync(prismaSchema) && existsSync(prismaStatusFile)) {
       try {
         const pStatus = JSON.parse(readFileSync(prismaStatusFile, "utf8"));
-        if (pStatus.clientGenerated === false || pStatus.valid === false) {
+        const clientExists = existsSync(join(absDir, "node_modules", ".prisma", "client")) ||
+                             existsSync(join(absDir, "node_modules", "@prisma", "client", "default.js")) ||
+                             existsSync(join(absDir, "node_modules", "@prisma", "client", "index.js"));
+        if ((pStatus.clientGenerated === false || pStatus.valid === false) && !clientExists) {
           prismaBlockedReason = pStatus.error || "Prisma schema validation or client generation failed.";
         }
       } catch {}

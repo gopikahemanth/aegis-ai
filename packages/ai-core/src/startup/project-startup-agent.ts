@@ -1864,7 +1864,16 @@ interface ImportMeta {
             console.log(`[Startup] ✓ Generated Prisma client from ${schemaRelativePath}`);
           } catch (genErr: any) {
             prismaError = genErr.stderr?.toString() || genErr.stdout?.toString() || genErr.message;
-            console.error(`[Startup] ❌ Prisma client generation failed: ${prismaError}`);
+            const clientExists = existsSync(join(absDir, "node_modules", ".prisma", "client")) ||
+                                 existsSync(join(absDir, "node_modules", "@prisma", "client", "default.js")) ||
+                                 existsSync(join(absDir, "node_modules", "@prisma", "client", "index.js"));
+            if (clientExists && (prismaError?.includes("EPERM") || prismaError?.includes("EBUSY") || prismaError?.includes("operation not permitted"))) {
+              console.warn(`[Startup] ⚠️ Prisma client already exists; skipping client rewrite blocked by Windows file lock (EPERM).`);
+              clientGenerated = true;
+              prismaError = null;
+            } else {
+              console.error(`[Startup] ❌ Prisma client generation failed: ${prismaError}`);
+            }
           }
         }
 

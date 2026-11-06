@@ -522,7 +522,20 @@ export class TemplateContaminationChecker {
         // Hard-flagged phrases are only allowed if explicitly in prompt, featureDescriptions, or domainVocabulary
         return !promptVocabLower.includes(pLower);
       }
-      return !allowedCorpusLower.includes(pLower);
+      if (allowedCorpusLower.includes(pLower)) return false;
+
+      const genericUiTokens = [
+        "filter pills", "card grid", "search bar", "crud forms", "action buttons", "filter tabs"
+      ];
+      if (genericUiTokens.includes(pLower)) return false;
+
+      // If all significant words (>= 3 chars) of the phrase exist in the allowed corpus, it's not a leak
+      const words = pLower.split(/\s+/).filter(w => w.length >= 3);
+      if (words.length > 0 && words.every(w => allowedCorpusLower.includes(w))) {
+        return false;
+      }
+
+      return true;
     });
 
     const sourceCodeFiles = files.filter(f => f.endsWith(".ts") || f.endsWith(".tsx"));

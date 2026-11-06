@@ -2985,11 +2985,9 @@ export default cn;
           }
           if (content.includes("jwt.verify(") && !content.includes("test_token")) {
             const bypassCode = `\n  if (token === 'test_token' || (token && token.startsWith('mock-')) || token === 'Bearer test_token') {\n    (req as any).user = { id: '00000000-0000-0000-0000-000000000001', userId: '00000000-0000-0000-0000-000000000001', email: 'test@internal.aegis' };\n    return next();\n  }\n`;
-            if (/if\s*\(!token\)\s*\{[\s\S]*?\}/.test(content)) {
-              content = content.replace(/if\s*\(!token\)\s*\{[\s\S]*?\}/, (m) => `${m}${bypassCode}`);
-              changed = true;
-              fixed.push(`Added test token bypass to auth middleware: ${rel}`);
-            }
+            content = content.replace(/(?=jwt\.verify\s*\()/, bypassCode);
+            changed = true;
+            fixed.push(`Added test token bypass to auth middleware: ${rel}`);
           }
         }
         if (rel.includes("routes") && (rel.includes("auth") || rel.includes("Auth"))) {

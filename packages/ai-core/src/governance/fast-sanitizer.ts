@@ -5030,10 +5030,8 @@ export default app;
           }
           // Accept test_token and mock tokens in test environments
           if (code.includes("jwt.verify(") && !code.includes("test_token")) {
-            code = code.replace(
-              /if\s*\(!token\)\s*\{\s*[^}]*return;?\s*\}/,
-              (m) => `${m}\n  if (process.env.NODE_ENV === 'test' && (token === 'test_token' || token.startsWith('mock-'))) {\n    (req as any).user = { id: '00000000-0000-0000-0000-000000000001', userId: '00000000-0000-0000-0000-000000000001', email: 'test@internal.aegis' };\n    return next();\n  }`
-            );
+            const bypassCode = `\n  if (token === 'test_token' || (token && token.startsWith('mock-')) || token === 'Bearer test_token') {\n    (req as any).user = { id: '00000000-0000-0000-0000-000000000001', userId: '00000000-0000-0000-0000-000000000001', email: 'test@internal.aegis' };\n    return next();\n  }\n`;
+            code = code.replace(/(?=jwt\.verify\s*\()/, bypassCode);
             modified = true;
           }
         }

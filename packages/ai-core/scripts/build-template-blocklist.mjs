@@ -121,6 +121,21 @@ function shouldFilterOut(str, node) {
     return true;
   }
 
+  const genericUiTokens = [
+    "filter pills", "card grid", "search bar", "crud forms", "action buttons", "filter tabs"
+  ];
+  if (genericUiTokens.includes(trimmed.toLowerCase())) {
+    return true;
+  }
+
+  const careerEducationPhrases = [
+    "software engineering internship", "computer science b.s.", "full-stack engineering intern",
+    "bachelor of science", "teaching assistant", "undergraduate researcher"
+  ];
+  if (careerEducationPhrases.includes(trimmed.toLowerCase())) {
+    return true;
+  }
+
   if (/\b(Drawer|Slide-over|Dialog|Modal|Button|Controls|Viewer|Plinth|Stage|Canvas|Mesh|Dropdown|Tooltip|Breadcrumb|Navbar|Header|Footer)$/i.test(trimmed)) {
     return true;
   }

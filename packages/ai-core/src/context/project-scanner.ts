@@ -18,7 +18,10 @@ export class ProjectScanner {
           if (
             entry === "node_modules" ||
             entry === ".git" ||
-            entry === "dist"
+            entry === "dist" ||
+            entry === ".aegis" ||
+            entry === ".turbo" ||
+            entry === ".next"
           ) {
             continue;
           }

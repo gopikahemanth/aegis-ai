@@ -25,6 +25,10 @@ build(
   architecturePlan: string,
   request: string,
   projectPath: string,
+  options?: {
+    skipFileContext?: boolean;
+    fileContext?: string;
+  },
 ) {
     const execution =
       this.sections.executionPlan(plan);
@@ -39,12 +43,9 @@ build(
   );
     const activeTask = plan && plan.length > 0 ? plan[0] : null;
     const taskContext = activeTask ? `${activeTask.title} ${(activeTask as any).description || ""}` : "";
-    const fullContext =
-      this.contextEngine.build(
-        request,
-        projectPath,
-        taskContext,
-      );
+    const fullContext = options?.skipFileContext
+      ? (options.fileContext || "")
+      : (options?.fileContext ?? this.contextEngine.build(request, projectPath, taskContext));
 
     let workspaceSummary = "";
     try {
@@ -77,7 +78,7 @@ CRITICAL ARCHITECTURE RULES:
 ═══════════════════════════════════════════════════════
 `;
 
-    const mergedContext = `${fullContext}\n${archLockBlock}\n${workspaceSummary}`;
+    const mergedContext = `${fullContext ? `${fullContext}\n` : ""}${archLockBlock}\n${workspaceSummary}`;
 
     // Thread domain vocabulary explicitly into the prompt context
     let domainVocabBlock = "";

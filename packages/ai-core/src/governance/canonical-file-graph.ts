@@ -1231,7 +1231,7 @@ export class CanonicalFileGraph {
     const normalized = proposedPath.replace(/\\/g, "/");
     const root = ProjectRootSingleton.getRoot();
     let aliasCheckSet = CANONICAL_FILES;
-    let isAts = false;
+    let isAts = !root;
     if (root) {
       try {
         const dyn = DynamicFileGraphManager.load(root);

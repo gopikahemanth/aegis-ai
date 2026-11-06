@@ -290,8 +290,6 @@ export class Orchestrator {
     // ── Enforce pre-generation state and singleton sanitization ─────────────
     if (!GenerationBudgetGuard.getInstance().isGenerationActive()) {
       GenerationBudgetGuard.getInstance().acquireGenerationLock(String(genIdentity.seed || `gen_${Date.now()}`));
-    } else {
-      GenerationBudgetGuard.getInstance().assertGenerationAllowed();
     }
     ValidationStateManager.getInstance().reset();
     MetricsTracker.getInstance().reset();

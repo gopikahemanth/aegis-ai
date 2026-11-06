@@ -170,12 +170,12 @@ export class TokenBudgetManager {
 
   /**
    * Partitions ranked files into 3 graceful degradation tiers:
-   * Tier 1: Full content
-   * Tier 2: Signatures only (implementation hidden)
+   * Tier 1: Full content (direct dependencies or within budget)
+   * Tier 2: Signatures only (indirect dependencies or token constrained)
    * Tier 3: Withheld paths
    */
   public static degradeFilesToBudget(
-    files: Array<{ path: string; content: string }>,
+    files: Array<{ path: string; content: string; isDirect?: boolean }>,
     maxAvailableTokens: number
   ): DegradedFileContext {
     const tier1FullFiles: Array<{ path: string; content: string }> = [];
@@ -183,11 +183,30 @@ export class TokenBudgetManager {
     const tier3WithheldPaths: string[] = [];
 
     let consumedTokens = 0;
+    const seenPaths = new Set<string>();
 
     for (const file of files) {
+      if (!file || !file.path) continue;
+      // Stable file identity & deterministic deduplication
+      if (seenPaths.has(file.path)) continue;
+      seenPaths.add(file.path);
+
+      // If file is explicitly marked as indirect dependency, prioritize Tier 2 (signatures only)
+      if (file.isDirect === false) {
+        const signatures = this.extractTypeSignatures(file.content);
+        if (signatures) {
+          const sigTokens = this.estimateTokens(signatures, true);
+          if (consumedTokens + sigTokens <= maxAvailableTokens) {
+            tier2SignatureFiles.push({ path: file.path, signatures });
+            consumedTokens += sigTokens;
+            continue;
+          }
+        }
+      }
+
       const fullTokens = this.estimateTokens(file.content, true);
 
-      // Try Tier 1 (Full file)
+      // Try Tier 1 (Full file for direct dependencies)
       if (consumedTokens + fullTokens <= maxAvailableTokens) {
         tier1FullFiles.push(file);
         consumedTokens += fullTokens;

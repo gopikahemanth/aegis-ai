@@ -88,6 +88,12 @@ export interface Task {
   ownedFiles?: string[];
 
   /**
+   * Route paths (e.g. ["/", "/treasury-accounts"]) this task owns and generates.
+   * Used for task-scoped route plan and design brief selection.
+   */
+  ownedRoutes?: string[];
+
+  /**
    * Canonical relative file paths this task is allowed to READ but not create.
    * Used to build the exact context window for CoderAgent.
    */

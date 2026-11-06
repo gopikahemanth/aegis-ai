@@ -61,4 +61,5 @@ export * from "./prompt-constraints.js";
 // -- Cost & Observability -----------------------------------------------------
 export * from "./cost-observability-reporter.js";
 export * from "./generation-budget-guard.js";
+export * from "./prompt-budget-instrumenter.js";
 

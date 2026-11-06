@@ -21,6 +21,120 @@ export interface TaskNormalizationResult {
  * architecture contract. Zero LLM calls used for task corrections.
  */
 export class TaskNormalizer {
+  /**
+   * Deterministically resolves or infers ownedRoutes for a task.
+   * If task already specifies ownedRoutes, returns them.
+   * Otherwise matches task title, description, and ownedFiles against known routes.
+   * Falls back safely to ["/"] for shell/primary tasks.
+   */
+  public static resolveOwnedRoutes(task: Task, knownRoutes?: string[]): string[] {
+    if (task.ownedRoutes && task.ownedRoutes.length > 0) {
+      return [...task.ownedRoutes];
+    }
+
+    const titleLower = (task.title || "").toLowerCase();
+    const descLower = (task.description || "").toLowerCase();
+    const taskText = `${titleLower} ${descLower}`;
+    const routes: string[] = [];
+
+    const isShellTask =
+      task.id === 1 ||
+      titleLower.includes("shell") ||
+      titleLower.includes("navigation") ||
+      titleLower.includes("scaffold") ||
+      titleLower.includes("layout");
+
+    const isPolishTask =
+      titleLower.includes("polish") ||
+      titleLower.includes("accessibility") ||
+      titleLower.includes("responsive");
+
+    // Shell/Scaffold tasks own the auth/login gateway if mentioned; otherwise default to root "/"
+    if (isShellTask) {
+      const authTokens = ["login", "sign-in", "signin", "auth", "credential", "role-switching", "executive routing"];
+      if (authTokens.some(tok => taskText.includes(tok))) {
+        const loginRoute = (knownRoutes || []).find(r => r.includes("login") || r.includes("auth")) || "/executive-login";
+        routes.push(loginRoute);
+      } else {
+        routes.push("/");
+      }
+      return routes;
+    }
+
+    // Cross-cutting polish tasks operate globally on root frame without claiming new pages
+    if (isPolishTask) {
+      return ["/"];
+    }
+
+    // Specific route discriminators to avoid broad false-positive substring matches
+    const ROUTE_DISCRIMINATORS: Record<string, string[]> = {
+      "/executive-login": ["login", "sign-in", "signin", "auth", "credential gateway"],
+      "/liquidity-overview": ["liquidity-overview", "liquidity overview", "liquidity dashboard", "cash position", "working capital", "total liquidity"],
+      "/analyze-burn-rate-forecast": ["burn-rate", "burn rate", "forecasting", "forecast", "runway projection", "scenario simulator"],
+      "/execute-fund-transfer": ["fund-transfer", "fund transfer", "transfers", "transfer modal", "transfer workflow"],
+      "/filter-export-ledger": ["ledger", "transaction ledger", "export ledger", "transaction history"],
+      "/treasury-accounts": ["treasury-accounts", "treasury accounts", "account management", "account creation", "accounts view"],
+      "/configure-budget-thresholds": ["budget-thresholds", "budget thresholds", "threshold alerts", "velocity alert", "budget variance"],
+      "/audit-log": ["audit-log", "audit log", "audit trail", "event log"],
+    };
+
+    // Check task ownedFiles for direct route hints (e.g. src/pages/TreasuryAccounts.tsx)
+    const candidateRoutes = knownRoutes && knownRoutes.length > 0
+      ? knownRoutes
+      : Object.keys(ROUTE_DISCRIMINATORS).concat(["/"]);
+
+    if (task.ownedFiles && task.ownedFiles.length > 0) {
+      for (const of of task.ownedFiles) {
+        const ofLower = of.toLowerCase();
+        for (const route of candidateRoutes) {
+          if (route === "/") continue;
+          const slug = route.replace(/^\//, "").toLowerCase();
+          if (ofLower.includes(slug)) {
+            if (!routes.includes(route)) routes.push(route);
+          }
+        }
+      }
+    }
+
+    // Match task text against route discriminators
+    for (const [route, tokens] of Object.entries(ROUTE_DISCRIMINATORS)) {
+      if (candidateRoutes.includes(route) && tokens.some(t => taskText.includes(t))) {
+        if (!routes.includes(route)) {
+          routes.push(route);
+        }
+      }
+    }
+
+    // Generic multi-word slug matching for dynamic unknown routes
+    for (const route of candidateRoutes) {
+      if (route === "/" || routes.includes(route)) continue;
+      if (ROUTE_DISCRIMINATORS[route]) continue; // already checked above
+      const slug = route.replace(/^\//, "").replace(/[-_]/g, " ").toLowerCase();
+      const words = slug.split(/\s+/).filter(w => w.length > 3);
+      if (words.length > 0 && words.every(w => taskText.includes(w))) {
+        routes.push(route);
+      }
+    }
+
+    // Root dashboard / workspace ownership
+    if (
+      titleLower.includes("dashboard") ||
+      titleLower.includes("workspace") ||
+      titleLower.includes("overview")
+    ) {
+      if (!routes.includes("/")) {
+        routes.unshift("/");
+      }
+    }
+
+    // Deterministic fallback: if nothing matched at all, default to ["/"]
+    if (routes.length === 0) {
+      routes.push("/");
+    }
+
+    return routes;
+  }
+
   public static normalizeTask(task: Task, contract: ArchitectureContractV1): TaskNormalizationResult {
     const corrections: TaskNormalizationCorrection[] = [];
     const violations: string[] = [];
@@ -87,11 +201,14 @@ export class TaskNormalizer {
       description = description.replace(/ResumeScan|ScanResult/gi, "AnalysisResult");
     }
 
+    const ownedRoutes = TaskNormalizer.resolveOwnedRoutes({ ...task, title, description });
+
     const normalizedTask: Task = {
       ...task,
       title,
       description,
       architectureHash: contract.architectureHash,
+      ownedRoutes,
     };
 
     if (corrections.length > 0) {

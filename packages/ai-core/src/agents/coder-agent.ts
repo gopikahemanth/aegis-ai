@@ -66,16 +66,24 @@ export class CoderAgent extends BaseAgent {
     
     const codebaseEntries = new CodebaseIndex().build(allFiles);
 
-    const selector = new FileSelector();
-    const selectedEntries = selector.select(request, codebaseEntries, outputDirectory, `${task.title || ""} ${task.description || ""}`);
+    const { TaskNormalizer } = await import("../governance/task-normalizer.js");
+    const taskOwnedRoutes: string[] = task.ownedRoutes && task.ownedRoutes.length > 0
+      ? [...task.ownedRoutes]
+      : TaskNormalizer.resolveOwnedRoutes(task);
 
-    const candidateFiles: Array<{ path: string; content: string }> = [];
+    const selector = new FileSelector();
+    const taskQuery = `${task.title || ""} ${task.description || ""}`.trim();
+    const selectedEntries = selector.select(taskQuery, codebaseEntries, outputDirectory, task.ownedFiles ? task.ownedFiles.join(" ") : "");
+
+    const candidateFiles: Array<{ path: string; content: string; isDirect?: boolean }> = [];
+    const ownedSet = new Set(task.ownedFiles || []);
     for (const entry of selectedEntries) {
       const fullPath = join(outputDirectory, entry.path);
       if (existsSync(fullPath)) {
         try {
           const content = readFileSync(fullPath, "utf8");
-          candidateFiles.push({ path: entry.path, content });
+          const isDirect = ownedSet.has(entry.path) || entry.path.endsWith("site-content.ts");
+          candidateFiles.push({ path: entry.path, content, isDirect });
         } catch {}
       }
     }
@@ -185,9 +193,31 @@ export class CoderAgent extends BaseAgent {
     let productExperiencePlanContext = "";
     let experiencePattern = "custom";
     let plan: any = null;
+    let matchedPagePlans: any[] = [];
     try {
       const { ProductExperiencePlanManager } = await import("../design/product-experience-plan.js");
       plan = ProductExperiencePlanManager.load(outputDirectory);
+      if (plan?.pagePlans && plan.pagePlans.length > 0) {
+        const taskText = (taskTitle + " " + taskDesc).toLowerCase();
+        matchedPagePlans = plan.pagePlans.filter((p: any) => {
+          const routeSlug = p.route.replace(/^\//, "").replace(/[-_]/g, " ").toLowerCase();
+          const roleLower = (p.pageRole || "").toLowerCase();
+          const routeWords = routeSlug.split(/\s+/).filter((w: string) => w.length > 2);
+          const roleWords = roleLower.split(/\s+/).filter((w: string) => w.length > 3 && !["stage", "view", "page", "feature"].includes(w));
+          const focalWords = (p.focalElement || "").toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+
+          const matchesOwned = (task.ownedFiles || []).some((of: string) => {
+            const ofLower = of.toLowerCase();
+            return routeWords.some((w: string) => ofLower.includes(w)) ||
+                   (p.route !== "/" && ofLower.includes(p.route.replace(/^\//, "")));
+          });
+
+          return matchesOwned ||
+                 routeWords.some((w: string) => taskText.includes(w)) ||
+                 roleWords.some((w: string) => taskText.includes(w)) ||
+                 focalWords.some((w: string) => taskText.includes(w));
+        });
+      }
       if (plan) {
         experiencePattern = plan.experiencePattern || "custom";
         const capabilitiesList = plan.requiredCapabilities.map((c: any) => 
@@ -343,13 +373,16 @@ ${real3dMandate}
 ${editorialMandate}
 ${(plan.pagePlans && plan.pagePlans.length > 0) ? `
 ══════════════════════════════════════════════════════════════════════════════
-PAGE EXPERIENCE PLANS (ROUTE-BY-ROUTE FIRST-CLASS DESIGNS)
+APPLICATION NAVIGATION & TASK-SCOPED PAGE PLAN
 ══════════════════════════════════════════════════════════════════════════════
-EVERY approved route is a first-class designed experience.
-The homepage must NOT receive privileged visual treatment while secondary routes collapse into generic cards, search/filter bars, or simple CRUD tables.
+All project routes: ${(plan.pagePlans || []).map((p: any) => `${p.route} (${p.pageRole})`).join(" • ")}
+Assigned task route(s): ${taskOwnedRoutes.join(", ")}
 
-For every route you build, you MUST implement its specific PageExperiencePlan:
-${plan.pagePlans.map((p: any) => `
+AUTHORITATIVE PAGE EXPERIENCE PLAN FOR ASSIGNED ROUTE(S):
+${(((plan.pagePlans || []).filter((p: any) => taskOwnedRoutes.includes(p.route))).length > 0
+    ? (plan.pagePlans || []).filter((p: any) => taskOwnedRoutes.includes(p.route))
+    : (matchedPagePlans.length > 0 ? matchedPagePlans : (plan.pagePlans || []).slice(0, 1))
+  ).map((p: any) => `
 • ROUTE: "${p.route}" (${p.pageRole})
   - Purpose: ${p.purpose}
   - Experience Intent: ${p.experienceIntent}
@@ -365,10 +398,7 @@ ${plan.pagePlans.map((p: any) => `
 STRICT RULE FOR SECONDARY PAGES:
 - A page is INCOMPLETE if it merely renders search/filter bars, card grids, or a generic "+ Add [Item]" CRUD modal.
 - NEVER create state variables like [newTitle, setNewTitle], [records, setRecords] with "+ Add [Entity]" forms on experiential routes!
-- Characters page must be a character inspection stage with 3D avatars, personality dialogue selector, voice clips!
-- Quest page must be an interactive spatial map with landmark nodes and waypoint lore dossiers!
-- Soundboard page must be an audio synthesizer console with resonance pads and frequency visualizers!
-- Visual Essays page must be an editorial photo essay with full-bleed imagery, pull quotes, and chapter scrollytelling!
+- Adhere strictly to the focal element and dominant structure specified for this route.
 ══════════════════════════════════════════════════════════════════════════════` : ""}
 `;
       }
@@ -416,7 +446,11 @@ PAGE METRIC CONTRACT (DIRECT FEATURE / WORKSPACE VIEW):
         const prefWords = (brief.vocabularyContract?.preferred || []).join(", ");
         const forbWords = (brief.vocabularyContract?.forbidden || []).join(", ");
         const principles = (brief.designPrinciples || []).map((p: string) => `  • ${p}`).join("\n");
-        const pages = (brief.pageCompositions || []).map((p: any) => 
+        const scopedCompositions = (brief.pageCompositions || []).filter((p: any) => taskOwnedRoutes.includes(p.route));
+        const effectiveCompositions = scopedCompositions.length > 0
+          ? scopedCompositions
+          : ((brief.pageCompositions || []).slice(0, 1));
+        const pages = effectiveCompositions.map((p: any) =>
           `  • Route "${p.route}" (${p.name}): Family=${p.compositionFamily}, Hero=${p.heroElement}, Focus="${p.primaryFocus}"`
         ).join("\n");
 
@@ -517,28 +551,7 @@ FRONTEND ACTION -> API CONTRACT -> EXPRESS ROUTE -> CONTROLLER -> SERVICE -> PRI
 
     // ── Task-to-Route PageExperiencePlan Matching ────────────────────────────
     let taskPageExperienceContract = "";
-    let matchedPagePlans: any[] = [];
     if (plan?.pagePlans && plan.pagePlans.length > 0) {
-      const taskText = (taskTitle + " " + taskDesc).toLowerCase();
-      matchedPagePlans = plan.pagePlans.filter((p: any) => {
-        const routeSlug = p.route.replace(/^\//, "").replace(/[-_]/g, " ").toLowerCase();
-        const roleLower = (p.pageRole || "").toLowerCase();
-        const routeWords = routeSlug.split(/\s+/).filter((w: string) => w.length > 2);
-        const roleWords = roleLower.split(/\s+/).filter((w: string) => w.length > 3 && !["stage", "view", "page", "feature"].includes(w));
-        const focalWords = (p.focalElement || "").toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
-
-        const matchesOwned = (task.ownedFiles || []).some((of: string) => {
-          const ofLower = of.toLowerCase();
-          return routeWords.some((w: string) => ofLower.includes(w)) ||
-                 (p.route !== "/" && ofLower.includes(p.route.replace(/^\//, "")));
-        });
-
-        return matchesOwned ||
-               routeWords.some((w: string) => taskText.includes(w)) ||
-               roleWords.some((w: string) => taskText.includes(w)) ||
-               focalWords.some((w: string) => taskText.includes(w));
-      });
-
       if (matchedPagePlans.length > 0 && !isShellTask) {
         taskPageExperienceContract = `
 ══════════════════════════════════════════════════════════════════════════════
@@ -1125,13 +1138,17 @@ FORBIDDEN TECHNOLOGIES:
     const profile = TokenBudgetManager.getProfile(this.provider.name);
 
     // Estimate base tokens required for core instructions (excluding file contents)
-    const basePromptText = `${request}\n${CANONICAL_CODER_CONTEXT_HEADER}\n${archContext}\n${patternContext}\n${canonicalContractContext}\n${designBriefContext}\n${productExperiencePlanContext}`;
+    const basePromptText = `${request}\n${CANONICAL_CODER_CONTEXT_HEADER}`;
     const baseTokensEstimated = TokenBudgetManager.estimateTokens(basePromptText, true);
 
-    // Compute remaining token headroom for candidate files
+    // Compute remaining token headroom for candidate files, bounded by the 12,000 regression ceiling
+    const targetFileBudget = Math.max(
+      400,
+      12000 - baseTokensEstimated - 2000
+    );
     const availableFileTokens = Math.min(
       profile.maxFileTokens,
-      Math.max(400, profile.maxPromptTokens - baseTokensEstimated)
+      targetFileBudget
     );
 
     // Partition files into Tier 1 (full), Tier 2 (signatures), Tier 3 (withheld) without mid-file truncation
@@ -1143,7 +1160,12 @@ FORBIDDEN TECHNOLOGIES:
         [task],
         architecture,
         architecturePlan,
-        `${request}
+        request,
+        outputDirectory,
+        { skipFileContext: true },
+      );
+
+    let finalPrompt = `${prompt}
 
 ${CANONICAL_CODER_CONTEXT_HEADER}
 
@@ -1152,15 +1174,32 @@ ${relevantFilesContent}
 
 All existing project files (manifest list):
 ${manifestText}
-${archContext}
-${patternContext}
+`;
 
-${canonicalContractContext}
-`,
-        outputDirectory,
+    // ── Prompt Budget Instrumentation & Regression Protection ───────────────────
+    try {
+      const { PromptBudgetInstrumenter } = await import("../governance/prompt-budget-instrumenter.js");
+      const { PromptManager } = await import("../prompts/prompt-manager.js");
+      const sysPrompt = new PromptManager().getCoderPrompt();
+      const instrumentReport = PromptBudgetInstrumenter.measurePrompt(
+        sysPrompt,
+        finalPrompt,
+        {
+          routePlan: productExperiencePlanContext,
+          designBrief: designBriefContext,
+          architectureContract: CANONICAL_CODER_CONTEXT_HEADER,
+          fileContext: relevantFilesContent,
+        }
       );
 
-    let finalPrompt = prompt;
+      console.log(`[PromptBudgetInstrumenter] Task #${task.id} Prompt Tokens: ${instrumentReport.totalEstimatedPromptTokens.toLocaleString()} (Target: < 8,500, Ceiling: 12,000) | Sys: ${instrumentReport.systemPromptTokens}, User: ${instrumentReport.userPromptTokens}, Files: ${instrumentReport.fileContextTokens}`);
+      if (instrumentReport.duplicateContentDetected) {
+        console.warn(`[PromptBudgetInstrumenter] ⚠️ Duplicate content detected in Task #${task.id}:`, instrumentReport.duplicateDetails);
+      }
+      if (!instrumentReport.passedCeiling) {
+        console.warn(`[PromptBudgetInstrumenter] ⚠️ Task #${task.id} prompt exceeded 12,000-token regression ceiling (${instrumentReport.totalEstimatedPromptTokens} tokens)!`);
+      }
+    } catch {}
     if (task.id >= 9900 || request.includes("TARGETED CODER CAPABILITY REPAIR INSTRUCTION")) {
       // For targeted single-file repair, use a lean, focused prompt without dumping the entire project codebase
       finalPrompt = `${request}

@@ -108,7 +108,7 @@ export class GeminiProvider implements AIProvider {
       for (const targetModel of modelsToTry) {
         let timeoutId: NodeJS.Timeout | undefined;
         const timeoutPromise = new Promise<never>((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error("Gemini request timed out")), 45000);
+          timeoutId = setTimeout(() => reject(new Error("Gemini request timed out")), 90000);
         });
 
         try {
@@ -206,9 +206,11 @@ export class GeminiProvider implements AIProvider {
             console.warn(`[Gemini:${this.name}] Model "${targetModel}" returned 404 NOT_FOUND. Marked permanently invalid.`);
           }
 
-          if ((isRateLimit || isNotFound || is503) && targetModel !== modelsToTry[modelsToTry.length - 1]) {
+          if ((isRateLimit || isNotFound || is503 || isTimeout) && targetModel !== modelsToTry[modelsToTry.length - 1]) {
             if (is503) {
               console.warn(`[Gemini:${this.name}] Model "${targetModel}" temporarily under high demand (503). Retrying next Gemini model...`);
+            } else if (isTimeout) {
+              console.warn(`[Gemini:${this.name}] Model "${targetModel}" request timed out. Retrying next Gemini model...`);
             } else if (isNotFound) {
               console.warn(`[Gemini:${this.name}] Skipping to next Gemini model...`);
             } else {

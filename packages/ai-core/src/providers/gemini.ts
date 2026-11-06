@@ -178,14 +178,6 @@ export class GeminiProvider implements AIProvider {
             const expiry = Date.now() + cooldownSeconds * 1000;
             GeminiProvider.modelCooldowns.set(cooldownKey, expiry);
             console.warn(`[Gemini:${this.name}] Rate limit (429) on model "${targetModel}". Model placed on ${cooldownSeconds}s cooldown.`);
-
-            // If account/daily quota exhausted, place all candidate models for this key on cooldown
-            const isDaily = msg.toLowerCase().includes("per day") || msg.toLowerCase().includes("daily");
-            if (isDaily) {
-              for (const m of uniqueModels) {
-                GeminiProvider.modelCooldowns.set(`${this.name}:${m}`, Date.now() + 3600 * 1000);
-              }
-            }
           }
 
           if (is503) {

@@ -113,7 +113,7 @@ export class FailoverProvider implements AIProvider {
       // Heavy context roles (coder, reviewer, healer) are strictly excluded from Groq to eliminate failover latency and dead weight.
       if (provider.name === "groq") {
         const agentType = options?.agentType || "";
-        const isHeavyRole = ["coder", "reviewer", "visual-reviewer", "repair-coordinator"].includes(agentType);
+        const isHeavyRole = ["coder", "reviewer", "visual-reviewer", "repair-coordinator", "healer"].includes(agentType);
         if (isHeavyRole) {
           continue;
         }

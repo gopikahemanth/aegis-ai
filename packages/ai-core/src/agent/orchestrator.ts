@@ -425,6 +425,10 @@ export class Orchestrator {
     ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
     const archContract = ArchitectureContractManager.createContract(outputDirectory, request, canonicalSpec);
 
+    // ── Configure Adaptive Project Budget from Authoritative Contract ──
+    GenerationBudgetGuard.getInstance().adaptiveConfigureForProject(resolvedContract);
+    console.log(`[AdaptiveBudget] 📊 Configured project generation budget from locked contract: scale=${resolvedContract.applicationType || "FULLSTACK"}`);
+
     // ── TechnologyConstraintValidator — Reject libraries that conflict with locked contract ──
     const { allowed: allowedLibs, forbidden: forbiddenLibs } = TechnologyConstraintValidator.filterLibraries(inferredLibraries, resolvedContract);
     inferredLibraries = allowedLibs;
@@ -611,6 +615,10 @@ export class Orchestrator {
 
     const loadedPlan = providedPlan || CanonicalPlanManager.load(outputDirectory);
     const hasLockedPlan = !!(loadedPlan && (loadedPlan.request?.trim() === request?.trim() || !loadedPlan.request));
+
+    if (loadedPlan) {
+      GenerationBudgetGuard.getInstance().adaptiveConfigureForProject(loadedPlan.architectureContract || loadedPlan.specification);
+    }
 
     const memoryEngine = new ProjectMemoryEngine(outputDirectory);
     const existingMem = memoryEngine.loadMemory();
@@ -1481,12 +1489,21 @@ export class Orchestrator {
                 });
 
                 if (validRepairedFiles.length > 0) {
+                  // Partial artifact preservation: Retain all valid files already completed in this task
+                  const validCompletedFiles = (result.files || []).filter(f => {
+                    const validation = GeneratedFileValidator.validateCompleteness(f.content, f.path);
+                    return validation.valid;
+                  });
+                  const mergedFiles = [
+                    ...validCompletedFiles.filter(vf => !validRepairedFiles.some(rf => rf.path === vf.path)),
+                    ...validRepairedFiles,
+                  ];
                   result = {
                     response: repairResponse,
-                    files: validRepairedFiles,
+                    files: mergedFiles,
                   };
                   success = true;
-                  console.log(`[Self-Healing] ✓ Coder repair succeeded! Validated completeness for ${validRepairedFiles.length} file(s).`);
+                  console.log(`[Self-Healing] ✓ Coder repair succeeded! Merged ${validRepairedFiles.length} repaired file(s) with ${validCompletedFiles.length} completed component(s) (total: ${mergedFiles.length}).`);
                 } else if (inlineRepairAttempts < MAX_INLINE_REPAIRS) {
                   lastError = new Error(`REPAIR_RESPONSE_INVALID: Attempt ${inlineRepairAttempts} yielded no valid files. Retrying with stricter prompt.`);
                 } else {

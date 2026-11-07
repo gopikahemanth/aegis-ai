@@ -24,6 +24,9 @@ Arguments:
   --seed <value>          Seed for reproducible creative generations
   --design-mode=<mode>    Design archetype: auto, calm, dark, editorial, random, custom
   --image <path>          Path to an image mockup or screenshot to guide visual direction
+  --max-requests <num>    Explicit limit on total AI provider requests
+  --max-prompt-tokens <n> Explicit cumulative input (prompt) token budget
+  --max-completion-tokens Explicit cumulative output (completion) token budget
   -h, --help              Show this help message
 `);
     return;
@@ -125,6 +128,30 @@ Arguments:
   if (seedIdx !== -1 && args[seedIdx + 1]) {
     seed = args[seedIdx + 1];
     args.splice(seedIdx, 2);
+  }
+
+  // Parse explicit user budget parameters if supplied via flags
+  const userBudget: Record<string, number> = {};
+  const mrIdx = args.findIndex(a => a === "--max-requests" || a.startsWith("--max-requests="));
+  if (mrIdx !== -1) {
+    const raw = args[mrIdx].includes("=") ? args[mrIdx].split("=")[1] : args[mrIdx + 1];
+    const val = parseInt(raw, 10);
+    if (!isNaN(val) && val > 0) userBudget.maxRequests = val;
+    args.splice(mrIdx, args[mrIdx].includes("=") ? 1 : 2);
+  }
+  const mptIdx = args.findIndex(a => a === "--max-prompt-tokens" || a.startsWith("--max-prompt-tokens="));
+  if (mptIdx !== -1) {
+    const raw = args[mptIdx].includes("=") ? args[mptIdx].split("=")[1] : args[mptIdx + 1];
+    const val = parseInt(raw, 10);
+    if (!isNaN(val) && val > 0) userBudget.maxPromptTokens = val;
+    args.splice(mptIdx, args[mptIdx].includes("=") ? 1 : 2);
+  }
+  const mctIdx = args.findIndex(a => a === "--max-completion-tokens" || a.startsWith("--max-completion-tokens="));
+  if (mctIdx !== -1) {
+    const raw = args[mctIdx].includes("=") ? args[mctIdx].split("=")[1] : args[mctIdx + 1];
+    const val = parseInt(raw, 10);
+    if (!isNaN(val) && val > 0) userBudget.maxCompletionTokens = val;
+    args.splice(mctIdx, args[mctIdx].includes("=") ? 1 : 2);
   }
 
   const prompt = args.join(" ");
@@ -346,6 +373,7 @@ Arguments:
       onFrontendReview,
       seed,
       generationMode,
+      budget: Object.keys(userBudget).length > 0 ? userBudget : undefined,
     });
 
     const isSuccess = typeof result === "boolean" ? result : result.success;

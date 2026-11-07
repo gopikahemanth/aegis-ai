@@ -88,6 +88,26 @@ export class TokenBudgetManager {
       };
     }
 
+    if (norm.includes("gemini") && (norm.includes("flash") || norm.includes("flash-lite"))) {
+      return {
+        name: norm,
+        maxPromptTokens: 32000,
+        maxCompletionTokens: 8192,
+        maxFileTokens: 18000,
+        tpmLimit: 1000000,
+      };
+    }
+
+    if (norm.includes("deepseek")) {
+      return {
+        name: norm,
+        maxPromptTokens: 32000,
+        maxCompletionTokens: 8192,
+        maxFileTokens: 18000,
+        tpmLimit: 500000,
+      };
+    }
+
     if (norm.includes("gemini") || norm.includes("failover") || norm === "default" || !norm) {
       return {
         name: norm || "failover",
@@ -105,6 +125,54 @@ export class TokenBudgetManager {
       maxCompletionTokens: 16384,
       maxFileTokens: 14000,
       tpmLimit: 500000,
+    };
+  }
+
+  /**
+   * Calculates safe per-request execution budget, strictly decoupling cumulative
+   * generation limits from individual model physical capacity.
+   *
+   * @param modelOrProvider Actual model or provider name resolved for this request
+   * @param estimatedPromptTokens Pre-dispatch estimate of prompt tokens
+   * @param requestedMaxTokens Optional maxTokens requested by caller/agent
+   * @param remainingCumulativeBudget Remaining tokens in overall generation budget
+   */
+  public static calculatePerRequestBudget(
+    modelOrProvider: string,
+    estimatedPromptTokens: number,
+    requestedMaxTokens?: number,
+    remainingCumulativeBudget?: number
+  ): {
+    perRequestCap: number;
+    effectiveMaxTokens: number;
+    modelMaxOutput: number;
+    contextHeadroom: number;
+  } {
+    const profile = TokenBudgetManager.getProfile(modelOrProvider);
+    const modelMaxOutput = profile.maxCompletionTokens;
+    const modelMaxContext = profile.maxPromptTokens;
+
+    // Remaining capacity in model context window after prompt
+    const contextHeadroom = Math.max(256, modelMaxContext - estimatedPromptTokens);
+
+    // Per-request physical model cap
+    const perRequestCap = Math.min(modelMaxOutput, contextHeadroom);
+
+    // Clamp caller's requested output to the model's per-request cap
+    const desired = requestedMaxTokens !== undefined && requestedMaxTokens > 0
+      ? Math.min(requestedMaxTokens, perRequestCap)
+      : perRequestCap;
+
+    // Clamp to remaining cumulative generation budget (if provided)
+    const effectiveMaxTokens = remainingCumulativeBudget !== undefined
+      ? Math.max(0, Math.min(desired, remainingCumulativeBudget))
+      : desired;
+
+    return {
+      perRequestCap,
+      effectiveMaxTokens,
+      modelMaxOutput,
+      contextHeadroom,
     };
   }
 

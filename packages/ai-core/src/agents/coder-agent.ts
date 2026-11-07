@@ -1117,7 +1117,7 @@ CRITICAL TASK SCOPE & BOUNDARY RULES:
 2. ONLY generate or edit the files required for this specific task (${task.title}).
 3. NEVER regenerate untouched existing files from previous tasks (e.g. Navbar.tsx, App.tsx, routes.tsx) unless adding an import/route for this task.
 4. NEVER preemptively generate full files for future tasks.
-5. MODULARITY & TOKEN LIMIT: Keep components focused, clean, and under 300 lines of code. Avoid monolithic files that risk output token truncation.
+5. MODULARITY & TOKEN LIMIT: Keep components focused, clean, and strictly under 250-300 lines of code. Split complex page features into reusable sub-components in src/components/ rather than creating monolithic 500+ line files that risk output token truncation. Never output truncated code blocks.
 ══════════════════════════════════════════════════════════════════════════════
 `;
     }

@@ -94,16 +94,13 @@ export class FailoverProvider implements AIProvider {
       );
     }
 
-    // 2. Output token allowance check & clamping to remaining completion budget
+    // 2. Output token allowance check against cumulative completion budget
     const remainingCompletionTokens = guard.getRemainingCompletionTokens();
     if (remainingCompletionTokens <= 0) {
       throw new BudgetExceededError(
         `Maximum output token budget reached (remaining completion tokens: 0).`
       );
     }
-    const clampedMaxTokens = options?.maxTokens !== undefined
-      ? Math.min(options.maxTokens, remainingCompletionTokens)
-      : remainingCompletionTokens;
 
     let lastError: Error | null = null;
 
@@ -179,40 +176,52 @@ export class FailoverProvider implements AIProvider {
       while (providerAttempts < this.maxRetries) {
         try {
           providerAttempts++;
-          let activeOptions: ChatOptions = {
-            ...options,
-            maxTokens: clampedMaxTokens,
-          };
           const providerName = provider.name as keyof typeof Models;
+          let resolvedModel = options?.model;
 
-          if (!options?.model && providerName in Models) {
-            const resolvedModel = Models[providerName][targetedClassification] || Models[providerName].default;
+          if (!resolvedModel && providerName in Models) {
+            resolvedModel = Models[providerName][targetedClassification] || Models[providerName].default;
             console.log(
               `[FailoverProvider] Proactively routed agent "${options?.agentType || "default"}" (complexity: ${options?.complexity ?? "N/A"}) to model "${resolvedModel}" on provider "${provider.name}"`
             );
-            activeOptions = {
-              ...activeOptions,
-              model: resolvedModel,
-            };
+          } else if (!resolvedModel) {
+            resolvedModel = provider.name;
           }
 
+          // Calculate safe per-request model budget, strictly separating cumulative budget from per-model limits
+          const budgetCalc = TokenBudgetManager.calculatePerRequestBudget(
+            resolvedModel,
+            estimatedPromptTokens,
+            options?.maxTokens,
+            guard.getRemainingCompletionTokens()
+          );
+
+          let activeOptions: ChatOptions = {
+            ...options,
+            model: resolvedModel,
+            maxTokens: budgetCalc.effectiveMaxTokens,
+          };
+
           // Centralized fail-closed budget check before EVERY provider attempt (primary, retry, fallback)
-          guard.assertRequestAllowed(options?.agentType, estimatedPromptTokens);
+          guard.assertRequestAllowed(options?.agentType, estimatedPromptTokens, budgetCalc.effectiveMaxTokens);
           guard.recordRequest();
 
           console.log(
             `[FailoverProvider] Attempting chat with provider: ${provider.name} (attempt ${providerAttempts}/${this.maxRetries})`
           );
           const promptTokensBefore = guard.getStatus().promptTokens;
+          const completionTokensBefore = guard.getStatus().completionTokens;
           const result = await provider.chat(messages, activeOptions);
           FailoverProvider.healthStates.set(provider.name, "HEALTHY");
           this.activeProviderIndex = providerIndex;
 
           // Reconcile unmetered tokens if provider response metadata lacked token usage
           const promptTokensAfter = guard.getStatus().promptTokens;
-          if (promptTokensAfter === promptTokensBefore) {
+          const completionTokensAfter = guard.getStatus().completionTokens;
+          if (completionTokensAfter === completionTokensBefore) {
             const estimatedCompletionTokens = TokenBudgetManager.estimateTokens(result, true);
-            MetricsTracker.getInstance().logUnmeteredRequest(estimatedPromptTokens, estimatedCompletionTokens);
+            const promptDelta = promptTokensAfter === promptTokensBefore ? estimatedPromptTokens : 0;
+            MetricsTracker.getInstance().logUnmeteredRequest(promptDelta, estimatedCompletionTokens);
           }
 
           return result;

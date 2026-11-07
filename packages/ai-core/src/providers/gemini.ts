@@ -71,9 +71,9 @@ export class GeminiProvider implements AIProvider {
 
       const geminiFreeModels = [
         options?.model ?? Models.gemini.default,
+        "gemini-3.7-flash",
         "gemini-3.5-flash-lite",
         "gemini-3.6-flash",
-        "gemini-3.7-flash",
         "gemini-3.1-flash-lite",
       ];
       // Deduplicate
@@ -159,19 +159,30 @@ export class GeminiProvider implements AIProvider {
           if (finishReason === "MAX_TOKENS") {
             const text = candidateText;
             const lastEndIdx = text.lastIndexOf("===END===");
+            const lastFileIdx = text.lastIndexOf("===FILE:");
+
+            // If a valid completed file exists up to lastEndIdx (where lastEndIdx closes the last completed file)
             if (lastEndIdx !== -1) {
               const salvagedText = text.substring(0, lastEndIdx + 9);
-              console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars). Salvaging completed files up to last ===END=== (${salvagedText.length} chars)...`);
+              if (lastFileIdx > lastEndIdx) {
+                console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars). Salvaging completed preceding files (${salvagedText.length} chars) and dropping unclosed trailing file...`);
+              } else {
+                console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars). Salvaging completed files up to last ===END=== (${salvagedText.length} chars)...`);
+              }
               return salvagedText;
             }
+
             if (text.includes("===FILE:") && text.length > 200) {
               console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars) with unclosed ===FILE: block. Salvaging candidate files with closing tag...`);
               return text + "\n===END===";
             }
+
             if (text.length > 200) {
               console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars). Salvaging partial response...`);
               return text;
             }
+
+            // No completed file block exists in truncated output — reject to trigger failover/repair
             throw new ProviderError(
               "Gemini response was truncated (MAX_TOKENS) — output incomplete.",
               2

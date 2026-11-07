@@ -71,9 +71,13 @@ export class GenerationBudgetGuard {
   public static readonly DEFAULT_BENCHMARK_PROMPT_TOKENS = 75000;
   public static readonly DEFAULT_BENCHMARK_COMPLETION_TOKENS = 20000;
 
-  private maxRequests = 12;
-  private maxPromptTokens = 75000;
-  private maxCompletionTokens = 20000;
+  public static readonly DEFAULT_STANDARD_REQUESTS = 45;
+  public static readonly DEFAULT_STANDARD_PROMPT_TOKENS = 350000;
+  public static readonly DEFAULT_STANDARD_COMPLETION_TOKENS = 80000;
+
+  private maxRequests = GenerationBudgetGuard.DEFAULT_STANDARD_REQUESTS;
+  private maxPromptTokens = GenerationBudgetGuard.DEFAULT_STANDARD_PROMPT_TOKENS;
+  private maxCompletionTokens = GenerationBudgetGuard.DEFAULT_STANDARD_COMPLETION_TOKENS;
   private maxGenerations = 1;
   private maxRepairsPerStage = 2;
   private isBenchmarkMode = false;
@@ -110,9 +114,15 @@ export class GenerationBudgetGuard {
     if (config.maxGenerations !== undefined) this.maxGenerations = config.maxGenerations;
     if (config.maxRepairsPerStage !== undefined) this.maxRepairsPerStage = config.maxRepairsPerStage;
 
-    // Detect benchmark configuration profile (12 req, 75k input, 20k output)
-    if (this.maxRequests === 12 && this.maxPromptTokens === 75000) {
+    // Detect benchmark configuration profile if explicitly configured or requested
+    if (
+      (this.maxRequests === GenerationBudgetGuard.DEFAULT_BENCHMARK_REQUESTS &&
+        this.maxPromptTokens === GenerationBudgetGuard.DEFAULT_BENCHMARK_PROMPT_TOKENS) ||
+      process.env.AEGIS_BENCHMARK_MODE === "true"
+    ) {
       this.isBenchmarkMode = true;
+    } else {
+      this.isBenchmarkMode = false;
     }
   }
 
@@ -121,7 +131,7 @@ export class GenerationBudgetGuard {
    * freeing general-purpose generation from artificial micro-budget limits
    * while maintaining fail-closed boundary safety.
    */
-  public adaptiveConfigureForProject(scaleOrSpec?: string | { type?: string; features?: any[]; requiredRoutes?: any[]; lockedStack?: any }): void {
+  public adaptiveConfigureForProject(scaleOrSpec?: string | { type?: string; applicationType?: string; features?: any[]; requiredFeatures?: any[]; requiredRoutes?: any[]; routing?: any[]; dataModels?: any[]; requiredModels?: any[]; backend?: any; database?: any; lockedStack?: any }): void {
     // If the caller has explicitly set custom budget parameters, honor them without overwriting
     if (this.userExplicitConfig) {
       return;
@@ -137,18 +147,43 @@ export class GenerationBudgetGuard {
 
     let scale = "standard";
     if (typeof scaleOrSpec === "string") {
-      scale = scaleOrSpec;
+      const lower = scaleOrSpec.toLowerCase().trim();
+      if (lower === "light" || lower === "standard" || lower === "fullstack" || lower === "enterprise") {
+        scale = lower;
+      } else {
+        // Natural language prompt or description estimation
+        const isEnterprise = /\b(?:enterprise|microservices|multi-tenant|distributed|high-availability|federated|compliance-heavy)\b/i.test(lower);
+        const isFullstack = /\b(?:full-stack|fullstack|backend|database|prisma|sqlite|postgres|postgresql|express|rest\s*api|crud|api\s*endpoints|authentication|jwt|session|appointments?|booking|e-commerce|saas)\b/i.test(lower);
+        const isLight = /\b(?:static|portfolio|single-page|landing\s*page|simple\s*landing|brochure)\b/i.test(lower) && !isFullstack && !isEnterprise;
+
+        if (isEnterprise) scale = "enterprise";
+        else if (isFullstack) scale = "fullstack";
+        else if (isLight) scale = "light";
+        else scale = "standard";
+      }
     } else if (scaleOrSpec && typeof scaleOrSpec === "object") {
-      const isFullStack = scaleOrSpec.type === "fullstack" ||
-        Boolean(scaleOrSpec.lockedStack?.backend && scaleOrSpec.lockedStack?.backend !== "None") ||
-        Boolean((scaleOrSpec.features || []).length > 5) ||
-        Boolean((scaleOrSpec.requiredRoutes || []).length > 4);
+      const spec = scaleOrSpec as any;
+      const appType = String(spec.applicationType || spec.type || "").toUpperCase();
+      const hasBackend = Boolean(
+        (spec.backend?.framework && spec.backend.framework !== "None") ||
+        (spec.lockedStack?.backend && spec.lockedStack.backend !== "None")
+      );
+      const hasDb = Boolean(
+        (spec.database?.provider && spec.database.provider !== "None") ||
+        (spec.lockedStack?.database && spec.lockedStack.database !== "None") ||
+        (spec.dataModels && spec.dataModels.length > 0) ||
+        (spec.requiredModels && spec.requiredModels.length > 0)
+      );
+      const featureCount = (spec.features || spec.requiredFeatures || []).length;
+      const routeCount = (spec.routing || spec.requiredRoutes || []).length;
 
-      const isLight = scaleOrSpec.type === "static" ||
-        ((scaleOrSpec.features || []).length <= 2 && (scaleOrSpec.requiredRoutes || []).length <= 2);
+      const isEnterprise = appType.includes("ENTERPRISE") || featureCount >= 10 || routeCount >= 8;
+      const isFullStack = appType.includes("FULLSTACK") || hasBackend || hasDb || featureCount > 5 || routeCount > 4;
+      const isLight = appType.includes("STATIC") || (featureCount <= 2 && routeCount <= 2 && !hasBackend && !hasDb);
 
-      if (isLight) scale = "light";
+      if (isEnterprise) scale = "enterprise";
       else if (isFullStack) scale = "fullstack";
+      else if (isLight) scale = "light";
       else scale = "standard";
     }
 
@@ -170,9 +205,9 @@ export class GenerationBudgetGuard {
         break;
       case "standard":
       default:
-        this.maxRequests = 45;
-        this.maxPromptTokens = 350000;
-        this.maxCompletionTokens = 80000;
+        this.maxRequests = GenerationBudgetGuard.DEFAULT_STANDARD_REQUESTS;
+        this.maxPromptTokens = GenerationBudgetGuard.DEFAULT_STANDARD_PROMPT_TOKENS;
+        this.maxCompletionTokens = GenerationBudgetGuard.DEFAULT_STANDARD_COMPLETION_TOKENS;
         break;
     }
 
@@ -200,7 +235,10 @@ export class GenerationBudgetGuard {
     }
   }
 
-  public reset(): void {
+  /**
+   * Resets generation runtime counters without altering configuration or user explicit budget limits.
+   */
+  public resetUsageOnly(): void {
     this.requestCount = 0;
     this.promptTokens = 0;
     this.completionTokens = 0;
@@ -208,7 +246,15 @@ export class GenerationBudgetGuard {
     this.repairCountsByStage.clear();
     this.isHalted = false;
     this.haltReason = undefined;
+  }
+
+  public reset(): void {
+    this.resetUsageOnly();
     this.userExplicitConfig = false;
+    this.isBenchmarkMode = false;
+    this.maxRequests = GenerationBudgetGuard.DEFAULT_STANDARD_REQUESTS;
+    this.maxPromptTokens = GenerationBudgetGuard.DEFAULT_STANDARD_PROMPT_TOKENS;
+    this.maxCompletionTokens = GenerationBudgetGuard.DEFAULT_STANDARD_COMPLETION_TOKENS;
   }
 
   /**
@@ -216,14 +262,27 @@ export class GenerationBudgetGuard {
    * If another generation is currently in progress, it rejects immediately with
    * ConcurrentGenerationError to prevent budget contamination.
    */
-  public acquireGenerationLock(generationId: string | number = `gen_${Date.now()}`): string {
+  public acquireGenerationLock(generationId: string | number = `gen_${Date.now()}`, options?: { explicitBudget?: GenerationBudgetConfig }): string {
     const idStr = String(generationId);
     if (this.activeGenerationId && this.activeGenerationId !== idStr) {
       throw new ConcurrentGenerationError(
         `Another project generation [id: "${this.activeGenerationId}"] is currently active in this process. Overlapping concurrent generations are prohibited to prevent budget contamination and file corruption.`
       );
     }
-    this.reset();
+    this.resetUsageOnly();
+    if (options?.explicitBudget) {
+      this.configure(options.explicitBudget);
+    } else if (!this.userExplicitConfig) {
+      if (this.isBenchmarkMode) {
+        this.maxRequests = GenerationBudgetGuard.DEFAULT_BENCHMARK_REQUESTS;
+        this.maxPromptTokens = GenerationBudgetGuard.DEFAULT_BENCHMARK_PROMPT_TOKENS;
+        this.maxCompletionTokens = GenerationBudgetGuard.DEFAULT_BENCHMARK_COMPLETION_TOKENS;
+      } else {
+        this.maxRequests = GenerationBudgetGuard.DEFAULT_STANDARD_REQUESTS;
+        this.maxPromptTokens = GenerationBudgetGuard.DEFAULT_STANDARD_PROMPT_TOKENS;
+        this.maxCompletionTokens = GenerationBudgetGuard.DEFAULT_STANDARD_COMPLETION_TOKENS;
+      }
+    }
     this.activeGenerationId = idStr;
     this.activeGenerationStartTime = Date.now();
     this.recordGenerationStart();

@@ -1,4 +1,4 @@
-import { Orchestrator, ProviderFactory, GenerationBudgetGuard } from "@aegis/ai-core";
+import { Orchestrator, ProviderFactory, GenerationBudgetGuard, type GenerationBudgetConfig } from "@aegis/ai-core";
 import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
@@ -79,6 +79,7 @@ export class ExecutionEngine {
       onFrontendReview?: (summary: any) => Promise<boolean | string>;
       seed?: string;
       generationMode?: "creative" | "deterministic";
+      budget?: GenerationBudgetConfig;
     }
   ) {
     if (options?.seed !== undefined) {
@@ -117,7 +118,15 @@ export class ExecutionEngine {
     console.log("Analyzing request...");
 
     const genLockId = options?.seed || `gen_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    GenerationBudgetGuard.getInstance().acquireGenerationLock(genLockId);
+    const guard = GenerationBudgetGuard.getInstance();
+    guard.acquireGenerationLock(genLockId);
+
+    if (options?.budget) {
+      guard.configure(options.budget);
+    } else {
+      // Early adaptive budget estimation from initial prompt before architecture resolution
+      guard.adaptiveConfigureForProject(request);
+    }
 
     try {
       // ── Step 1: generateProject — resolves architecture contract ────────────

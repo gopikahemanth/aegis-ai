@@ -177,20 +177,22 @@ INTERACTION REQUIREMENT:
   A calculator must calculate. A configurator must configure.
   A filter must filter. A form must validate and show a result.
 
-TASK LIMIT: 4 to 6 focused tasks (maximum 6 tasks).
-  - Maximum 1 to 2 distinct page modules per task.
-  - NEVER combine 3 or more distinct domain features into a single task. Grouping too many pages into one task causes LLM output token truncation (MAX_TOKENS).
-  - For products with 4 to 8 feature views, plan 4 to 6 tasks so each feature module has dedicated focus and complete implementations.
+TASK DECOMPOSITION & ATOMIC WORKSPACE PRINCIPLE:
+  - Plan 4 to 8 focused tasks proportional to application scope (light apps: 4 tasks; full-stack apps: 6-8 tasks).
+  - Maximum 1 major page/workspace module per task.
+  - NEVER combine distinct major pages (e.g. Landing Page and Services Catalog) into a single task. The landing page alone contains rich marketing copy, hero sections, and testimonials; combining it with catalog search and filtering leads directly to LLM output token exhaustion (MAX_TOKENS).
+  - Break complex views into modular sub-components in src/components/ rather than single monolithic page files.
   - Do NOT omit requested features merely to reduce tasks.
   - Each task must produce complete, production-grade, fully interactive components.
 
 TASK ORDERING:
   1. Product shell + navigation + routing scaffold (Navbar, routes, layout, and clean page stubs for feature views. DO NOT generate full pages for all routes in Task 1; feature pages belong in subsequent tasks)
-  2. Primary workspace / hero experience (most important primary feature view)
-  3. Secondary core domain features (1-2 related feature views)
-  4. Additional domain features (1-2 related feature views, if applicable)
-  5. Final domain features (1-2 related feature views, if applicable)
-  6. Responsive layout + interaction polish + empty/error states
+  2. Primary workspace / Landing Hero experience (Landing page marketing hero, value propositions, and testimonials)
+  3. Domain catalog / explorer workspace (Searchable and filterable service/product catalog, filters, pricing)
+  4. Interactive booking / transaction workspace (Availability calendar, time slot grid, multi-step booking form)
+  5. User dashboard & customer management (Upcoming/past bookings, status, cancellations)
+  6. Administration workspace & analytics (Management controls, CRUD actions, business metrics)
+  7. Responsive layout + interaction polish + empty/error states
 
 Each task MUST contain:
   - id: number (unique, starting at 1)

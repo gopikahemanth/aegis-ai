@@ -96,6 +96,8 @@ export * from "./validation/production-readiness-gate.js";
 export * from "./validation/final-success-gate.js";
 export * from "./validation/feature-reality-validator.js";
 export * from "./validation/capability-completeness-invariant.js";
+export * from "./validation/prisma-ast-reconciler.js";
+export * from "./validation/client-api-contract-reconciler.js";
 export * from "./research/research-agent.js";
 export * from "./research/reference-research-types.js";
 export * from "./research/reference-source-selector.js";

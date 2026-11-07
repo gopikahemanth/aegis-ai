@@ -7,6 +7,7 @@ import { DomainContaminationDetector } from "../governance/domain-contamination-
 import { ArchitectureResolver } from "../governance/architecture-resolver.js";
 import { DeterministicProjectFixer } from "./deterministic-project-fixer.js";
 import { PrismaAstReconciler } from "./prisma-ast-reconciler.js";
+import { ClientApiContractReconciler } from "./client-api-contract-reconciler.js";
 
 export interface ProjectGraphNode {
   path: string;
@@ -17,7 +18,7 @@ export interface ProjectGraphNode {
 }
 
 export interface GraphIssue {
-  type: "MISSING_MODULE" | "EXPORT_MISMATCH" | "CASE_MISMATCH" | "DUPLICATE_MODULE" | "INVALID_IMPORT" | "PRISMA_SCHEMA_MISMATCH" | "BOUNDARY_VIOLATION" | "UNAUTHORIZED_FILE" | "ORPHAN_FILE";
+  type: "MISSING_MODULE" | "EXPORT_MISMATCH" | "CASE_MISMATCH" | "DUPLICATE_MODULE" | "INVALID_IMPORT" | "PRISMA_SCHEMA_MISMATCH" | "BOUNDARY_VIOLATION" | "UNAUTHORIZED_FILE" | "ORPHAN_FILE" | "CLIENT_API_MISMATCH";
   sourceFile: string;
   importPath?: string;
   line?: number;
@@ -633,6 +634,26 @@ export class ProjectGraphEngine {
       throw new Error(
         `GENERATION_REJECTED_GRAPH_PRODUCT_SYNTHESIS: ProjectGraphEngine synthesized ${this.createdProductImplementations} product implementations. Only Coder may create product UI and behavior.`
       );
+    }
+
+    // Validate Frontend-to-Backend Client API contract consistency
+    if (existsSync(join(projectRoot, "server")) && existsSync(join(projectRoot, "src"))) {
+      try {
+        const clientReport = ClientApiContractReconciler.reconcileProject(projectRoot);
+        for (const diag of clientReport.diagnostics) {
+          remainingIssues.push({
+            type: "CLIENT_API_MISMATCH",
+            sourceFile: diag.frontendFile,
+            line: diag.line,
+            column: diag.column,
+            message: `CLIENT_API_MISMATCH (${diag.type}): ${diag.message}`,
+            suggestedFix: diag.suggestedFix,
+            severity: diag.severity === "ERROR" ? "ERROR" : "WARNING",
+          });
+        }
+      } catch (err: any) {
+        console.warn(`[ProjectGraphEngine] ClientApiContractReconciler check skipped: ${err.message}`);
+      }
     }
 
     return {

@@ -688,9 +688,11 @@ export class ProductExperiencePlanManager {
 
   public static load(outputDirectory: string): ProductExperiencePlan | null {
     const planPath = join(outputDirectory, ".aegis", "product-experience-plan.json");
-    if (!existsSync(planPath)) return null;
+    const legacyPath = join(outputDirectory, ".aegis", "locked-experience-plan.json");
+    const targetPath = existsSync(planPath) ? planPath : (existsSync(legacyPath) ? legacyPath : null);
+    if (!targetPath) return null;
     try {
-      return JSON.parse(readFileSync(planPath, "utf8"));
+      return JSON.parse(readFileSync(targetPath, "utf8"));
     } catch {
       return null;
     }

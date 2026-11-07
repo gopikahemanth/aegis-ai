@@ -18,6 +18,7 @@ import { ArchitectureResolver } from "../governance/architecture-resolver.js";
 import { DomainContractManager } from "../governance/domain-contract.js";
 import { CanonicalPlanManager } from "../planning/canonical-generation-plan.js";
 import { TokenBudgetManager } from "../context/token-budget.js";
+import { ImportReconciler } from "../validation/import-reconciler.js";
 
 export class CoderAgent extends BaseAgent {
   readonly name = "Coder Agent";
@@ -255,7 +256,7 @@ export default siteContent;`;
       }
       if (plan) {
         experiencePattern = plan.experiencePattern || "custom";
-        const capabilitiesList = plan.requiredCapabilities.map((c: any) => 
+        const capabilitiesList = (plan.requiredCapabilities || []).map((c: any) =>
           `  • ${c.name} (id: ${c.id})
       - Required Vocabulary (must appear visibly in headers, labels, descriptions): ${(c.evidenceVocabulary || []).join(", ")}
       - Required Interactive Controls: ${(c.controlsRequired || []).join(", ")}
@@ -331,6 +332,23 @@ A standard SaaS/marketing template ('Hero -> 3 Cards -> 3 Cards -> CTA -> Footer
 ══════════════════════════════════════════════════════════════════════════════` : "";
 
         const identity = plan.experienceIdentity;
+        const relevantIdentityRules = isShellTask
+          ? []
+          : (identity?.pageCompositionLanguage?.pageCompositionRules || []).filter((r: any) =>
+              taskOwnedRoutes.length === 0 || taskOwnedRoutes.includes(r.route)
+            );
+        const identityRulesToRender = relevantIdentityRules.length > 0
+          ? relevantIdentityRules
+          : (identity?.pageCompositionLanguage?.pageCompositionRules || []).slice(0, 1);
+        const compositionRulesText = isShellTask
+          ? "  • Shell Scaffold: Layout shell, header navigation, and routing outlets for all declared routes."
+          : identityRulesToRender.map((r: any) => `  • Route "${r.route}" (${r.pageRole}):
+    - Structure: ${r.dominantStructure}
+    - Focal Element: ${r.primaryFocalElement}
+    - Banned Patterns: ${(r.bannedPatterns || []).join(", ")}
+    - Allowed Components: ${(r.allowedComponents || []).join(", ")}
+    - Layout: ${r.layoutDescription}`).join("\n\n");
+
         const identityContext = identity ? `
 ══════════════════════════════════════════════════════════════════════════════
 WEBSITE EXPERIENCE IDENTITY (AUTHORITATIVE SYSTEM ARCHITECTURE)
@@ -359,12 +377,7 @@ DO NOT FALL BACK TO:
   [Heading] -> [Search input + Filter buttons] -> [Grid of 4-6 Cards with 'Read More / Detail'] -> [Modal]
 This pattern is STRICTLY FORBIDDEN on non-database/non-CRUD websites.
 Instead, compose each route according to its assigned architectural role:
-${(identity.pageCompositionLanguage.pageCompositionRules || []).map((r: any) => `  • Route "${r.route}" (${r.pageRole}):
-    - Structure: ${r.dominantStructure}
-    - Focal Element: ${r.primaryFocalElement}
-    - Banned Patterns: ${(r.bannedPatterns || []).join(", ")}
-    - Allowed Components: ${(r.allowedComponents || []).join(", ")}
-    - Layout: ${r.layoutDescription}`).join("\n\n")}
+${compositionRulesText}
 ══════════════════════════════════════════════════════════════════════════════` : "";
 
         productExperiencePlanContext = `
@@ -414,10 +427,14 @@ All project routes: ${(plan.pagePlans || []).map((p: any) => `${p.route} (${p.pa
 Assigned task route(s): ${taskOwnedRoutes.join(", ")}
 
 AUTHORITATIVE PAGE EXPERIENCE PLAN FOR ASSIGNED ROUTE(S):
-${(((plan.pagePlans || []).filter((p: any) => taskOwnedRoutes.includes(p.route))).length > 0
-    ? (plan.pagePlans || []).filter((p: any) => taskOwnedRoutes.includes(p.route))
-    : (matchedPagePlans.length > 0 ? matchedPagePlans : (plan.pagePlans || []).slice(0, 1))
-  ).map((p: any) => `
+${isShellTask
+    ? `• GLOBAL APPLICATION SHELL & SCAFFOLD:
+  - Focus: Navigation Header, Route Scaffold, Shared Layout Shell
+  - Declared project routes: ${(plan.pagePlans || []).map((p: any) => p.route).join(", ")}`
+    : (((plan.pagePlans || []).filter((p: any) => taskOwnedRoutes.includes(p.route))).length > 0
+        ? (plan.pagePlans || []).filter((p: any) => taskOwnedRoutes.includes(p.route))
+        : (matchedPagePlans.length > 0 ? matchedPagePlans : (plan.pagePlans || []).slice(0, 1))
+      ).map((p: any) => `
 • ROUTE: "${p.route}" (${p.pageRole})
   - Purpose: ${p.purpose}
   - Experience Intent: ${p.experienceIntent}
@@ -609,29 +626,18 @@ ${navGuidance}
 - Keep output concise, modular, and focused on layout and navigation.`;
     } else if (experiencePattern === "immersive-3d" || plan?.experienceCapability?.real3dRequired) {
       const spatial = plan?.compositionGraph?.spatialPlan;
-      const isPerfume = promptLower.includes("perfume") || promptLower.includes("bottle") || promptLower.includes("luxury") || promptLower.includes("fragrance");
-      const isSpace = promptLower.includes("space") || promptLower.includes("planet") || promptLower.includes("museum") || promptLower.includes("solar");
-      const isSneaker = promptLower.includes("sneaker") || promptLower.includes("shoe") || promptLower.includes("apparel") || promptLower.includes("fashion");
-      const isFantasy = promptLower.includes("kazzoo") || promptLower.includes("fantasy") || promptLower.includes("character") || promptLower.includes("claymation") || promptLower.includes("magic");
-
-      const sceneType = spatial?.sceneType || (isPerfume ? "PRODUCT_REVEAL" : isSpace ? "SPATIAL_EXHIBITION" : isSneaker ? "PRODUCT_STAGE" : isFantasy ? "WORLD_EXPLORATION" : "SPATIAL_STAGE");
-      const focalObj = spatial?.focalObject || (isPerfume ? "Architectural crystal flacon bottle with liquid refraction" : isSpace ? "Interactive solar orrery with orbiting planetary bodies" : isSneaker ? "Deconstructed kinetic performance sneaker with dynamic materials" : isFantasy ? "Whimsical claymation character on floating island terrain" : "Interactive 3D focal subject");
-      const lighting = spatial?.lightingModel || (isPerfume ? "Studio rim lighting with caustic reflections and soft volumetric ambient" : isSpace ? "Deep void directional sun light with ambient starlight fill" : isSneaker ? "Cyberpunk neon key and fill lights with dynamic specular highlights" : isFantasy ? "Warm golden hour sunlight with soft diffuse ambient" : "Balanced three-point studio lighting");
+      const sceneType = spatial?.sceneType || "SPATIAL_STAGE";
+      const focalObj = spatial?.focalObject || `${brandName || "Domain"} interactive 3D focal subject`;
+      const lighting = spatial?.lightingModel || "Balanced three-point studio lighting with subtle ambient fill";
       const cameraDesc = spatial?.cameraStrategy || "Interactive pointer orbit with smooth damping";
       const scenesList = spatial?.scenes && spatial.scenes.length > 0
         ? spatial.scenes.map((s: any, i: number) => `      * Scene ${i + 1} ("${s.name}"): ${s.description} [Cam: ${s.cameraPosition.join(", ")}]`).join("\n")
-        : (isPerfume
-          ? `      * Scene 1 ("Bottle Reveal"): Hero crystal bottle with gentle turntable rotation\n      * Scene 2 ("Ingredient Atmosphere"): Botanical particles floating into view\n      * Scene 3 ("Fragrance Notes"): Interactive accord breakdown on click`
-          : isSpace
-          ? `      * Scene 1 ("Solar System Overview"): Full orbital system in perspective\n      * Scene 2 ("Planetary Focus"): Camera flies in close to selected celestial body\n      * Scene 3 ("Observation Deck"): Cockpit HUD view with stellar metrics`
-          : isSneaker
-          ? `      * Scene 1 ("Product Turntable"): 360-degree floating sneaker presentation\n      * Scene 2 ("Material Exploded"): Deconstructed components separate spatially\n      * Scene 3 ("Colorway Showcase"): Dynamic material color transition`
-          : `      * Scene 1 ("World Stage"): Procedural focal scene with interactive 3D elements\n      * Scene 2 ("Exploration"): Camera transition to interactive waypoints\n      * Scene 3 ("Atmosphere"): Ambient visual effects responding to user input`);
+        : `      * Scene 1 ("Hero Stage"): Procedural focal scene with interactive 3D elements\n      * Scene 2 ("Detailed Inspection"): Close perspective view on focal subject\n      * Scene 3 ("Interactive State"): Reactive elements responding to user interaction`;
 
       const isRootTask = matchedPagePlans.some((p: any) => p.route === "/") || taskTitle.toLowerCase().includes("world") || taskTitle.toLowerCase().includes("stage");
-      const isCharacterTask = matchedPagePlans.some((p: any) => p.route.includes("character")) || taskTitle.toLowerCase().includes("character");
-      const isQuestTask = matchedPagePlans.some((p: any) => p.route.includes("quest")) || taskTitle.toLowerCase().includes("quest");
-      const isSoundTask = matchedPagePlans.some((p: any) => p.route.includes("sound")) || taskTitle.toLowerCase().includes("sound");
+      const isCharacterTask = matchedPagePlans.some((p: any) => p.route.includes("character") || (p.requiredCapabilities || []).some((c: string) => c.includes("character") || c.includes("avatar"))) || taskTitle.toLowerCase().includes("character") || taskTitle.toLowerCase().includes("avatar");
+      const isQuestTask = matchedPagePlans.some((p: any) => p.route.includes("quest") || p.route.includes("map") || (p.requiredCapabilities || []).some((c: string) => c.includes("map") || c.includes("quest") || c.includes("trail"))) || taskTitle.toLowerCase().includes("quest") || taskTitle.toLowerCase().includes("map");
+      const isSoundTask = matchedPagePlans.some((p: any) => p.route.includes("sound") || p.route.includes("audio") || (p.requiredCapabilities || []).some((c: string) => c.includes("sound") || c.includes("audio"))) || taskTitle.toLowerCase().includes("sound") || taskTitle.toLowerCase().includes("audio");
       const isJourneyTask =
         matchedPagePlans.some((p: any) =>
           p.route.includes("journey") || p.route.includes("chronicle") ||
@@ -659,7 +665,7 @@ Focal Subject: ${focalObj}
      * Camera: const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
      * Renderer: Wrap WebGLRenderer instantiation in a try/catch with fallback so headless environments without GPU hardware render safely: let renderer = null; try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); } catch (e) { console.warn("WebGL fallback", e); }. In animation loop, guard: if (renderer) renderer.render(scene, camera); In cleanup, guard: if (renderer) renderer.dispose();
      * Lighting: ${lighting}
-     * Meshes: Procedural 3D geometry representing ${focalObj}. Group Three.js primitives (lathes, extrusions, cylinders, spheres, toruses, custom groups) with tactile MeshStandardMaterial / MeshPhysicalMaterial (metalness, roughness, transmission for glass/water).
+     * Meshes: Procedural 3D geometry representing ${focalObj}. Group Three.js primitives with tactile MeshStandardMaterial / MeshPhysicalMaterial.
      * Render Loop: Active requestAnimationFrame loop rotating objects, animating particles/floating motion, and responding to pointer/mouse movement or scroll progress.
      * Spatial Progression / Scenes:
 ${scenesList}
@@ -667,7 +673,6 @@ ${scenesList}
    - INTERACTIVE HUD OVERLAY (Layered directly over 3D canvas):
      * Navigation: Minimal HUD overlay with brand wordmark and scene controls (NO generic card grids floating over the canvas).
      * Interactive Controls: View switcher pills or focal inspection buttons that orbit the camera or animate scene objects when clicked.
-     * Audio / Atmosphere: Ambient toggle or visual feedback element.
 
 2. RUNTIME EXPERIENCE CONTRACT INSTRUMENTATION:
    The component MUST expose window.__AEGIS_EXPERIENCE__ on mount:
@@ -691,37 +696,37 @@ CRITICAL INVARIANTS:
 This view is a CHARACTER-FOCUSED INTERACTIVE ENCOUNTER — NOT a directory of cards, NOT a search page!
 STRICTLY FORBIDDEN:
 - NO search bars (<input placeholder="Search...">) or searchQuery state
-- NO filter buttons (e.g. ['all', 'unlocked', 'dozing']) or statusFilter state
+- NO filter buttons or statusFilter state
 - NO 3-column card grid (<div className="card">)
-- NO "+ Add Character" form or CRUD modals
+- NO "+ Add" CRUD form or modals
 
 MANDATORY COMPOSITION:
 1. Two-Column Interactive Character Stage:
-   - Left Column: Character Avatar Plinth / Preview Stage with interactive expressions (idle, speaking, celebrating) using animated SVG avatars or tactile Three.js canvas plinth.
+   - Left Column: Character Avatar Plinth / Preview Stage with interactive expressions using animated SVG avatars or tactile canvas.
    - Right Column: Interactive Character Console:
-     * Character switcher dock (Muffy, Rony, Pip, Bramblebark) with active selection state.
-     * Handcrafted personality dossier (voice tone, favorite snack, quirky backstory, bio).
-     * Interactive Voice Clip Simulator: Play button triggering Web Audio sound effect / oscillator tone + confetti animation ({ particleCount: 25, spread: 60 }).
+     * Character switcher dock with active selection state.
+     * Personality dossier (voice tone, attributes, background lore).
+     * Interactive Voice / Dialogue Simulator: Action triggering audio chime / reaction state.
      * Branching dialogue prompt choices with reactive conversational responses.
 2. Root container MUST have: data-workspace="character_stage"`;
       } else if (isQuestTask) {
-        capabilityInstructions = `MANDATORY SPATIAL QUEST TRAIL MAP COMPOSITION:
+        capabilityInstructions = `MANDATORY SPATIAL MAP & ROUTE PLOTTER COMPOSITION:
 ================================================================================
 This view is an INTERACTIVE SPATIAL MAP & ROUTE PLOTTER — NOT a table, NOT a card grid!
 STRICTLY FORBIDDEN:
 - NO search inputs or filter button rows
 - NO 3-column card directories
-- NO "+ Add Quest" modal or CRUD form
+- NO "+ Add" modal or CRUD form
 
 MANDATORY COMPOSITION:
 1. Spatial Map Canvas / Terrain Viewport:
-   - Interactive SVG or 2D canvas cartographic map showing floating island landmarks (Pastel Mushroom Circle, Bridge of Tortoise, Whispering Fern).
-   - Clickable landmark nodes/markers with coordinates, hover tooltips, and connection paths/trails drawn between them.
+   - Interactive SVG or 2D canvas cartographic map showing domain landmarks or waypoints.
+   - Clickable landmark nodes/markers with coordinates, hover tooltips, and connection paths/trails.
    - Landmark selection state updating the active waypoint inspect panel.
 2. Waypoint Dossier & Progress Ledger (Slide-out or side panel):
-   - Selected landmark details, quest challenge lore, difficulty badge, and reward info.
-   - Interactive "Embark" or "Complete Waypoint" action with canvas-confetti celebration.
-   - Journey completion progress bar computed from unlocked nodes.
+   - Selected landmark details, challenges, difficulty badge, and rewards.
+   - Interactive "Embark" or "Complete Waypoint" action with celebratory feedback.
+   - Progress bar computed from unlocked nodes.
 3. Root container MUST have: data-workspace="spatial_quest_map"`;
       } else if (isSoundTask) {
         capabilityInstructions = `MANDATORY ATMOSPHERIC SOUNDBOARD & AUDIO CONSOLE COMPOSITION:
@@ -733,22 +738,21 @@ STRICTLY FORBIDDEN:
 
 MANDATORY COMPOSITION:
 1. Audio Synthesizer Matrix & Resonance Pads:
-   - Interactive sound pads triggering real Web Audio API sounds (AudioContext with oscillators for gentle chimes, wind flutes, bubble pops, or ambient drone chords).
+   - Interactive sound pads triggering real Web Audio API sounds (AudioContext with oscillators).
    - Active playing visual state: waveform / frequency bar pulses when audio triggers.
-   - Ambient loop toggle (rain, meadow breeze, mystical chimes) with master volume and tempo sliders.
+   - Ambient loop toggle with master volume and tempo sliders.
 2. Root container MUST have: data-workspace="tactile_soundboard"`;
       } else if (isJourneyTask) {
-        // Derive chapter context from matched page plan for domain-agnostic scroll story
         const scrollPlan = matchedPagePlans.find((p: any) =>
           (p.requiredCapabilities || []).some((cap: string) =>
             cap === "scroll-chapter-controller" || cap === "scroll-driven-storytelling"
           ) || p.route.includes("journey") || p.route.includes("chronicle")
         ) || matchedPagePlans[0];
-        const scrollPageRole = scrollPlan?.pageRole || "Narrative Scroll Experience";
+        const scrollPurpose = scrollPlan?.purpose || "Immersive narrative storytelling experience";
         const scrollFocalEl = scrollPlan?.focalElement || "Cinematic chapter progression";
         const scrollInteractions = (scrollPlan?.interaction?.primary || []).slice(0, 3).join("; ") || "Scroll progression, chapter navigation, interactive details";
-        const scrollPurpose = scrollPlan?.purpose || "Immersive narrative storytelling experience";
         const scrollWorkspace = (scrollPlan?.pageRole || "narrative_scroll").toLowerCase().replace(/[^a-z0-9]/g, "_");
+
         capabilityInstructions = `MANDATORY SCROLL-DRIVEN NARRATIVE CHRONICLE COMPOSITION:
 ================================================================================
 This view is a NARRATIVE SCROLL STORYTELLING EXPERIENCE — NOT a card directory, NOT a search page!
@@ -761,19 +765,17 @@ STRICTLY FORBIDDEN:
 - NO "+Add" CRUD forms or newTitle/newContent state
 
 MANDATORY COMPOSITION:
-1. Continuous Immersive Scroll Chronicle derived from the domain above:
-   - Scroll-driven chapter progression that makes sense for this domain (derive 4 meaningful chapter titles from the route name, brand, and page role — e.g. for fashion: "I. Origins of the House", "II. Textile Provenance", "III. Atelier Craft", "IV. The Final Form").
-   - Each chapter section: large cinematic headline, rich editorial prose from siteContent, full-bleed or split imagery area, and an interactive detail/action element.
-   - scrollProgress state variable tracking scroll position via onScroll or IntersectionObserver.
-   - Interactive chapter navigation: floating pill nav or side-rail chapter markers that highlight the active chapter and allow smooth-scroll jump.
-   - Domain-appropriate interactive focal element per chapter (e.g. for fashion: material swatch selector; for astronomy: orbital detail panel; for architecture: floor plan toggle).
-2. REQUIRED scroll-story DOM markers (CRITICAL for quality gate):
+1. Continuous Immersive Scroll Chronicle derived from the domain:
+   - Scroll-driven chapter progression (4 meaningful chapter sections).
+   - Each chapter section: large cinematic headline, editorial prose from siteContent, visual showcase, and an interactive action element.
+   - scrollProgress state variable tracking scroll position.
+   - Floating pill nav or chapter indicators allowing smooth jump.
+2. REQUIRED scroll-story DOM markers:
    - data-scene="scene-N" on each chapter section container
    - data-chapter="chapter-N" on each chapter section container
    - data-scroll-progress="true" on the root scroll container
    - Root container MUST expose: (window as any).__AEGIS_EXPERIENCE__ = { experienceType: "SCROLL_STORY", renderingMode: "canvas2d", ready: true, scrollDriven: true, scrollProgress: 0, chaptersLoaded: 4 };
-3. Root container MUST have: data-workspace="${scrollWorkspace}"
-4. Import and use domain content from siteContent — DO NOT invent generic lorem ipsum prose.`;
+3. Root container MUST have: data-workspace="${scrollWorkspace}"`;
       } else {
         capabilityInstructions = `MANDATORY BESPOKE EXPERIENTIAL ROUTE COMPOSITION:
 ================================================================================
@@ -784,85 +786,109 @@ STRICTLY FORBIDDEN:
 - Root container MUST have: data-workspace="${(matchedPagePlans[0]?.pageRole || 'bespoke_stage').toLowerCase().replace(/[^a-z0-9]/g, '_')}"`;
       }
     } else if (experiencePattern === "storefront-commerce") {
-      const isBakeryOrFood = promptLower.includes("bakery") || promptLower.includes("bread") || promptLower.includes("pastry") || promptLower.includes("cake") || promptLower.includes("food") || promptLower.includes("cafe");
-      const hasCustomCake = (plan?.requiredCapabilities || []).some((c: any) => c.id === "custom-cake-builder") || promptLower.includes("cake");
-      const hasPickup = (plan?.requiredCapabilities || []).some((c: any) => c.id === "pickup-scheduler") || promptLower.includes("pickup");
-      const hasSubscription = (plan?.requiredCapabilities || []).some((c: any) => c.id === "bread-subscription") || promptLower.includes("subscription");
-      const hasCarousel = (plan?.requiredCapabilities || []).some((c: any) => c.id === "hero-carousel") || promptLower.includes("carousel");
-      const hasDeals = (plan?.requiredCapabilities || []).some((c: any) => c.id === "lightning-deals") || promptLower.includes("deal");
-      const hasPincode = (plan?.requiredCapabilities || []).some((c: any) => c.id === "pincode-checker") || promptLower.includes("pincode");
+      const domainCaps = plan?.requiredCapabilities || [];
+      const customConfigurator = domainCaps.find((c: any) => (c.id || "").includes("builder") || (c.id || "").includes("configurator") || (c.id || "").includes("custom"));
+      const schedulerCap = domainCaps.find((c: any) => (c.id || "").includes("scheduler") || (c.id || "").includes("pickup") || (c.id || "").includes("booking"));
+      const subscriptionCap = domainCaps.find((c: any) => (c.id || "").includes("subscription") || (c.id || "").includes("membership"));
+      const dealsCap = domainCaps.find((c: any) => (c.id || "").includes("deal") || (c.id || "").includes("discount") || (c.id || "").includes("sale"));
+      const locationCap = domainCaps.find((c: any) => (c.id || "").includes("pincode") || (c.id || "").includes("zip") || (c.id || "").includes("location"));
 
-      capabilityInstructions = `MANDATORY STOREFRONT COMPOSITION (RETAIL / FOOD / MARKETPLACE):
-=========================================================
+      capabilityInstructions = `MANDATORY STOREFRONT COMPOSITION (CONSUMER RETAIL / COMMERCE / MARKETPLACE):
+================================================================================
 This product is a CONSUMER STOREFRONT — NOT a tabbed console, NOT a CRM table, NOT an admin dashboard.
 The root route ('/') MUST be a single continuous-scroll page composed of the following sections IN ORDER:
 
 1. STICKY TOP NAVBAR:
-   - Brand mark (left), category filter pills (center: e.g. ${isBakeryOrFood ? "Sourdough, Viennoiserie, Rustic Loaves, Custom Cakes" : "All, Featured, New Arrivals, Best Sellers"}), search bar, cart icon with live item badge, and account avatar.
+   - Brand mark (left), category filter pills, search bar, cart icon with live item badge, and account avatar.
    - Cart icon click MUST open a slide-out cart drawer showing: item list (name, qty, price), subtotal sum, and primary "Proceed to Checkout" button.
    - Implement: const [cartItems, setCartItems] = useState<any[]>([]);
    - Implement: const [cartOpen, setCartOpen] = useState(false);
 
 2. HERO PRESENTATION:
-   - Full-width visually rich hero banner with headline ("${isBakeryOrFood ? "Handcrafted Daily with Slow-Fermented Grains" : "Curated Essentials Delivered Daily"}"), editorial subtitle, and a primary CTA button that scrolls down to the catalog.
-   ${hasCarousel ? "- Implement an auto-playing hero banner carousel with next/prev controls and slide indicators." : ""}
+   - Full-width visually rich hero banner with authentic domain headline ("${tagline || 'Curated Essentials Delivered Daily'}"), editorial subtitle, and a primary CTA button that scrolls down to the catalog.
 
 3. MAIN CATALOG / MENU GRID:
-   - Responsive grid of 8–16 authentic domain item cards with: high-res image, item title, description/ingredients, price, and primary "Add to Bag" / "Add to Cart" button.
+   - Responsive grid of 8–16 authentic domain item cards with: high-res image, item title, description/specs, price, and primary "Add to Bag" / "Add to Cart" button.
    - "Add to Bag" / "Add to Cart" MUST increment/append the item to cartItems and open or update the cart badge.
    - Implement: const addToCart = (item: any) => setCartItems(prev => ...);
-   ${isBakeryOrFood ? "- Include badges like 'Freshly Baked at 6 AM', '24h Cold Ferment', 'Organic Flour', or 'Limited Loaves'." : ""}
+   - Include authentic domain badges (e.g. 'Featured', 'Bestseller', 'Staff Pick', 'Limited').
 
-${hasCustomCake ? `4. CUSTOM CAKE ORDERING CONFIGURATOR:
-   - An interactive cake builder section: customer selects cake size (6", 8", 10", 2-tier), sponge flavor (Vanilla Bean, Dark Chocolate, Spiced Carrot), filling/frosting (Swiss Buttercream, Espresso Cream, Raspberry Coulis), and optional personalized inscription input.
+${customConfigurator ? `4. INTERACTIVE PRODUCT CONFIGURATOR (${customConfigurator.name}):
+   - An interactive configurator section: customer selects options (size/tier, materials/flavors, accessories/customizations).
    - Live price estimator that updates dynamically with choices.
-   - "Order Custom Cake" button that adds the customized cake configuration directly to the cart bag.
-` : ""}${hasPickup ? `5. FRESH BAKE PICKUP SCHEDULER:
-   - Inline pickup slot reservation widget: customer selects pickup date and morning/afternoon slot (e.g. 8:00 AM - 10:00 AM, 11:00 AM - 1:00 PM).
-` : ""}${hasSubscription ? `6. RECURRING BREAD SUBSCRIPTION CLUB:
-   - Tiered weekly subscription cards (e.g. 'Weekend Boule Club', 'Artisan Baker's Box') with 'Subscribe' buttons.
-` : ""}${hasDeals ? `7. TODAY'S FLASH DEALS & TIMER:
+   - "Add Customized Item" button that adds the configured item directly to the cart bag.
+` : ""}${schedulerCap ? `5. INTERACTIVE APPOINTMENT / PICKUP SCHEDULER (${schedulerCap.name}):
+   - Inline slot reservation widget: customer selects date and morning/afternoon time slot.
+` : ""}${subscriptionCap ? `6. RECURRING SUBSCRIPTION / MEMBERSHIP TIERS (${subscriptionCap.name}):
+   - Tiered weekly/monthly subscription cards with 'Subscribe' action buttons.
+` : ""}${dealsCap ? `7. SPECIAL OFFERS & COUNTDOWN DEALS (${dealsCap.name}):
    - Countdown timer with discounted items strip.
-` : ""}${hasPincode ? `8. DELIVERY PINCODE CHECKER:
-   - Compact inline widget to check postal delivery availability.
+` : ""}${locationCap ? `8. DELIVERY / AVAILABILITY CHECKER (${locationCap.name}):
+   - Compact inline widget to check postal/location delivery availability.
 ` : ""}
 9. SLIDE-OUT CART DRAWER (conditionally rendered when cartOpen === true):
    - Right-anchored sliding panel showing each item, quantity modifiers (−/+), line prices, subtotal calculation, and "Proceed to Checkout" button.
-   - Clicking backdrop or close button closes the drawer (setCartOpen(false)).
+   - Clicking backdrop or close button closes drawer (setCartOpen(false)).
 
 CRITICAL CONSUMER STOREFRONT RULES:
 - ZERO TABS as page layout containers. The entire customer journey is continuous scroll down route '/'.
 - ZERO ADMIN CONTROLS on customer routes: Do NOT render '+ Add Menu Item', '+ Add Product', or 'Manage Records' buttons. This is a public storefront for customers, NOT an internal operations dashboard.
-- AUTHENTIC SECTION HEADINGS: Do NOT print internal capability IDs or metadata in headings (NEVER render 'Product Catalog Grid', 'Delivery Pincode Availability Checker', or 'Artisan Bakery Management Suite'). Use authentic customer copy like "From the Hearth", "Daily Fresh Bakes", "Design Your Cake".
+- AUTHENTIC SECTION HEADINGS: Do NOT print internal capability IDs or metadata in headings. Use authentic customer copy.
 - ROOT CONTAINER ATTRIBUTE: The root page container MUST have: data-workspace="retail_storefront"`;
-    } else if (experiencePattern === "hospitality-portal") {
-      capabilityInstructions = `MANDATORY HOSPITALITY PORTAL COMPOSITION (LUXURY RESORT / HOTEL):
-=============================================================
-This product is a LUXURY CONSUMER HOSPITALITY PORTAL — NOT a tabbed management console, NOT an admin panel.
-The root route ('/') MUST be a continuous-scroll luxury resort experience combining:
+    } else if (experiencePattern === "hospitality-portal" || experiencePattern === "booking-platform") {
+      capabilityInstructions = `MANDATORY HOSPITALITY & RESERVATION PORTAL COMPOSITION:
+================================================================================
+This product is a CONSUMER HOSPITALITY / BOOKING PORTAL — NOT a tabbed management console, NOT an admin panel.
+The root route ('/') MUST be a continuous-scroll guest experience combining:
 
 1. LUXURY HERO BANNER:
-   - High-impact editorial photography, luxury serif typography, brand wordmark, tagline ("Where Pristine Coastline Meets Unrivaled Serenity").
-   - Integrated "Check Availability" bar: Arrival Date picker, Departure Date picker, Guest count selector, and "Check Rates" button.
-2. VILLA SUITES & ACCOMMODATIONS SHOWCASE:
-   - Curated grid/carousel of luxury villas/suites (e.g. Overwater Villa, Oceanfront Pavilion, Cliffside Estate).
-   - Each card: high-res photo, guest capacity, bedroom count, private pool/ocean view badge, nightly rate ($/night), and "Reserve Villa" button.
-   - "Reserve Villa" click opens an interactive booking drawer or reservation modal with dates and guest options.
-3. CULINARY EXCELLENCE & DINING PREVIEW:
-   - Curated preview of the resort's fine dining venues (e.g. L'Étoile de Mer, Cliffside Grill) with cuisine style, opening hours, signature dishes, and "Reserve Table" modal.
-4. SANCTUARY & EXPERIENCES:
-   - Curated showcase of spa rituals, marine excursions, and private beach dining.
-5. INTERACTIVE RESERVATION DRAWER / MODAL:
-   - Summary of selected villa, check-in/out dates, guest count, price calculation, and "Confirm Reservation" CTA.
+   - High-impact visual presentation, brand wordmark, tagline ("${tagline || 'Experience Exceptional Hospitality'}").
+   - Integrated "Check Availability" bar: Arrival Date picker, Departure Date picker, Guest/Party count selector, and "Check Rates" button.
+2. ACCOMMODATIONS & SPACES SHOWCASE:
+   - Curated grid/carousel of rooms, villas, suites, or bookable spaces.
+   - Each card: high-res photo, guest capacity, amenities badge, rate per night/slot, and "Reserve" button.
+   - "Reserve" click opens an interactive booking drawer or reservation modal with dates and guest options.
+3. AMENITIES & EXPERIENCES PREVIEW:
+   - Curated showcase of dining, wellness, or curated excursions with schedule and details.
+4. INTERACTIVE RESERVATION DRAWER / MODAL:
+   - Summary of selected accommodation/experience, dates, guest count, live price calculation, and "Confirm Reservation" CTA.
 
 CRITICAL HOSPITALITY PORTAL RULES:
-- The root route ('/') MUST mount this full resort portal (HomePage.tsx or ResortPortalPage.tsx), NEVER an isolated single-restaurant menu page.
+- The root route ('/') MUST mount this full experience portal, NEVER an isolated single-item page.
 - ZERO admin management buttons (+ Add Villa, Manage Inventory).
-- ZERO tab-consoles as the page root. Stacks sections elegantly down the page with smooth scrolling.
+- ZERO tab-consoles as page root. Stacks sections elegantly with smooth scrolling.
 - ROOT CONTAINER ATTRIBUTE: The root page container MUST have: data-workspace="hospitality_portal"`;
-    } else if (plan?.requiredCapabilities && plan.requiredCapabilities.length > 0 && [
-      "operations-dashboard", "realtime-console", "configurator-workspace", "team-workspace", "workspace-editor"
-    ].includes(experiencePattern)) {
+    } else if (experiencePattern === "personal-tracker") {
+      capabilityInstructions = `MANDATORY PERSONAL TRACKER & JOURNAL PAGE COMPOSITION:
+================================================================================
+This is a PERSONAL TRACKER product — NOT a database admin panel, NOT a CRM, NOT an ops dashboard.
+The page MUST feel warm, personal, and human — like a physical journal or personal companion come to life.
+
+STRICTLY FORBIDDEN PATTERNS:
+- NEVER render a row of 4 corporate KPI cards with fake percentages
+- NEVER render a data table with columns (Name, Status, Date, Actions)
+- NEVER render "Active Service View" or "Service Status: Online"
+- NEVER use hardcoded stone-*/indigo-* classes; use CSS variable tokens or design system palette
+
+MANDATORY COMPOSITION:
+1. PAGE HEADER (personal and warm):
+   - Date-aware greeting: const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+   - Render: <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Today · {today}</p>
+   - Natural phrase headline derived from domain activity
+   - Motivational streak badge inline: "🔥 7-day streak" or "📖 12 entries this month"
+
+2. PRIMARY INTERACTIVE TRACKER ZONE:
+   - Domain-authentic tracker tool: interactive input controls, selectors, buttons, and progress incrementers.
+   - State changes MUST update the UI visibly in real time.
+
+3. TIMELINE / JOURNAL FEED:
+   - Vertical feed of 3–5 seeded past entries styled as personal cards with date header, tags, and notes.
+
+4. VISUAL PROGRESS & METRICS:
+   - Current streak, progress indicators, inline SVG bar chart or completion ring.
+
+ROOT CONTAINER ATTRIBUTE: data-workspace="personal_tracker"`;
+    } else if (plan?.requiredCapabilities && plan.requiredCapabilities.length > 0) {
       const isPrimaryWorkspaceTask = taskTitle.includes("workspace") && (taskTitle.includes("primary") || taskTitle.includes("dashboard") || task.id === 1);
       const taskCaps = isPrimaryWorkspaceTask
         ? plan.requiredCapabilities
@@ -872,7 +898,7 @@ CRITICAL HOSPITALITY PORTAL RULES:
             const words = [...capName.split(/\s+/), ...capId.split(/[-_]+/)].filter((w: string) => w.length > 3);
             return words.some((w: string) => taskTitle.includes(w) || taskDesc.includes(w));
           });
-      const capsToInject = taskCaps.length > 0 ? taskCaps : plan.requiredCapabilities.slice(0, 1);
+      const capsToInject = taskCaps.length > 0 ? taskCaps : plan.requiredCapabilities.slice(0, 2);
 
       capabilityInstructions = `MANDATORY CAPABILITY PANELS STRUCTURE:
 ======================================
@@ -890,160 +916,53 @@ ${capsToInject.map((cap: any, idx: number) => {
 Mount this capability into the feature view with working local state (useState), active parameters, and visible results.
 The feature root element MUST have: data-workspace="configurator_workspace"
 ZERO placeholder text. ZERO "Coming soon". ZERO empty results on initial load — prepopulate with default values.`;
-    } else if (experiencePattern === "personal-tracker" && (promptLower.includes("plant") || promptLower.includes("botanical") || promptLower.includes("houseplant") || promptLower.includes("foliage"))) {
-      capabilityInstructions = `MANDATORY BOTANICAL COMPANION APP COMPOSITION (WARM, PLAYFUL, HAND-ILLUSTRATED):
+    } else if (experiencePattern === "showcase-landing" || experiencePattern === "portfolio") {
+      capabilityInstructions = `MANDATORY SHOWCASE / PORTFOLIO PAGE COMPOSITION:
 ================================================================================
-This is a COZY, WARM, PLAYFUL HOUSEPLANT COMPANION — NOT a corporate SaaS admin dashboard!
-STRICTLY FORBIDDEN PATTERNS (violation = immediate rejection):
-- STRICTLY FORBID rows of 4 uniform <MetricCard> stat cards with fake percentages (e.g. "100% On Schedule", "100% Balanced", "100% Success", "100% Detailed"). This is an administrative SaaS anti-pattern.
-- NO gray rectangle placeholder boxes with camera icons for growth photos! You MUST render real high-resolution botanical photography using Unsplash images!
-- NO corporate tables, NO raw data grids, NO "Plant Dashboard Count" or "Verified [Feature]" robotic titles.
+MUST be editorial, visual-first, brand-quality. NOT an admin panel.
+STRICTLY FORBIDDEN: Tabs, data tables, "Active Service View", hardcoded classes.
 
-COLOR PALETTE & BUTTON TOKENS:
-- Dominant CTA Buttons: MUST use Terracotta clay styling: className="btn-primary" or "bg-[#c4734a] hover:bg-[#a85c37] text-white font-medium px-4 py-2.5 rounded-2xl shadow-sm transition"
-- Secondary / Nature Accents: Soft Sage Green: text-[#5b7f6e], bg-[#5b7f6e]/15, border-[#5b7f6e]/25
-- Subtle Highlights / Badges: Dusty Rose: bg-[#d4a373]/20 text-[#8c5836] or bg-[#c97a7e]/15 text-[#9e4347]
-- Surfaces: Warm Ivory (bg-[#f9f6f1]) with soft white cards (bg-white) and rounded-3xl / rounded-2xl corners
+1. FULL-WIDTH HERO: Large typographic statement, brand tagline, primary CTA
+2. WORK / PROJECT GRID: Masonry or responsive grid of showcase cards with preview, title, tags, and action
+3. ABOUT SECTION: Two-column layout (statement left, bio and credentials right)
+4. CONTACT / INQUIRY CTA: Interactive contact form with input fields and submit action
+ROOT CONTAINER: data-workspace="showcase_landing"`;
+    } else if (experiencePattern === "booking-flow") {
+      capabilityInstructions = `MANDATORY BOOKING / SCHEDULING PAGE COMPOSITION:
+================================================================================
+MUST be step-oriented, clear, transactional. NOT an admin table.
 
-DISTINCT SPECIALIZED PAGE LAYOUTS (EACH PAGE MUST HAVE ITS OWN UNIQUE COMPOSITION):
-
-1. PLANTS / SANCTUARY SHELF (Root / Home Page):
-   - Cozy Plant Shelf view: Interactive plant cards showing botanical photo, plant nickname ("Monty the Monstera"), species ("Monstera Deliciosa"), current soil moisture gauge (e.g. 75% moisture bar), sunlight pill ("Bright Indirect"), days since watered, and a prominent Terracotta "Water Today" button.
-   - Quick filter pills: "All Plants", "Thirsty Today", "Ficus", "Tropicals", "Low Light".
-   - Warm streak banner: "🌿 12-day mindful care streak · All green companions thriving".
-
-2. WATERING TRACKER & HYDRATION SCHEDULE:
-   - Interactive watering calendar & room-grouped checklist (Living Room, Balcony, Bedroom).
-   - Sliders or moisture meter dials for soil saturation.
-   - One-click "Give Drink" / "Water & Record" action that increments hydration streak and updates next due date.
-   - Next watering schedule countdown ("Due in 2 days", "Thirsty today!").
-
-3. SUNLIGHT NEEDS & EXPOSURE ZONES:
-   - Interactive room window exposure map: "East Window (Bright Morning Glow)", "South Balcony (Direct Sun)", "North Hallway (Low Light Sanctuary)".
-   - Plant assignment cards under each light zone with lux recommendations and advice on leaf scorch prevention.
-   - Interactive slider to test light hours per season.
-
-4. GROWTH PHOTO JOURNAL & MILESTONES:
-   - MUST RENDER REAL BOTANICAL PHOTOS (NO empty camera icons!):
-     Monstera: "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?auto=format&fit=crop&w=800&q=80"
-     Fiddle Leaf Fig: "https://images.unsplash.com/photo-1597055181300-e3633a917c9c?auto=format&fit=crop&w=800&q=80"
-     Pothos: "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80"
-     Snake Plant: "https://images.unsplash.com/photo-1593482892290-f54927ae1bf6?auto=format&fit=crop&w=800&q=80"
-     Calathea: "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=800&q=80"
-     ZZ Plant: "https://images.unsplash.com/photo-1632207691143-643e2a9a9361?auto=format&fit=crop&w=800&q=80"
-   - Milestone badges: "🌿 New Fenestration Unfurled", "🌱 Spring Foliage Flush", "🪴 Repotted into Terracotta".
-   - Clickable photo card opening full-size inspect modal with date, plant nickname, and care notes.
-
-5. BOTANICAL NOTES & CARE RECIPES:
-   - Cozy notebook cards with hand-crafted feel: Soil mix recipes ("60% Potting Soil + 20% Perlite + 20% Orchid Bark"), humidity tips, fertilizer schedules, and seasonal winter dormancy notes.
-   - Interactive "Add Care Note" drawer.
-
-ROOT CONTAINER ATTRIBUTE: data-workspace="personal_tracker"`;
-    } else if (experiencePattern === "personal-tracker") {
-      capabilityInstructions = `MANDATORY PERSONAL TRACKER PAGE COMPOSITION:
-=============================================
-This is a PERSONAL TRACKER product — NOT a database admin panel, NOT a CRM, NOT an ops dashboard.
-The page MUST feel warm, personal, and human — like a physical journal or planner come to life.
-
-STRICTLY FORBIDDEN PATTERNS (violation = immediate rejection):
-- NEVER render a row of 4 KPI cards or MetricCards with fake percentages
-- NEVER render a data table with columns (Name, Status, Date, Actions)
-- NEVER render "Active Service View" as a badge or heading
-- NEVER render "Manage and interact with [feature] services and features."
-- NEVER render "Submit your inquiry or update configuration"
-- NEVER render "Search resources..." as placeholder text
-- NEVER render "Service Status: Online", "Sync Mode: Automatic", "Availability: Online"
-- NEVER render a 2-col grid (form left + service status card right) — that is a dead generic template
-- NEVER use hardcoded Tailwind color classes: stone-50, stone-100, stone-200, stone-900, indigo-600, indigo-700
-  USE ONLY CSS variable tokens: className="bg-[var(--color-background)]" or style={{background:'var(--color-surface)'}}
-
-MANDATORY COMPOSITION for every personal-tracker feature page:
-
-1. PAGE HEADER (personal and warm — NOT a breadcrumb):
-   - Date-aware greeting: const today = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})
-   - Render: <p className="text-sm" style={{color:'var(--color-text-muted)'}}>Today · {today}</p>
-   - Feature headline as a NATURAL PHRASE (e.g. "How are you feeling today?" NOT "Select Mood And Texture")
-   - Motivational streak badge inline: "🔥 7-day streak" or "📖 32 entries this month"
-
-2. PRIMARY INTERACTIVE ZONE (the REAL feature tool):
-   - For MOOD/EMOTION pages: emoji-grid mood picker (😴 Tired, 😊 Good, 🌟 Amazing etc.) with labels
-     const [selectedMood, setSelectedMood] = useState<string>("")
-   - For JOURNAL/WRITING pages: styled textarea with character count, category tag selector, Save button
-     const [entryText, setEntryText] = useState<string>("")
-   - For HABIT/STREAK pages: visual habit cards with checkoff buttons + streak fire emojis
-     const [habits, setHabits] = useState([{id:1,name:"Morning Pages",done:false,streak:12},...])
-   - For STICKER/DECORATION pages: sticker category panel (🌸 Nature, ✨ Sparkle, 🎨 Art) with preview
-     const [selectedStickers, setSelectedStickers] = useState<string[]>([])
-   - For TAG/FILTER pages: pill-tag selector that filters entries below in real time
-     const [activeTag, setActiveTag] = useState<string>("all")
-   - ALL interactions MUST work — state changes MUST update the UI visibly
-
-3. ENTRY TIMELINE / HISTORY FEED:
-   - Vertical feed of 3–5 seeded past entries styled as personal journal cards:
-     - Date header ("Yesterday", "Monday, Sep 23")
-     - Mood emoji or habit summary + written excerpt
-     - Sticker decorations or tag pills
-     - Expandable "Read more" toggle (useState)
-   - Filter tabs: "All", "This Week", "This Month"
-   - const [entries, setEntries] = useState([{id:1,date:"Yesterday",mood:"😊",text:"...",tags:["grateful"]},...]
-
-4. MINI STATS / PROGRESS (sidebar or bottom strip):
-   - Current streak, monthly entry count, top mood/tag
-   - Inline SVG bar chart or emoji frequency display (no external chart library)
-
-ROOT CONTAINER ATTRIBUTE: data-workspace="personal_tracker"`;
+1. SERVICE SELECTION: Grid of bookable items with name, duration, price, "Select" button
+   const [selectedService, setSelectedService] = useState<any>(null)
+2. DATE & TIME PICKER: Calendar grid + time slot selector
+   const [selectedDate, setSelectedDate] = useState(new Date())
+   const [selectedSlot, setSelectedSlot] = useState<string>("")
+3. BOOKING SUMMARY: Sticky panel with selected service, date, time, price, "Confirm" CTA
+4. SUCCESS STATE: On submit, styled confirmation card with reference ID
+   const [confirmed, setConfirmed] = useState(false)
+ROOT CONTAINER: data-workspace="booking_flow"`;
     } else if (experiencePattern === "catalog-browser" || experiencePattern === "content-feed") {
       capabilityInstructions = `MANDATORY CATALOG / DISCOVERY PAGE COMPOSITION:
-================================================
+================================================================================
 This is a CATALOG or DISCOVERY product — consumer-grade browsing experience.
-MUST feel like a magazine or curated marketplace — NOT an admin table.
-
-STRICTLY FORBIDDEN: "Active Service View", data tables, stone-*/indigo-* hardcoded classes.
-USE ONLY: var(--color-primary), var(--color-surface), var(--color-text-primary) CSS tokens.
+MUST feel like a curated marketplace or directory — NOT an admin table.
 
 1. SEARCH & FILTER BAR: Full-width search input + horizontal filter pill row (category tags)
    const [searchQuery, setSearchQuery] = useState<string>("")
    const [activeFilter, setActiveFilter] = useState<string>("all")
 
-2. FEATURED ROW: 1–2 featured items in wide editorial cards (full-color accent background, white text)
+2. FEATURED ROW: 1–2 featured items in wide editorial cards
 
-3. CATALOG GRID: Responsive CSS grid (auto-fill, minmax 260px, 1fr) of 8–12 item cards:
-   - Each card: colored thumbnail div with icon, title, description snippet, tag badge, CTA button
-   - Hover: transform: translateY(-4px), border-color: var(--color-primary)
-   const [items, setItems] = useState([{id:1,title:"...",category:"...",description:"...",featured:false},...]
+3. CATALOG GRID: Responsive CSS grid of 8–12 authentic item cards:
+   - Each card: thumbnail div with icon, title, description snippet, tag badge, action button
+   const [items, setItems] = useState<any[]>([])
 
 4. FILTER LOGIC:
    const filtered = items.filter(i => activeFilter === "all" || i.category === activeFilter)
                          .filter(i => i.title.toLowerCase().includes(searchQuery.toLowerCase()))
 
-5. LOAD MORE button styled with var(--color-primary)
+5. LOAD MORE or PAGINATION button
 ROOT CONTAINER: data-workspace="catalog_browser"`;
-    } else if (experiencePattern === "showcase-landing") {
-      capabilityInstructions = `MANDATORY SHOWCASE / PORTFOLIO PAGE COMPOSITION:
-=================================================
-MUST be editorial, visual-first, brand-quality. NOT an admin panel.
-STRICTLY FORBIDDEN: Tabs, data tables, "Active Service View", stone-*/indigo-* hardcoded classes.
-
-1. FULL-WIDTH HERO: Large typographic statement (h1 clamp 3rem 8vw), brand tagline, primary CTA
-2. WORK GRID: Masonry or 2-col grid of project cards — large visual area (colored gradient div), title, category, CTA
-3. ABOUT SECTION: Two-column (large pull-quote left, bio right)
-4. CONTACT CTA: Email input + send button
-ROOT CONTAINER: data-workspace="showcase_landing"`;
-    } else if (experiencePattern === "booking-flow") {
-      capabilityInstructions = `MANDATORY BOOKING / SCHEDULING PAGE COMPOSITION:
-=================================================
-MUST be step-oriented, clear, transactional. NOT an admin table.
-STRICTLY FORBIDDEN: "Active Service View", hardcoded stone-*/indigo-* classes.
-
-1. SERVICE SELECTION: Grid of bookable items with name, duration, price, "Select" button
-   const [selectedService, setSelectedService] = useState<any>(null)
-2. DATE & TIME PICKER: Calendar grid built with inline React date logic + time slot grid
-   const [selectedDate, setSelectedDate] = useState(new Date())
-   const [selectedSlot, setSelectedSlot] = useState<string>("")
-3. BOOKING SUMMARY: Sticky panel — selected service, date, time, price, "Confirm" CTA
-4. SUCCESS STATE: On submit, styled confirmation card with booking reference
-   const [confirmed, setConfirmed] = useState(false)
-ROOT CONTAINER: data-workspace="booking_flow"`;
     } else {
       capabilityInstructions = `MANDATORY BESPOKE VIEW COMPOSITION — ANTI-CONVERGENCE MANDATE:
 =====================================================
@@ -1080,7 +999,7 @@ ${isFrontendStage ? `   - FRONTEND-ONLY TASK: You are implementing Task #${task.
    - NEVER preemptively generate full files for future tasks.
 
 2. AUTHORITATIVE DOMAIN CONTENT CONTRACT (MANDATORY IMPORT — HARD GATE):
-   - Brand Name: "${brandName || 'FinTrack Pro'}" | Tagline: "${tagline || 'Treasury Operations'}"
+   - Brand Name: "${brandName || (plan?.experienceIdentity?.brandIdentity?.name) || 'Application'}" | Tagline: "${tagline || (plan?.experienceIdentity?.brandIdentity?.essence) || 'Domain Experience'}"
    - In Navigation (Navbar.tsx / Header.tsx) and primary pages, you MUST import:
      import siteContent from "../../content/site-content"; // or relative path
    - Render the authentic brand info:
@@ -1137,10 +1056,12 @@ ${pageMetricGuidance}
     const basePromptText = `${request}\n${CANONICAL_CODER_CONTEXT_HEADER}`;
     const baseTokensEstimated = TokenBudgetManager.estimateTokens(basePromptText, true);
 
-    // Compute remaining token headroom for candidate files, bounded by the 12,000 regression ceiling
+    // Compute remaining token headroom for candidate files, bounded by the active model ceiling
+    const { PromptBudgetInstrumenter } = await import("../governance/prompt-budget-instrumenter.js");
+    const activeCeiling = PromptBudgetInstrumenter.getActiveCeiling(this.provider.name);
     const targetFileBudget = Math.max(
       400,
-      12000 - baseTokensEstimated - 2000
+      activeCeiling - baseTokensEstimated - 2000
     );
     const availableFileTokens = Math.min(
       profile.maxFileTokens,
@@ -1202,7 +1123,6 @@ CRITICAL TASK SCOPE & BOUNDARY RULES:
     }
 
     // ── Prompt Budget Instrumentation & Hard Regression Ceiling Enforcement ───
-    const { PromptBudgetInstrumenter } = await import("../governance/prompt-budget-instrumenter.js");
     const { PromptManager } = await import("../prompts/prompt-manager.js");
     const sysPrompt = new PromptManager().getCoderPrompt();
     const instrumentReport = PromptBudgetInstrumenter.measurePrompt(
@@ -1216,14 +1136,14 @@ CRITICAL TASK SCOPE & BOUNDARY RULES:
       }
     );
 
-    console.log(`[PromptBudgetInstrumenter] Task #${task.id} Prompt Tokens: ${instrumentReport.totalEstimatedPromptTokens.toLocaleString()} (Target: < 8,500, Ceiling: 12,000) | Sys: ${instrumentReport.systemPromptTokens}, User: ${instrumentReport.userPromptTokens}, Files: ${instrumentReport.fileContextTokens}`);
+    console.log(`[PromptBudgetInstrumenter] Task #${task.id} Prompt Tokens: ${instrumentReport.totalEstimatedPromptTokens.toLocaleString()} (Target: < 8,500, Ceiling: ${activeCeiling.toLocaleString()}) | Sys: ${instrumentReport.systemPromptTokens}, User: ${instrumentReport.userPromptTokens}, Files: ${instrumentReport.fileContextTokens}`);
     if (instrumentReport.duplicateContentDetected) {
       console.warn(`[PromptBudgetInstrumenter] ⚠️ Duplicate content detected in Task #${task.id}:`, instrumentReport.duplicateDetails);
     }
 
-    // HARD GATE: Enforce 12,000-token maximum per implementation request.
+    // HARD GATE: Enforce dynamic model-aware ceiling per implementation request.
     // Rejects oversized prompts BEFORE any provider dispatch occurs.
-    PromptBudgetInstrumenter.assertWithinCeiling(instrumentReport);
+    PromptBudgetInstrumenter.assertWithinCeiling(instrumentReport, this.provider.name);
 
     const response =
       await this.generator.generate(
@@ -1260,6 +1180,9 @@ CRITICAL TASK SCOPE & BOUNDARY RULES:
 
 const stubDetector = new StubDetector();
 for (const file of files) {
+  // Reconcile missing Lucide icons, React hooks, and dual exports deterministically
+  file.content = ImportReconciler.reconcile(file.content, file.path);
+
   // Strip harmless comments containing 'placeholder' or 'todo' so JSX comments don't falsely crash the entire process
   file.content = file.content
     .replace(/\{\/\*[\s\S]*?(placeholder|todo)[\s\S]*?\*\/\}/gi, "")

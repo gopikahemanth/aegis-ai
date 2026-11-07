@@ -1,5 +1,6 @@
 import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
 import { ASTSafeTransformer } from "../governance/ast-safe-transformer.js";
+import { ImportReconciler } from "./import-reconciler.js";
 
 export interface ValidationIssue {
   type: "TRUNCATION" | "SYNTAX" | "UNBALANCED" | "MISSING_EXPORT";
@@ -9,6 +10,7 @@ export interface ValidationIssue {
 export interface FileValidationResult {
   valid: boolean;
   issues: ValidationIssue[];
+  reconciledContent?: string;
 }
 
 /**
@@ -19,6 +21,18 @@ export interface FileValidationResult {
  * BEFORE committing candidate files to the project.
  */
 export class GeneratedFileValidator {
+  /**
+   * Reconciles missing imports/exports and validates file completeness.
+   */
+  public static reconcileAndValidate(content: string, path: string): FileValidationResult {
+    const reconciled = ImportReconciler.reconcile(content, path);
+    const result = this.validateCompleteness(reconciled, path);
+    return {
+      ...result,
+      reconciledContent: reconciled,
+    };
+  }
+
   public static validateCompleteness(content: string, path: string): FileValidationResult {
     const issues: ValidationIssue[] = [];
 

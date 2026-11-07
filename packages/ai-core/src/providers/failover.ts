@@ -8,6 +8,7 @@ import {
 } from "../governance/generation-budget-guard.js";
 import { TokenBudgetManager } from "../context/token-budget.js";
 import { MetricsTracker } from "./metrics-tracker.js";
+import { PromptBudgetInstrumenter } from "../governance/prompt-budget-instrumenter.js";
 
 export type ProviderHealthState =
   | "HEALTHY"
@@ -84,10 +85,12 @@ export class FailoverProvider implements AIProvider {
     const totalPromptText = messages.map(m => m.content).join("\n");
     const estimatedPromptTokens = TokenBudgetManager.estimateTokens(totalPromptText, true);
 
-    // Pre-dispatch per-request prompt ceiling check for coder implementation tasks (hard regression gate at provider boundary)
-    if (options?.agentType === "coder" && estimatedPromptTokens > 12000) {
+    // Pre-dispatch per-request prompt ceiling check for coder implementation tasks (model-aware & benchmark-compatible)
+    const activeProviderName = this.providers[this.activeProviderIndex % this.providers.length]?.name;
+    const activeCeiling = PromptBudgetInstrumenter.getActiveCeiling(activeProviderName);
+    if (options?.agentType === "coder" && estimatedPromptTokens > activeCeiling) {
       throw new BudgetExceededError(
-        `Coder implementation prompt (${estimatedPromptTokens.toLocaleString()} tokens) exceeds regression ceiling of 12,000 tokens at provider boundary!`
+        `Coder implementation prompt (${estimatedPromptTokens.toLocaleString()} tokens) exceeds model context capacity ceiling of ${activeCeiling.toLocaleString()} tokens at provider boundary!`
       );
     }
 

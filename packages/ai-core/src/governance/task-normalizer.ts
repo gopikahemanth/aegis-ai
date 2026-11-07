@@ -244,9 +244,11 @@ export class TaskNormalizer {
   }
 
   /**
-   * Deduplicates tasks by semantic role/category and caps at max 6 canonical tasks.
+   * Deduplicates tasks by semantic role/category and optionally caps at maxTasks canonical tasks.
+   * In general-purpose generation, maxTasks is omitted so task count is derived purely from requirements
+   * and dependencies without arbitrary product limits.
    */
-  public static deduplicateAndCapTasks(tasks: Task[], maxTasks = 6): Task[] {
+  public static deduplicateAndCapTasks(tasks: Task[], maxTasks?: number): Task[] {
     const seenRoles = new Map<string, Task>();
 
     for (const task of tasks) {
@@ -260,7 +262,8 @@ export class TaskNormalizer {
       } else if (/database|schema|prisma\s+model|data\s+model/i.test(titleOnly)) {
         semanticRole = "DB_SCHEMA";
       } else if (/backend|server|express|infrastructure/i.test(titleOnly)) {
-        semanticRole = "BACKEND_INFRASTRUCTURE";
+        const slug = titleOnly.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+        semanticRole = `BACKEND_INFRASTRUCTURE:${slug}`;
       } else if (/domain\s+api|feature\s+api|business\s+logic|domain\s+route|controller|logic\s+&\s+controllers/i.test(titleOnly)) {
         semanticRole = "DOMAIN_API";
       } else if (/analysis|engine|parser|pdf|keyword|matcher|scorer/i.test(titleOnly)) {
@@ -286,7 +289,8 @@ export class TaskNormalizer {
         } else if (/domain\s+api|feature\s+api|business\s+logic|domain\s+route/i.test(combined)) {
           semanticRole = "DOMAIN_API";
         } else if (/backend|server|express|infrastructure|middleware/i.test(combined)) {
-          semanticRole = "BACKEND_INFRASTRUCTURE";
+          const slug = titleOnly.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+          semanticRole = `BACKEND_INFRASTRUCTURE:${slug}`;
         } else if (/analysis|engine|parser|pdf|keyword|matcher|scorer/i.test(combined)) {
           semanticRole = "ANALYSIS_ENGINE";
         } else if (/domain\s+feature|feature\s+ui|feature\s+integration|domain\s+ui|feature\s+view/i.test(combined)) {
@@ -317,8 +321,8 @@ export class TaskNormalizer {
     const taskList = Array.from(seenRoles.values());
     let deduplicated: Task[] = [];
 
-    // If task count exceeds maxTasks, merge overflow tasks into the last task instead of silently dropping them
-    if (taskList.length <= maxTasks) {
+    // If maxTasks is defined and task count exceeds maxTasks, merge overflow tasks into the last task
+    if (!maxTasks || taskList.length <= maxTasks) {
       deduplicated = taskList;
     } else {
       deduplicated = taskList.slice(0, maxTasks - 1);

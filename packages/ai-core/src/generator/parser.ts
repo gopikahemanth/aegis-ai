@@ -137,6 +137,10 @@ export class Parser {
     // Post-Process Normalization: Ensure React component/JSX files ending in .ts are normalized to .tsx
     for (const f of files) {
       if (f.path.endsWith(".ts") && !f.path.endsWith(".d.ts")) {
+        // Backend, server, and prisma files are never React JSX components
+        if (f.path.startsWith("server/") || f.path.startsWith("prisma/") || f.path.startsWith("backend/")) {
+          continue;
+        }
         const isComponentDir = /\/(components|views|pages|ui|theme|context|providers)\//i.test(f.path) ||
                                /(provider|context|component|card|page|button|navbar|app|routes)\.ts$/i.test(f.path) ||
                                f.path.endsWith("App.ts");

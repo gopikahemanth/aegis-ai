@@ -33,14 +33,18 @@ build(
     const execution =
       this.sections.executionPlan(plan);
 
-    const architecture =
-      this.sections.architecture(
+    const architecture = options?.skipFileContext
+      ? `Architecture Summary: Frontend=${spec.frontend || "React-Vite"}, Backend=${spec.backend || "Express"}, Database=${spec.database || "PostgreSQL"}, Language=${spec.language || "TypeScript"}`
+      : this.sections.architecture(
         JSON.stringify(spec, null, 2),
       );
-      const architectureDetails =
-  this.sections.architecturePlan(
-    architecturePlan,
-  );
+
+    const architectureDetails = options?.skipFileContext
+      ? ""
+      : this.sections.architecturePlan(
+        architecturePlan,
+      );
+
     const activeTask = plan && plan.length > 0 ? plan[0] : null;
     const taskContext = activeTask ? `${activeTask.title} ${(activeTask as any).description || ""}` : "";
     const fullContext = options?.skipFileContext
@@ -70,7 +74,7 @@ ${intelEngine.formatAsMarkdown(index, taskScope)}
       console.warn(`[WorkspaceIntelligence] Warning: Scanning failed: ${e.message}`);
     }
 
-    const archLockBlock = `
+    const archLockBlock = options?.skipFileContext ? "" : `
 ═══════════════════════════════════════════════════════
 ARCHITECTURE LOCK (IMMUTABLE — DO NOT DEVIATE OR SUBSTITUTE)
 ═══════════════════════════════════════════════════════

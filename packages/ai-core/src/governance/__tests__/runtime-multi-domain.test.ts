@@ -156,6 +156,18 @@ describe("AEGIS Phase 8 — Multi-Domain Runtime Execution, Persistence & Failur
         browserResult: { passed: true, renderedElementsCount: 8, routesChecked: ["/"] } as any,
         apiReport,
         realityResult: { passed: true, violationCount: 0 } as any,
+        testReport: {
+          status: "PASS",
+          totalTests: 2,
+          passedTests: 2,
+          failedTests: 0,
+          durationMs: 50,
+        },
+        runtimeReport: {
+          passed: true,
+          status: "SUCCESS",
+          evidenceSummary: "Gym management API roundtrip and browser workflows verified",
+        },
       });
 
       expect(gateResult.success).toBe(true);

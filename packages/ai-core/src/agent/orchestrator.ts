@@ -1150,8 +1150,12 @@ export class Orchestrator {
       tasks = DomainModelGuard.filterTasks(tasks, requiredDomainModels);
     }
 
-    // Deduplicate and cap initial tasks to max 6 canonical tasks
-    tasks = TaskNormalizer.deduplicateAndCapTasks(tasks, 6);
+    // Deduplicate tasks: cap at 6 in benchmark mode; in general-purpose generation, allow task count to be determined by requirements without arbitrary ceilings
+    const isBenchmark = GenerationBudgetGuard.isBenchmarkMode();
+    const userMaxTasks = (specification as any)?.maxTasks;
+    const taskCap = isBenchmark ? 6 : (userMaxTasks !== undefined ? userMaxTasks : undefined);
+
+    tasks = TaskNormalizer.deduplicateAndCapTasks(tasks, taskCap);
 
     // ── HARD TASK CONTRACT GATE — Reject forbidden tech, regenerate up to 2x (bounded budget) ──
     {
@@ -1183,13 +1187,13 @@ export class Orchestrator {
             // Regenerate the FULL task plan (REPLACE, NOT APPEND)
             const rawNewTasks = await this.plannerAgent.execute(regenSpec as any);
             const normalizedNew = rawNewTasks.map(t => TaskNormalizer.normalizeTask(t, activeContractApp).normalizedTask);
-            tasks = TaskNormalizer.deduplicateAndCapTasks(normalizedNew, 6);
+            tasks = TaskNormalizer.deduplicateAndCapTasks(normalizedNew, taskCap);
             gateResult = PlanContractGate.verify(tasks, activeContractApp);
           } catch (regenErr: any) {
             console.warn(`[TASK-CONTRACT] Regeneration attempt ${regen + 1} failed: ${regenErr.message}`);
             // Fallback: normalize rejected tasks in-place
             tasks = tasks.map(t => TaskNormalizer.normalizeTask(t, activeContractApp).normalizedTask);
-            tasks = TaskNormalizer.deduplicateAndCapTasks(tasks, 6);
+            tasks = TaskNormalizer.deduplicateAndCapTasks(tasks, taskCap);
             gateResult = PlanContractGate.verify(tasks, activeContractApp);
           }
         }
@@ -1403,7 +1407,10 @@ export class Orchestrator {
 
             const invalidCandidates: string[] = [];
             for (const file of result.files) {
-              const validation = GeneratedFileValidator.validateCompleteness(file.content, file.path);
+              const validation = GeneratedFileValidator.reconcileAndValidate(file.content, file.path);
+              if (validation.reconciledContent) {
+                file.content = validation.reconciledContent;
+              }
               if (!validation.valid) {
                 const msg = validation.issues.map(j => j.message).join("; ");
                 invalidCandidates.push(`${file.path} (${msg})`);
@@ -3795,8 +3802,18 @@ Requirements for repair:
       console.warn(`[FeatureMatrix] Warning: Failed to update feature matrix status: ${fmErr.message}`);
     }
 
-    if (!finalGateResult.success && finalGateResult.status !== "BLOCKED") {
+    if (!finalGateResult.success) {
       this.execution.complete();
+      if (finalGateResult.status === "BLOCKED") {
+        console.warn(`\n⚠️ GENERATION HALTED (BLOCKED): ${finalGateResult.blockingReason}`);
+        return {
+          filesCreated: files.length + deployFiles.length,
+          success: false,
+          status: "BLOCKED",
+          blockingReason: finalGateResult.blockingReason,
+          finalGateResult,
+        };
+      }
       console.error(`\n❌ FINAL SUCCESS GATE FAILED: ${finalGateResult.blockingReason}`);
       throw new Error(`Project generation failed: ${finalGateResult.blockingReason}`);
     }

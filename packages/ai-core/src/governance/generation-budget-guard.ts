@@ -67,11 +67,17 @@ export interface GenerationBudgetStatus {
 export class GenerationBudgetGuard {
   private static instance: GenerationBudgetGuard;
 
+  public static readonly DEFAULT_BENCHMARK_REQUESTS = 12;
+  public static readonly DEFAULT_BENCHMARK_PROMPT_TOKENS = 75000;
+  public static readonly DEFAULT_BENCHMARK_COMPLETION_TOKENS = 20000;
+
   private maxRequests = 12;
   private maxPromptTokens = 75000;
   private maxCompletionTokens = 20000;
   private maxGenerations = 1;
   private maxRepairsPerStage = 2;
+  private isBenchmarkMode = false;
+  private userExplicitConfig = false;
 
   private requestCount = 0;
   private promptTokens = 0;
@@ -92,12 +98,106 @@ export class GenerationBudgetGuard {
     return GenerationBudgetGuard.instance;
   }
 
+  public static isBenchmarkMode(): boolean {
+    return process.env.AEGIS_BENCHMARK_MODE === "true" || (GenerationBudgetGuard.instance ? GenerationBudgetGuard.instance.isBenchmarkMode : false);
+  }
+
   public configure(config: GenerationBudgetConfig): void {
+    this.userExplicitConfig = true;
     if (config.maxRequests !== undefined) this.maxRequests = config.maxRequests;
     if (config.maxPromptTokens !== undefined) this.maxPromptTokens = config.maxPromptTokens;
     if (config.maxCompletionTokens !== undefined) this.maxCompletionTokens = config.maxCompletionTokens;
     if (config.maxGenerations !== undefined) this.maxGenerations = config.maxGenerations;
     if (config.maxRepairsPerStage !== undefined) this.maxRepairsPerStage = config.maxRepairsPerStage;
+
+    // Detect benchmark configuration profile (12 req, 75k input, 20k output)
+    if (this.maxRequests === 12 && this.maxPromptTokens === 75000) {
+      this.isBenchmarkMode = true;
+    }
+  }
+
+  /**
+   * Configures adaptive budgets tailored to the scale of the target project,
+   * freeing general-purpose generation from artificial micro-budget limits
+   * while maintaining fail-closed boundary safety.
+   */
+  public adaptiveConfigureForProject(scaleOrSpec?: string | { type?: string; features?: any[]; requiredRoutes?: any[]; lockedStack?: any }): void {
+    // If the caller has explicitly set custom budget parameters, honor them without overwriting
+    if (this.userExplicitConfig) {
+      return;
+    }
+
+    const envBenchmark = process.env.AEGIS_BENCHMARK_MODE === "true";
+    if (envBenchmark || this.isBenchmarkMode) {
+      this.maxRequests = GenerationBudgetGuard.DEFAULT_BENCHMARK_REQUESTS;
+      this.maxPromptTokens = GenerationBudgetGuard.DEFAULT_BENCHMARK_PROMPT_TOKENS;
+      this.maxCompletionTokens = GenerationBudgetGuard.DEFAULT_BENCHMARK_COMPLETION_TOKENS;
+      return;
+    }
+
+    let scale = "standard";
+    if (typeof scaleOrSpec === "string") {
+      scale = scaleOrSpec;
+    } else if (scaleOrSpec && typeof scaleOrSpec === "object") {
+      const isFullStack = scaleOrSpec.type === "fullstack" ||
+        Boolean(scaleOrSpec.lockedStack?.backend && scaleOrSpec.lockedStack?.backend !== "None") ||
+        Boolean((scaleOrSpec.features || []).length > 5) ||
+        Boolean((scaleOrSpec.requiredRoutes || []).length > 4);
+
+      const isLight = scaleOrSpec.type === "static" ||
+        ((scaleOrSpec.features || []).length <= 2 && (scaleOrSpec.requiredRoutes || []).length <= 2);
+
+      if (isLight) scale = "light";
+      else if (isFullStack) scale = "fullstack";
+      else scale = "standard";
+    }
+
+    switch (scale) {
+      case "light":
+        this.maxRequests = 25;
+        this.maxPromptTokens = 150000;
+        this.maxCompletionTokens = 35000;
+        break;
+      case "fullstack":
+        this.maxRequests = 75;
+        this.maxPromptTokens = 750000;
+        this.maxCompletionTokens = 160000;
+        break;
+      case "enterprise":
+        this.maxRequests = 150;
+        this.maxPromptTokens = 1500000;
+        this.maxCompletionTokens = 300000;
+        break;
+      case "standard":
+      default:
+        this.maxRequests = 45;
+        this.maxPromptTokens = 350000;
+        this.maxCompletionTokens = 80000;
+        break;
+    }
+
+    // Allow explicit environment variable overrides
+    if (process.env.AEGIS_MAX_REQUESTS) {
+      const parsed = parseInt(process.env.AEGIS_MAX_REQUESTS, 10);
+      if (!isNaN(parsed) && parsed > 0) this.maxRequests = parsed;
+    }
+    if (process.env.AEGIS_MAX_PROMPT_TOKENS) {
+      const parsed = parseInt(process.env.AEGIS_MAX_PROMPT_TOKENS, 10);
+      if (!isNaN(parsed) && parsed > 0) this.maxPromptTokens = parsed;
+    }
+    if (process.env.AEGIS_MAX_COMPLETION_TOKENS) {
+      const parsed = parseInt(process.env.AEGIS_MAX_COMPLETION_TOKENS, 10);
+      if (!isNaN(parsed) && parsed > 0) this.maxCompletionTokens = parsed;
+    }
+  }
+
+  public setBenchmarkMode(enabled: boolean): void {
+    this.isBenchmarkMode = enabled;
+    if (enabled) {
+      this.maxRequests = GenerationBudgetGuard.DEFAULT_BENCHMARK_REQUESTS;
+      this.maxPromptTokens = GenerationBudgetGuard.DEFAULT_BENCHMARK_PROMPT_TOKENS;
+      this.maxCompletionTokens = GenerationBudgetGuard.DEFAULT_BENCHMARK_COMPLETION_TOKENS;
+    }
   }
 
   public reset(): void {
@@ -108,6 +208,7 @@ export class GenerationBudgetGuard {
     this.repairCountsByStage.clear();
     this.isHalted = false;
     this.haltReason = undefined;
+    this.userExplicitConfig = false;
   }
 
   /**

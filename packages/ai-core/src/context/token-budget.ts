@@ -22,8 +22,50 @@ export interface DegradedFileContext {
 
 export class TokenBudgetManager {
   // Conservative profiles: Groq defaults to safe 6,000 TPM limit unless overridden by GROQ_TPM_LIMIT
-  public static getProfile(providerName: string): ProviderTokenProfile {
-    const norm = (providerName || "").toLowerCase();
+  public static getProfile(providerOrModelName: string): ProviderTokenProfile {
+    const norm = (providerOrModelName || "").toLowerCase().trim();
+
+    // Model-specific profiles
+    if (norm.includes("gemini-1.5-pro") || norm.includes("gemini-2.5-pro")) {
+      return {
+        name: norm,
+        maxPromptTokens: 64000,
+        maxCompletionTokens: 32768,
+        maxFileTokens: 40000,
+        tpmLimit: 1000000,
+      };
+    }
+
+    if (norm.includes("claude-sonnet") || norm.includes("claude-3-5-sonnet")) {
+      return {
+        name: norm,
+        maxPromptTokens: 48000,
+        maxCompletionTokens: 8192,
+        maxFileTokens: 28000,
+        tpmLimit: 500000,
+      };
+    }
+
+    if (norm.includes("claude-haiku") || norm.includes("claude-3-5-haiku") || norm.includes("haiku")) {
+      return {
+        name: norm,
+        maxPromptTokens: 32000,
+        maxCompletionTokens: 8192,
+        maxFileTokens: 18000,
+        tpmLimit: 500000,
+      };
+    }
+
+    if (norm.includes("gpt-4o-mini") || norm.includes("gpt-5.5-mini")) {
+      return {
+        name: norm,
+        maxPromptTokens: 24000,
+        maxCompletionTokens: 16384,
+        maxFileTokens: 14000,
+        tpmLimit: 500000,
+      };
+    }
+
     if (norm.includes("groq")) {
       const envTpm = process.env.GROQ_TPM_LIMIT ? parseInt(process.env.GROQ_TPM_LIMIT, 10) : 6000;
       const tpmLimit = Number.isFinite(envTpm) && envTpm > 0 ? envTpm : 6000;
@@ -36,7 +78,7 @@ export class TokenBudgetManager {
       };
     }
 
-    if (norm.includes("cerebras")) {
+    if (norm.includes("cerebras") || norm.includes("gpt-oss-120b") || norm.includes("qwen")) {
       return {
         name: "cerebras",
         maxPromptTokens: 8000,

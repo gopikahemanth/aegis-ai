@@ -379,6 +379,82 @@ export class DynamicDataModelContract {
         { name: "isRead", type: "Boolean", nullable: false, default: "false", validation: "@default(false)" },
         { name: "data", type: "String", nullable: true },
       ],
+      // Appointment & Service Booking
+      service: [
+        { name: "name", type: "String", nullable: false },
+        { name: "description", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "price", type: "Float", nullable: false, default: "0.0" },
+        { name: "durationMinutes", type: "Int", nullable: false, default: "60" },
+        { name: "category", type: "String", nullable: true },
+        { name: "image", type: "String", nullable: true },
+        { name: "isActive", type: "Boolean", nullable: false, default: "true", validation: "@default(true)" },
+      ],
+      schedulerule: [
+        { name: "name", type: "String", nullable: true },
+        { name: "dayOfWeek", type: "String", nullable: false },
+        { name: "startTime", type: "String", nullable: false, default: '"09:00"' },
+        { name: "endTime", type: "String", nullable: false, default: '"17:00"' },
+        { name: "isAvailable", type: "Boolean", nullable: false, default: "true", validation: "@default(true)" },
+        { name: "breakStart", type: "String", nullable: true },
+        { name: "breakEnd", type: "String", nullable: true },
+      ],
+      // Marketing & Leads
+      lead: [
+        { name: "name", type: "String", nullable: false },
+        { name: "email", type: "String", nullable: false },
+        { name: "company", type: "String", nullable: true },
+        { name: "phone", type: "String", nullable: true },
+        { name: "status", type: "String", nullable: false, default: '"NEW"', validation: '@default("NEW")' },
+        { name: "notes", type: "String", nullable: true, validation: "@db.Text" },
+      ],
+      inquiry: [
+        { name: "name", type: "String", nullable: false },
+        { name: "email", type: "String", nullable: false },
+        { name: "subject", type: "String", nullable: true },
+        { name: "message", type: "String", nullable: false, validation: "@db.Text" },
+        { name: "status", type: "String", nullable: false, default: '"PENDING"', validation: '@default("PENDING")' },
+      ],
+      // CMS & Blog
+      article: [
+        { name: "title", type: "String", nullable: false },
+        { name: "slug", type: "String", nullable: true },
+        { name: "content", type: "String", nullable: true, validation: "@db.Text" },
+        { name: "excerpt", type: "String", nullable: true },
+        { name: "category", type: "String", nullable: true },
+        { name: "isPublished", type: "Boolean", nullable: false, default: "false", validation: "@default(false)" },
+        { name: "publishedAt", type: "DateTime", nullable: true },
+      ],
+      comment: [
+        { name: "content", type: "String", nullable: false, validation: "@db.Text" },
+        { name: "authorName", type: "String", nullable: false },
+        { name: "authorEmail", type: "String", nullable: true },
+        { name: "articleId", type: "String", nullable: true },
+        { name: "postId", type: "String", nullable: true },
+        { name: "isApproved", type: "Boolean", nullable: false, default: "true", validation: "@default(true)" },
+      ],
+      // Community & Discussion
+      discussion: [
+        { name: "title", type: "String", nullable: false },
+        { name: "content", type: "String", nullable: false, validation: "@db.Text" },
+        { name: "category", type: "String", nullable: true },
+        { name: "isPinned", type: "Boolean", nullable: false, default: "false", validation: "@default(false)" },
+        { name: "views", type: "Int", nullable: false, default: "0" },
+      ],
+      // Gym & Membership
+      membership: [
+        { name: "name", type: "String", nullable: false },
+        { name: "tier", type: "String", nullable: false },
+        { name: "price", type: "Float", nullable: false, default: "0.0" },
+        { name: "status", type: "String", nullable: false, default: '"ACTIVE"', validation: '@default("ACTIVE")' },
+        { name: "startDate", type: "DateTime", nullable: true },
+        { name: "endDate", type: "DateTime", nullable: true },
+      ],
+      attendance: [
+        { name: "name", type: "String", nullable: true },
+        { name: "checkInTime", type: "DateTime", nullable: false, default: "now()", validation: "@default(now())" },
+        { name: "checkOutTime", type: "DateTime", nullable: true },
+        { name: "status", type: "String", nullable: false, default: '"PRESENT"', validation: '@default("PRESENT")' },
+      ],
     };
 
     // Check registry for exact entity archetype match
@@ -468,8 +544,11 @@ datasource db {
       schema += `model ${model.name} {\n`;
 
       for (const field of model.fields) {
-        const attrs = field.validation || "";
+        let attrs = field.validation || "";
         const nullable = field.nullable ? "?" : "";
+        if (provider === "sqlite" && attrs.includes("@db.Text")) {
+          attrs = attrs.replace(/@db\.Text/g, "").trim();
+        }
         schema += `  ${field.name.padEnd(20)} ${field.type}${nullable}`;
         if (attrs) schema += `  ${attrs}`;
         schema += "\n";

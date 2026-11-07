@@ -644,9 +644,15 @@ export class ApiWorkflowVerifier {
 
         if (step.isNegativeTest) {
           // Negative tests accept 400, 401, 403, 404, 422
-          // For negative auth checks, if server has dev fallback allowing unauthenticated requests as guest/pilot (HTTP 2xx), treat as pass
-          const isDevAuthPermissive = step.workflowId.startsWith("wf_neg_auth") && (actualStatus >= 200 && actualStatus < 300);
-          if (actualStatus === step.expectedStatus || (actualStatus >= 400 && actualStatus < 500) || isDevAuthPermissive) {
+          // For negative auth checks, strictly enforce 401/403 (or 4xx client rejection)
+          if (step.workflowId.startsWith("wf_neg_auth")) {
+            if (actualStatus === 401 || actualStatus === 403 || (actualStatus >= 400 && actualStatus < 500)) {
+              passed = true;
+              validationTestsPassed++;
+            } else {
+              errorReason = `Security test failed: expected 401/403 for unauthorized access, received HTTP ${actualStatus}`;
+            }
+          } else if (actualStatus === step.expectedStatus || (actualStatus >= 400 && actualStatus < 500)) {
             passed = true;
             validationTestsPassed++;
           } else {

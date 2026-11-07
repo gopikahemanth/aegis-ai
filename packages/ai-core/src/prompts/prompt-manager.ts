@@ -112,14 +112,16 @@ RULES:
 - Plan ONLY backend, database, and integration tasks.
 - Do NOT plan any frontend tasks (the frontend is locked and approved).
 - Tasks must implement the Express server, Prisma database persistence, and API endpoints matching the approved frontend requirements.
+- MANDATORY AUTHENTICATION & ACCESS CONTROL: Protected routes (admin, management, private user records) must verify authentication tokens (JWT or session) and return HTTP 401 Unauthorized or 403 Forbidden when unauthorized. Sensitive credentials must be hashed with bcrypt. Never hardcode credentials.
 - MANDATORY HTTP 400 VALIDATION: Every POST, PUT, and PATCH controller must validate required payload fields. If required fields are missing, empty, or if req.body contains invalid/malformed data, immediately return res.status(400).json({ success: false, error: 'Validation failed' }). NEVER default missing required fields or return 200 on invalid requests.
+- MANDATORY CLIENT-SERVER INTEGRATION: Ensure frontend client services (e.g. src/services/api.ts, src/lib/auth.ts) and state stores connect to live backend endpoints.
 - Express controller catch blocks must return resilient fallback responses (HTTP 200 for GET/PUT, 201 for POST, 204 for DELETE), never HTTP 500.
 - Interactive management/order forms on frontend routes must be wired to execute API mutations and update observable state on submit.
 - Use stage: "Backend" or "Database".
 
 TASK LIMIT: Maximum 4 tasks.
 TASK ORDERING:
-  1. Database Schema & Persistence Verification (Prisma models, PostgreSQL migrations/seeds)
+  1. Database Schema & Persistence Verification (Prisma models, target database migrations/seeds)
   2. Server Architecture & Middleware (Express app, authentication, CORS, error handling)
   3. API Routes & Business Logic (REST controllers, services, queries matching approved frontend features)
   4. Fullstack Integration & End-to-End Verification (connecting frontend API client to verified backend)
@@ -185,13 +187,13 @@ TASK DECOMPOSITION & ATOMIC WORKSPACE PRINCIPLE:
   - Do NOT omit requested features merely to reduce tasks.
   - Each task must produce complete, production-grade, fully interactive components.
 
-TASK ORDERING:
+TASK ORDERING & ADAPTIVE STAGES:
   1. Product shell + navigation + routing scaffold (Navbar, routes, layout, and clean page stubs for feature views. DO NOT generate full pages for all routes in Task 1; feature pages belong in subsequent tasks)
-  2. Primary workspace / Landing Hero experience (Landing page marketing hero, value propositions, and testimonials)
-  3. Domain catalog / explorer workspace (Searchable and filterable service/product catalog, filters, pricing)
-  4. Interactive booking / transaction workspace (Availability calendar, time slot grid, multi-step booking form)
-  5. User dashboard & customer management (Upcoming/past bookings, status, cancellations)
-  6. Administration workspace & analytics (Management controls, CRUD actions, business metrics)
+  2. Primary workspace / Landing Hero experience (Brand hero, value propositions, feature highlights, and call-to-action)
+  3. Domain catalog / Primary workspace explorer (Domain-appropriate catalog, explorer, feed, or data browser with search and filtering)
+  4. Interactive transaction / Core domain workflow (Domain-specific primary interactive flow: booking/scheduling, checkout/order, content authoring, data analysis, or submission workflows)
+  5. User dashboard & domain record management (User/account management, activity logs, personal records, status tracking, and history)
+  6. Administration workspace & analytics (Administrative controls, domain entity CRUD actions, configuration settings, and metrics dashboard)
   7. Responsive layout + interaction polish + empty/error states
 
 Each task MUST contain:

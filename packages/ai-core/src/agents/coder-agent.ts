@@ -106,8 +106,10 @@ export class CoderAgent extends BaseAgent {
           if (isSiteContent && !taskNeedsDirectContent) {
             const brandMatch = content.match(/name:\s*["']([^"']+)["']/);
             const taglineMatch = content.match(/tagline:\s*["']([^"']+)["']/);
-            const bName = brandMatch ? brandMatch[1] : "FinTrack Pro";
-            const tLine = taglineMatch ? taglineMatch[1] : "Treasury Intelligence";
+            const defaultBrand = architecture.name || "Application";
+            const defaultTagline = (architecture as any).description ? String((architecture as any).description).slice(0, 50).trim() : "Modern Web Application";
+            const bName = brandMatch ? brandMatch[1] : defaultBrand;
+            const tLine = taglineMatch ? taglineMatch[1] : defaultTagline;
             fileContent = `// Structured summary of src/content/site-content.ts
 export interface SiteContent {
   brand: { name: string; tagline: string; description: string };
@@ -215,6 +217,19 @@ export default siteContent;`;
     const canonicalDomainModelsList = activeModels.length > 0
       ? activeModels.map((m: string) => `- ${m}`).join("\n")
       : "- User\n- (Derive domain models strictly from task prompt & locked schema)";
+
+    // Load locked Prisma schema model and field definitions if available on disk
+    let lockedPrismaSchemaContext = "";
+    const prismaSchemaPath = join(outputDirectory, "prisma", "schema.prisma");
+    if (existsSync(prismaSchemaPath)) {
+      try {
+        const rawSchema = readFileSync(prismaSchemaPath, "utf8");
+        const modelBlocks = rawSchema.match(/model\s+[A-Za-z0-9_$]+\s*\{[\s\S]*?\}/g);
+        if (modelBlocks && modelBlocks.length > 0) {
+          lockedPrismaSchemaContext = modelBlocks.join("\n\n");
+        }
+      } catch {}
+    }
 
     // Inject API contract for API-related tasks only when ATS or generic API is appropriate
     if (isATS && (taskTitle.includes("api") || taskTitle.includes("service") || taskTitle.includes("frontend"))) {
@@ -1024,8 +1039,11 @@ ${isFrontendStage ? `   - FRONTEND-ONLY TASK: You are implementing Task #${task.
    - Canonical Database Client (Express Backend Only):
      * server/lib/prisma.ts  (import { prisma } from "../lib/prisma")
      * server/db/index.ts    (import { prisma } from "../db/index")
-   - Canonical Domain Models:
-${canonicalDomainModelsList}
+   - Locked Canonical Prisma Schema & Field Definitions (STRICT CONTRACT — YOU MUST CONFORM TO THESE EXACT FIELDS):
+${lockedPrismaSchemaContext ? lockedPrismaSchemaContext : canonicalDomainModelsList}
+   - HARD PRISMA SCHEMA INVARIANT: All database queries and mutations (prisma.<model>.findMany, create, update, etc.) MUST strictly use the exact model and field names defined in prisma/schema.prisma above.
+     * NEVER invent or substitute field synonyms (e.g. if Service defines 'durationMinutes', you MUST use 'durationMinutes', NOT 'duration'; if ScheduleRule defines 'isAvailable', you MUST use 'isAvailable', NOT 'isWorkingDay').
+     * NEVER omit required schema fields (e.g. userId must always reference a valid User record).
 
 4. BESPOKE PAGE EXPERIENCE & ANTI-TEMPLATE QUALITY (MANDATORY FOR ALL VIEWS):
    - Adhere strictly to the PageExperiencePlan for each route in this task.
@@ -1039,7 +1057,7 @@ ${canonicalDomainModelsList}
      * NEVER render generic placeholder text ("Welcome to the application platform", "Dashboard placeholder", or unmounted views).
      * NEVER render generic 3-column card grids as a substitute for rich feature composition.
      * NEVER use hardcoded Tailwind color classes (stone-*, indigo-*); use CSS tokens in src/design-system/tokens.ts.
-     * NEVER use Next.js, NextAuth, App Router, MongoDB, Mongoose, or Drizzle.
+     * NEVER use technologies conflicting with the locked ArchitectureContract (Frontend: ${contract?.frontend?.framework || "React"}, Backend: ${contract?.backend?.framework || "Express"}, DB: ${contract?.database?.provider || "SQLite"}, ORM: ${contract?.database?.orm || "Prisma"}).
 
 ${taskPageExperienceContract}
 ${productExperiencePlanContext}

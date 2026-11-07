@@ -4781,24 +4781,40 @@ export default app;
 
   /**
    * Reconciles Prisma include relation names in server files against schema.prisma definitions.
-   * Prevents runtime errors like: Unknown field `telemetry` for include statement on model `Asset`.
+   * Model-aware: preserves valid singular relations (e.g. appointment.service) and only
+   * normalizes when the model actually defines a plural relation.
    */
   private static reconcilePrismaIncludes(outputDirectory: string): void {
     const schemaPath = join(outputDirectory, "prisma", "schema.prisma");
     if (!existsSync(schemaPath)) return;
     try {
       const schema = readFileSync(schemaPath, "utf8");
-      const relationPlurals = new Map<string, string>();
-      const lines = schema.split("\n");
-      for (const line of lines) {
-        const m = line.trim().match(/^([a-zA-Z0-9_]+)\s+([a-zA-Z0-9_]+)\[\]/);
-        if (m) {
-          const pluralName = m[1];
-          const singularName = pluralName.replace(/ies$/, "y").replace(/s$/, "");
-          if (singularName !== pluralName) {
-            relationPlurals.set(singularName, pluralName);
+      const modelRelations = new Map<string, { singularToPlural: Map<string, string>; validRelations: Set<string> }>();
+      const modelBlocks = schema.split(/model\s+/);
+      for (const block of modelBlocks.slice(1)) {
+        const modelName = block.split(/\s|\{/)[0].trim().toLowerCase();
+        if (!modelName) continue;
+        const validRelations = new Set<string>();
+        const singularToPlural = new Map<string, string>();
+        const lines = block.split(/\r?\n/);
+        for (const line of lines) {
+          const trimmed = line.trim();
+          const listMatch = trimmed.match(/^([a-zA-Z0-9_]+)\s+([a-zA-Z0-9_]+)\[\]/);
+          if (listMatch) {
+            const relName = listMatch[1];
+            validRelations.add(relName);
+            const singular = relName.replace(/ies$/, "y").replace(/s$/, "");
+            if (singular !== relName) {
+              singularToPlural.set(singular, relName);
+            }
+          } else {
+            const singleMatch = trimmed.match(/^([a-zA-Z0-9_]+)\s+([A-Z][a-zA-Z0-9_]+)(\??)/);
+            if (singleMatch && !singleMatch[1].startsWith("//") && !singleMatch[1].startsWith("@")) {
+              validRelations.add(singleMatch[1]);
+            }
           }
         }
+        modelRelations.set(modelName, { singularToPlural, validRelations });
       }
 
       const serverDir = join(outputDirectory, "server");
@@ -4808,13 +4824,24 @@ export default app;
           const filePath = join(serverDir, file);
           let code = readFileSync(filePath, "utf8");
           let modified = false;
-          for (const [sing, plur] of relationPlurals.entries()) {
-            const reg = new RegExp(`(\\binclude\\s*:\\s*\\{[^}]*?\\b)${sing}(\\s*:)`, "g");
-            if (reg.test(code)) {
-              code = code.replace(reg, `$1${plur}$2`);
-              modified = true;
-            }
+
+          for (const [modelName, { singularToPlural, validRelations }] of modelRelations.entries()) {
+            const modelCallRegex = new RegExp(`\\bprisma\\.${modelName}\\.[a-zA-Z0-9_$]+\\s*\\([\\s\\S]*?\\)`, "gi");
+            code = code.replace(modelCallRegex, (callBlock) => {
+              let updatedBlock = callBlock;
+              for (const [sing, plur] of singularToPlural.entries()) {
+                // If the singular relation is ALREADY valid on this model, DO NOT touch it!
+                if (validRelations.has(sing)) continue;
+                const reg = new RegExp(`(\\binclude\\s*:\\s*\\{[^}]*?\\b)${sing}(\\s*:)`, "g");
+                if (reg.test(updatedBlock)) {
+                  updatedBlock = updatedBlock.replace(reg, `$1${plur}$2`);
+                  modified = true;
+                }
+              }
+              return updatedBlock;
+            });
           }
+
           if (modified) {
             writeFileSync(filePath, code, "utf8");
             console.log(`[FastSanitizer] 🔧 Normalized Prisma include relation in server/${file}`);
@@ -5383,7 +5410,38 @@ export default app;
     if (!existsSync(mainPath)) return;
     try {
       const content = readFileSync(mainPath, "utf8");
-      if (!content.includes("__AEGIS_SAFE_FETCH__")) {
+      const hasBackend = existsSync(join(outputDirectory, "server")) || existsSync(join(outputDirectory, "prisma"));
+      if (hasBackend) {
+        if (content.includes("__AEGIS_SAFE_FETCH__")) {
+          const lines = content.split(/\r?\n/);
+          let inInterceptor = false;
+          const filteredLines: string[] = [];
+          let braceDepth = 0;
+          for (const line of lines) {
+            if (line.includes("// Aegis Safe Mock Fetch Interceptor")) {
+              inInterceptor = true;
+              braceDepth = 0;
+            }
+            if (inInterceptor) {
+              for (const ch of line) {
+                if (ch === "{") braceDepth++;
+                if (ch === "}") braceDepth--;
+              }
+              if (braceDepth <= 0 && line.trim().startsWith("}")) {
+                inInterceptor = false;
+                continue;
+              }
+              continue;
+            }
+            filteredLines.push(line);
+          }
+          const cleaned = filteredLines.join("\n").trimStart();
+          if (cleaned !== content) {
+            writeFileSync(mainPath, cleaned, "utf8");
+            console.log(`[FastSanitizer] 🛡️ Removed safe API fetch guard from src/main.tsx (backend present)`);
+          }
+        }
+      } else if (!content.includes("__AEGIS_SAFE_FETCH__")) {
         const interceptor = `// Aegis Safe Mock Fetch Interceptor (prevents unhandled 404/504 JSON crashes during frontend-only review)
 if (typeof window !== "undefined" && !(window as any).__AEGIS_SAFE_FETCH__) {
   (window as any).__AEGIS_SAFE_FETCH__ = true;

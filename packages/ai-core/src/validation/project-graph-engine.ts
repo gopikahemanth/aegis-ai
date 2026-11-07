@@ -6,6 +6,7 @@ import { CanonicalPrismaModelRegistry, PrismaDelegateOperationRegistry, Canonica
 import { DomainContaminationDetector } from "../governance/domain-contamination-detector.js";
 import { ArchitectureResolver } from "../governance/architecture-resolver.js";
 import { DeterministicProjectFixer } from "./deterministic-project-fixer.js";
+import { PrismaAstReconciler } from "./prisma-ast-reconciler.js";
 
 export interface ProjectGraphNode {
   path: string;
@@ -19,6 +20,11 @@ export interface GraphIssue {
   type: "MISSING_MODULE" | "EXPORT_MISMATCH" | "CASE_MISMATCH" | "DUPLICATE_MODULE" | "INVALID_IMPORT" | "PRISMA_SCHEMA_MISMATCH" | "BOUNDARY_VIOLATION" | "UNAUTHORIZED_FILE" | "ORPHAN_FILE";
   sourceFile: string;
   importPath?: string;
+  line?: number;
+  column?: number;
+  model?: string;
+  field?: string;
+  expectedSchema?: string[];
   message: string;
   suggestedFix?: string;
   severity: "ERROR" | "WARNING";
@@ -109,214 +115,19 @@ export class ProjectGraphEngine {
     this.buildGraph(projectRoot);
     const issues: GraphIssue[] = [];
 
-    // Load Prisma schema models for database contract validation
-    const prismaModels = new Map<string, Set<string>>();
-    const prismaSchemaPath = join(projectRoot, "prisma", "schema.prisma");
-    if (existsSync(prismaSchemaPath)) {
-      try {
-        const schemaContent = readFileSync(prismaSchemaPath, "utf8");
-        const modelBlocks = schemaContent.split(/model\s+/);
-        for (const block of modelBlocks.slice(1)) {
-          const modelName = block.split(/\s|\{/)[0].trim();
-          const fieldMatches = block.match(/^\s+([a-zA-Z0-9_$]+)\s+/gm);
-          if (modelName && fieldMatches) {
-            const fields = new Set(fieldMatches.map(f => f.trim().split(/\s+/)[0]));
-            prismaModels.set(modelName.toLowerCase(), fields);
-          }
-        }
-      } catch {}
-    }
+    // Load Prisma schema models for database contract validation via AST reconciler
+    const prismaModels = PrismaAstReconciler.loadSchemaModels(projectRoot);
 
     for (const [relPath, node] of this.nodes.entries()) {
       const sourceAbs = join(projectRoot, relPath);
       const sourceDir = dirname(sourceAbs);
       let content = readFileSync(sourceAbs, "utf8");
 
-      // Rule 1-6: Validate Prisma API invocations against CanonicalPrismaModelRegistry & PrismaDelegateOperationRegistry
+      // Rule 1-6: Validate & safely reconcile Prisma API invocations via AST
       if (relPath.startsWith("server") || relPath.startsWith("src")) {
-        const prismaCallRegex = /prisma\.([a-zA-Z0-9_$]+)\.([a-zA-Z0-9_$]+)\s*\(/g;
-        let pMatch: RegExpExecArray | null;
-        while ((pMatch = prismaCallRegex.exec(content)) !== null) {
-          const delegate = pMatch[1];
-          const operation = pMatch[2];
-
-          // 1. Validate Delegate against schema models first
-          const isSchemaModel = prismaModels.has(delegate.toLowerCase());
-          if (!isSchemaModel && !CanonicalPrismaModelRegistry.isValidDelegate(delegate)) {
-            let matchedSchemaDelegate: string | undefined;
-            for (const [modelName] of prismaModels.entries()) {
-              if (modelName.includes(delegate.toLowerCase()) || delegate.toLowerCase().includes(modelName)) {
-                matchedSchemaDelegate = modelName;
-                break;
-              }
-            }
-            if (matchedSchemaDelegate) {
-              try {
-                let fileContent = readFileSync(sourceAbs, "utf8");
-                const delRegex = new RegExp(`\\bprisma\\.${delegate}\\b`, "g");
-                fileContent = fileContent.replace(delRegex, `prisma.${matchedSchemaDelegate}`);
-                writeFileSync(sourceAbs, fileContent, "utf8");
-                console.log(`[ProjectGraphEngine] ✓ Auto-fixed Prisma delegate to match schema model in ${relPath}: "prisma.${delegate}" -> "prisma.${matchedSchemaDelegate}"`);
-                content = fileContent;
-                continue;
-              } catch (err: any) {
-                console.warn(`[ProjectGraphEngine] Failed to auto-fix delegate ${delegate} in ${relPath}: ${err.message}`);
-              }
-            }
-
-            issues.push({
-              type: "PRISMA_SCHEMA_MISMATCH",
-              sourceFile: relPath,
-              message: `PRISMA_SCHEMA_MISMATCH: Unknown Prisma model delegate "prisma.${delegate}". Valid delegates: ${Array.from(prismaModels.keys()).join(", ") || CanonicalPrismaModelRegistry.MODEL_DELEGATES.join(", ")}.`,
-              severity: "ERROR",
-            });
-            continue;
-          }
-
-          // 2. Validate Operation
-          if (!PrismaDelegateOperationRegistry.isValidOperation(operation)) {
-            issues.push({
-              type: "PRISMA_SCHEMA_MISMATCH",
-              sourceFile: relPath,
-              message: `PRISMA_SCHEMA_MISMATCH: Invalid Prisma operation "${operation}" on delegate "prisma.${delegate}".`,
-              severity: "ERROR",
-            });
-            continue;
-          }
-
-          // 3. Validate Fields inside data: { ... } or where: { ... }
-          const schemaFields = prismaModels.get(delegate.toLowerCase()) || CanonicalPrismaFieldRegistry.getFields(delegate);
-          if (schemaFields) {
-            // Only inspect arguments passed to this specific invocation of prisma.<delegate>.<operation>(...)
-            const callStart = pMatch.index + pMatch[0].length;
-            let parenDepth = 1;
-            let callEnd = callStart;
-            while (callEnd < content.length && parenDepth > 0) {
-              const char = content[callEnd];
-              if (char === "(") parenDepth++;
-              else if (char === ")") parenDepth--;
-              callEnd++;
-            }
-            const callArg = content.slice(callStart, callEnd - 1);
-
-            // Find top-level data: property within this specific call's argument
-            const dataMatch = /data\s*:\s*(\{[\s\S]*?\}|\[[\s\S]*?\])/.exec(callArg);
-            if (dataMatch) {
-              const dataBlock = dataMatch[1];
-              // Extract top-level property keys inside the data object/array
-              // Avoid descending into nested objects (e.g. data: { data: { nested: 1 } })
-              const topLevelKeys: string[] = [];
-              let braceDepth = 0;
-              let currentKey = "";
-              for (let i = 0; i < dataBlock.length; i++) {
-                const c = dataBlock[i];
-                if (c === "{" || c === "[") {
-                  braceDepth++;
-                } else if (c === "}" || c === "]") {
-                  braceDepth--;
-                } else if (braceDepth === 1 || (dataBlock.startsWith("[") && braceDepth === 2)) {
-                  if (c === ":") {
-                    const cleanKey = currentKey.trim().replace(/^['"`]|['"`]$/g, "");
-                    if (/^[a-zA-Z0-9_$]+$/.test(cleanKey)) {
-                      topLevelKeys.push(cleanKey);
-                    }
-                    currentKey = "";
-                  } else if (c === "," || c === "\n") {
-                    currentKey = "";
-                  } else {
-                    currentKey += c;
-                  }
-                }
-              }
-
-              const prismaKeywords = new Set([
-                "data", "where", "select", "include", "orderBy", "take", "skip",
-                "cursor", "distinct", "connect", "create", "createMany", "update",
-                "upsert", "delete", "set", "push"
-              ]);
-
-              const FIELD_ALIASES: Record<string, Record<string, string>> = {
-                analysisresult: {
-                  score: "matchScore",
-                  atsScore: "matchScore",
-                  overallScore: "matchScore",
-                  rating: "matchScore",
-                  matches: "matchedKeywords",
-                  matched: "matchedKeywords",
-                  keywords: "matchedKeywords",
-                  missing: "missingKeywords",
-                  gaps: "missingKeywords",
-                  skillGaps: "missingKeywords",
-                  missingSkills: "missingKeywords",
-                  recommendations: "suggestions",
-                  tips: "suggestions",
-                },
-                user: {
-                  name: "email",
-                  username: "email",
-                },
-              };
-
-              const delegateKey = delegate.toLowerCase();
-              const delegateAliases = FIELD_ALIASES[delegateKey] || {};
-
-              for (const field of [...new Set(topLevelKeys)]) {
-                if (field && !prismaKeywords.has(field) && !schemaFields.has(field)) {
-                  const canonicalField = delegateAliases[field] ||
-                    (field === "title" && schemaFields.has("name") ? "name" : undefined) ||
-                    (field === "name" && schemaFields.has("title") ? "title" : undefined) ||
-                    (field === "user_id" && schemaFields.has("userId") ? "userId" : undefined) ||
-                    (field === "userId" && schemaFields.has("user_id") ? "user_id" : undefined) ||
-                    (field === "created_at" && schemaFields.has("createdAt") ? "createdAt" : undefined) ||
-                    (field === "createdAt" && schemaFields.has("created_at") ? "created_at" : undefined) ||
-                    (field === "updated_at" && schemaFields.has("updatedAt") ? "updatedAt" : undefined) ||
-                    (field === "updatedAt" && schemaFields.has("updated_at") ? "updated_at" : undefined);
-                  if (canonicalField && schemaFields.has(canonicalField)) {
-                    // Auto-fix field alias in file on disk
-                    try {
-                      let fileContent = readFileSync(sourceAbs, "utf8");
-                      const fieldRegex = new RegExp(`(\\b${field}\\s*:)`, "g");
-                      fileContent = fileContent.replace(fieldRegex, `${canonicalField}:`);
-                      writeFileSync(sourceAbs, fileContent, "utf8");
-                      console.log(`[ProjectGraphEngine] ✓ Auto-fixed Prisma field alias in ${relPath}: "${field}" -> "${canonicalField}" for model "${delegate}"`);
-                      continue; // Field is now auto-fixed!
-                    } catch (err: any) {
-                      console.warn(`[ProjectGraphEngine] Failed to write field fix to ${relPath}: ${err.message}`);
-                    }
-                  } else {
-                    // Unknown field not in schema — strip safely whether on own line or inline in object literal
-                    try {
-                      let fileContent = readFileSync(sourceAbs, "utf8");
-                      const safeLineRegex = new RegExp(`^[ \\t]*${field}\\s*:[^,\\r\\n]+,?[ \\t]*(?:\\r?\\n|$)`, "gm");
-                      if (safeLineRegex.test(fileContent)) {
-                        fileContent = fileContent.replace(safeLineRegex, "");
-                        writeFileSync(sourceAbs, fileContent, "utf8");
-                        console.log(`[ProjectGraphEngine] 🧹 Removed unknown Prisma field "${field}" from ${relPath} (not present in model ${delegate})`);
-                        continue;
-                      }
-                      const inlineRegex = new RegExp(`(?<=[{,]\\s*)${field}\\s*:[^,{}]+,?\\s*`, "g");
-                      if (inlineRegex.test(fileContent)) {
-                        fileContent = fileContent.replace(inlineRegex, "");
-                        writeFileSync(sourceAbs, fileContent, "utf8");
-                        console.log(`[ProjectGraphEngine] 🧹 Removed unknown inline Prisma field "${field}" from ${relPath} (not present in model ${delegate})`);
-                        continue;
-                      }
-                    } catch (err: any) {
-                      console.warn(`[ProjectGraphEngine] Failed to strip field ${field} from ${relPath}: ${err.message}`);
-                    }
-                  }
-
-                  issues.push({
-                    type: "PRISMA_SCHEMA_MISMATCH",
-                    sourceFile: relPath,
-                    message: `PRISMA_SCHEMA_MISMATCH: Model "${delegate}" does not contain field "${field}" referenced in ${relPath}.`,
-                    severity: "ERROR",
-                  });
-                }
-              }
-            }
-          }
-        }
+        const { issues: prismaIssues } = PrismaAstReconciler.reconcileSourceFile(sourceAbs, relPath, prismaModels);
+        issues.push(...prismaIssues);
+        content = readFileSync(sourceAbs, "utf8");
       }
 
       for (const impPath of node.imports) {

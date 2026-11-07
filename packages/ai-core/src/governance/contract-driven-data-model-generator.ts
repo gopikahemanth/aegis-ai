@@ -59,7 +59,12 @@ export class ContractDrivenDataModelGenerator {
       gym: ["Membership", "Attendance", "Payment", "WorkoutPlan", "TrainerProfile"],
       study: ["Course", "Flashcard", "StudySession", "QuizResult", "Note"],
       ecommerce: ["Product", "Order", "OrderItem", "Category", "Cart"],
+      "e-commerce": ["Product", "Order", "OrderItem", "Category", "Cart"],
+      store: ["Product", "Order", "OrderItem", "Category", "Cart"],
+      shop: ["Product", "Order", "OrderItem", "Category", "Cart"],
       saas: ["Organization", "Project", "Subscription", "ActivityLog"],
+      telemetry: ["Metric", "Alert", "LogEvent", "Device", "ThresholdRule"],
+      observability: ["Metric", "Alert", "LogEvent", "Device"],
       portfolio: ["Project", "Skill", "ContactMessage", "BlogPost"],
       chat: ["ChatSession", "Message", "PromptTemplate", "ApiUsage"],
       task: ["Task", "BoardColumn", "Project"],
@@ -67,6 +72,17 @@ export class ContractDrivenDataModelGenerator {
       restaurant: ["MenuItem", "TableOrder", "Reservation", "Ingredient"],
       resume: ["Resume", "JobDescription", "AnalysisResult", "KeywordMatch"],
       security: ["Repository", "Scan", "Vulnerability", "Remediation", "AnalysisResult"],
+      booking: ["Service", "Appointment", "ScheduleRule", "Customer"],
+      appointment: ["Service", "Appointment", "ScheduleRule", "Provider"],
+      healthcare: ["Patient", "Provider", "Appointment", "MedicalRecord"],
+      clinic: ["Patient", "Doctor", "Appointment", "Prescription"],
+      cms: ["Article", "Category", "Author", "Tag", "Comment"],
+      "content management": ["Article", "Category", "Author", "Tag", "Comment"],
+      blog: ["Post", "Category", "Comment", "Author", "Tag"],
+      community: ["Post", "Comment", "Discussion", "Profile", "Reaction"],
+      social: ["Post", "Comment", "UserFollow", "Notification"],
+      marketing: ["Lead", "Campaign", "Inquiry", "Testimonial"],
+      logistics: ["Shipment", "Vehicle", "Route", "Driver", "DeliveryStatus"],
     };
 
     let matched = false;
@@ -81,10 +97,10 @@ export class ContractDrivenDataModelGenerator {
 
     if (!matched) {
       // General heuristic: find capitalized noun patterns or key requirement tokens
-      const nounSignals = ["item", "record", "entry", "profile", "plan", "event", "booking", "message", "report"];
+      const nounSignals = ["item", "record", "entry", "profile", "plan", "event", "booking", "message", "report", "service", "article", "patient", "order", "listing", "post", "review", "lead"];
       for (const w of words) {
         const wLower = w.toLowerCase();
-        if (nounSignals.some(s => wLower.endsWith(s)) && w.length > 3) {
+        if (nounSignals.some(s => wLower.endsWith(s) || wLower === s) && w.length > 3) {
           const cap = w[0].toUpperCase() + w.slice(1);
           if (!candidateModels.includes(cap)) candidateModels.push(cap);
         }

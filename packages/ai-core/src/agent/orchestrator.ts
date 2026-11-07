@@ -144,6 +144,20 @@ const VALID_DEPENDENCIES_WHITELIST = new Set([
   "@types/gsap"
 ]);
 
+function isAllowedIntegrationBridgeFile(norm: string, taskOwnedFiles?: string[]): boolean {
+  if (taskOwnedFiles && taskOwnedFiles.some(of => of.replace(/\\/g, "/") === norm)) {
+    return true;
+  }
+  // Allow API client services, auth utilities, and auth context/wrappers
+  if (norm.startsWith("src/services/") || norm.startsWith("src/lib/api") || norm.startsWith("src/lib/auth") || norm.startsWith("src/api/")) {
+    return true;
+  }
+  if (norm === "src/context/AuthContext.tsx" || norm === "src/components/ProtectedRoute.tsx") {
+    return true;
+  }
+  return false;
+}
+
 export class Orchestrator {
   private readonly scheduler = new DependencyScheduler();
 
@@ -1375,11 +1389,14 @@ export class Orchestrator {
                 result.files = policyResult.allowed;
               }
             } else if (InteractionProvenanceTracker.hasBaseline(outputDirectory)) {
-              // During post-baseline/backend tasks, strictly reject overwriting or introducing any frontend files under src/
+              // During post-baseline/backend tasks, strictly reject overwriting or introducing approved frontend UI pages under src/
+              // BUT allow legitimate integration bridge files (e.g. src/services/api.ts, src/lib/auth.ts) and task-owned files
               result.files = result.files.filter(f => {
                 const norm = f.path.replace(/\\/g, "/");
-                const isProtectedFrontend = norm.startsWith("src/");
-                if (isProtectedFrontend) {
+                if (norm.startsWith("src/")) {
+                  if (isAllowedIntegrationBridgeFile(norm, task.ownedFiles)) {
+                    return true;
+                  }
                   console.warn(`[BackendTaskGuard] 🛡️ Rejected frontend write during backend task "${task.title}": ${f.path}`);
                   return false;
                 }
@@ -2149,10 +2166,22 @@ INSTRUCTIONS FOR FRONTEND REFINEMENT:
         ? `\nAPI CONTRACTS DERIVED FROM APPROVED FRONTEND:\n` +
           dataArch.apis.map((a: any) => `  ${a.method?.toUpperCase()} ${a.path} — ${a.description}`).join("\n")
         : "";
+      let lockedSchemaSummary = "";
+      const schemaPath = join(outputDirectory, "prisma", "schema.prisma");
+      if (existsSync(schemaPath)) {
+        try {
+          const raw = readFileSync(schemaPath, "utf8");
+          const models = raw.match(/model\s+[A-Za-z0-9_$]+\s*\{[\s\S]*?\}/g);
+          if (models && models.length > 0) {
+            lockedSchemaSummary = `\n\nLOCKED PRISMA DATA MODELS & FIELDS (IMMUTABLE SCHEMA CONTRACT):\n${models.join("\n\n")}\nAll database operations and backend route implementations MUST strictly use these exact models and fields.\n`;
+          }
+        } catch {}
+      }
       const postApprovalPromptContext =
         enrichedRequest +
         "\n\n" + approvedFrontendSummary +
         apiContractSummary +
+        lockedSchemaSummary +
         "\n\nPOST-APPROVAL BACKEND PLANNING INSTRUCTION: " +
         "The frontend has been approved by the human. Now plan ONLY the backend and database implementation. " +
         "Tasks must cover: server setup, Prisma schema validation, API route implementation, authentication, and integration. " +
@@ -2195,11 +2224,14 @@ INSTRUCTIONS FOR FRONTEND REFINEMENT:
         framework,
         mergedFiles,
       );
-    // Filter out approved frontend files to protect interaction baseline
+    // Filter out approved frontend files to protect interaction baseline, while permitting client-backend integration bridges
     const filesToWrite = files.filter(f => {
       const norm = f.path.replace(/\\/g, "/");
       const isProtectedFrontend = norm.startsWith("src/");
       if (isProtectedFrontend && (InteractionProvenanceTracker.hasBaseline(outputDirectory) || existsSync(join(outputDirectory, ".aegis", "frontend-review.json")))) {
+        if (isAllowedIntegrationBridgeFile(norm)) {
+          return true;
+        }
         console.warn(`[Orchestrator] 🛡️ Protecting approved frontend file from post-backend write: ${f.path}`);
         return false;
       }

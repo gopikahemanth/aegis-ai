@@ -572,9 +572,39 @@ export class ArchitectureResolver {
     );
 
     if (explicitModels.length === 0 && !hasAuthoritativeModels) {
-      const manageMatch = cleanPrompt.match(/(?:show|shows|present|presents|display|displays|feature|featuring|manage|manages|track|tracking|monitor|monitoring|explore|exploring|browse|browsing|compare|comparing|inspect|inspecting|view|viewing|discover|discovering|purchase|purchasing|order|ordering|book|booking|reserve|reserving|submit|submitting|handling|coordinates|supporting|adjust|adjusting)\s+([a-zA-Z0-9_,\s]+?)(?:\.|\n|The dashboard|Create appropriate|with persistent|Do not|Make the)/i);
-      if (manageMatch && manageMatch[1]) {
-        const words = manageMatch[1].split(/,| and |\s+and\s+/).map(w => w.trim()).filter(Boolean);
+      const archetypeCatalog: Record<string, string[]> = {
+        portfolio: ["Project", "Skill", "ContactMessage"],
+        marketing: ["Lead", "Campaign", "Inquiry", "Testimonial"],
+        ecommerce: ["Product", "Order", "OrderItem", "Category"],
+        store: ["Product", "Order", "OrderItem", "Category"],
+        shop: ["Product", "Order", "OrderItem", "Category"],
+        saas: ["Metric", "Alert", "LogEvent", "Organization"],
+        telemetry: ["Metric", "Alert", "LogEvent", "Device"],
+        booking: ["Service", "Appointment", "ScheduleRule"],
+        appointment: ["Service", "Appointment", "ScheduleRule"],
+        healthcare: ["Patient", "Doctor", "Appointment", "MedicalRecord"],
+        clinic: ["Patient", "Doctor", "Appointment", "Prescription"],
+        cms: ["Article", "Category", "Author", "Comment"],
+        blog: ["Post", "Category", "Comment", "Tag"],
+        community: ["Post", "Comment", "Discussion", "Profile"],
+        social: ["Post", "Comment", "Discussion", "Notification"],
+      };
+
+      const promptLower = cleanPrompt.toLowerCase();
+      for (const [kw, models] of Object.entries(archetypeCatalog)) {
+        if (promptLower.includes(kw)) {
+          for (const m of models) {
+            if (!explicitModels.includes(m)) explicitModels.push(m);
+          }
+          break;
+        }
+      }
+
+      const verbRegex = /(?:show|shows|present|presents|display|displays|feature|features|featuring|manage|manages|managing|track|tracks|tracking|monitor|monitors|monitoring|explore|explores|exploring|browse|browses|browsing|compare|compares|comparing|inspect|inspects|inspecting|view|views|viewing|discover|discovers|discovering|purchase|purchases|purchasing|order|orders|ordering|book|books|booking|reserve|reserves|reserving|submit|submits|submitting|handling|handle|handles|coordinates|coordinate|supporting|support|supports|adjust|adjusts|adjusting|upload|uploads|uploading|extract|extracts|extracting|match|matches|matching|calculate|calculates|calculating|analyze|analyzes|analyzing|scan|scans|scanning|publish|publishes|publishing|moderate|moderates|moderating|schedule|schedules|scheduling|diagnose|diagnoses|diagnosing|evaluate|evaluates|evaluating|author|authors|authoring|share|shares|sharing|search|searches|searching|filter|filters|filtering|create|creates|creating|review|reviews|reviewing|audit|audits|auditing|generate|generates|generating|configure|configures|configuring|organize|organizes|organizing|stream|streams|streaming|discuss|discusses|discussing)\s+([a-zA-Z0-9_,\s\-]+?)(?:\.|\n|The dashboard|Create appropriate|with persistent|Do not|Make the|$)/gi;
+      let match: RegExpExecArray | null;
+      while ((match = verbRegex.exec(cleanPrompt)) !== null) {
+        if (!match[1]) continue;
+        const words = match[1].split(/,| and |\s+and\s+/).map(w => w.trim()).filter(Boolean);
         for (const w of words) {
           if (PromptConstraints.isGovernanceDirective(w)) continue;
           const naming = SemanticNaming.deriveCapabilityNaming(w);

@@ -17,6 +17,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { ArchitectureContractV1 } from "./architecture-resolver.js";
 import { NavigationDesignResolver } from "../design/navigation-design.js";
+import { UniversalRequirementInterpreter } from "../requirement-intelligence/universal-requirement-interpreter.js";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -312,6 +313,31 @@ export class DomainContractDeriver {
     promptWords.forEach(w => terms.add(w));
 
     // Domain-inferred natural vocabulary inclusions
+    if (contract.prompt) {
+      try {
+        const interpreted = UniversalRequirementInterpreter.interpret(contract.prompt);
+        if (interpreted.domainVocabulary) {
+          const v = interpreted.domainVocabulary;
+          [v.entityName, v.entityPlural, v.domainPrefix, ...(v.actionVerbs || []), ...(v.primaryMetrics || [])].forEach(w => {
+            if (w && typeof w === "string") {
+              w.toLowerCase().split(/\s+/).forEach(part => {
+                if (part.length > 2) terms.add(part);
+              });
+            }
+          });
+        }
+        if (interpreted.entities) {
+          for (const ent of interpreted.entities) {
+            terms.add(ent.name.toLowerCase());
+            terms.add(ent.plural.toLowerCase());
+            for (const f of ent.fields) {
+              terms.add(f.name.toLowerCase());
+            }
+          }
+        }
+      } catch {}
+    }
+
     const promptLower = (contract.prompt || "").toLowerCase();
     const isBookstore = promptLower.includes("book") || promptLower.includes("reading") || promptLower.includes("literature");
     if (isBookstore) {

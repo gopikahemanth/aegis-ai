@@ -77,13 +77,13 @@ export class CertificationReportAggregator {
     if (domainLower.includes("maritime") || domainLower.includes("aquila") || domainLower.includes("cargo") || domainLower.includes("vessel")) {
       return "Commercial Maritime Logistics";
     }
-    if (domainLower.includes("robotics") || domainLower.includes("forgecore") || domainLower.includes("workcell") || domainLower.includes("kinematics")) {
+    if (domainLower.includes("robotics") || domainLower.includes("workcell") || domainLower.includes("kinematics")) {
       return "Precision Industrial Robotics & Telemetry";
     }
-    if (domainLower.includes("observatory") || domainLower.includes("orbitalis") || domainLower.includes("astrophysical") || domainLower.includes("telescope")) {
+    if (domainLower.includes("observatory") || domainLower.includes("astrophysical") || domainLower.includes("telescope")) {
       return "Scientific Astrophysical Observatory";
     }
-    if (domainLower.includes("hotel") || domainLower.includes("velora") || domainLower.includes("hospitality") || domainLower.includes("resort")) {
+    if (domainLower.includes("hotel") || domainLower.includes("hospitality") || domainLower.includes("resort")) {
       return "Luxury Hospitality";
     }
     if (domainLower.includes("cyber") || domainLower.includes("security")) {

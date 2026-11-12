@@ -128,13 +128,7 @@ export class ContractDrivenCoder {
         // 7b. Semantic Duplicate Check
         const dupCheck = SemanticDuplicateDetector.checkBeforeWrite(normalizedRelPath);
         if (!dupCheck.allowed) {
-          if (dupCheck.canonicalPath && dupCheck.canonicalPath !== normalizedRelPath) {
-            console.warn(`[ContractDrivenCoder] 🔀 Normalizing duplicate alias "${normalizedRelPath}" -> canonical "${dupCheck.canonicalPath}"`);
-            normalizedRelPath = dupCheck.canonicalPath;
-            item.path = dupCheck.canonicalPath;
-          } else {
-            throw new Error(`SEMANTIC_DUPLICATE_ERROR: File "${normalizedRelPath}" is a duplicate alias for "${dupCheck.canonicalPath}".`);
-          }
+          throw new Error(`SEMANTIC_DUPLICATE_ERROR: ${dupCheck.reason || `File "${normalizedRelPath}" is a duplicate alias for "${dupCheck.canonicalPath}".`}`);
         }
 
         // 7c. Stub & Fake Handler Check

@@ -2,16 +2,18 @@ import { DependencyInstaller } from "@aegis/project-builder";
 import { BuildRunner } from "@aegis/project-builder";
 import { ErrorAnalyzer } from "@aegis/project-builder";
 
-import { SelfHealer } from "@aegis/ai-core";
+import { SelfHealer, DeterministicProjectFixer } from "@aegis/ai-core";
 import type { AIProvider } from "@aegis/ai-core";
 import { DependencyResolver } from "@aegis/project-builder";
 import type { PipelineResult } from "./pipeline-result.js";
+import { DatabaseInitializationStep } from "./database-init-step.js";
 
 export class ExecutionPipeline {
   private readonly installer = new DependencyInstaller();
   private readonly builder = new BuildRunner();
   private readonly analyzer = new ErrorAnalyzer();
   private readonly dependencyResolver = new DependencyResolver();
+  private readonly dbInit = new DatabaseInitializationStep();
   private readonly healer: SelfHealer;
   private readonly maxRetries = 3;
 
@@ -28,6 +30,19 @@ export class ExecutionPipeline {
     const install = await this.installer.install("pnpm", projectPath);
     console.log(`[Install] Exit code: ${install.exitCode}`);
 
+    // ── Database Initialization ──────────────────────────────────────────────
+    // Run after dependency installation (Prisma CLI must be available) and
+    // before the production build (Prisma client must be generated first).
+    console.log("[DatabaseInit] Checking for Prisma schema and initializing database...");
+    const dbResult = await this.dbInit.run(projectPath, "pnpm");
+    console.log(`[DatabaseInit] Status: ${dbResult.status} — ${dbResult.message}`);
+
+    // If the database initialization produced a code-level FAILURE (not just an
+    // environment BLOCKED), surface it immediately — the build will also fail.
+    if (dbResult.status === "FAILED") {
+      console.error(`[Pipeline] ❌ Database initialization failed with a code-level error. Build will likely fail.`);
+    }
+
     let healingAttempts = 0; // Only incremented for real code repair attempts (not PROVIDER_QUOTA)
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
@@ -37,7 +52,11 @@ export class ExecutionPipeline {
 
       if (build.success) {
         console.log("✅ Build succeeded.");
-        return { success: true, attempts: attempt };
+        return {
+          success: true,
+          attempts: attempt,
+          databaseStatus: dbResult.status === "CONNECTED" ? "CONNECTED" : dbResult.status === "BLOCKED" ? "BLOCKED" : "UNKNOWN",
+        };
       }
 
       console.log(`❌ Build failed.`);
@@ -65,7 +84,11 @@ export class ExecutionPipeline {
       if (isArchitectureError || isEnvironmentError) {
         console.error(`[Pipeline] ❌ BLOCKING: Build failure is classified as ${isArchitectureError ? "ARCHITECTURE" : "ENVIRONMENT"} error.`);
         console.error(`[Pipeline] Self-healer will NOT run — these errors must be fixed in the architecture contract or environment config.`);
-        return { success: false, attempts: attempt };
+        return {
+          success: false,
+          attempts: attempt,
+          databaseStatus: dbResult.status === "CONNECTED" ? "CONNECTED" : "BLOCKED",
+        };
       }
 
       // PROVIDER_QUOTA: 429 rate limit — failover only, do NOT count as healing attempt
@@ -83,12 +106,27 @@ export class ExecutionPipeline {
         continue; // Retry build after install
       }
 
+      // ── Deterministic Mechanical Fixer (casing, imports, router bindings) ─
+      try {
+        const fixReport = DeterministicProjectFixer.fixProject(projectPath);
+        if (fixReport.modifiedFiles.length > 0 || fixReport.createdFiles.length > 0) {
+          console.log(`[MechanicalFixer] ✓ Auto-repaired ${fixReport.modifiedFiles.length + fixReport.createdFiles.length} file(s) (routes/imports/schemas). Retrying build...`);
+          continue;
+        }
+      } catch (fixErr: any) {
+        console.warn(`[MechanicalFixer] Notice: ${fixErr.message}`);
+      }
+
       // ── Model escalation for code repair ─────────────────────────────────
       // Only count actual AI repair calls against the healing budget
       healingAttempts++;
       if (healingAttempts > this.maxRetries) {
         console.error(`[Pipeline] Max healing attempts (${this.maxRetries}) reached. Stopping pipeline.`);
-        return { success: false, attempts: attempt };
+        return {
+          success: false,
+          attempts: attempt,
+          databaseStatus: dbResult.status === "CONNECTED" ? "CONNECTED" : "UNKNOWN",
+        };
       }
 
       const escalationLevel = healingAttempts === 1 ? "fast" : healingAttempts === 2 ? "balanced" : "strong";
@@ -102,6 +140,10 @@ export class ExecutionPipeline {
       );
     }
 
-    return { success: false, attempts: this.maxRetries };
+    return {
+      success: false,
+      attempts: this.maxRetries,
+      databaseStatus: dbResult.status === "CONNECTED" ? "CONNECTED" : "UNKNOWN",
+    };
   }
 }

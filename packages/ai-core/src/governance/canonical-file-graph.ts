@@ -316,10 +316,11 @@ export const CANONICAL_FILES: CanonicalFileEntry[] = [
 
   // ─── Backend Middleware ────────────────────────────────────────────────────
   {
-    canonicalPath: "server/middleware/auth.middleware.ts",
+    canonicalPath: "server/middleware/auth.ts",
     semanticRole: "JWT Auth Middleware",
     semanticAliases: [
-      "server/middleware/auth.ts",
+      "server/middleware/auth.middleware.ts",
+      "server/middleware/auth.middleware",
       "server/middleware/auth",
       "server/middleware/authenticate.ts",
       "server/middleware/jwtMiddleware.ts"

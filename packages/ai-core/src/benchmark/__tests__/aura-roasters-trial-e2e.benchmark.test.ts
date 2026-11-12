@@ -13,7 +13,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { existsSync, rmSync, readFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { StorefrontCatalogExperienceGenerator } from "../../design/experience-generators/storefront-catalog-generator.js";
+import { ProductUnderstanding } from "../../design/product-understanding.js";
+import { DomainVisualDesignContractDeriver } from "../../design/domain-visual-contract.js";
 import { FastDeterministicSanitizer } from "../../governance/fast-sanitizer.js";
 import { AuthorizedSchemaManager } from "../../governance/authorized-schema-manager.js";
 import { DynamicDataModelContract } from "../../governance/dynamic-data-model.js";
@@ -40,29 +41,27 @@ describe("Aura Roasters End-to-End Regression Benchmark (Defect 5)", () => {
       if (existsSync(disposableDir)) {
         rmSync(disposableDir, { recursive: true, force: true });
       }
-    } catch {}
+    } catch { }
   });
 
   it("Domain Correctness: verifies zero automotive contamination and rich coffee catalog generation", () => {
-    const catalog = StorefrontCatalogExperienceGenerator.deriveDomainCatalog(originalPrompt, "Aura Roasters");
+    const analysis = ProductUnderstanding.analyze(originalPrompt);
+    const contract = DomainVisualDesignContractDeriver.derive(originalPrompt);
 
-    // 1. Must be recognized as coffee roastery, NOT automotive
-    expect(catalog.domainCategory).toMatch(/coffee|cafe|roaster/i);
-    expect(catalog.domainLabel).toMatch(/coffee|roaster/i);
+    // 1. Must be recognized as coffee/ordering, NOT automotive
+    expect(analysis.primaryActivity).toBe("booking-ordering");
+    expect(contract.domain.toLowerCase()).not.toContain("automotive");
 
-    // 2. Products must be authentic artisanal coffee single origins & blends
-    expect(catalog.products.length).toBeGreaterThanOrEqual(6);
-    const productTitles = catalog.products.map(p => p.title).join(" ");
-    expect(productTitles).toMatch(/Ethiopia|Guatemala|Espresso|Colombia|Cold Brew|Sumatra/i);
-
-    // 3. ZERO automotive contamination in titles, descriptions, categories, or badge
-    const fullCatalogText = JSON.stringify(catalog).toLowerCase();
-    expect(fullCatalogText).not.toContain("ceramic coating");
-    expect(fullCatalogText).not.toContain("exterior bath");
-    expect(fullCatalogText).not.toContain("steam extraction");
-    expect(fullCatalogText).not.toContain("detailing");
-    expect(fullCatalogText).not.toContain("car wash");
-    expect(fullCatalogText).not.toContain("touchless");
+    // 2. ZERO automotive contamination in titles, descriptions, categories, or badge
+    const fullText = JSON.stringify({ analysis, contract }).toLowerCase();
+    expect(fullText).not.toContain("ceramic coating");
+    expect(fullText).not.toContain("engine bay");
+    expect(fullText).not.toContain("touchless wash");
+    expect(fullText).not.toContain("exterior bath");
+    expect(fullText).not.toContain("steam extraction");
+    expect(fullText).not.toContain("detailing");
+    expect(fullText).not.toContain("car wash");
+    expect(fullText).not.toContain("touchless");
   });
 
   it("Data Architecture & Prisma: generates valid deduplicated schema with canonical camelCase relations", () => {

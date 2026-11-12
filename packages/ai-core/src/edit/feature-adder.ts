@@ -188,9 +188,11 @@ export default function ${pascalName}() {
         let navContent = readFileSync(navPath, "utf8");
         if (!navContent.includes(route)) {
           // If navItems array exists
-          if (navContent.includes("navItems = [") || navContent.includes("NAV_ITEMS = [") || navContent.includes("links = [")) {
+          const navArrayMatch = navContent.match(/(navItems|NAV_ITEMS|links|navLinks|NAV_LINKS|navigationItems)\s*=\s*\[/);
+          if (navArrayMatch) {
+            const arrayName = navArrayMatch[1];
             const navEntry = `  { label: "${rawName}", href: "${route}" },\n`;
-            navContent = navContent.replace(/(navItems|NAV_ITEMS|links)\s*=\s*\[/, `$1 = [\n${navEntry}`);
+            navContent = navContent.replace(new RegExp(`(${arrayName}\\s*=\\s*\\[)`), `$1\n${navEntry}`);
             writeFileSync(navPath, navContent, "utf8");
             if (!modifiedFiles.includes(navRel)) modifiedFiles.push(navRel);
             break;

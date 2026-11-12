@@ -16,3 +16,5 @@ export * from "./feature-verification-engine.js";
 export * from "./roadmap-impact-engine.js";
 export * from "./requirement-intelligence-gate.js";
 export * from "./requirement-intelligence-orchestrator.js";
+export * from "./universal-requirement-interpreter.js";
+export * from "./requirement-clarification-engine.js";

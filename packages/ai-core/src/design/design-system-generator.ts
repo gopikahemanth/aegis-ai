@@ -2,6 +2,15 @@ import type { ProjectSpecification } from "../architect/specification.js";
 import type { GeneratedFile } from "../writer/writer.js";
 import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "./domain-visual-contract.js";
 import type { ProductDesignBrief } from "./design-director.js";
+import {
+  getModalTemplate,
+  getTabsTemplate,
+  getAlertTemplate,
+  getToastTemplate,
+  getNavbarTemplate,
+  getDatePickerTemplate,
+  getFileUploadTemplate,
+} from "./interactive-components-templates.js";
 
 export interface DesignTokens {
   brand: string;
@@ -187,6 +196,7 @@ body,
 #root {
   min-height: 100%;
   width: 100%;
+  overflow-x: hidden;
 }
 
 html {
@@ -319,20 +329,25 @@ h1, h2, h3, h4, h5, h6 {
 /* Modern Typography Scale */
 .display-title {
   font-family: var(--font-display);
-  font-size: var(--font-display-size);
+  font-size: var(--font-display-size, clamp(1.85rem, 4.5vw, 3.25rem));
   font-weight: 800;
-  line-height: 1.08;
+  line-height: 1.1;
   letter-spacing: -0.035em;
   color: var(--color-text-primary);
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
 }
 
 .section-heading {
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-size: clamp(1.35rem, 2.5vw, 2.25rem);
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.025em;
   color: var(--color-text-primary);
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .body-lead {
@@ -460,11 +475,11 @@ h1, h2, h3, h4, h5, h6 {
 
 .nav-item:hover, .nav-link:hover {
   color: var(--color-text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-surface-elevated, rgba(125, 125, 125, 0.12));
 }
 
 .nav-item.active, .nav-link.active {
-  color: #ffffff;
+  color: var(--color-text-on-primary, #ffffff);
   background: var(--color-primary);
   font-weight: 600;
   box-shadow: 0 2px 10px var(--color-primary-subtle);
@@ -561,7 +576,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .btn-primary {
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-text-on-primary, #ffffff);
   border-color: var(--color-primary);
   box-shadow: 0 2px 8px var(--color-primary-subtle);
 }
@@ -708,13 +723,19 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .metric-value {
-  font-size: 1.75rem;
+  font-size: clamp(1.4rem, 2.8vw, 2rem);
   font-weight: 700;
   color: var(--color-text-primary);
   font-family: var(--font-display);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: break-all;
 }
 
 .telemetry-grid {
@@ -968,20 +989,25 @@ export interface MetricCardProps {
   className?: string;
 }
 
-export const MetricCard: React.FC<MetricCardProps> = ({ label, value, trend, icon, className = '' }) => (
-  <div className={\`metric-card \${className}\`}>
-    <div className="flex items-center justify-between text-xs font-medium text-[var(--color-text-muted)]">
-      <span>{label}</span>
-      {icon && <span className="text-[var(--color-primary)]">{icon}</span>}
-    </div>
-    <div className="metric-value mt-1">{value}</div>
-    {trend && (
-      <div className="text-xs font-medium text-[var(--color-primary)] mt-0.5">
-        {trend}
+export const MetricCard: React.FC<MetricCardProps> = ({ label, value, trend, icon, className = '' }) => {
+  const displayValue = typeof value === 'number'
+    ? (Number.isInteger(value) ? value : Number(value.toFixed(1)))
+    : value;
+  return (
+    <div className={\`metric-card min-w-0 overflow-hidden \${className}\`}>
+      <div className="flex items-center justify-between text-xs font-medium text-[var(--color-text-muted)] truncate">
+        <span className="truncate">{label}</span>
+        {icon && <span className="text-[var(--color-primary)] flex-shrink-0 ml-1">{icon}</span>}
       </div>
-    )}
-  </div>
-);
+      <div className="metric-value mt-1 truncate">{displayValue}</div>
+      {trend && (
+        <div className="text-xs font-medium text-[var(--color-primary)] mt-0.5 truncate">
+          {trend}
+        </div>
+      )}
+    </div>
+  );
+};
 export default MetricCard;
 `,
       });
@@ -1003,7 +1029,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, acti
   <div className={\`flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[var(--color-border)] mb-6 \${className}\`}>
     <div>
       <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--color-text-primary)]">{title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-primary)] break-words">{title}</h1>
         {badge}
       </div>
       {description && <p className="text-sm text-[var(--color-text-muted)] mt-1">{description}</p>}
@@ -1239,9 +1265,11 @@ export interface ShowcaseGridProps {
   items: ShowcaseCardItem[];
   onSelect?: (item: ShowcaseCardItem) => void;
   className?: string;
+  emptyState?: React.ReactNode;
+  [key: string]: any;
 }
 
-export const ShowcaseGrid: React.FC<ShowcaseGridProps> = ({ items, onSelect, className = '' }) => (
+export const ShowcaseGrid: React.FC<ShowcaseGridProps> = ({ items, onSelect, className = '', emptyState, ...props }) => (
   <div className={\`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 \${className}\`}>
     {items.map(item => (
       <div
@@ -1271,12 +1299,54 @@ export default ShowcaseGrid;
 `,
     });
 
-    // ── 12. index.ts ──────────────────────────────────────────────────────────
+    // ── 12. Modal.tsx ────────────────────────────────────────────────────────
+    files.push({
+      path: "src/design-system/components/Modal.tsx",
+      content: getModalTemplate(),
+    });
+
+    // ── 13. Tabs.tsx ─────────────────────────────────────────────────────────
+    files.push({
+      path: "src/design-system/components/Tabs.tsx",
+      content: getTabsTemplate(),
+    });
+
+    // ── 14. Alert.tsx & Toast.tsx ────────────────────────────────────────────
+    files.push({
+      path: "src/design-system/components/Alert.tsx",
+      content: getAlertTemplate(),
+    });
+
+    files.push({
+      path: "src/design-system/components/Toast.tsx",
+      content: getToastTemplate(),
+    });
+
+    // ── 15. Navbar.tsx ───────────────────────────────────────────────────────
+    files.push({
+      path: "src/design-system/components/Navbar.tsx",
+      content: getNavbarTemplate(),
+    });
+
+    // ── 16. DatePicker.tsx ───────────────────────────────────────────────────
+    files.push({
+      path: "src/design-system/components/DatePicker.tsx",
+      content: getDatePickerTemplate(),
+    });
+
+    // ── 17. FileUpload.tsx ───────────────────────────────────────────────────
+    files.push({
+      path: "src/design-system/components/FileUpload.tsx",
+      content: getFileUploadTemplate(),
+    });
+
+    // ── 18. index.ts ──────────────────────────────────────────────────────────
     files.push({
       path: "src/design-system/index.ts",
       content: `export * from './tokens';
 export * from './components/Button';
 export * from './components/GlassCard';
+export { GlassCard as Card } from './components/GlassCard';
 export * from './components/Badge';
 export * from './components/Input';
 export * from './components/Select';
@@ -1286,6 +1356,13 @@ export * from './components/EmptyState';
 export * from './components/Timeline';
 ${needsKanban ? "export * from './components/KanbanBoard';\n" : ""}export * from './components/TelemetryGrid';
 export * from './components/ShowcaseGrid';
+export * from './components/Modal';
+export * from './components/Tabs';
+export * from './components/Alert';
+export * from './components/Toast';
+export * from './components/Navbar';
+export * from './components/DatePicker';
+export * from './components/FileUpload';
 `,
     });
 
@@ -1434,7 +1511,19 @@ Color Palette Tokens:
   Active Nav: ${contract.colorSystem.activeNavStyle}
 
 Pre-generated Specialized Components available in src/design-system/:
-  import { Button, GlassCard, Badge, Input, Select, PageHeader${hasMetricCard ? ', MetricCard' : ''}, Skeleton, EmptyState, Timeline${hasKanban ? ', KanbanBoard' : ''}, TelemetryGrid, ShowcaseGrid } from '../design-system';
+  import {
+    Button, GlassCard, Card, Badge, Input, Select, PageHeader${hasMetricCard ? ', MetricCard' : ''},
+    Skeleton, EmptyState, Timeline${hasKanban ? ', KanbanBoard' : ''}, TelemetryGrid, ShowcaseGrid,
+    Modal, Dialog, Tabs, TabPanel, Alert, ToastProvider, useToast, Navbar, DatePicker, FileUpload
+  } from '../design-system';
+
+INTERACTIVE COMPONENT GUIDELINES (USE THESE RICH ACCESSIBLE PRIMITIVES):
+  ✓ Modal / Dialog: Use for confirmation dialogues, details popovers, booking/edit flows with isOpen and onClose.
+  ✓ Tabs / TabPanel: Use for multi-view or categorized data switching with accessible keyboard navigation.
+  ✓ Alert / Toast: Use ToastProvider / useToast() for feedback on user actions (e.g. toast.success('Reservation confirmed')).
+  ✓ Navbar: Use for site-wide navigation with responsive mobile menu toggle (zero horizontal overflow).
+  ✓ DatePicker: Use for scheduling, reservations, and date filters with minDate/maxDate boundaries.
+  ✓ FileUpload: Use for document/image attachments with drag-and-drop and size/format validation.
 
 ANTI-PATTERNS (STRICTLY PROHIBITED):
 ${contract.antiPatterns.map(a => `  ✗ ${a}`).join('\n')}

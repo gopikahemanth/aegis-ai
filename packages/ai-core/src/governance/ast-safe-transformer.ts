@@ -22,6 +22,11 @@ export class ASTSafeTransformer {
    * Safely repairs syntax typos and structural defects in TypeScript / TSX files.
    */
   public static transformSource(sourceCode: string, fileName: string): TransformResult {
+    // If not a TS/JS file, do not attempt TS AST transformation or syntax repairs
+    if (!/\.(tsx?|jsx?)$/i.test(fileName)) {
+      return { code: sourceCode, repairsApplied: [], transformed: false };
+    }
+
     const repairs: string[] = [];
     let currentCode = sourceCode;
 
@@ -534,6 +539,10 @@ export class ASTSafeTransformer {
    * - Identifiers and property names (item090, _090)
    */
   public static normalizeLeadingZeroLiterals(sourceCode: string, fileName = "file.tsx"): { code: string; normalizedCount: number } {
+    if (!/\.(tsx?|jsx?)$/i.test(fileName)) {
+      return { code: sourceCode, normalizedCount: 0 };
+    }
+
     let code = sourceCode;
     let normalizedCount = 0;
 
@@ -665,6 +674,22 @@ export class ASTSafeTransformer {
       }
 
       const byName = new Map<string, DeclInfo[]>();
+      const importedNames = new Set<string>();
+      const toRemove: { start: number; end: number; name: string }[] = [];
+      let deduplicatedCount = 0;
+
+      for (const stmt of sf.statements) {
+        if (ts.isImportDeclaration(stmt) && stmt.importClause) {
+          if (stmt.importClause.name) {
+            importedNames.add(stmt.importClause.name.text);
+          }
+          if (stmt.importClause.namedBindings && ts.isNamedImports(stmt.importClause.namedBindings)) {
+            for (const elem of stmt.importClause.namedBindings.elements) {
+              importedNames.add(elem.name.text);
+            }
+          }
+        }
+      }
 
       for (const stmt of sf.statements) {
         if (ts.isFunctionDeclaration(stmt) && stmt.name) {
@@ -683,6 +708,16 @@ export class ASTSafeTransformer {
           for (const decl of stmt.declarationList.declarations) {
             if (ts.isIdentifier(decl.name)) {
               const name = decl.name.text;
+              if (importedNames.has(name)) {
+                // Duplicate local fallback declaration conflicting with import (TS2440)
+                toRemove.push({
+                  start: stmt.getStart(sf),
+                  end: stmt.getEnd(),
+                  name,
+                });
+                deduplicatedCount++;
+                continue;
+              }
               if (!byName.has(name)) byName.set(name, []);
               byName.get(name)!.push({
                 name,
@@ -709,9 +744,6 @@ export class ASTSafeTransformer {
           });
         }
       }
-
-      const toRemove: { start: number; end: number; name: string }[] = [];
-      let deduplicatedCount = 0;
 
       for (const [name, decls] of byName.entries()) {
         if (decls.length > 1) {

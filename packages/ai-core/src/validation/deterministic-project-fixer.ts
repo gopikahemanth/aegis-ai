@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join, resolve, dirname, relative } from "node:path";
 import { ArchitectureResolver, ArchitectureContractV1 } from "../governance/architecture-resolver.js";
 import { DomainVisualContractGenerator, type DomainVisualDesignContract } from "../design/domain-visual-contract.js";
@@ -128,6 +128,19 @@ export class DeterministicProjectFixer {
       }, null, 2);
       writeFileSync(pkgPath, pkgContent, "utf8");
       createdFiles.push("package.json");
+    } else {
+      try {
+        const pkgObj = JSON.parse(readFileSync(pkgPath, "utf8"));
+        let pkgModified = false;
+        if (pkgObj.dependencies?.next && (pkgObj.devDependencies?.vite || pkgObj.dependencies?.vite || pkgObj.scripts?.dev?.includes("vite"))) {
+          delete pkgObj.dependencies.next;
+          pkgModified = true;
+        }
+        if (pkgModified) {
+          writeFileSync(pkgPath, JSON.stringify(pkgObj, null, 2), "utf8");
+          modifiedFiles.push("package.json");
+        }
+      } catch {}
     }
 
     // ── 1c. Ensure scripts/dev.js exists ─────────────────────────────────────
@@ -157,7 +170,7 @@ export class DeterministicProjectFixer {
     <title>${domainSpec.brandName}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
       :root {
         --color-background: ${resolvedTokens.backgroundColor};
@@ -525,17 +538,15 @@ export function useDashboardData(...args: any[]) {
     queryKey: ["dashboardData", ...args],
     queryFn: async () => {
       try {
-        const res = await fetch("/api/dashboard/summary");
-        if (!res.ok) throw new Error("Offline");
-        return await res.json();
+        const res = await fetch("/api/analytics/metrics");
+        if (!res.ok) throw new Error("API request failed");
+        const json = await res.json();
+        return json?.data || json;
       } catch {
         return {
-          total: 24,
-          active: 18,
-          pending: 6,
-          score: 94.5,
-          summary: { totalKw: 1450, avgEfficiency: 96.8, peakTemp: 48.2, alertCount: 0 },
-          inverters: [],
+          total: 0,
+          active: 0,
+          pending: 0,
           items: [],
           records: [],
         };
@@ -546,12 +557,9 @@ export function useDashboardData(...args: any[]) {
   return {
     ...query,
     data: query.data || {
-      total: 24,
-      active: 18,
-      pending: 6,
-      score: 94.5,
-      summary: { totalKw: 1450, avgEfficiency: 96.8, peakTemp: 48.2, alertCount: 0 },
-      inverters: [],
+      total: 0,
+      active: 0,
+      pending: 0,
       items: [],
       records: [],
     },
@@ -574,118 +582,18 @@ export default useDashboardData;
     // ── 7. src/shared/components/Layout.tsx ───────────────────────────────────
     const layoutPath = join(sharedDir, "Layout.tsx");
     if (!existsSync(layoutPath)) {
-      const navLinksJson = JSON.stringify(domainSpec.navLinks, null, 2);
-      const isPill = domainSpec.visualContract.navigation.strategy === "TOPBAR_PILL";
-      const layoutContent = `import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+      const layoutContent = `import React from "react";
+import { Navbar } from "../../design-system/components/Navbar";
 
 export interface LayoutProps {
   children?: React.ReactNode;
 }
 
 export function Layout({ children }: LayoutProps = {}) {
-  const location = useLocation();
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const navLinks = ${navLinksJson};
-  const primaryLinks = navLinks.slice(0, 5);
-  const overflowLinks = navLinks.slice(5);
-
   return (
-    <div className="app-shell min-h-screen ${domainSpec.visualContract.colorSystem.background} ${domainSpec.visualContract.colorSystem.textPrimary} flex flex-col font-sans">
-      <header className="app-header border-b ${domainSpec.visualContract.colorSystem.surface} backdrop-blur-md sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center gap-2.5 text-decoration-none group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr ${domainSpec.visualContract.colorSystem.accent} flex items-center justify-center font-bold text-white shadow-lg shadow-black/40 group-hover:scale-105 transition-transform">
-              ✦
-            </div>
-            <span className="font-bold text-lg ${domainSpec.visualContract.colorSystem.textPrimary} tracking-tight group-hover:opacity-90 transition-opacity">${domainSpec.brandName}</span>
-          </Link>
-          <nav className="app-nav hidden md:flex items-center gap-1.5 ${isPill ? "nav-pill-group p-1 rounded-full " + domainSpec.visualContract.colorSystem.surface : ""}">
-            {primaryLinks.map((link) => {
-              const active = location.pathname === link.path || (link.path !== "/" && location.pathname.startsWith(link.path));
-              return (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={\`nav-item ${isPill ? "rounded-full" : "rounded-lg"} px-3.5 py-1.5 text-xs font-medium transition-all duration-150 \${
-                    active
-                      ? "active ${domainSpec.visualContract.colorSystem.activeNavStyle} font-semibold"
-                      : "${domainSpec.visualContract.colorSystem.textMuted} hover:${domainSpec.visualContract.colorSystem.textPrimary} hover:bg-white/5"
-                  }\`}
-                >
-                  {link.name}
-                </Link>
-              );
-            })}
-            {overflowLinks.length > 0 && (
-              <div className="nav-dropdown relative" onMouseLeave={() => setIsMoreOpen(false)}>
-                <button
-                  type="button"
-                  onClick={() => setIsMoreOpen(!isMoreOpen)}
-                  onMouseEnter={() => setIsMoreOpen(true)}
-                  className="nav-dropdown-btn text-xs font-medium ${domainSpec.visualContract.colorSystem.textMuted} hover:${domainSpec.visualContract.colorSystem.textPrimary} px-3 py-1.5 rounded-lg flex items-center gap-1 transition cursor-pointer"
-                >
-                  <span>More</span>
-                  <span className="text-[10px]">▾</span>
-                </button>
-                {isMoreOpen && (
-                  <div className="nav-dropdown-menu absolute top-full left-0 mt-1 min-w-[12rem] p-1.5 rounded-xl ${domainSpec.visualContract.colorSystem.surface} border shadow-xl z-50 flex flex-col gap-1">
-                    {overflowLinks.map((link) => (
-                      <Link
-                        key={link.path}
-                        to={link.path}
-                        onClick={() => setIsMoreOpen(false)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium ${domainSpec.visualContract.colorSystem.textMuted} hover:${domainSpec.visualContract.colorSystem.textPrimary} hover:bg-white/5 transition"
-                      >
-                        {link.name}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </nav>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="badge badge-live inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${domainSpec.visualContract.colorSystem.badgeStyle}">
-            <span className="live-dot w-1.5 h-1.5 rounded-full bg-${domainSpec.visualContract.colorSystem.primary}-400 animate-pulse mr-1.5" />
-            ${domainSpec.liveBadgeText}
-          </span>
-          <Link
-            to="/login"
-            className="btn btn-secondary px-3.5 py-1.5 rounded-lg ${domainSpec.visualContract.colorSystem.surface} ${domainSpec.visualContract.colorSystem.textMuted} hover:${domainSpec.visualContract.colorSystem.textPrimary} text-xs font-medium transition border"
-          >
-            Portal
-          </Link>
-          <button
-            type="button"
-            onClick={() => setIsMobileOpen(!isMobileOpen)}
-            className="md:hidden p-2 rounded-lg ${domainSpec.visualContract.colorSystem.surface} border ${domainSpec.visualContract.colorSystem.textMuted} text-xs cursor-pointer"
-            aria-label="Toggle navigation menu"
-          >
-            ☰
-          </button>
-        </div>
-      </header>
-      {isMobileOpen && (
-        <div className="md:hidden border-b ${domainSpec.visualContract.colorSystem.surface} p-4 space-y-2 ${domainSpec.visualContract.colorSystem.background}">
-          {navLinks.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              onClick={() => setIsMobileOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm ${domainSpec.visualContract.colorSystem.textPrimary} hover:bg-white/5"
-            >
-              {link.name}
-            </Link>
-          ))}
-        </div>
-      )}
-      <main className="main-container flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8">{children}</main>
-      <footer className="border-t ${domainSpec.visualContract.colorSystem.surface} px-6 py-4 text-center text-xs ${domainSpec.visualContract.colorSystem.textMuted}">
-        ${domainSpec.brandName} • ${domainSpec.visualContract.domain} (${domainSpec.visualContract.visualPersonality.mood})
-      </footer>
+    <div className="app-shell min-h-screen flex flex-col font-sans" style={{ backgroundColor: "var(--color-background, #090a0f)", color: "var(--color-text-primary, #ffffff)" }}>
+      <Navbar />
+      <main className="main-container flex-1 w-full mx-auto">{children}</main>
     </div>
   );
 }
@@ -711,6 +619,10 @@ export default Layout;
       reasons: [],
     };
 
+    const dashRequired = domainSpec.features.some(f => f.routePath === "/dashboard" || f.slug === "dashboard") ||
+      (contract?.requiredRoutes || []).some((r: any) => String(r.path || r).includes("dashboard")) ||
+      (domainSpec.visualContract?.composition as any)?.layoutArchetype === "dashboard";
+
     if (existsSync(dashPath)) {
       const isValid = DeterministicProjectFixer.isRichValidDashboard(dashPath, domainSpec);
       if (!isValid) {
@@ -720,11 +632,17 @@ export default Layout;
           reasons: ["DashboardPage.tsx exists but fails capability completeness."],
         };
       }
-    } else {
+    } else if (dashRequired) {
       capabilityCompleteness = {
         valid: false,
         missingCapabilities: domainSpec.visualContract?.composition?.primaryWorkspace?.capabilities || ["primary_workspace"],
         reasons: ["DashboardPage.tsx is missing from generated project."],
+      };
+    } else {
+      capabilityCompleteness = {
+        valid: true,
+        missingCapabilities: [],
+        reasons: [],
       };
     }
 
@@ -1342,23 +1260,55 @@ export default Layout;
     });
 
     const srcDir = projectRoot ? join(projectRoot, "src") : "";
-    const validFeaturePages = uniqueFeatures.filter(f => {
-      if (!srcDir) return true;
-      return existsSync(join(srcDir, "pages", `${f.name}.tsx`)) ||
-             existsSync(join(srcDir, "features", f.name.toLowerCase(), `${f.name}.tsx`));
-    });
+    const resolveFeatureCompName = (featName: string): string | null => {
+      if (!srcDir) return featName;
+      const stripped = featName.replace(/Page$/, "");
+      if (existsSync(join(srcDir, "pages", `${featName}.tsx`))) return featName;
+      if (existsSync(join(srcDir, "pages", `${stripped}.tsx`))) return stripped;
+      if (existsSync(join(srcDir, "features", featName.toLowerCase(), `${featName}.tsx`))) return featName;
+      if (existsSync(join(srcDir, "features", stripped.toLowerCase(), `${stripped}.tsx`))) return stripped;
+      return null;
+    };
 
-    const homeComp = validFeaturePages.find(vf => /home|landing|journal|world|main|stage/i.test(vf.name))?.name ||
-                     validFeaturePages[0]?.name ||
-                     "DashboardPage";
+    const validFeaturePages = uniqueFeatures
+      .map(f => {
+        const resolvedComp = resolveFeatureCompName(f.name);
+        return resolvedComp ? { ...f, resolvedName: resolvedComp } : null;
+      })
+      .filter((f): f is (typeof uniqueFeatures[0] & { resolvedName: string }) => Boolean(f));
+
+    let fallbackComp = "DashboardPage";
+    if (srcDir && existsSync(join(srcDir, "pages"))) {
+      try {
+        const pagesFound = readdirSync(join(srcDir, "pages")).filter(f => f.endsWith(".tsx") || f.endsWith(".jsx"));
+        if (pagesFound.length > 0) {
+          fallbackComp = pagesFound[0].replace(/\.(tsx|jsx)$/, "");
+        }
+      } catch {}
+    }
+
+    const targetPrimary = ((domainSpec as any)?.primaryLandingFeature || "").toLowerCase().replace(/[-_ ]/g, "");
+    const homeComp = (targetPrimary && validFeaturePages.find(vf => {
+      const norm = vf.resolvedName.toLowerCase().replace(/[-_ ]/g, "");
+      return norm.includes(targetPrimary) || targetPrimary.includes(norm);
+    })?.resolvedName) ||
+    validFeaturePages.find(vf => !/staff|admin|internal/i.test(vf.resolvedName) && /editorial|sanctuary|monograph|showcase|home|landing|journal|world|main|stage|store|overview|catalog|portal|boutique|hero|portfolio/i.test(vf.resolvedName))?.resolvedName ||
+    validFeaturePages.find(vf => !/staff|admin|internal/i.test(vf.resolvedName))?.resolvedName ||
+    validFeaturePages[0]?.resolvedName ||
+    fallbackComp;
 
     const dashboardImport = homeComp === "DashboardPage" || uniqueFeatures.some(f => f.routePath === "/dashboard")
       ? `import * as DashboardPageModule from "./features/dashboard/DashboardPage";\nconst DashboardPage = resolveComponent(DashboardPageModule, "Dashboard");\n`
       : "";
 
+    const seenImports = new Set<string>();
     const imports = [
       dashboardImport,
-      ...validFeaturePages.map(f => `import * as ${f.name}Module from "./pages/${f.name}";\nconst ${f.name} = resolveComponent(${f.name}Module, "${f.navTitle}");`),
+      ...validFeaturePages.map(f => {
+        if (seenImports.has(f.resolvedName)) return "";
+        seenImports.add(f.resolvedName);
+        return `import * as ${f.resolvedName}Module from "./pages/${f.resolvedName}";\nconst ${f.resolvedName} = resolveComponent(${f.resolvedName}Module, "${f.navTitle}");`;
+      }),
     ].filter(Boolean).join("\n");
 
     const routeList: Array<{ path: string; component: string }> = [
@@ -1369,7 +1319,8 @@ export default Layout;
     }
 
     for (const f of uniqueFeatures) {
-      const comp = validFeaturePages.some(vf => vf.name === f.name) ? f.name : homeComp;
+      const matchedVf = validFeaturePages.find(vf => vf.name === f.name || vf.resolvedName === f.name || vf.name.replace(/Page$/, "") === f.name);
+      const comp = matchedVf ? matchedVf.resolvedName : homeComp;
       if (!routeList.some(r => r.path === f.routePath)) {
         routeList.push({ path: f.routePath, component: comp });
       }
@@ -1770,6 +1721,15 @@ export default router;
    * Ensures server/index.ts mounts all domain route handlers.
    */
   private static ensureServerIndexIntegrity(serverIndexPath: string, domainSpec: ReturnType<typeof DeterministicProjectFixer.deriveDomainSpec>): void {
+    if (existsSync(serverIndexPath)) {
+      // TypeScript Express server/index.ts is canonical; do not overwrite or shadow it
+      const serverJsPath = serverIndexPath.replace(/\.ts$/, ".js");
+      if (existsSync(serverJsPath)) {
+        try { unlinkSync(serverJsPath); } catch {}
+      }
+      return;
+    }
+
     const { features, brandName } = domainSpec;
 
     const serverJsPath = serverIndexPath.replace(/\.ts$/, ".js");

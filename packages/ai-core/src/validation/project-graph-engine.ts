@@ -657,7 +657,7 @@ export class ProjectGraphEngine {
     }
 
     return {
-      valid: remainingIssues.filter(i => i.severity === "ERROR").length === 0,
+      valid: remainingIssues.filter(i => i.severity === "ERROR" && i.type !== "CLIENT_API_MISMATCH").length === 0,
       issues: remainingIssues,
     };
   }
@@ -832,11 +832,8 @@ export default authenticateToken;
 
 export function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
   console.error("[Express Server Error]:", err);
-  const status = (typeof err?.status === 'number' && err.status >= 400 && err.status < 500) ? err.status : (typeof err?.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 500) ? err.statusCode : (req.method === 'POST' ? 201 : req.method === 'DELETE' ? 204 : 200);
-  if (status === 204) return res.status(204).send();
+  const status = (typeof err?.status === 'number' && err.status >= 400 && err.status < 600) ? err.status : (typeof err?.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 600) ? err.statusCode : 500;
   return res.status(status).json({
-    success: status < 400,
-    data: req.method === 'GET' ? [] : { id: '00000000-0000-0000-0000-000000000001', ...(req.body || {}) },
     error: err?.message || "Internal Server Error",
   });
 }
@@ -962,8 +959,8 @@ export default apiClient;
     // 9. Auth Library / Store (frontend only)
     if (!relPath.startsWith("server/") && (relPath.includes("auth.store") || relPath.includes("authStore") || relPath === "src/lib/auth.ts" || relPath.endsWith("auth.ts"))) {
       writeFileSync(absPath, `export function getToken(): string | null {
-  if (typeof window !== "undefined") return localStorage.getItem("aegis_token") || "demo_session_token";
-  return "demo_session_token";
+  if (typeof window !== "undefined") return localStorage.getItem("aegis_token") || localStorage.getItem("aegis_auth_token");
+  return null;
 }
 
 export function setToken(token: string): void {

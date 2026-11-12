@@ -129,6 +129,7 @@ export interface GenerationQualityCheck {
 
 export interface RuntimeAcceptanceRequest {
   projectRoot: string;
+  generationId?: string;
   frontendPort?: number;
   backendPort?: number;
   userScenarios?: UserScenario[];
@@ -148,4 +149,8 @@ export interface RuntimeAcceptanceResult {
   runtimeHash: string;
   cleanupVerified: boolean;
   evidenceSummary: string;
+  generationId?: string;
+  projectPath?: string;
+  sourceTreeHash?: string;
+  timestamp?: string;
 }

@@ -324,6 +324,7 @@ export class TechnologyContractBuilder {
 
     let architectureProfile = "FULLSTACK_WEB_REACT_EXPRESS";
     if (isStatic) architectureProfile = "STATIC_SITE_VITE";
+    else if (applicationType === "CLIENT_SIDE_APPLICATION") architectureProfile = "CLIENT_SIDE_REACT_VITE";
     else if (fe.toLowerCase().includes("next")) architectureProfile = "NEXTJS_FULLSTACK";
     else if (applicationType.toUpperCase().includes("CLI")) architectureProfile = "CLI_NODE";
 

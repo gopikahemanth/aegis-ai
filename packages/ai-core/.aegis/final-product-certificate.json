@@ -2,7 +2,7 @@
   "gate": "FinalProductGate",
   "tier": 37,
   "status": "CERTIFIED",
-  "certificateId": "cert_final_1792264939469",
+  "certificateId": "cert_final_1794398897830",
   "product": "AegisGym",
   "domain": "GYM_MANAGEMENT",
   "requirementsVerified": true,
@@ -13,6 +13,6 @@
   "responsiveVerified": true,
   "accessibilityVerified": true,
   "criticalDefects": 0,
-  "cryptographicSignature": "sha256_final_prod_t051cc8pqw",
-  "certifiedAt": "2026-10-17T19:22:19.469Z"
+  "cryptographicSignature": "sha256_final_prod_myt0w3kdut",
+  "certifiedAt": "2026-11-11T12:08:17.830Z"
 }

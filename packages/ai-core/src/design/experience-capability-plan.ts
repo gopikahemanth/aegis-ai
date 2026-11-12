@@ -99,15 +99,14 @@ export class ExperienceCapabilityResolver {
   ): ExperienceCapabilityPlan {
     const rawPrompt = (prompt || specification?.userPrompt || "").toLowerCase();
 
-    const isWatchStudio = Boolean(
-      /\b(watch|watches|horology|timepiece|timepieces|watchmaker|artisan watch)\b/i.test(rawPrompt) &&
-      /\b(rotate|showcase|studio|craftsmanship|loupe|complication|movement|dial)\b/i.test(rawPrompt)
-    );
-
     // 1. Detect Real 3D / WebGL requirements
     const is3DExplicit = Boolean(
-      isWatchStudio ||
-      /\b(3d|webgl|three\.?js|react three fiber|r3f|claymation|volumetric|spatial world|virtual world|3d animated|3d scene|3d model|3d viewer|camera-driven|spatial environment|3d claymation|planetarium|solar orrery|orrery|rotate watches|rotat\w+ (?:watch|product|timepiece)|interactive 3d)\b/i.test(rawPrompt)
+      /\b(3d|webgl|three\.?js|react three fiber|r3f|claymation|volumetric|spatial world|virtual world|3d animated|3d scene|3d model|3d viewer|camera-driven|spatial environment|interactive 3d|horolog|tourbillon|orrery|space museum|orbiting planets)\b/i.test(rawPrompt)
+    );
+
+    // 1b. Detect Physical Artifact / Perfume Product Reveal
+    const isProductReveal = Boolean(
+      /\b(perfume|flacon|fragrance|scent|botanical fragrance|monograph bottle)\b/i.test(rawPrompt)
     );
 
     // 2. Detect Scrollytelling requirements
@@ -141,7 +140,6 @@ export class ExperienceCapabilityResolver {
     // 7. Detect Editorial requirements
     const isEditorial = Boolean(
       !is3DExplicit &&
-      !isWatchStudio &&
       (characteristics?.emotionalTone?.primary === "editorial" ||
        /\b(magazine|longform journalism|case study spread|architecture journal|monograph|journal)\b/i.test(rawPrompt))
     );
@@ -315,6 +313,28 @@ export class ExperienceCapabilityResolver {
         accessibilityStrategy: "aria-live-cart",
         requiredRuntimeCapabilities: ["cart-state", "filter-state"],
         requiredVisualSignals: ["product-cards", "cart-button"],
+        forbiddenSubstitutions: [],
+        real3dRequired: false,
+      };
+    }
+
+    if (isProductReveal) {
+      return {
+        experienceType: "PRODUCT_REVEAL" as any,
+        renderingMode: "standard-dom",
+        interactionMode: "standard-web",
+        compositionMode: "spatial-stage",
+        motionMode: "continuous-scroll-linked",
+        depthModel: "layered-parallax",
+        mediaModel: "monograph-bottle-imagery",
+        mediaRequirements: ["High-res flacon visuals", "Olfactory notes breakdown", "Formula monograph"],
+        assetRequirements: ["Monograph photography", "Note pyramid diagrams"],
+        navigationModel: "floating-overlay" as any,
+        responsiveStrategy: "standard-responsive",
+        performanceStrategy: "lazy-loaded-images",
+        accessibilityStrategy: "semantic-article-landmarks",
+        requiredRuntimeCapabilities: ["monograph-inspection"],
+        requiredVisualSignals: ["flacon-stage", "olfactory-pyramid"],
         forbiddenSubstitutions: [],
         real3dRequired: false,
       };

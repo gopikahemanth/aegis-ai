@@ -152,16 +152,16 @@ export class ErrorRootCauseMapper {
       };
     }
 
-    // ── TS2551 — property typo / casing suggestion ───────────────────────────
-    if (code === "TS2551") {
-      const match = message.match(/Property '([^']+)' does not exist.+Did you mean '([^']+)'/);
+    // ── TS2551 / TS2561 / TS2353 — property typo / casing suggestion ──────────
+    if (code === "TS2551" || code === "TS2561" || code === "TS2353") {
+      const match = message.match(/(?:Property|Object literal may only specify known properties,\s+(?:but|and))\s+'([^']+)'.+Did you mean (?:to write\s+)?'([^']+)'/);
       const requested = match?.[1];
       const suggested = match?.[2];
       return {
         raw, file, line, col, code, message,
         errorClass: "missing-property",
         trueSourceFile: file,
-        repairHint: `Property '${requested}' does not exist. Update property access to '${suggested}' in ${file}.`,
+        repairHint: `Property '${requested}' does not exist. Update property access or key to '${suggested}' in ${file}.`,
       };
     }
 

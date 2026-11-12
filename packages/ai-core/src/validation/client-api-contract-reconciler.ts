@@ -337,8 +337,9 @@ export class ClientApiContractReconciler {
     for (const rf of routeFiles) {
       try {
         const content = readFileSync(rf, "utf8");
+        const normRf = rf.replace(/\\/g, "/");
         const relPath = relative(projectRoot, rf).replace(/\\/g, "/");
-        const baseName = rf.replace(/^.*[\\\/]/, "").replace(/\.[^/.]+$/, "");
+        const baseName = normRf.split("/").pop()!.replace(/\.[^/.]+$/, "");
         const cleanName = baseName.replace(/\.routes?$/i, "").replace(/[-_.]?routes?$/i, "");
 
         let defaultPrefix = mountPrefixes.get(baseName) ||
@@ -351,7 +352,7 @@ export class ClientApiContractReconciler {
                              mountPrefixes.get(cleanName.toLowerCase());
 
         if (!defaultPrefix) {
-          defaultPrefix = rf.includes("/routes/") ? `/api/${cleanName.toLowerCase()}` : "";
+          defaultPrefix = normRf.includes("/routes/") ? `/api/${cleanName.toLowerCase()}` : "";
         }
 
         const sf = ts.createSourceFile(rf, content, ts.ScriptTarget.Latest, true);

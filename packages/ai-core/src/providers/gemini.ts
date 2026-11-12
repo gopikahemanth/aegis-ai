@@ -71,9 +71,10 @@ export class GeminiProvider implements AIProvider {
 
       const geminiFreeModels = [
         options?.model ?? Models.gemini.default,
-        "gemini-3.7-flash",
-        "gemini-3.5-flash-lite",
         "gemini-3.6-flash",
+        "gemini-3.7-flash",
+        "gemini-3.8-flash",
+        "gemini-3.5-flash-lite",
         "gemini-3.1-flash-lite",
       ];
       // Deduplicate
@@ -108,7 +109,7 @@ export class GeminiProvider implements AIProvider {
       for (const targetModel of modelsToTry) {
         let timeoutId: NodeJS.Timeout | undefined;
         const timeoutPromise = new Promise<never>((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error("Gemini request timed out")), 90000);
+          timeoutId = setTimeout(() => reject(new Error("Gemini request timed out")), 30000);
         });
 
         try {
@@ -161,7 +162,7 @@ export class GeminiProvider implements AIProvider {
             const lastEndIdx = text.lastIndexOf("===END===");
             const lastFileIdx = text.lastIndexOf("===FILE:");
 
-            // If a valid completed file exists up to lastEndIdx (where lastEndIdx closes the last completed file)
+            // If valid completed file(s) exist up to lastEndIdx, salvage them and drop the unclosed trailing file
             if (lastEndIdx !== -1) {
               const salvagedText = text.substring(0, lastEndIdx + 9);
               if (lastFileIdx > lastEndIdx) {
@@ -172,19 +173,10 @@ export class GeminiProvider implements AIProvider {
               return salvagedText;
             }
 
-            if (text.includes("===FILE:") && text.length > 200) {
-              console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars) with unclosed ===FILE: block. Salvaging candidate files with closing tag...`);
-              return text + "\n===END===";
-            }
-
-            if (text.length > 200) {
-              console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars). Salvaging partial response...`);
-              return text;
-            }
-
-            // No completed file block exists in truncated output — reject to trigger failover/repair
+            // No completed file block exists in truncated output — reject incomplete output to preserve file integrity
+            console.warn(`[Gemini:${this.name}] Response hit MAX_TOKENS (${text.length} chars) before closing any file. Rejecting truncated output.`);
             throw new ProviderError(
-              "Gemini response was truncated (MAX_TOKENS) — output incomplete.",
+              "Gemini response was truncated (MAX_TOKENS) before completing any file — output incomplete.",
               2
             );
           }
@@ -202,7 +194,8 @@ export class GeminiProvider implements AIProvider {
             let cooldownSeconds = 60;
             const retryDelayMatch = msg.match(/"retryDelay":\s*"(\d+)s?"/i) || msg.match(/retry in ([0-9.]+)\s*s/i);
             if (retryDelayMatch) {
-              cooldownSeconds = Math.max(cooldownSeconds, Math.ceil(parseFloat(retryDelayMatch[1])));
+              // Cap rate-limit cooldown at 120s max to avoid multi-hour lockout from daily quota estimates
+              cooldownSeconds = Math.min(120, Math.max(cooldownSeconds, Math.ceil(parseFloat(retryDelayMatch[1]))));
             }
             const cooldownKey = `${this.name}:${targetModel}`;
             const expiry = Date.now() + cooldownSeconds * 1000;
@@ -242,6 +235,9 @@ export class GeminiProvider implements AIProvider {
           }
           throw err;
         }
+      }
+      if (lastGeminiError && (String(lastGeminiError?.message).includes("404") || String(lastGeminiError?.message).includes("NOT_FOUND"))) {
+        throw new ProviderError(`All candidate Gemini models temporarily unavailable or retired: ${lastGeminiError.message}`, 30);
       }
       throw lastGeminiError;
     } catch (error: any) {

@@ -14,9 +14,20 @@ import { InProjectTestRunner } from "../../validation/in-project-test-runner.js"
 import { WiringIntegrityChecker } from "../../validation/wiring-integrity-checker.js";
 
 describe("Phase 5.8: Packaged CLI Distribution & End-User Experience", () => {
-  const cliRoot = resolve(process.cwd(), "../../apps/cli");
+  const cliCandidates = [
+    resolve(process.cwd(), "apps/cli"),
+    resolve(process.cwd(), "../../apps/cli"),
+    resolve(__dirname, "../../../../../apps/cli"),
+  ];
+  const cliRoot = cliCandidates.find(c => existsSync(c)) || resolve(process.cwd(), "apps/cli");
   const cliBinary = join(cliRoot, "dist", "index.js");
-  const projectRoot = resolve(process.cwd(), "../../generated/project");
+
+  const projectCandidates = [
+    resolve(process.cwd(), "generated/project"),
+    resolve(process.cwd(), "../../generated/project"),
+    resolve(__dirname, "../../../../../generated/project"),
+  ];
+  const projectRoot = projectCandidates.find(c => existsSync(join(c, "package.json"))) || resolve(process.cwd(), "../../generated/project");
 
   it("PACKAGED CLI BINARY: Verifies standalone binary exists and responds to version and help flags", () => {
     expect(existsSync(cliBinary)).toBe(true);

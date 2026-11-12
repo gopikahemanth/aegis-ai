@@ -14,6 +14,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { DomainContractManager } from "../governance/domain-contract.js";
 import type { ProductExperiencePlan } from "../design/product-experience-plan.js";
 import {
   type NavbarFingerprint,
@@ -262,8 +263,8 @@ export class TemplateConvergenceGate {
     for (const pFile of pageFiles) {
       try {
         const pContent = readFileSync(pFile, "utf8");
-        const paramMatches = Array.from(pContent.matchAll(/"id":\s*"([^"]+)"/g)).map(m => m[1]);
-        const actionMatches = Array.from(pContent.matchAll(/"name":\s*"([^"]+)"/g)).map(m => m[1]);
+        const paramMatches = Array.from(pContent.matchAll(/(?:["']?id["']?|\bid)\s*:\s*["']([^"']+)["']/g)).map(m => m[1]);
+        const actionMatches = Array.from(pContent.matchAll(/(?:["']?name["']?|\bname)\s*:\s*["']([^"']+)["']/g)).map(m => m[1]);
         if (paramMatches.length >= 2 || actionMatches.length >= 2) {
           pageSignatures.push({
             file: relative(projectRoot, pFile).replace(/\\/g, "/"),
@@ -292,6 +293,24 @@ export class TemplateConvergenceGate {
         `CROSS_ROUTE_STRUCTURAL_CONVERGENCE_DETECTED: Detected identical parameter controls and actions across distinct routes (${identicalPairs.slice(0, 2).join(", ")}). Each route must provide domain-pure, route-specific interactive controls.`
       );
     }
+
+    // Check 8: Domain Structural Relevance Invariant
+    // A website cannot pass convergence merely because it is structurally distinct from the baseline;
+    // its structural archetype must be relevant to the project's actual domain.
+    try {
+      const domainContract = DomainContractManager.load(projectRoot);
+      const domainCategory = ((domainContract as any)?.category || (domainContract as any)?.domainName || "").toLowerCase();
+      const promptText = (domainContract?.domainName ? `${domainContract.domainName} ${projectRoot}` : projectRoot).toLowerCase();
+
+      const isExplicitHospitality = /\b(hotel|resort|hospitality|villa|lodging|vacation|stay)\b/i.test(domainCategory + " " + promptText);
+      const isScientificOrOperational = /\b(glaciology|glacier|climate|telemetry|ice core|scientific|research|aerospace|satellite|avionics|observatory|laboratory)\b/i.test(domainCategory + " " + promptText);
+
+      if (fingerprint.heroType === "hospitality" && isScientificOrOperational && !isExplicitHospitality) {
+        violations.push(
+          `DOMAIN_STRUCTURAL_MISMATCH: Detected 'hospitality' hero structure (booking bar / sanctuary suite layout) in a scientific/operational research domain (${domainCategory || "science"}). Scientific platforms must not use resort booking architecture.`
+        );
+      }
+    } catch { /* non-fatal */ }
 
     const websiteIdentity: WebsiteIdentityReport = {
       navigation: violations.some(v => v.includes("NAVBAR") || v.includes("NAVIGATION")) ? "FAIL" : "PASS",

@@ -18,8 +18,28 @@ import { chromium, type Browser, type Page } from "playwright-core";
 import { RealBrowserAdapter } from "../ui-intelligence/real-browser-adapter.js";
 import type { PageInspectionResult } from "./reference-research-types.js";
 
+export type PageInspectorFunction = (
+  url: string,
+  options?: { timeoutMs?: number; preferBrowser?: boolean }
+) => Promise<PageInspectionResult>;
+
 export class ReferencePageInspector {
   private static browserInstance: Browser | null = null;
+  private static mockInspector: PageInspectorFunction | null = null;
+
+  /**
+   * Sets a mock inspector function for deterministic testing.
+   */
+  public static setMockInspector(inspector: PageInspectorFunction): void {
+    this.mockInspector = inspector;
+  }
+
+  /**
+   * Clears mock inspector.
+   */
+  public static clearMockInspector(): void {
+    this.mockInspector = null;
+  }
 
   /**
    * Disposes shared browser instance if active.
@@ -65,6 +85,28 @@ export class ReferencePageInspector {
         durationMs: Date.now() - startTime,
         error: `Invalid URL format: ${url}`,
       };
+    }
+
+    // Check mock inspector
+    if (this.mockInspector) {
+      try {
+        return await this.mockInspector(url, options);
+      } catch (err: any) {
+        return {
+          url,
+          status: "FAILED",
+          headings: [],
+          navLinks: [],
+          callToActions: [],
+          formControls: [],
+          filterControls: [],
+          interactiveElements: [],
+          hasSearch: false,
+          hasPagination: false,
+          durationMs: Date.now() - startTime,
+          error: err.message,
+        };
+      }
     }
 
     // Try browser automation first if preferred and executable is present

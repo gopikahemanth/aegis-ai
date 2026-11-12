@@ -120,12 +120,20 @@ export class EditEngine {
         case "add_feature": {
           const lowerReq = request.toLowerCase();
           let inferredModel: string | undefined;
-          if (lowerReq.includes("review")) inferredModel = "Review";
+          const words = intent.primaryTarget.split(/[\s_-]+/).filter(w => !["page", "feature", "component", "workflow", "section"].includes(w.toLowerCase()));
+          const candidateModel = words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+
+          if (lowerReq.includes("database") || lowerReq.includes("persist") || lowerReq.includes("save") || lowerReq.includes("model") || lowerReq.includes("record") || lowerReq.includes("log") || lowerReq.includes("store")) {
+            inferredModel = candidateModel || "Item";
+          } else if (lowerReq.includes("review")) inferredModel = "Review";
           else if (lowerReq.includes("wishlist")) inferredModel = "WishlistItem";
           else if (lowerReq.includes("comment")) inferredModel = "Comment";
           else if (lowerReq.includes("rating")) inferredModel = "Rating";
           else if (lowerReq.includes("booking") || lowerReq.includes("reservation")) inferredModel = "Reservation";
           else if (lowerReq.includes("order")) inferredModel = "Order";
+          else if (candidateModel && candidateModel.length > 2 && !["Home", "About", "Pricing", "Faq", "Contact"].includes(candidateModel)) {
+            inferredModel = candidateModel;
+          }
 
           const addRes = await FeatureAdder.addFeature(cleanRoot, {
             featureName: intent.primaryTarget,

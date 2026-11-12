@@ -45,6 +45,8 @@ export * from "./design/experience-capability-plan.js";
 export * from "./design/product-experience-plan.js";
 export * from "./design/website-experience-identity.js";
 export * from "./design/page-experience-plan.js";
+export * from "./design/design-reference-intelligence.js";
+export * from "./design/design-decision-document.js";
 export {
   type NavigationItem,
   type NavigationBrandTreatment,
@@ -60,13 +62,6 @@ export * from "./validation/template-convergence-gate.js";
 export * from "./validation/page-experience-quality-gate.js";
 export * from "./validation/composition-convergence-gate.js";
 export * from "./design/composition-variant-resolver.js";
-export * from "./design/experience-generators/generic-experience-generator.js";
-export * from "./design/experience-generators/scroll-story-generator.js";
-export * from "./design/experience-generators/spatial-map-generator.js";
-export * from "./design/experience-generators/product-3d-generator.js";
-export * from "./design/experience-generators/audio-experience-generator.js";
-export { CharacterExperienceGenerator, type CharacterExperienceGeneratorOptions } from "./design/experience-generators/character-experience-generator.js";
-export * from "./design/experience-generators/workspace-experience-generator.js";
 export * from "./validation/definition-of-done.js";
 export * from "./validation/final-success-gate.js";
 export * from "./validation/api-workflow-verifier.js";
@@ -79,7 +74,6 @@ export * from "./planning/canonical-generation-plan.js";
 export * from "./brownfield/index.js";
 
 export * from "./spec/canonical-spec.js";
-export * from "./semantics/domain-fallback-generator.js";
 export * from "./semantics/domain-consistency-validator.js";
 export * from "./semantics/semantic-naming.js";
 export * from "./validation/template-contamination-checker.js";
@@ -98,6 +92,7 @@ export * from "./validation/feature-reality-validator.js";
 export * from "./validation/capability-completeness-invariant.js";
 export * from "./validation/prisma-ast-reconciler.js";
 export * from "./validation/client-api-contract-reconciler.js";
+export * from "./validation/readme-generator.js";
 export * from "./research/research-agent.js";
 export * from "./research/reference-research-types.js";
 export * from "./research/reference-source-selector.js";
@@ -188,48 +183,39 @@ export * from "./benchmark/benchmark-types.js";
 export * from "./benchmark/functional-completeness-auditor.js";
 export * from "./benchmark/real-project-benchmark-harness.js";
 
-// -- Framework-Level Optimization & Cost Efficiency --------------------------
-export * from "./generator/incremental-generator.js";
-export * from "./healing/error-diagnosis-engine.js";
-export * from "./validation/test-pyramid-runner.js";
-export * from "./governance/cost-observability-reporter.js";
+// -- Phase 3 & 4: Requirement Intelligence & Frontend Experience Engine
+export {
+  UniversalRequirementInterpreter as GeneralizedRequirementInterpreter,
+  type InterpretedSpecification,
+  type InterpretedEntity,
+  type InterpretedField,
+  type InterpretedUserPersona,
+  type InterpretedFeature,
+  type InterpretedUserJourney,
+  type InterpretedTechnicalConstraints,
+} from "./requirement-intelligence/universal-requirement-interpreter.js";
+export {
+  RequirementClarificationEngine as AutonomousClarificationEngine,
+  type ClarificationSeverity,
+  type ClarificationItem,
+  type ClarificationAnalysisReport,
+} from "./requirement-intelligence/requirement-clarification-engine.js";
+export * from "./architect/architecture-contract-engine.js";
+export * from "./design/interactive-component-generator.js";
+export * from "./design/frontend-experience-verifier.js";
+export * from "./backend/dynamic-api-generator.js";
+export * from "./environment/port-conflict-manager.js";
+export * from "./environment/dependency-manifest-synthesizer.js";
+export * from "./integration/project-integration-matrix.js";
+export * from "./testing/autonomous-test-synthesizer.js";
+export * from "./repair/root-cause-repair-engine.js";
+export * from "./delivery/final-acceptance-gate.js";
+export * from "./studio/studio-bridge.js";
+export * from "./benchmark/master-generalization-harness.js";
+export * from "./validation/deterministic-project-fixer.js";
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// -- Visual Asset, Photography & Image Generation Engine
+export * from "./design/asset-types.js";
+export * from "./design/asset-provider.js";
+export * from "./design/asset-director.js";
+export * from "./validation/asset-acceptance-gate.js";

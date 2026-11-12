@@ -48,7 +48,8 @@ export class NaturalLanguageIntentParser {
 
     // 2. Theme / Redesign Global
     if (
-      /(change|update|redesign|switch).*?(theme|palette|colors?|styling|tokens?|visual appearance)/i.test(lower) ||
+      /(change|update|redesign|switch|make|set|turn).*?(theme|palette|colors?|styling|tokens?|visual appearance|dark mode|light mode)/i.test(lower) ||
+      /(make|set|change|update|turn)\s+(?:the\s+)?(?:entire\s+website|entire\s+site|website|site|app|page|background)\s+.*?(light|dark|cream|ivory|obsidian|emerald|green|blue|slate|amber|warm)/i.test(lower) ||
       /^(theme|dark mode|light mode)\b/i.test(lower)
     ) {
       const isGlobal = !/only\s+(redesign|change)\s+(the\s+)?(home|landing|[a-z0-9_-]+)\s+page/i.test(lower);
@@ -72,9 +73,13 @@ export class NaturalLanguageIntentParser {
     }
 
     // 3. Remove / Cleanup Feature
-    if (/^(remove|delete|drop|decommission|purge|clean\s*up)\b/i.test(lower)) {
-      const matchTarget = lower.match(/(?:remove|delete|drop|purge|clean\s*up)\s+(?:the\s+)?([a-z0-9_-]+(?:\s+[a-z0-9_-]+)*?)(?:\s+(?:page|feature|component|workflow))?$/i);
-      const target = matchTarget ? matchTarget[1].trim() : "obsolete_feature";
+    if (/(?:remove|delete|drop|decommission|purge|clean\s*up)\b/i.test(lower)) {
+      const matchTarget = lower.match(/(?:remove|delete|drop|decommission|purge|clean\s*up)\s+(?:the\s+)?([a-z0-9_-]+)/i);
+      let target = matchTarget ? matchTarget[1].trim() : "obsolete_feature";
+      if (["page", "feature", "component", "workflow", "all", "the"].includes(target)) {
+        const nextMatch = lower.match(/(?:remove|delete|drop|decommission|purge|clean\s*up)\s+(?:the\s+)?(?:page|feature|component|workflow|all)\s+([a-z0-9_-]+)/i);
+        if (nextMatch) target = nextMatch[1].trim();
+      }
 
       return {
         intentId,

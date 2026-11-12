@@ -150,20 +150,20 @@ export class WebsiteExperienceIdentityResolver {
     const isArchPublication =
       !isOperational &&
       !/\b(software architecture|system architecture|data architecture|application architecture|required by the architecture|backend architecture|cloud architecture)\b/i.test(raw) &&
-      /\b(architectural\s+(?:monograph|journal|review|digest|firm|studio|practice|portfolio|criticism)|architecture\s+(?:firm|studio|monograph|journal|magazine|exhibition)|building\s+typolog(?:y|ies)|spatial\s+(?:monograph|essay)|tectonic\s+journal)\b/i.test(raw);
+      /\b(architectural|architecture|interior design|design studio|spatial design|sustainable design|landscape architecture|building design|building\s+typolog(?:y|ies)|tectonic)\b/i.test(raw);
 
+    const isHorologyOrJewelry =
+      /\b(watch|watches|horology|timepiece|timepieces|jewelry|jewellery|gemstone|diamonds|perfume|fragrance|flacon|calibre|tourbillon|chronometer)\b/i.test(raw);
     const isLuxuryArtifact =
-      raw.includes("watch") || raw.includes("horology") || raw.includes("timepiece") ||
-      raw.includes("jewelry") || raw.includes("perfume") || raw.includes("flacon") ||
-      raw.includes("luxury") || raw.includes("atelier") || raw.includes("calibre") ||
-      raw.includes("chronometer") || raw.includes("tourbillon");
+      isHorologyOrJewelry ||
+      (!isArchPublication && /\b(atelier|haute)\b/i.test(raw) && !raw.includes("architect") && !raw.includes("interior") && !raw.includes("software"));
 
     const genre: ExperienceGenre =
       (isOperational || characteristics.experiencePattern === "realtime-console" || raw.includes("telemetry") || raw.includes("sensor") || raw.includes("trading") || raw.includes("scada"))
         ? "HIGH_DENSITY_CONSOLE"
         : isLuxuryArtifact
         ? "LUXURY_ARTIFACT_STAGE"
-        : (raw.includes("kazzoo") || raw.includes("fantasy") || raw.includes("planetarium") || raw.includes("claymation") || raw.includes("biome") || (!isLuxuryArtifact && capabilityPlan.real3dRequired && (raw.includes("world") || raw.includes("metaverse") || raw.includes("realm") || raw.includes("spatial") || raw.includes("game"))))
+        : (raw.includes("fantasy") || raw.includes("planetarium") || raw.includes("biome") || (!isLuxuryArtifact && capabilityPlan.real3dRequired && (raw.includes("world") || raw.includes("metaverse") || raw.includes("realm") || raw.includes("spatial") || raw.includes("game"))))
         ? "SPATIAL_WORLD"
         : (!isOperational && (capabilityPlan.experienceType === "EDITORIAL" || isArchPublication || raw.includes("journal") || raw.includes("monograph") || raw.includes("magazine") || raw.includes("essay") || raw.includes("tectonic")))
         ? "EDITORIAL_PUBLICATION"
@@ -175,12 +175,12 @@ export class WebsiteExperienceIdentityResolver {
 
     const extractedPromptBrand = NavigationDesignResolver.extractBrandFromPrompt(raw);
     const brandName =
-      extractedPromptBrand ||
+      navigationDesign?.brandTreatment?.name ||
       domainContract?.brandName ||
       domainContract?.name ||
-      (domainContract?.domainName && !domainContract.domainName.includes("...") && domainContract.domainName.length <= 28 ? domainContract.domainName : undefined) ||
       brief?.brand?.name ||
-      navigationDesign.brandTreatment.name ||
+      extractedPromptBrand ||
+      (domainContract?.domainName && !domainContract.domainName.includes("...") && domainContract.domainName.length <= 28 ? domainContract.domainName : undefined) ||
       "Aegis Project";
     const brandTagline = domainContract?.tagline || brief?.brand?.tagline || navigationDesign.brandTreatment.tagline || "";
 

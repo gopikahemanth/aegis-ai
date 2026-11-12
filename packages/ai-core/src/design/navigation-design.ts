@@ -120,6 +120,9 @@ export class NavigationDesignResolver {
       /\b(perfume|flacon|fragrance|scent|eau de|cologne|olfactory|luxury house)\b/i.test(lower);
     const isStorefront =
       /\b(storefront|bakery|menu|shop|boutique|order|cart|checkout|patisserie|bookstore|bookseller|book\s*shop)\b/i.test(lower);
+    const isArchitectureOrStudio =
+      !is3DWorld &&
+      /\b(architect|architecture|interior design|spatial studio|design studio|atelier)\b/i.test(lower);
     const isEditorial =
       !is3DWorld &&
       !isStorefront &&
@@ -189,6 +192,12 @@ export class NavigationDesignResolver {
       logoType = "wordmark";
       mobileModel = "minimal_overlay";
       interactionModel = "serene-glow-reveal";
+    } else if (isArchitectureOrStudio) {
+      model = "top_masthead";
+      position = "top";
+      logoType = "wordmark";
+      mobileModel = "drawer";
+      interactionModel = "understated-serif-underline";
     } else if (isEditorial) {
       model = "top_masthead";
       position = "top";
@@ -297,6 +306,13 @@ export class NavigationDesignResolver {
       .replace(/([A-Z])/g, " $1")
       .trim();
 
+    if (clean.includes("-") || clean.includes("_")) {
+      clean = clean
+        .split(/[-_]+/)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+    }
+
     if (!clean || /^(home|dashboard|profile|settings|more|bookmark|portfolioitem|primaryworkspace|curatedarchivalfolio|editorialmonographcover|admincontent)$/i.test(clean.replace(/\s+/g, ""))) {
       clean = cleanPath
         .replace(/^\//, "")
@@ -304,6 +320,14 @@ export class NavigationDesignResolver {
         .map(w => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
     }
+    // Collapse multi-spaces and beautify common words
+    clean = clean.replace(/\s{2,}/g, " ").trim();
+    if (clean.toLowerCase() === "portfolio and lightbox") return "Portfolio";
+    if (clean.toLowerCase() === "calculate room budget and dimensions") return "Room Estimator";
+    if (clean.toLowerCase() === "sustainable material swatchboard") return "Material Swatchboard";
+    if (clean.toLowerCase() === "book design consultation flow") return "Consultation";
+    if (clean.toLowerCase() === "project milestones in client portal") return "Client Portal";
+    if (clean.toLowerCase() === "submit and review case studies") return "Reviews";
     return clean;
   }
 
@@ -412,54 +436,13 @@ export class NavigationDesignResolver {
       return extractedBrand;
     }
 
-    const lower = prompt.toLowerCase();
-    const isObservatory = /\b(observatory|orbitalis|orbit|orbital|satellite|spacecraft|astronomy|celestial|telescope|deep sky)\b/i.test(lower);
-    if (isObservatory) {
-      return "ORBITALIS";
-    }
-    const isCleanEnergy = !isObservatory && /\b(renewable|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine|wind farm)\b/i.test(lower);
-    if (isCleanEnergy) {
-      return "GREENPULSE ENERGY";
-    }
-    if (lower.includes("culinary") || lower.includes("food journey") || lower.includes("recipe") || lower.includes("gastronom")) {
-      return "SAVORLINE";
-    }
-    if (lower.includes("perfume") || lower.includes("flacon") || lower.includes("fragrance")) {
-      return "MAISON ÉTHER";
-    }
-    if (lower.includes("magazine") || lower.includes("editorial") || lower.includes("fashion")) {
-      return "REVUE NOIR";
-    }
-    if (lower.includes("watch") || lower.includes("horology") || lower.includes("timepiece")) {
-      return "CHRONOS ATELIER";
-    }
-    if (lower.includes("museum") || lower.includes("contemporary art") || lower.includes("gallery") || lower.includes("curatorial") || lower.includes("exhibition")) {
-      return "LUMEN HOUSE";
-    }
-    const isAviation = /\b(avionics|aerospace|aircraft|flight|aviation|cockpit|airframe|airspace|transponder|squawk)\b/i.test(lower);
-    if (!isAviation && /\b(architectural\s+(?:monograph|journal|review|digest|firm|studio|practice|portfolio)|architecture\s+(?:firm|studio|monograph|journal|magazine|exhibition)|building\s+typolog(?:y|ies))\b/i.test(lower)) {
-      return "TECTONIC JOURNAL";
-    }
-    if (lower.includes("kazzoo") || lower.includes("claymation") || lower.includes("fantasy")) {
-      return "KAZZOO";
-    }
-    if (isAviation) {
-      return lower.includes("stratos") ? "STRATOS AVIONICS" : "AERO TELEMETRY";
-    }
-    if (lower.includes("bookstore") || lower.includes("bookseller") || lower.includes("book shop") || lower.includes("page & petal")) {
-      return "PAGE & PETAL";
-    }
-    if (lower.includes("plant") || lower.includes("botanical")) {
-      return "LEAF SANCTUARY";
-    }
-
-    // Extract significant nouns from prompt
+    // Extract significant domain nouns dynamically from prompt
     const cleaned = prompt.replace(/^(create|build|make|design|generate)\s+(?:an?|the)?\s+/i, "");
-    const words = cleaned.split(/[\s,.-]+/).filter(w => w.length > 3 && !/website|app|application|platform|centered|around|with/i.test(w));
+    const words = cleaned.split(/[\s,.-]+/).filter(w => w.length > 2 && !/website|app|application|platform|centered|around|with|portal|system/i.test(w));
     if (words.length > 0) {
-      return words.slice(0, 2).map(w => w.toUpperCase()).join(" ");
+      return words.slice(0, 2).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
     }
-    return "EXPERIENCE";
+    return "Official Platform";
   }
 
   private static deriveCuratedItems(
@@ -586,46 +569,33 @@ export class NavigationDesignResolver {
     // 3. Fallback: Derive navigation items dynamically from prompt capabilities & semantic features
     primary.push({
       path: "/",
-      label: is3DWorld ? "3D Stage" : isStorefront ? "Home" : isEditorial ? "Monograph" : isWatch ? "Collection" : isPerfume ? "The Flacon" : "Explore",
+      label: "Home",
       isPrimary: true,
     });
 
     const candidateLinks: Array<{ path: string; label: string }> = [];
-    if (lower.includes("quest") || lower.includes("trial") || lower.includes("mission")) {
-      candidateLinks.push({ path: "/quests", label: "Quests" });
-    }
-    if (lower.includes("character") || lower.includes("companion") || lower.includes("avatar")) {
-      candidateLinks.push({ path: "/characters", label: "Companions" });
-    } else if (lower.includes("specimen") || lower.includes("creature")) {
-      candidateLinks.push({ path: "/specimens", label: "Specimens" });
-    } else if (lower.includes("craftsmanship") || lower.includes("caliber")) {
-      candidateLinks.push({ path: "/craftsmanship", label: "Craftsmanship" });
-    } else if (lower.includes("case-stud") || lower.includes("case stud")) {
-      candidateLinks.push({ path: "/case-studies", label: "Case Studies" });
-    } else if (lower.includes("essay") || lower.includes("article")) {
-      candidateLinks.push({ path: "/read-longform-article", label: "Essays" });
-    }
+    const stopWords = new Set(["with", "from", "that", "this", "our", "all", "your", "into", "page", "stage", "system", "platform", "portal", "website", "application"]);
+    const promptTokens = prompt
+      .replace(/[^a-zA-Z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !stopWords.has(w.toLowerCase()));
 
-    if (lower.includes("soundboard") || lower.includes("audio") || lower.includes("hydrophone")) {
-      candidateLinks.push({ path: "/soundboard", label: lower.includes("hydrophone") ? "Hydrophone" : "Soundboard" });
-    } else if (lower.includes("calibers") || lower.includes("complication")) {
-      candidateLinks.push({ path: "/calibers", label: "Calibers" });
-    } else if (lower.includes("fragrance") || lower.includes("notes") || lower.includes("scent")) {
-      candidateLinks.push({ path: "/fragrance-notes", label: "Fragrance Notes" });
-    } else if (lower.includes("visual-essays") || lower.includes("visual story")) {
-      candidateLinks.push({ path: "/visual-essays", label: "Visual Essays" });
-    }
+    const featureMatches = prompt.match(/\b(quests?|characters?|soundboards?|maps?|scrolls?|rosters?|inventory|gallery|specimens?|hydrophones?|logbooks?)\b/gi) || [];
+    const prioritizedFeatures = Array.from(new Set(featureMatches.map(m => {
+      const lowerWord = m.toLowerCase();
+      if (lowerWord === "quest") return "Quests";
+      if (lowerWord === "specimen") return "Specimens";
+      if (lowerWord === "hydrophone") return "Hydrophone";
+      if (lowerWord === "logbook") return "Logbook";
+      return m.charAt(0).toUpperCase() + m.slice(1).toLowerCase();
+    })));
 
-    if (lower.includes("scroll") || lower.includes("journey") || lower.includes("expedition") || lower.includes("logbook")) {
-      candidateLinks.push({ path: "/scrolls", label: lower.includes("logbook") ? "Logbook" : "Journey Scroll" });
-    } else if (lower.includes("viewing") || lower.includes("salon") || lower.includes("consultation")) {
-      candidateLinks.push({ path: "/viewing", label: "Private Viewing" });
-    } else if (lower.includes("archive") || lower.includes("typology") || lower.includes("folio")) {
-      candidateLinks.push({ path: "/archive", label: "Typology Archive" });
-    } else if (lower.includes("story") || lower.includes("atelier")) {
-      candidateLinks.push({ path: "/story", label: "The Atelier" });
+    const uniqueTokens = Array.from(new Set([...prioritizedFeatures, ...promptTokens])).slice(0, 5);
+    for (const token of uniqueTokens) {
+      const slug = token.toLowerCase();
+      const label = token.charAt(0).toUpperCase() + token.slice(1);
+      candidateLinks.push({ path: `/${slug}`, label });
     }
-
     for (const link of candidateLinks) {
       if (hasAuthoritative && !authoritativeSet.has(link.path)) continue;
       primary.push(link);

@@ -86,8 +86,18 @@ export class FailoverProvider implements AIProvider {
     const estimatedPromptTokens = TokenBudgetManager.estimateTokens(totalPromptText, true);
 
     // Pre-dispatch per-request prompt ceiling check for coder implementation tasks (model-aware & benchmark-compatible)
-    const activeProviderName = this.providers[this.activeProviderIndex % this.providers.length]?.name;
-    const activeCeiling = PromptBudgetInstrumenter.getActiveCeiling(activeProviderName);
+    const eligibleProviders = this.providers.filter(p => {
+      if (FailoverProvider.sessionDisabled.has(p.name) || FailoverProvider.permanentlyDisabled.has(p.name)) return false;
+      if (p.name === "groq") {
+        const isHeavyRole = ["coder", "reviewer", "visual-reviewer", "repair-coordinator", "healer"].includes(options?.agentType || "");
+        if (isHeavyRole) return false;
+      }
+      return true;
+    });
+    const activeCeiling = eligibleProviders.length > 0
+      ? Math.max(...eligibleProviders.map(p => PromptBudgetInstrumenter.getActiveCeiling(p.name)))
+      : PromptBudgetInstrumenter.getActiveCeiling(this.providers[this.activeProviderIndex % this.providers.length]?.name);
+
     if (options?.agentType === "coder" && estimatedPromptTokens > activeCeiling) {
       throw new BudgetExceededError(
         `Coder implementation prompt (${estimatedPromptTokens.toLocaleString()} tokens) exceeds model context capacity ceiling of ${activeCeiling.toLocaleString()} tokens at provider boundary!`
@@ -133,7 +143,10 @@ export class FailoverProvider implements AIProvider {
       }
     }
 
-    const startIndex = (this.activeProviderIndex % this.providers.length + this.providers.length) % this.providers.length;
+    let startIndex = (this.activeProviderIndex % this.providers.length + this.providers.length) % this.providers.length;
+    if (options?.agentType === "coder" && this.providers[startIndex]?.name === "groq") {
+      startIndex = 0;
+    }
     const skippedFamiliesOnTruncation = new Set<string>();
 
     for (let offset = 0; offset < this.providers.length; offset++) {
@@ -285,18 +298,6 @@ export class FailoverProvider implements AIProvider {
             break;
           }
 
-          const isOllamaOffline = provider.name === "ollama" && (
-            error.message?.includes("Ollama is not running") ||
-            error.message?.includes("ECONNREFUSED") ||
-            error.message?.includes("fetch failed")
-          );
-          if (isOllamaOffline) {
-            console.warn(`[FailoverProvider] Ollama is not running locally. Session disabling provider "ollama"...`);
-            FailoverProvider.sessionDisabled.add(provider.name);
-            FailoverProvider.healthStates.set(provider.name, "UNAVAILABLE");
-            break;
-          }
-
           if (is401) {
             console.warn(`[FailoverProvider] 401 Unauthorized on provider "${provider.name}". Permanently disabled.`);
             FailoverProvider.permanentlyDisabled.add(provider.name);
@@ -311,7 +312,7 @@ export class FailoverProvider implements AIProvider {
             break;
           }
 
-          if (is404) {
+          if (is404 && !provider.name.startsWith("gemini")) {
             console.warn(`[FailoverProvider] 404 Model Not Found on provider "${provider.name}". Session disabling provider for current generation...`);
             FailoverProvider.sessionDisabled.add(provider.name);
             FailoverProvider.healthStates.set(provider.name, "UNAVAILABLE");

@@ -45,71 +45,87 @@ export class ArchitecturePlanner {
     }
 
     if (spec.database) {
-      databaseSchema.push({
-        name: "users",
-        columns: [
-          { name: "id", type: "SERIAL", constraints: "PRIMARY KEY" },
-          { name: "email", type: "VARCHAR(255)", constraints: "UNIQUE NOT NULL" },
-          { name: "password_hash", type: "VARCHAR(255)", constraints: "NOT NULL" },
-          { name: "created_at", type: "TIMESTAMP", constraints: "DEFAULT CURRENT_TIMESTAMP" }
-        ]
-      });
+      const needsAuth =
+        (spec.dataModels || []).some(m => /^user/i.test(m)) ||
+        (spec.features || []).some(f => /auth|login|account|user|signup|member|admin/i.test(f)) ||
+        /auth|login|account|user|signup|member|admin/i.test(spec.name || "");
+
+      if (needsAuth) {
+        databaseSchema.push({
+          name: "users",
+          columns: [
+            { name: "id", type: "SERIAL", constraints: "PRIMARY KEY" },
+            { name: "email", type: "VARCHAR(255)", constraints: "UNIQUE NOT NULL" },
+            { name: "password_hash", type: "VARCHAR(255)", constraints: "NOT NULL" },
+            { name: "created_at", type: "TIMESTAMP", constraints: "DEFAULT CURRENT_TIMESTAMP" }
+          ]
+        });
+      }
 
       if (spec.dataModels && spec.dataModels.length > 0) {
         for (const model of spec.dataModels) {
           const tableName = model.toLowerCase().endsWith("s") ? model.toLowerCase() : `${model.toLowerCase()}s`;
           if (tableName === "users") continue;
+
+          const columns: DbTable["columns"] = [
+            { name: "id", type: "SERIAL", constraints: "PRIMARY KEY" },
+          ];
+
+          if (needsAuth) {
+            columns.push({ name: "user_id", type: "INTEGER", constraints: "REFERENCES users(id)" });
+          }
+
+          columns.push(
+            { name: "title", type: "VARCHAR(255)", constraints: "NOT NULL" },
+            { name: "data", type: "JSONB", constraints: "DEFAULT '{}'" },
+            { name: "created_at", type: "TIMESTAMP", constraints: "DEFAULT CURRENT_TIMESTAMP" }
+          );
+
           databaseSchema.push({
             name: tableName,
-            columns: [
-              { name: "id", type: "SERIAL", constraints: "PRIMARY KEY" },
-              { name: "user_id", type: "INTEGER", constraints: "REFERENCES users(id)" },
-              { name: "title", type: "VARCHAR(255)", constraints: "NOT NULL" },
-              { name: "data", type: "JSONB", constraints: "DEFAULT '{}'" },
-              { name: "created_at", type: "TIMESTAMP", constraints: "DEFAULT CURRENT_TIMESTAMP" }
-            ],
-            relations: [
-              { from: "user_id", to: "users.id", type: "many-to-one" }
-            ]
-          });
-        }
-      } else if (spec.type === "website" || spec.type === "fullstack") {
-        const isTasksDomain = (spec.features || []).some(f => /task|todo|sprint|scrum|ticket/i.test(f)) ||
-          /task|todo|sprint|jira|linear/i.test(spec.name || "");
-        if (isTasksDomain) {
-          databaseSchema.push({
-            name: "tasks",
-            columns: [
-              { name: "id", type: "SERIAL", constraints: "PRIMARY KEY" },
-              { name: "user_id", type: "INTEGER", constraints: "REFERENCES users(id)" },
-              { name: "title", type: "VARCHAR(255)", constraints: "NOT NULL" },
-              { name: "completed", type: "BOOLEAN", constraints: "DEFAULT FALSE" }
-            ],
-            relations: [
-              { from: "user_id", to: "users.id", type: "many-to-one" }
-            ]
+            columns,
+            relations: needsAuth ? [{ from: "user_id", to: "users.id", type: "many-to-one" }] : undefined
           });
         }
       }
     }
 
     if (spec.backend) {
-      apiContracts.push(
-        {
-          path: "/api/auth/register",
-          method: "POST",
-          requestBody: "{ email, password }",
-          responseBody: "{ success, user: { id, email } }",
-          description: "Register a new user"
-        },
-        {
-          path: "/api/auth/login",
-          method: "POST",
-          requestBody: "{ email, password }",
-          responseBody: "{ success, token }",
-          description: "Login user and return token"
+      const needsAuth =
+        (spec.dataModels || []).some(m => /^user/i.test(m)) ||
+        (spec.features || []).some(f => /auth|login|account|user|signup|member|admin/i.test(f)) ||
+        /auth|login|account|user|signup|member|admin/i.test(spec.name || "");
+
+      if (needsAuth) {
+        apiContracts.push(
+          {
+            path: "/api/auth/register",
+            method: "POST",
+            requestBody: "{ email, password }",
+            responseBody: "{ success, user: { id, email } }",
+            description: "Register a new user"
+          },
+          {
+            path: "/api/auth/login",
+            method: "POST",
+            requestBody: "{ email, password }",
+            responseBody: "{ success, token }",
+            description: "Login user and return token"
+          }
+        );
+      }
+
+      if (spec.dataModels && spec.dataModels.length > 0) {
+        for (const model of spec.dataModels) {
+          const resource = model.toLowerCase();
+          apiContracts.push({
+            path: `/api/${resource}s`,
+            method: "GET",
+            responseBody: `{ data: ${model}[] }`,
+            description: `List ${model} records`
+          });
         }
-      );
+      }
     }
 
     return {

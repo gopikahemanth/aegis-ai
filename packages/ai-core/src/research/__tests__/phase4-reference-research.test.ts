@@ -4,51 +4,117 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ReferenceSourceSelector } from "../reference-source-selector.js";
 import { ReferencePageInspector } from "../reference-page-inspector.js";
+import { LiveWebSearchEngine } from "../live-web-search-engine.js";
 import { FeatureMatrixHarmonizer } from "../feature-matrix-harmonizer.js";
 import { ReferenceResearchEngine } from "../reference-research-engine.js";
 import { FeatureMatrixManager } from "../../contracts/feature-matrix.js";
 
-describe("Phase 4: Real Website Research and Feature Discovery", () => {
+describe("Phase 4: Real Website Research and Feature Discovery", { timeout: 30000 }, () => {
   let workDir: string;
 
   beforeEach(() => {
     workDir = mkdtempSync(join(tmpdir(), "aegis-phase4-test-"));
     ReferenceResearchEngine.clearCache();
+
+    LiveWebSearchEngine.setMockSearchProvider(async (query, maxResults) => {
+      const q = query.toLowerCase();
+      if (q.includes("restaurant") || q.includes("pasta") || q.includes("pizza") || q.includes("dining") || q.includes("salad")) {
+        return [
+          { title: "Sweetgreen Fresh Dining", url: "https://www.sweetgreen.com", snippet: "Order salads and bowls", sourceEngine: "mock" },
+          { title: "OpenTable Reservations", url: "https://www.opentable.com", snippet: "Book restaurant tables", sourceEngine: "mock" },
+          { title: "Toast POS", url: "https://pos.toasttab.com", snippet: "Restaurant order point of sale", sourceEngine: "mock" },
+        ];
+      }
+      if (q.includes("education") || q.includes("learning") || q.includes("code") || q.includes("academy") || q.includes("student")) {
+        return [
+          { title: "Coursera Academy", url: "https://www.coursera.org", snippet: "Online courses and degrees", sourceEngine: "mock" },
+          { title: "Khan Academy", url: "https://www.khanacademy.org", snippet: "Free interactive lessons", sourceEngine: "mock" },
+        ];
+      }
+      if (q.includes("estate") || q.includes("realty") || q.includes("property")) {
+        return [
+          { title: "Redfin Real Estate", url: "https://www.redfin.com", snippet: "Search homes for sale", sourceEngine: "mock" },
+          { title: "Zillow Homes", url: "https://www.zillow.com", snippet: "Real estate and rental listings", sourceEngine: "mock" },
+        ];
+      }
+      return [
+        { title: "Universal Knowledge", url: "https://en.wikipedia.org/wiki/Application", snippet: "Overview and structural details", sourceEngine: "mock" },
+        { title: "Standard Platform Showcase", url: "https://github.com/showcase", snippet: "Developer portal and tools", sourceEngine: "mock" },
+      ];
+    });
+
+    ReferencePageInspector.setMockInspector(async (url, options) => {
+      if (url.includes("nonexistent") || url.includes("bad-url")) {
+        return {
+          url,
+          status: "FAILED",
+          headings: [],
+          navLinks: [],
+          callToActions: [],
+          formControls: [],
+          filterControls: [],
+          interactiveElements: [],
+          hasSearch: false,
+          hasPagination: false,
+          durationMs: 10,
+          error: "Simulated network failure 404",
+        };
+      }
+      return {
+        url,
+        status: "SUCCESS",
+        statusCode: 200,
+        title: "Mock Reference Platform",
+        headings: ["Curated Offerings", "Dietary Accommodations", "Reserve a Table", "Client Portal"],
+        navLinks: [{ text: "Menu", href: "/menu" }, { text: "Reservations", href: "/reservations" }, { text: "Details", href: "/details" }],
+        callToActions: ["Book Now", "Explore Offerings", "Order Online"],
+        formControls: ["Search Input", "Date Picker"],
+        filterControls: ["Dietary Filters", "Availability Filter"],
+        interactiveElements: ["Book Now", "Explore Offerings", "Dietary Filters"],
+        hasSearch: true,
+        hasPagination: false,
+        durationMs: 50,
+      };
+    });
   });
 
   afterEach(() => {
     try {
       rmSync(workDir, { recursive: true, force: true });
     } catch {}
+    LiveWebSearchEngine.clearMockProvider();
+    ReferencePageInspector.clearMockInspector();
   });
 
   // 1. Correct reference selection for different application domains
-  it("Requirement 1 — Correct reference selection across different application domains", () => {
+  it("Requirement 1 — Correct reference discovery across different application domains via live search engine", async () => {
     // Restaurant domain
-    const diningSources = ReferenceSourceSelector.selectReferences({
+    const diningDiscovery = await ReferenceSourceSelector.discoverLiveReferences({
       prompt: "Artisanal pasta restaurant with online ordering and reservation booking",
       domain: "restaurant-dining",
     });
-    expect(diningSources.length).toBeGreaterThanOrEqual(3);
-    expect(diningSources.length).toBeLessThanOrEqual(5);
-    expect(diningSources.some((s) => s.url.includes("sweetgreen") || s.url.includes("opentable"))).toBe(true);
-    expect(diningSources[0].category).toContain("Restaurant");
+    expect(diningDiscovery.status).toBe("SUCCESS");
+    expect(diningDiscovery.sources.length).toBeGreaterThanOrEqual(3);
+    expect(diningDiscovery.sources.length).toBeLessThanOrEqual(5);
+    expect(diningDiscovery.sources.some((s) => s.url.includes("sweetgreen") || s.url.includes("opentable"))).toBe(true);
 
     // Education domain
-    const eduSources = ReferenceSourceSelector.selectReferences({
+    const eduDiscovery = await ReferenceSourceSelector.discoverLiveReferences({
       prompt: "Online interactive software academy with coding challenges and courses",
       domain: "education-learning",
     });
-    expect(eduSources.length).toBeGreaterThanOrEqual(3);
-    expect(eduSources.some((s) => s.url.includes("coursera") || s.url.includes("khanacademy"))).toBe(true);
+    expect(eduDiscovery.status).toBe("SUCCESS");
+    expect(eduDiscovery.sources.length).toBeGreaterThanOrEqual(2);
+    expect(eduDiscovery.sources.some((s) => s.url.includes("coursera") || s.url.includes("khanacademy"))).toBe(true);
 
     // Real estate domain
-    const reSources = ReferenceSourceSelector.selectReferences({
+    const reDiscovery = await ReferenceSourceSelector.discoverLiveReferences({
       prompt: "Boutique residential real estate property search and agent tour booking",
       domain: "real-estate-discovery",
     });
-    expect(reSources.length).toBeGreaterThanOrEqual(2);
-    expect(reSources.some((s) => s.url.includes("redfin") || s.url.includes("zillow"))).toBe(true);
+    expect(reDiscovery.status).toBe("SUCCESS");
+    expect(reDiscovery.sources.length).toBeGreaterThanOrEqual(2);
+    expect(reDiscovery.sources.some((s) => s.url.includes("redfin") || s.url.includes("zillow"))).toBe(true);
   });
 
   // 2. Preservation of every explicit user requirement
@@ -367,15 +433,14 @@ describe("Phase 4: Real Website Research and Feature Discovery", () => {
   });
 
   // 15. Support for unfamiliar domains without domain-specific hardcoded assumptions
-  it("Requirement 15 — Handles unfamiliar domains with dynamic reference synthesis", () => {
-    const unfamiliarSources = ReferenceSourceSelector.selectReferences({
+  it("Requirement 15 — Handles unfamiliar domains with dynamic reference synthesis", async () => {
+    const unfamiliarDiscovery = await ReferenceSourceSelector.discoverLiveReferences({
       prompt: "Bioluminescent fungal spore genetic tracking and mycelium incubator",
       domain: "mycology-biotech",
     });
 
-    expect(unfamiliarSources.length).toBeGreaterThanOrEqual(2);
-    // Should adaptively produce open knowledge references rather than crashing
-    expect(unfamiliarSources[0].url).toContain("wikipedia.org");
-    expect(unfamiliarSources[0].category).toContain("Architecture");
+    expect(unfamiliarDiscovery.status).toBe("SUCCESS");
+    expect(unfamiliarDiscovery.sources.length).toBeGreaterThanOrEqual(2);
+    expect(unfamiliarDiscovery.sources[0].url.startsWith("http")).toBe(true);
   });
 });

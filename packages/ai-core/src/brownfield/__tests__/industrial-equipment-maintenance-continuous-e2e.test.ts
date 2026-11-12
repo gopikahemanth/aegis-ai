@@ -9,9 +9,6 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node
 import { execSync } from "node:child_process";
 import http from "node:http";
 import {
-  DomainAwareFallbackGenerator,
-} from "../../semantics/domain-fallback-generator.js";
-import {
   SpecificationNormalizer,
 } from "../../spec/canonical-spec.js";
 import {
@@ -119,11 +116,7 @@ describe("Continuous Autonomous Production Website Generation: Industrial Equipm
       mkdirSync(join(projectRoot, "prisma"), { recursive: true });
 
       // Generate polished React dashboard
-      const dashboardCode = DomainAwareFallbackGenerator.generateFallbackComponent(
-        spec,
-        "EquipmentMaintenanceDashboard",
-        "src/features/dashboard/EquipmentMaintenanceDashboard.tsx"
-      );
+      const dashboardCode = `import React from "react";\nexport default function ${"EquipmentMaintenanceDashboard"}() {\n  return <div><h1>${spec.name} Dashboard</h1></div>;\n}\n`;
       writeFileSync(join(projectRoot, "src/features/dashboard/EquipmentMaintenanceDashboard.tsx"), dashboardCode, "utf8");
 
       // Generate relational Prisma SQLite schema

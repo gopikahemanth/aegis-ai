@@ -79,4 +79,25 @@ describe("ApiWorkflowVerifier — Workflow Generation & Contract Testing", () =>
     expect(healthCheck).toBeDefined();
     expect(healthCheck?.headers?.Authorization).toBeUndefined(); // no auth required
   });
+
+  it("generates inquiry/contact payload with email, message, and clientName for inquiry endpoints", () => {
+    ApiContractRegistry.registerContract([
+      {
+        operationId: "submitInquiry",
+        method: "POST",
+        path: "/api/v1/inquiries",
+        description: "Submit client inquiry",
+        authentication: false,
+      }
+    ]);
+
+    const steps = ApiWorkflowVerifier.generateWorkflowsFromContract();
+    const posInquiry = steps.find(s => s.workflowId === "wf_pos_submitInquiry");
+
+    expect(posInquiry).toBeDefined();
+    expect(posInquiry?.requestBody).toBeDefined();
+    expect(posInquiry?.requestBody.email).toBe("test@internal.aegis");
+    expect(posInquiry?.requestBody.message).toBe("Automated test verification message.");
+    expect(posInquiry?.requestBody.clientName).toBe("Elena Vance Client");
+  });
 });

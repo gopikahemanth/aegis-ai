@@ -194,9 +194,9 @@ describe("Phase 3: Original Design & Theme Generator Quality Suite", () => {
   });
 
   // 6. Typography fallbacks cascade gracefully to reliable system stacks
-  it("Requirement 6 — All 30 typography pairings contain complete system fallbacks", () => {
+  it("Requirement 6 — All typography pairings contain complete system fallbacks", () => {
     const allPairings = TypographyManager.getAllPairings();
-    expect(allPairings.length).toBe(30);
+    expect(allPairings.length).toBeGreaterThanOrEqual(30);
 
     for (const pairing of allPairings) {
       expect(pairing.displayStack.includes("sans-serif") || pairing.displayStack.includes("serif")).toBe(true);

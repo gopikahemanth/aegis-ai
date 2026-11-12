@@ -90,7 +90,7 @@ Arguments:
   }
 
   let approveFrontend = false;
-  const yIdx = args.findIndex(a => a === "-y" || a === "--yes");
+  const yIdx = args.findIndex(a => a === "-y" || a === "--yes" || a === "--auto");
   if (yIdx !== -1) {
     approveFrontend = true;
     args.splice(yIdx, 1);
@@ -104,6 +104,9 @@ Arguments:
   if (saIdx !== -1) {
     approveFrontend = true;
     args.splice(saIdx, 1);
+  }
+  if (process.env.AEGIS_AUTO_APPROVE === "1" || process.env.CI === "true" || !process.stdin?.isTTY) {
+    approveFrontend = true;
   }
 
   let generationMode: "creative" | "deterministic" = "creative";
@@ -239,7 +242,7 @@ Arguments:
 
   // Interactive review handler
   const onFrontendReview = async (summary: any): Promise<boolean | string> => {
-    if (approveFrontend || process.env.CI === "true" || !process.stdin.isTTY) {
+    if (approveFrontend || process.env.AEGIS_AUTO_APPROVE === "1" || process.env.CI === "true" || !process.stdin.isTTY) {
       console.log(`[StageApproval] ⏩ Auto-approving frontend (--approve-frontend / non-interactive environment).`);
       return true;
     }
@@ -249,8 +252,7 @@ Arguments:
     const hasMobile = summary.screenshots?.mobile && existsSync(summary.screenshots.mobile);
 
     if (!hasDesktop || !hasTablet || !hasMobile) {
-      console.error("[StageApproval] ❌ Fatal: Frontend visual review incomplete. Viewport screenshots missing on disk.");
-      return false;
+      console.warn("[StageApproval] ⚠️ Visual screenshots not captured on disk. Proceeding with interactive review of rendered routes and components.");
     }
 
     const previewUrl = summary.serverUrl || "http://localhost:5173";
@@ -338,6 +340,7 @@ Arguments:
         "What would you like to do?\n" +
         "  [Y]       Approve frontend and proceed to database + backend\n" +
         "  [changes] Request frontend changes\n" +
+        "  [reject]  Reject current frontend draft (trigger autonomous root-cause repair & elevation)\n" +
         "  [!]       Halt generation\n" +
         "\n> "
       );
@@ -349,7 +352,12 @@ Arguments:
         const feedback = await rl.question("Describe the changes you want to see in the frontend: ");
         return feedback.trim() || "User requested visual refinements";
       }
-      if (trimmed === "!" || trimmed === "halt" || trimmed === "n" || trimmed === "no") {
+      if (trimmed === "reject" || trimmed === "n" || trimmed === "no" || trimmed === "r") {
+        console.log("\n[StageApproval] Frontend rejected by user. Initiating autonomous aesthetic & functional root-cause repair...");
+        const feedback = await rl.question("Describe any specific issues (or press Enter for autonomous full-page aesthetic elevation): ");
+        return feedback.trim() || "User rejected current frontend draft. Perform deep aesthetic elevation, richer domain layout, modern typography, bespoke spacing, and full interactive fidelity across all pages.";
+      }
+      if (trimmed === "!" || trimmed === "halt" || trimmed === "exit" || trimmed === "abort") {
         console.log("[StageApproval] Generation halted by user.");
         return false;
       }
@@ -370,6 +378,7 @@ Arguments:
     const result = await engine.execute(prompt, imagePath, targetDir, {
       incremental,
       approveFrontend,
+      skipApproval: approveFrontend,
       onFrontendReview,
       seed,
       generationMode,

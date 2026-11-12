@@ -1,13 +1,16 @@
-# Dependencies
-node_modules
+ Dependencies
+node_modules/
+.pnpm-store/
 
-# Build output
-dist
+# Build outputs
+dist/
+build/
 *.tsbuildinfo
+.next/
 
-# Generated output
+# Generated projects & websites
 generated/
-generated-project/
+generated-*/
 **/generated/
 **/generated-*/
 **/generated/**
@@ -15,23 +18,54 @@ projects/
 **/projects/
 **/projects/**
 
-# Scratch and temporary scripts
+# Ephemeral test outputs & scratch
 scratch/
 **/scratch/
 **/scratch/**
 temp-*/
 **/temp-*/
 **/temp-*/**
+.tmp*
+**/.tmp*
+**/.tmp*/**
+test-output/
+**/test-output/**
+coverage/
+**/coverage/**
 
-# Environment
+# Environment & credentials (NEVER commit secrets)
 .env
-.env.local
+.env.*
+!.env.example
 
-# Logs
+# Runtime databases & journals
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# Logs & terminal capture outputs
 *.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+output.txt
+output_run.txt
+terminal_output.txt
 
-# VS Code
-.vscode/settings.json
+# Editor & OS clutter
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
 
-# Turbo Build Cache
+# Turbo & Tooling Cache
 .turbo/
+.cache/
+
+# Ephemeral audit snapshots
+.aegis/*audit*.json
+.aegis/*audit*.md
+**/.aegis/*audit*.json
+**/.aegis/*audit*.md

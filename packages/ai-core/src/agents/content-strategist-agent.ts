@@ -90,12 +90,12 @@ export class ContentStrategistAgent extends BaseAgent {
     const requiredVocab = (brief.vocabularyContract?.required || []).join(", ");
     const forbiddenVocab = (brief.vocabularyContract?.forbidden || []).join(", ");
 
+    const promptText = (brief as any).userPrompt || (brief as any).rawPrompt || "";
     const authoritativeBrand =
       (brief as any).brand?.name ||
       (brief as any).brandName ||
-      NavigationDesignResolver.extractBrandFromPrompt((brief as any).userPrompt || (brief as any).rawPrompt || "") ||
+      (promptText ? NavigationDesignResolver.extractBrandFromPrompt(promptText) : "") ||
       (brief as any).appName ||
-      NavigationDesignResolver.sanitizeBrandName(undefined, (brief as any).rawPrompt || "") ||
       "";
 
     try {
@@ -377,738 +377,143 @@ export default siteContent;
   }
 
   /**
-   * Domain-tailored fallback content if LLM fails.
+   * Domain-agnostic, prompt-grounded fallback content when remote LLM is unavailable.
+   * Derives all copy, pages, records, and search keywords directly from the project's
+   * feature matrix, discovered models, and user prompt — zero canned domain templates.
    */
   public fallbackContent(featureMatrix: FeatureMatrix, brief: ProductDesignBrief): SiteContentModel {
-    const authoritativeBrand =
+    const promptText = (brief as any).userPrompt || (brief as any).rawPrompt || "";
+    const rawBrand =
       (brief as any).brand?.name ||
       (brief as any).brandName ||
-      NavigationDesignResolver.extractBrandFromPrompt((brief as any).userPrompt || (brief as any).rawPrompt || "") ||
+      (promptText ? NavigationDesignResolver.extractBrandFromPrompt(promptText) : "") ||
       (brief as any).appName ||
-      NavigationDesignResolver.sanitizeBrandName(undefined, (brief as any).rawPrompt || "") ||
+      (brief as any).productName ||
       "";
 
-    const cat = (featureMatrix.category || "").toLowerCase();
-    const promptLower = (((brief as any).rawPrompt || (brief as any).userPrompt || "") + " " + cat).toLowerCase();
+    const brandName = rawBrand && rawBrand.length <= 32 ? rawBrand : (featureMatrix.category ? `${featureMatrix.category.split(" ")[0]} Studio` : "Official Platform");
+    const domainCategory = featureMatrix.category || "Interactive Product";
+    const stdFeatures = featureMatrix.standardFeatures || [];
+    const diffFeatures = featureMatrix.differentiatorFeatures || [];
+    const corePages = featureMatrix.corePages && featureMatrix.corePages.length > 0 ? featureMatrix.corePages : ["/", "/explore", "/archive", "/contact"];
 
-    // 0. Independent Bookstore & Literary Salon
-    const isBookstore = /\b(bookstore|bookseller|book\s*shop|page & petal)\b/i.test(promptLower) ||
-      (/\b(book|reading|literature)\b/i.test(promptLower) && /\b(catalog|cart|checkout|order|store|author)\b/i.test(promptLower));
+    // 1. Dynamic navigation labels formatted cleanly from routes
+    const navigationLabels: Record<string, string> = {};
+    for (const route of corePages) {
+      if (route === "/" || route === "") {
+        navigationLabels["/"] = "Home";
+      } else {
+        const seg = route.replace(/^\//, "").split("/")[0];
+        const clean = seg
+          .split("-")
+          .filter(w => !["and", "the", "to", "in", "of"].includes(w.toLowerCase()))
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" ");
+        navigationLabels[route] = clean || "Explore";
+      }
+    }
 
-    if (isBookstore) {
-      const bookstoreBrand = authoritativeBrand || "PAGE & PETAL";
-      return {
-        brand: {
-          name: bookstoreBrand,
-          tagline: "Curated Independent Bookselling, Living Botanicals & Literary First Editions",
-          valueProposition: "We curate rigorous independent literature, pair titles with living botanicals, and host intimate author salons in our physical bookstore.",
-          contact: { phone: "+1 (555) 382-9401", email: `books@${bookstoreBrand.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`, hours: "Tue–Sat: 10am–7pm, Sun: 11am–5pm", address: "482 Atlantic Avenue, Brooklyn, NY 11217" }
-        },
-        navigationLabels: {
-          "/": "Home",
-          "/catalog": "Catalog & Vault",
-          "/filter-books": "Filter Books",
-          "/cart": "Shopping Bag",
-          "/complete-checkout": "Checkout",
-          "/order-history": "Orders",
-          "/submit-contact": "Contact"
-        },
-        pages: {
-          "/": {
-            title: `${bookstoreBrand} | Independent Bookseller & Botanical Pairings`,
-            headline: "Independent literature, signed first editions, and botanical pairings.",
-            subheadline: "Browse our hand-selected catalog, enter signed first-edition lotteries, and RSVP for in-store literary salon events.",
-            primaryCta: "Browse Catalog",
-            secondaryCta: "Staff Selections",
-            highlights: [
-              { label: "Living Botanical Complements", description: "Every title on our reading list can be paired with a curated houseplant matching its setting." },
-              { label: "Signed First-Edition Vault", description: "Fair-chance ticketing and release drops for rare, author-annotated hardcovers." }
-            ]
-          },
-          "/catalog": {
-            title: `${bookstoreBrand} | Curated Book Catalog`,
-            headline: "Curated Literature, Translated Poetry, and Independent Presses",
-            subheadline: "Explore volumes across Literary Fiction, Ecology, Philosophy, and Poetry with stock availability.",
-            primaryCta: "Add to Bag",
-            secondaryCta: "Filter by Genre",
-            highlights: [
-              { label: "Curated Staff Picks", description: "Uncompromising literature selected by our resident booksellers." },
-              { label: "Botanical Pairings", description: "Living green companions paired with each edition." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "bk-01", title: "The Overstory", author: "Richard Powers", genre: "Literary Fiction", format: "Hardcover", price: 32, isbn: "978-0393635522", stock: 14, staffPick: true, synopsis: "Nine Americans whose life experiences bring them into contact with trees map out a monumental narrative about the human connection to the natural world.", botanicalPairing: "Potted Bonsai Ficus Microcarpa", botanicalPrice: 45, coverColor: "#1C3D2E", accentColor: "#C87A54" },
-          { id: "bk-02", title: "Braiding Sweetgrass", author: "Robin Wall Kimmerer", genre: "Ecology / Non-Fiction", format: "Paperback", price: 20, isbn: "978-1571313560", stock: 22, staffPick: true, synopsis: "Drawing on her life as an indigenous scientist, the author shows how other living beings offer us our oldest teachings.", botanicalPairing: "Dried Sweetgrass and Lavender Bundle", botanicalPrice: 18, coverColor: "#2A4736", accentColor: "#D4A373" },
-          { id: "bk-03", title: "Piranesi", author: "Susanna Clarke", genre: "Speculative Fiction", format: "Hardcover", price: 27, isbn: "978-1635575637", stock: 8, staffPick: false, synopsis: "Piranesi's house is no ordinary building: its rooms are infinite, its corridors endless, its walls are lined with thousands of statues.", botanicalPairing: "Trailing Marble Queen Pothos", botanicalPrice: 24, coverColor: "#1F2B37", accentColor: "#E0A96D" },
-          { id: "bk-04", title: "Selected Poems", author: "Anna Akhmatova", genre: "Poetry", format: "Paperback", price: 22.5, isbn: "978-0930051731", stock: 5, staffPick: true, synopsis: "Definitive bilingual and translated volume of one of Russia's greatest 20th-century poets, capturing personal grief and historical catastrophe.", botanicalPairing: "Preserved Silver Dollar Eucalyptus", botanicalPrice: 15, coverColor: "#3B2F2F", accentColor: "#C5A059" },
-          { id: "bk-05", title: "On Earth We're Briefly Gorgeous", author: "Ocean Vuong", genre: "Literary Fiction", format: "Paperback", price: 18, isbn: "978-0525562047", stock: 16, staffPick: true, synopsis: "A letter from a son to a mother who cannot read, unearthing a family's history that began before he was born.", botanicalPairing: "Japanese Calathea Lancifolia", botanicalPrice: 28, coverColor: "#3D3A45", accentColor: "#E8C547" },
-          { id: "bk-06", title: "The Dispossessed", author: "Ursula K. Le Guin", genre: "Speculative Fiction", format: "Hardcover", price: 29, isbn: "978-0060512750", stock: 11, staffPick: false, synopsis: "A visionary masterpiece examining two planets with radically contrasting social, economic, and moral structures.", botanicalPairing: "Air Plant Ionantha Trio in Terracotta", botanicalPrice: 22, coverColor: "#2C3E50", accentColor: "#E67E22" }
+    // 2. Dynamic page copy grounded in discovered features
+    const primaryFeature = stdFeatures[0] || { name: "Core Capabilities", description: "Integrated domain workflows." };
+    const secondaryFeature = diffFeatures[0] || stdFeatures[1] || { name: "Specialized Management", description: "Bespoke tools and inspection." };
+
+    const pages: SiteContentModel["pages"] = {};
+    for (const route of corePages) {
+      const label = navigationLabels[route] || "Overview";
+      const isHome = route === "/";
+      pages[route] = {
+        title: `${brandName} | ${isHome ? domainCategory : label}`,
+        headline: isHome
+          ? `${primaryFeature.name} & ${secondaryFeature.name}`
+          : `${label} & Specialized Workflows`,
+        subheadline: isHome
+          ? `Engineered for ${domainCategory.toLowerCase()} with authentic tools and validated procedures.`
+          : `Explore dedicated ${label.toLowerCase()} capabilities, inspection logs, and verified records for ${brandName}.`,
+        primaryCta: isHome ? `Explore ${label}` : "View Details",
+        secondaryCta: "Learn More",
+        highlights: [
+          { label: primaryFeature.name, description: primaryFeature.description },
+          { label: secondaryFeature.name, description: secondaryFeature.description },
         ],
-        testimonials: [
-          { author: "Elena Rostova", role: "Literary Critic", location: "Brooklyn, NY", quote: "Page & Petal is what physical and digital bookstores were meant to be: intimate, thoughtful, and deeply reverent of books.", rating: 5, isPlaceholder: true, isSampleData: true },
-          { author: "David Thorne", role: "Poetry Curator", location: "Hudson, NY", quote: "The pairing of rare translations with living botanicals transforms receiving a book into a sensory ritual.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "editorial indie bookstore books wood shelves cream paper warm sunlight",
-          features: ["hardcover book stack botanical branch vintage bookmark", "independent bookstore reading table coffee signed edition"],
-          gallery: ["intimate bookstore salon author reading evening", "antique book binding letterpress linen cover"]
-        }
       };
     }
 
-    // 0b. Culinary Travel Magazine & Gastronomic Journal
-    const isRestaurantOrdering = /\b(food ordering|restaurant ordering|ordering platform|table reservation|restaurant menu|takeout|delivery|dish details)\b/i.test(promptLower) ||
-      (/\b(restaurant|kitchen)\b/i.test(promptLower) && /\b(menu|ordering|reservation|cart|checkout)\b/i.test(promptLower));
+    // 3. Dynamic mock records derived from data models or features
+    const dataModels = (featureMatrix as any).dataModels || [];
+    const primaryModelName = dataModels[0]?.name || "Item";
+    const mockRecords: Array<Record<string, any>> = [];
 
-    if (isRestaurantOrdering) {
-      const restaurantBrand = authoritativeBrand || "SAVORIA KITCHEN";
-      return {
-        brand: {
-          name: restaurantBrand,
-          tagline: "Artisan Culinary Dining & Fresh Chef Creations",
-          valueProposition: "Seasonal chef specials, handcrafted appetizers, wood-fired mains, and seamless online ordering with doorstep delivery.",
-          contact: { phone: "+1 (415) 555-8291", email: `orders@${restaurantBrand.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`, hours: "Tue–Sun 11:30–22:00", address: "742 Montgomery St, San Francisco, CA" }
-        },
-        navigationLabels: {
-          "/": "Home",
-          "/menu": "Menu",
-          "/dish-details": "Dishes",
-          "/cart": "Cart",
-          "/checkout": "Checkout",
-          "/order-history": "Orders",
-          "/table-reservation": "Reservations"
-        },
-        pages: {
-          "/": {
-            title: `${restaurantBrand} | Artisan Restaurant & Online Ordering`,
-            headline: "Artisanal Wood-Fired Kitchen & Seasonal Gastronomy",
-            subheadline: "Explore chef curated menus, filter by dietary requirements, customize preparations, and order with instant delivery tracking.",
-            primaryCta: "Explore Menu",
-            secondaryCta: "Book a Table",
-            highlights: [
-              { label: "Wood-Fired Hearth", description: "Seasonal mains and slow-braised cuts prepared over white oak and applewood embers." },
-              { label: "Dietary Dietary Filters", description: "Certified Gluten-Free, Vegan, and Halal tags with complete allergen transparency." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "dish-1", name: "Black Truffle & Wild Chanterelle Risotto", course: "Chef's Specials", price: 34, dietaryTags: ["Gluten-Free", "Vegetarian"], calories: 580 },
-          { id: "dish-2", name: "Wood-Fired Dry-Aged Wagyu Ribeye", course: "Main Courses", price: 68, dietaryTags: ["Halal"], calories: 820 },
-          { id: "dish-3", name: "Heirloom Burrata with Charred Mission Figs", course: "Appetizers", price: 22, dietaryTags: ["Vegetarian", "Gluten-Free"], calories: 420 },
-          { id: "dish-4", name: "Valrhona Dark Chocolate Lava Soufflé", course: "Desserts", price: 18, dietaryTags: ["Vegetarian"], calories: 510 }
-        ],
-        testimonials: [
-          { author: "Marcus Vance", role: "Food & Wine Critic", location: "San Francisco", quote: "The precision of flavors and seamless checkout experience make Savoria a gold standard in modern dining.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "luxury restaurant food plating wood fired gourmet kitchen",
-          features: ["chef plating artisan pasta chanterelles", "dry aged wagyu steak searing fire"],
-          gallery: ["elegant candlelit restaurant dining room table", "sommelier pouring natural wine glass"]
-        }
-      };
+    const sampleStatuses = ["Active", "Verified", "Pending", "Archived", "Nominal"];
+    for (let i = 1; i <= 4; i++) {
+      const recId = `${primaryModelName.toLowerCase().slice(0, 3)}-0${i}`;
+      mockRecords.push({
+        id: recId,
+        title: `${brandName} ${primaryModelName} Reference ${i}`,
+        category: i % 2 === 0 ? "Primary Series" : "Specialized",
+        status: sampleStatuses[(i - 1) % sampleStatuses.length],
+        provenance: "Verified Baseline",
+        isSampleData: true,
+      });
     }
 
-    if (
-      !isRestaurantOrdering &&
-      (promptLower.includes("culinary travel") ||
-      promptLower.includes("food journey") ||
-      promptLower.includes("savorline") ||
-      authoritativeBrand.toLowerCase().includes("savorline"))
-    ) {
-      const brandName = authoritativeBrand || "SAVORLINE";
-      return {
-        brand: {
-          name: brandName,
-          tagline: "Epicurean Expeditions & Terroir Monograph",
-          valueProposition: "Curated regional food journeys, chef profiles, terroir guides, seasonal recipes, and bespoke culinary itineraries.",
-          contact: { phone: "+1 (415) 555-7820", email: "concierge@savorline.com", hours: "Quarterly Print & Digital", address: "Pier 17, The Embarcadero, San Francisco, CA" }
-        },
-        navigationLabels: {
-          "/": "Monograph",
-          "/editorial-stories": "Stories",
-          "/explore-culinary-destinations": "Destinations",
-          "/and-filter-recipes": "Recipes",
-          "/saved-discoveries": "Saved",
-          "/build-custom-itinerary": "Itinerary"
-        },
-        pages: {
-          "/": {
-            title: `${brandName} | Culinary Travel Magazine`,
-            headline: "Terroir Inquiries Across Wood-Fired Hearths, Coasts, and Ancient Soil",
-            subheadline: "Deep narrative essays and sensory photography exploring regional food traditions, artisan producers, and heirloom craft.",
-            primaryCta: "Read Monograph",
-            secondaryCta: "Explore Terroir Atlas",
-            highlights: [
-              { label: "Terroir Monographs", description: "Uncompromising spatial food journalism exploring indigenous ingredients and heirloom seeds." },
-              { label: "Kitchen Companion", description: "Scaled proportions, seasonal harvest profiles, and step-by-step masterclass technique notes." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "cul-1", title: "Nordic Fermented Chanterelle Tartine", region: "Scandinavia", category: "Recipe", prepTime: "45 mins", difficulty: "Master" },
-          { id: "cul-2", title: "San Sebastián & Basque Masonry Hearths", region: "Basque Country", category: "Destination", season: "Autumn", highlights: "Txakoli Vineyards & Fish Guilds" },
-          { id: "cul-3", title: "Kyoto & Timber Machiya Broths", region: "Kansai, Japan", category: "Editorial", readTime: "12 min", author: "Kenji Sato" }
-        ],
-        testimonials: [
-          { author: "Alice Waters", role: "Chef & Author", location: "Berkeley", quote: "Savorline captures the soul of terroir journalism with tactile elegance and reverence for the soil.", rating: 5, isPlaceholder: true, isSampleData: true },
-          { author: "René Redzepi", role: "Culinary Pioneer", location: "Copenhagen", quote: "The depth of food travel and artisan chronicle here is what contemporary food publishing has been waiting for.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "editorial food photography rustic wooden table chanterelles fermentation",
-          features: ["artisan sourdough wood fired hearth oven", "harvest market fresh heirloom produce"],
-          gallery: ["chefs plating in open kitchen candlelight", "vineyard landscape morning fog terroir"]
-        }
-      };
-    }
+    // 4. Clean domain-appropriate testimonials with mandatory placeholder tags
+    const testimonials = [
+      {
+        author: "Alex Morgan",
+        role: "Domain Specialist",
+        location: "Regional Center",
+        quote: `The precision and workflow clarity provided by ${brandName} set a verified standard for everyday operations.`,
+        rating: 5,
+        isPlaceholder: true as const,
+        isSampleData: true,
+      },
+      {
+        author: "Taylor Vance",
+        role: "Operations Lead",
+        location: "Field Station",
+        quote: `Operational reliability and clear record inspection have transformed how our team manages resources.`,
+        rating: 5,
+        isPlaceholder: true as const,
+        isSampleData: true,
+      },
+    ];
 
-    // 1. Kazzoo / Fantasy Adventure Universe
-    if (promptLower.includes("kazzoo") || promptLower.includes("claymation") || promptLower.includes("fantasy") || promptLower.includes("whimsical")) {
-      return {
-        brand: {
-          name: "Kazzoo Fantasy Adventure",
-          tagline: "Whimsical Claymation Universe for Families",
-          valueProposition: "Interactive 3D world explorer, quest maps, tactile soundboard, and magical companion encounters.",
-          contact: { phone: "+1 (800) 555-ZOOM", email: "adventures@kazzoo-world.com", hours: "Always Enchanted", address: "Mossy Hill Summit, Sector 7" }
-        },
-        navigationLabels: { "/": "World Stage", "/characters": "Characters", "/quest-map": "Quests", "/soundboard": "Soundboard", "/explorer": "Realm Telemetry" },
-        pages: {
-          "/": {
-            title: "Kazzoo | 3D Claymation Fantasy Universe",
-            headline: "Wander Across Rolling Moss Hills and Pastel Sky Realms",
-            subheadline: "Meet claymation creatures, solve whimsical world puzzles, and unlock magical voice clips across the realm.",
-            primaryCta: "Launch 3D Explorer",
-            secondaryCta: "Discover Quests",
-            highlights: [
-              { label: "Claymation 3D Engine", description: "Volumetric clouds, tactile shaders, and living ambient creatures." },
-              { label: "Magical Soundboard", description: "Interactive audio crystals tuned to enchanted forest frequencies." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "char-1", name: "Pip the Mossling", realm: "Emerald Glade", ability: "Spore Flight", favoriteSnack: "Sunlit Dewdrop", voiceClip: "pip_hello.mp3" },
-          { id: "char-2", name: "Grumble the Stone Snail", realm: "Obsidian Peak", ability: "Earthquake Rumble", favoriteSnack: "Lichen Crust", voiceClip: "grumble_laugh.mp3" },
-          { id: "char-3", name: "Lumi the Cloud Sprite", realm: "Pastel Stratosphere", ability: "Prism Burst", favoriteSnack: "Starlight Mist", voiceClip: "lumi_twinkle.mp3" }
-        ],
-        testimonials: [
-          { author: "Maya & Leo", role: "Adventurer Duo", location: "Portland", quote: "The claymation world feels like a playable Pixar movie. We spent two hours just poking the mossy snail!", rating: 5, isPlaceholder: true, isSampleData: true },
-          { author: "Elena Rostova", role: "Parent & Animator", location: "Vancouver", quote: "The tactile warmth and sound design are unforgettable. The kids keep asking to visit Kazzoo every evening.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "claymation fantasy creature mossy green hills pastel sky",
-          features: ["magical glowing crystal soundboard", "handcrafted clay adventure map"],
-          gallery: ["whimsical 3d character smiling", "volumetric clouds pastel landscape"]
-        }
-      };
-    }
+    // 5. Clean image search keywords derived from domain nouns (zero raw URLs)
+    const promptWords = promptText
+      .replace(/[^a-zA-Z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w: string) => w.length > 3 && !/^(build|create|website|platform|with|that|this|from|offering|specializing|monitoring)$/i.test(w))
+      .slice(0, 6);
 
-    // 2. Luxury Watch Studio / Horology
-    if (promptLower.includes("watch") || promptLower.includes("horology") || promptLower.includes("timepiece") || promptLower.includes("artisan watch")) {
-      return {
-        brand: {
-          name: "Chronos Atelier Horlogerie",
-          tagline: "Hand-Finished Mechanical Timepieces",
-          valueProposition: "Bespoke calibers, hand-chamfered bridges, and grand feu enamel dials crafted for generational permanence.",
-          contact: { phone: "+41 22 555 8820", email: "concierge@chronos-atelier.ch", hours: "By Private Appointment", address: "14 Rue du Rhône, Geneva" }
-        },
-        navigationLabels: { "/": "Collection", "/craftsmanship": "Metiers d'Art", "/calibers": "In-House Calibers", "/story": "The Atelier", "/viewing": "Private Viewing" },
-        pages: {
-          "/": {
-            title: "Chronos Atelier | Haute Horlogerie & Bespoke Watchmaking",
-            headline: "Mechanical Precision Sculpted by Hand in Geneva",
-            subheadline: "Explore bespoke complications, high-frequency tourbillons, and rare artisanal finishing.",
-            primaryCta: "Inspect Calibers",
-            secondaryCta: "Request Private Viewing",
-            highlights: [
-              { label: "Hand-Chamfered Bridges", description: "Anglage executed exclusively with natural gentian wood sticks." },
-              { label: "Grand Feu Enamel", description: "Multi-layered vitrified dials fired at 840°C for eternal luster." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "watch-1", name: "Monolith Tourbillon No. 04", caseMaterial: "Grade 5 Titanium & Tantalum", diameterMm: 40.5, powerReserveHours: 72, price: 94000 },
-          { id: "watch-2", name: "Astral Perpetual Calendar", caseMaterial: "18k Rose Gold", diameterMm: 39.0, powerReserveHours: 65, price: 128000 },
-          { id: "watch-3", name: "Chrono-Régulateur Squelette", caseMaterial: "Stainless Steel 904L", diameterMm: 41.0, powerReserveHours: 50, price: 46000 }
-        ],
-        testimonials: [
-          { author: "Laurent Mercier", role: "Horological Collector", location: "Zurich", quote: "The black polish on the tourbillon bridge is flawless under a 10x loupe. True Geneva seal caliber artistry.", rating: 5, isPlaceholder: true, isSampleData: true },
-          { author: "Claire De Witt", role: "Architect", location: "Amsterdam", quote: "A masterclass in tactile proportions and restrained typography. It wears like architectural sculpture.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "luxury mechanical watch movement macro tourbillon craftsmanship",
-          features: ["hand chamfered watch balance wheel", "watchmaker loupe tweezers assembly"],
-          gallery: ["rose gold case luxury timepiece wrist", "grand feu enamel dial reflection"]
-        }
-      };
-    }
+    const primaryKeywords = promptWords.length > 0 ? promptWords.join(" ") : `${domainCategory.toLowerCase()} photography`;
 
-    // 2a. Furniture Store & E-Commerce Interior Furnishings Retail
-    if (/\b(furniture|furnishing|furnishings|interior furnishings|furniture store|handcrafted furniture|timber joinery)\b/i.test(promptLower)) {
-      const furnitureBrand = authoritativeBrand || "VELORA LIVING";
-      return {
-        brand: {
-          name: furnitureBrand,
-          tagline: "Architectural Interior Furnishings & Bespoke Timber Craft",
-          valueProposition: "Heirloom handcrafted furniture, sustainable timber joinery, dimensional specs, and seamless home delivery.",
-          contact: { phone: "+1 (800) 555-8830", email: `concierge@${furnitureBrand.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`, hours: "Mon–Sat 10:00–19:00", address: "120 Wooster St, SoHo, New York, NY" }
-        },
-        navigationLabels: {
-          "/": "Home",
-          "/products": "Products",
-          "/categories": "Categories",
-          "/product-details": "Details",
-          "/dimension-specs": "Dimensions",
-          "/cart": "Cart",
-          "/order-summary": "Summary"
-        },
-        pages: {
-          "/": {
-            title: `${furnitureBrand} | Architectural Furniture & Interior Living`,
-            headline: "Sculptural Living, Authentic Materiality & Generational Joinery",
-            subheadline: "Explore architectural furniture collections, filter by timber species, inspect dimension tolerances, and curate your living spaces.",
-            primaryCta: "Shop Collection",
-            secondaryCta: "Explore Dimensions",
-            highlights: [
-              { label: "Sustainable Timber", description: "Old-growth European oak, American walnut, and kiln-cured ash from certified reserves." },
-              { label: "Mortise & Tenon Joinery", description: "Precision interlock wood architecture without synthetic binders or veneer laminates." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "furn-1", title: "Koto Solid White Oak Credenza", category: "Storage & Credenzas", price: 4200, material: "European White Oak", dimensions: "210cm W × 48cm D × 74cm H", inStock: true },
-          { id: "furn-2", title: "Solstice Architectural Lounge Chair", category: "Seating", price: 2850, material: "American Walnut & Aniline Leather", dimensions: "86cm W × 92cm D × 78cm H", inStock: true },
-          { id: "furn-3", title: "Meridian Monolithic Dining Table", category: "Dining", price: 5600, material: "Charred Ash & Brushed Brass", dimensions: "260cm W × 100cm D × 75cm H", inStock: true }
-        ],
-        testimonials: [
-          { author: "Clara Moreau", role: "Principal Interior Architect", location: "New York", quote: "Velora pieces possess rare tectonic gravity. The joinery tolerances and finish feel like museum-grade craft built for everyday life.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "luxury architectural furniture living room walnut sofa oak credenza",
-          features: ["handcrafted mortise tenon wood joinery detail", "minimalist dining table sculptural wood chairs"],
-          gallery: ["modern apartment interior design warm sunlight wood furniture", "artisan applying natural oil finish timber chair"]
-        }
-      };
-    }
-
-    // 2c. Healthcare Appointment Booking Platform
-    if (/\b(healthcare|medical appointment|doctor booking|patient scheduling|clinic booking)\b/i.test(promptLower) ||
-        (/\b(medical|clinic|doctor|patient|hospital)\b/i.test(promptLower) && /\b(appointment|booking|schedule|scheduling)\b/i.test(promptLower))) {
-      const healthBrand = authoritativeBrand || "AURA HEALTH";
-      return {
-        brand: {
-          name: healthBrand,
-          tagline: "Accessible Clinical Care & Patient-Centric Scheduling",
-          valueProposition: "Board-certified medical specialists, real-time clinic availability, instant slot booking, and secure health management.",
-          contact: { phone: "+1 (800) 555-7110", email: `care@${healthBrand.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`, hours: "Mon–Fri 8:00–20:00 (Sat 9:00–17:00)", address: "500 Medical Center Way, Suite 400, Boston, MA" }
-        },
-        navigationLabels: {
-          "/": "Home",
-          "/providers": "Doctors",
-          "/clinic-calendar": "Calendar",
-          "/book-appointment": "Book",
-          "/my-appointments": "Appointments",
-          "/patient-management": "Patients"
-        },
-        pages: {
-          "/": {
-            title: `${healthBrand} | Healthcare Appointment Booking`,
-            headline: "Compassionate Medical Care on Your Schedule",
-            subheadline: "Search certified doctors by specialty, check live clinic schedules, book in-person or telehealth consultations, and manage your health records.",
-            primaryCta: "Find a Doctor",
-            secondaryCta: "Book Consultation",
-            highlights: [
-              { label: "Board-Certified Specialists", description: "Top-rated physicians across Cardiology, Dermatology, Neurology, and Pediatrics." },
-              { label: "Instant Time-Slot Booking", description: "Confirm clinic visits in seconds with automated reminders and calendar sync." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "doc-1", name: "Dr. Elena Rostova, MD", specialty: "Cardiology", rating: 4.9, nextAvailable: "Today, 2:30 PM", clinic: "Aura Downtown Clinic" },
-          { id: "doc-2", name: "Dr. Marcus Vance, DO", specialty: "Dermatology", rating: 4.8, nextAvailable: "Tomorrow, 10:15 AM", clinic: "Aura Westside Pavilion" },
-          { id: "doc-3", name: "Dr. Sophia Chen, MD", specialty: "Pediatrics & Family Care", rating: 5.0, nextAvailable: "Friday, 11:00 AM", clinic: "Aura Health Center" }
-        ],
-        testimonials: [
-          { author: "David Miller", role: "Patient", location: "Boston", quote: "Booking with Aura took less than a minute. Dr. Rostova was punctual, attentive, and the clinic experience was exceptionally calm.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "modern medical clinic doctor consultation compassionate healthcare",
-          features: ["physician reviewing tablet with patient", "clean modern clinical waiting room sunlight"],
-          gallery: ["doctor stethoscope listening patient heartbeat", "digital healthcare scheduling app calendar"]
-        }
-      };
-    }
-
-    // 2b. Contemporary Art Museum / Gallery
-    const isCommercialFurnitureOrStore = /\b(furniture|furnishing|furnishings|store|retail|e-commerce|ecommerce|shop|cart|checkout)\b/i.test(promptLower);
-    if (!isCommercialFurnitureOrStore && (promptLower.includes("museum") || promptLower.includes("art museum") || promptLower.includes("contemporary art") || promptLower.includes("art gallery") || promptLower.includes("curatorial") || (promptLower.includes("exhibition") && !promptLower.includes("furniture")))) {
-      const museumBrand = authoritativeBrand || "LUMEN HOUSE";
-      return {
-        brand: {
-          name: museumBrand,
-          tagline: "Contemporary Art & Spatial Monograph Pavilion",
-          valueProposition: "Curated contemporary exhibitions, artist monographs, spatial floor exploration, and curator audio commentary.",
-          contact: { phone: "+1 (212) 555-8420", email: `curator@${museumBrand.toLowerCase().replace(/[^a-z0-9]/g, "")}.org`, hours: "Tue–Sun 10:00–18:00 (Thu until 21:00)", address: "548 West 22nd Street, New York, NY" }
-        },
-        navigationLabels: {
-          "/": "Pavilion",
-          "/rotating-exhibitions": "Exhibitions",
-          "/explore-artist-profiles": "Artists",
-          "/search-semantic-artworks": "Collection",
-          "/navigate-interactive-floor-plan": "Floor Plan",
-          "/listen-to-audio-guide": "Audio Guide",
-          "/plan-museum-visit": "Visit Plan",
-          "/saved-artworks": "Saved Artworks"
-        },
-        pages: {
-          "/": {
-            title: `${museumBrand} | Contemporary Art & Spatial Monograph Pavilion`,
-            headline: "Spatial Light, Material Truth & Monumental Form",
-            subheadline: "Experience rotating contemporary exhibitions, curatorial audio walkthroughs, and deep collection archives.",
-            primaryCta: "View Exhibitions",
-            secondaryCta: "Plan Your Visit",
-            highlights: [
-              { label: "Curated Monoliths", description: "Large-scale sculptural and canvas installations by leading international artists." },
-              { label: "Binaural Audio Tours", description: "In-depth commentary, artist interviews, and curatorial context for every room." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "exh-1", title: "Resonance of the Monolith: Spatial Bronzes", curator: "Elena Rostova", wing: "North Atrium", startDate: "2026-09-15", endDate: "2027-01-20" },
-          { id: "exh-2", title: "Void & Pigment: Post-War Minimalist Canvas", curator: "Julian Thorne", wing: "East Wing Level 2", startDate: "2026-10-01", endDate: "2027-03-15" },
-          { id: "exh-3", title: "Generative Luminance: Light Ribs & Frequencies", curator: "Maya Lin-Hasegawa", wing: "South Pavilion", startDate: "2026-11-10", endDate: "2027-04-30" }
-        ],
-        testimonials: [
-          { author: "Claire De Witt", role: "Art Forum Contributor", location: "London", quote: "LUMEN HOUSE redefines the contemporary gallery encounter—spatial stillness and curatorial bravery in equal measure.", rating: 5, isPlaceholder: true, isSampleData: true },
-          { author: "Kenji Sato", role: "Architectural Historian", location: "Tokyo", quote: "The architectural dialogue between light, void, and monolithic bronze sculptures is unforgettable.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "contemporary art museum gallery minimalist architecture white cube sculpture",
-          features: ["large scale bronze sculpture in modern gallery", "minimalist canvas painting exhibition room"],
-          gallery: ["spatial museum floor plan modern atrium", "curator audio guide headset visitor gallery"]
-        }
-      };
-    }
-
-    const isSpace = /\b(space|celestial|orbit|orbital|satellite|planetary|astro|astronomy|observatory|telescope|starmap|star map)\b/i.test(promptLower);
-    if (isSpace) {
-      const brand = NavigationDesignResolver.extractBrandFromPrompt(promptLower) || "Orbitalis Dynamics";
-      return {
-        brand: {
-          name: brand,
-          tagline: "Orbital Satellite Constellation Command & Telemetry Platform",
-          valueProposition: "Real-time satellite trajectory propagation, subsystem telemetry monitoring, ground station pass scheduling, and encrypted telecommand uplink.",
-          contact: { phone: "+1 (800) 555-0199", email: "ops@orbitalis-dynamics.com", hours: "24/7 Mission Flight Control", address: "Space Operations Center, Colorado Springs, CO" }
-        },
-        navigationLabels: { "/": "Mission Control", "/trajectories": "Orbits & Ephemeris", "/subsystems": "Subsystems", "/maneuvers": "Burn Planner", "/ground-stations": "Ground Passes", "/commands": "Command Uplink" },
-        pages: {
-          "/": {
-            title: `${brand} | Mission Flight Control`,
-            headline: "Satellite Constellation Command & Telemetry",
-            subheadline: "Real-time SGP4 orbital tracking, dual-axis solar array power, and encrypted telecommands.",
-            primaryCta: "Inspect Constellation",
-            secondaryCta: "Plan Burn Maneuver",
-            highlights: [
-              { label: "Orbital Constellation", description: "SGP4 orbit propagation with sub-arcsecond tracking across 24 orbital planes." },
-              { label: "Flight Subsystems", description: "Real-time solar array generation, hydrazine pressure, and radiator loop regulation." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "sat-01", noradId: "58201", name: "Orbitalis Sentinel-1", inclination: "53.2°", altitude: "550 km", period: "95.6 min", status: "Operational", health: "Nominal" },
-          { id: "sat-02", noradId: "58202", name: "Orbitalis Sentinel-2", inclination: "53.2°", altitude: "552 km", period: "95.7 min", status: "Operational", health: "Nominal" },
-          { id: "sat-03", noradId: "58203", name: "Orbitalis Sentinel-2", inclination: "53.2°", altitude: "552 km", period: "95.7 min", status: "Operational", health: "Nominal" },
-          { id: "sat-04", noradId: "58204", name: "Orbitalis Scout-A", inclination: "97.4°", altitude: "620 km", period: "97.1 min", status: "Maneuver", health: "Nominal" }
-        ],
-        testimonials: [
-          { author: "Dr. Sarah Lin", role: "Flight Dynamics Lead", location: "Space Operations Center", quote: "The real-time SGP4 orbit propagation and conjunction warnings gave us full situational awareness during orbital insertion.", rating: 5, isPlaceholder: true, isSampleData: true },
-          { author: "Commander David Vance", role: "Mission Operations Director", location: "Ground Network Command", quote: "Automated ground pass tracking between Svalbard and Goldstone achieved zero telemetry packet loss.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "satellite orbiting earth blue planet curvature solar panels space mission",
-          features: ["satellite bus solar arrays deep space starlight", "mission control center telemetry screens operators"],
-          gallery: ["earth from low earth orbit space station sunset", "satellite ground station dish antenna milky way"]
-        }
-      };
-    }
-
-    const isCleanEnergy = !isSpace && /\b(renewable|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine|wind farm)\b/i.test(promptLower);
-    if (isCleanEnergy) {
-      const brand = NavigationDesignResolver.extractBrandFromPrompt(promptLower) || "GreenPulse Energy";
-      return {
-        brand: {
-          name: brand,
-          tagline: "Renewable Generation & Real-Time Grid Telemetry",
-          valueProposition: "Utility-scale solar and wind operations, real-time grid telemetry, and automated maintenance dispatch.",
-          contact: { phone: "+1 (800) 555-0199", email: "ops@greenpulse.io", hours: "24/7 Grid Control Center", address: "100 Clean Power Way, Austin, TX" }
-        },
-        navigationLabels: { "/": "Operations", "/operations": "Operations", "/assets": "Asset Roster", "/analytics": "Grid Analytics", "/maintenance": "Maintenance", "/incidents": "Incidents", "/reports": "Reports" },
-        pages: {
-          "/": {
-            title: `${brand} | Operations Command`,
-            headline: "Renewable Generation & Grid Telemetry",
-            subheadline: "Real-time photovoltaic irradiance, wind turbine yield, and transmission dispatch.",
-            primaryCta: "Inspect Assets",
-            secondaryCta: "Triage Alerts",
-            highlights: [
-              { label: "Utility-Scale Generation", description: "Real-time MW output across solar arrays and wind farms." },
-              { label: "Grid Stability", description: "Continuous frequency regulation and battery storage dispatch." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "ast-101", name: "Solara-Alpha PV Array", type: "Solar", capacity: "125 MW", output: "118.4 MW", status: "Active", location: "Mojave Basin" },
-          { id: "ast-102", name: "Vortex-Boreas Turbine 04", type: "Wind", capacity: "6.2 MW", output: "5.8 MW", status: "Active", location: "Columbia Gorge" },
-          { id: "ast-103", name: "Helios-Beta Inverter Bank", type: "Solar", capacity: "80 MW", output: "0.0 MW", status: "Maintenance", location: "Sonoran Desert" }
-        ],
-        testimonials: [
-          { author: "Dr. Sarah Chen", role: "VP of Grid Operations", location: "Austin, TX", quote: "Real-time telemetry and predictive inverter analytics reduced curtailment losses by 14% across our entire portfolio.", rating: 5, isPlaceholder: true, isSampleData: true },
-          { author: "Marcus Lindqvist", role: "Chief Wind Operations Engineer", location: "Copenhagen", quote: "Immediate yaw alert triage prevented gearbox wear during severe wind gusts, ensuring uninterrupted generation.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "utility scale solar farm wind turbines blue sky clean energy sunset aerial view",
-          features: ["solar photovoltaic panels modern renewable power plant", "wind turbine generator blades engineering close up"],
-          gallery: ["modern renewable grid control center operators screens", "clean energy solar farm landscape hills morning"]
-        }
-      };
-    }
-
-    const isOperationalDomain = !isCleanEnergy && /\b(avionics|aerospace|aircraft|flight|aviation|cockpit|airframe|airspace|transponder|squawk|rnav|airway)\b/i.test(promptLower);
-    if (isOperationalDomain) {
-      const brand = promptLower.includes("stratos") ? "Stratos Avionics" : "Aero Telemetry";
-      return {
-        brand: {
-          name: brand,
-          tagline: "Mission Telemetry & Integrated Avionics Control",
-          valueProposition: "High-frequency flight telemetry streaming, integrated glass cockpit avionics, and active airspace fleet monitoring.",
-          contact: { phone: "+1 (800) 555-0199", email: "ops@stratos-avionics.io", hours: "24/7 Mission Operations", address: "Hangar 4, Airfield Way, Mojave, CA" }
-        },
-        navigationLabels: { "/": "Command Deck", "/fleet": "Fleet Ops", "/telemetry": "Telemetry Stream", "/flight-plans": "Flight Routing", "/diagnostics": "Diagnostics" },
-        pages: {
-          "/": {
-            title: `${brand} | Flight Telemetry Command`,
-            headline: "Integrated Glass Cockpit & High-Density Telemetry",
-            subheadline: "Real-time attitude vectors, transponder tracking, and subsystem bus diagnostics.",
-            primaryCta: "Launch Deck",
-            secondaryCta: "Inspect Fleet",
-            highlights: [
-              { label: "High-Frequency Stream", description: "Sub-millisecond sensor bus data with attitude and barometric telemetry." },
-              { label: "Airspace Ledger", description: "Real-time ADS-B transponder tracking and fleet maintenance status." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "ac-101", tailNumber: "N742SA", airframe: "Stratos Jetstream IV", squawk: "1200", altitude: 34000, airspeed: 460, heading: 90, status: "Airborne" },
-          { id: "ac-102", tailNumber: "N889AF", airframe: "AeroPulse Long-Range", squawk: "3412", altitude: 28000, airspeed: 410, heading: 270, status: "Airborne" },
-          { id: "ac-103", tailNumber: "N104TG", airframe: "Stratos Cargo Cruiser", squawk: "0000", altitude: 0, airspeed: 0, heading: 180, status: "Maintenance" }
-        ],
-        testimonials: [
-          { author: "Capt. Marcus Vance", role: "Chief Test Pilot", location: "Mojave Air & Space Port", quote: "The real-time telemetry display provides immediate situational awareness under high-g flight regimes.", rating: 5, isPlaceholder: true, isSampleData: true },
-          { author: "Elena Rostova", role: "Flight Operations Director", location: "Zurich", quote: "Subsystem anomaly alerts caught bus voltage fluctuations well before routine maintenance intervals.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "modern jet cockpit avionics hud glass display telemetry night",
-          features: ["aircraft flight instrument panel digital readout", "aerospace runway mission control telemetry room"],
-          gallery: ["private jet flying above cloud layer twilight", "aerospace engineering laboratory avionics testing"]
-        }
-      };
-    }
-
-    // 3. Architecture Journal / Monograph
-    const isArchPublication = !isOperationalDomain && !/\b(software architecture|system architecture|data architecture|application architecture|required by the architecture|backend architecture|cloud architecture)\b/i.test(promptLower) && /\b(architectural\s+(?:monograph|journal|review|digest|firm|studio|practice|portfolio|criticism)|architecture\s+(?:firm|studio|monograph|journal|magazine|exhibition)|building\s+typolog(?:y|ies)|spatial\s+(?:monograph|essay)|tectonic\s+journal)\b/i.test(promptLower);
-    if (isArchPublication) {
-      return {
-        brand: {
-          name: "Tectonic Journal",
-          tagline: "Independent Critical Architectural Discourse",
-          valueProposition: "Longform critical essays, full-bleed spatial photography, and structural monographs examining built form.",
-          contact: { phone: "+1 (212) 555-9310", email: "editors@tectonicjournal.org", hours: "Quarterly Print & Digital", address: "401 Broadway, New York, NY" }
-        },
-        navigationLabels: { "/": "Monograph", "/essays": "Critical Essays", "/case-studies": "Spatial Studies", "/architects": "Profiles", "/archive": "Folio Archive" },
-        pages: {
-          "/": {
-            title: "Tectonic Journal | Critical Architecture & Spatial Essays",
-            headline: "Spatial Inquiries Across Concrete, Light, and Earth",
-            subheadline: "Unconventional typography and full-screen monographs exploring progressive structural works.",
-            primaryCta: "Read Monograph",
-            secondaryCta: "Browse Case Studies",
-            highlights: [
-              { label: "Monograph Coverage", description: "Uncompromising 8,000-word spatial analyses free from sponsor influence." },
-              { label: "Medium-Format Folio", description: "Uncompressed architectural captures focusing on materiality and shadow." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "study-1", title: "Brutalist Sanctuary in the Kyoto Foothills", architect: "Kensuke Mori Architects", completedYear: 2024, typology: "Monastic Retreat", location: "Kyoto, Japan" },
-          { id: "study-2", title: "Timber Cantilever Over the Patagonian Fjords", architect: "Estudio Austral", completedYear: 2023, typology: "Research Station", location: "Aysén, Chile" },
-          { id: "study-3", title: "Subterranean Archive of Alpine Glaciology", architect: "Atelier Vaud", completedYear: 2025, typology: "Civic Archive", location: "Valais, Switzerland" }
-        ],
-        testimonials: [
-          { author: "Dr. Silvia Rossi", role: "Professor of Architectural Theory", location: "Milan", quote: "Tectonic is the rare publication that treats architectural criticism with literary rigor and visual bravery.", rating: 5, isPlaceholder: true, isSampleData: true },
-          { author: "Henrik Lindqvist", role: "Principal Architect", location: "Stockholm", quote: "The full-screen visual essays convey material presence better than any journal in circulation today.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "raw concrete minimalist architectural pavilion shadow sunlight",
-          features: ["medium format architectural photography timber structure", "monolithic geometric concrete staircase"],
-          gallery: ["subterranean gallery natural lighting", "cantilever stone cliff architecture"]
-        }
-      };
-    }
-
-    if (cat.includes("resort") || cat.includes("hospitality")) {
-      return {
-        brand: {
-          name: "Aura Oceanfront Sanctuary",
-          tagline: "Private Villas & Coastal Living",
-          valueProposition: "Secluded cliffside sanctuaries overlooking the turquoise Pacific with dedicated butler service.",
-          contact: { phone: "+1 (800) 555-0199", email: "reservations@aurasanctuary.com", hours: "24/7 Concierge", address: "100 Pelican Cove, Big Sur, CA" }
-        },
-        navigationLabels: { "/": "Overview", "/accommodations": "Villas", "/dining": "Dining", "/experiences": "Excursions", "/booking": "Reserve" },
-        pages: {
-          "/": {
-            title: "Private Coastal Sanctuary",
-            headline: "Secluded Luxury on the Edge of the Pacific",
-            subheadline: "Eighteen private oceanfront pavilions designed with natural basalt, teak, and floor-to-ceiling glass.",
-            primaryCta: "Explore Pavilions",
-            secondaryCta: "Reserve Dates",
-            highlights: [
-              { label: "Private Pools", description: "Every pavilion features a heated infinity plunge pool." },
-              { label: "Farm-to-Table", description: "Organic ingredients harvested daily from our coastal garden." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "villa-1", name: "Cliffside Horizon Villa", pricePerNight: 950, sqFt: 1800, capacity: 2, view: "Full Oceanfront", amenities: ["Plunge Pool", "Outdoor Soaking Tub", "Butler Service"] },
-          { id: "villa-2", name: "Azure Sanctuary Pavilion", pricePerNight: 1450, sqFt: 2600, capacity: 4, view: "Panoramic Coastal", amenities: ["Private Spa Pavilion", "Wine Cellar", "Chef Kitchen"] },
-          { id: "villa-3", name: "Zen Garden Hideaway", pricePerNight: 750, sqFt: 1400, capacity: 2, view: "Botanical & Ocean", amenities: ["Meditation Garden", "Cedar Sauna", "Firepit"] }
-        ],
-        testimonials: [
-          { author: "Evelyn Sterling", role: "Design Director", location: "San Francisco", quote: "The architectural restraint and coastal tranquility are unmatched. The quietest 4 nights of my year.", rating: 5, isPlaceholder: true, isSampleData: true },
-          { author: "Marcus Vance", role: "Author & Architect", location: "New York", quote: "Incredible attention to natural light and local materials. Dining at the terrace was exceptional.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "luxury coastal villa infinity pool sunset",
-          features: ["modern architectural pavilion ocean view", "organic fine dining terrace table"],
-          gallery: ["cedar bath ocean view", "private beach cove sunrise"]
-        }
-      };
-    }
-
-    if (/\b(car wash|auto spa|detailing|auto detail|car detail|wash bay)\b/i.test(cat)) {
-      return {
-        brand: {
-          name: "Apex Precision Auto Spa",
-          tagline: "Hand Wash & Ceramic Protection",
-          valueProposition: "pH-neutral foam baths, spot-free deionized water rinses, and Gtechniq ceramic coating.",
-          contact: { phone: "(555) 234-8901", email: "service@apexautospa.com", hours: "Mon-Sat: 7:30 AM - 6:00 PM", address: "442 Motor Mile Way, Austin, TX" }
-        },
-        navigationLabels: { "/": "Services", "/booking": "Book Bay", "/membership": "Wash Club", "/locations": "Locations" },
-        pages: {
-          "/": {
-            title: "Precision Detailing & Ceramic Care",
-            headline: "Showroom Finish in 35 Minutes",
-            subheadline: "Hand-finished care with dual-action scratch-free microfibers and high-pressure undercarriage flush.",
-            primaryCta: "Select Your Package",
-            secondaryCta: "Join Wash Club",
-            highlights: [
-              { label: "Deionized Water", description: "Zero-spot rinse technology leaves no mineral deposits." },
-              { label: "Ceramic Sealant", description: "Hydrophobic gloss barrier lasting up to 60 days." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "pkg-1", name: "Express Hand Wash", price: 28, durationMinutes: 20, includes: ["pH-Neutral Foam", "Hand Dry", "Tire Dressing", "Wheel Face Clean"] },
-          { id: "pkg-2", name: "Apex Signature Detail", price: 55, durationMinutes: 40, includes: ["Express Wash", "Ceramic Sealant", "Interior Vacuum", "Dashboard Wipe", "Window Polish"] },
-          { id: "pkg-3", name: "Paint Correction & Ceramic Pro", price: 185, durationMinutes: 90, includes: ["Full Detail", "Clay Bar Decontamination", "1-Step Machine Polish", "6-Month Hydrophobic Coat"] }
-        ],
-        testimonials: [
-          { author: "Derrick Chen", role: "Porsche Club Member", location: "Austin", quote: "They understand soft clear-coats. Not a single swirl mark, and the tire dressing is never greasy.", rating: 5, isPlaceholder: true, isSampleData: true },
-          { author: "Sarah Jenkins", role: "Daily Commuter", location: "Austin", quote: "The unlimited monthly pass saves me an hour every week. Always fast, always spot-free.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "car wash thick foam lather sports car",
-          features: ["wheel rim detailing brush cleaning", "mirror paint reflection ceramic coat"],
-          gallery: ["clean interior leather dashboard", "water beading on car hood"]
-        }
-      };
-    }
-
-    if (cat.includes("saas") || cat.includes("project") || cat.includes("sprint")) {
-      return {
-        brand: {
-          name: "SprintPulse Work OS",
-          tagline: "Fast Engineering Coordination",
-          valueProposition: "Connects GitHub PR blast radius directly to sprint backlog priorities without status meetings.",
-          contact: { phone: "(800) 555-7890", email: "team@sprintpulse.io", hours: "99.99% Uptime", address: "Remote-First Architecture" }
-        },
-        navigationLabels: { "/": "Board", "/sprints": "Sprints", "/backlog": "Backlog", "/analytics": "Velocity" },
-        pages: {
-          "/": {
-            title: "Engineering Sprint & Task Engine",
-            headline: "Ship Weekly Without Guesswork",
-            subheadline: "Real-time task boards with code-level PR risk analysis and automated dependency tracking.",
-            primaryCta: "Open Task Board",
-            secondaryCta: "View Sprint Velocity",
-            highlights: [
-              { label: "PR Blast Radius", description: "Instantly see how code changes impact shared services." },
-              { label: "Async Standups", description: "Generates clear blocker alerts directly from git branch activity." }
-            ]
-          }
-        },
-        mockRecords: [
-          { id: "task-101", title: "Migrate auth token storage to httpOnly cookies", points: 5, status: "In Progress", assignee: "Sarah K.", priority: "High" },
-          { id: "task-102", title: "Implement Redis connection pooling for telemetry stream", points: 8, status: "Code Review", assignee: "Alex M.", priority: "Critical" },
-          { id: "task-103", title: "Add multi-tenant webhook signature verification", points: 3, status: "To Do", assignee: "Devon L.", priority: "Medium" },
-          { id: "task-104", title: "Refactor task board drag-drop column transitions", points: 5, status: "Done", assignee: "Sarah K.", priority: "Low" }
-        ],
-        testimonials: [
-          { author: "Tara Sterling", role: "VP of Engineering", location: "Datacore Systems", quote: "Cut our cycle time from 11 days to 4 days. The PR blast radius badge stopped two major regressions last month.", rating: 5, isPlaceholder: true, isSampleData: true },
-          { author: "Liam O'Connor", role: "Staff Architect", location: "Beacon AI", quote: "No fluff, no lagging animations. A tool engineered for developers who value keyboard navigation.", rating: 5, isPlaceholder: true, isSampleData: true }
-        ],
-        imageKeywords: {
-          hero: "developer dashboard clean dark interface analytics",
-          features: ["kanban board agile sprint columns", "code diff review monitor"],
-          gallery: ["velocity burn down chart", "team productivity metrics"]
-        }
-      };
-    }
-
-    // Default Dynamic Domain Synthesis from brief / brand
-    const rawBrand = authoritativeBrand || (brief as any).brandName || (brief as any).productName || "EXPERIENCE";
-    const brandName = rawBrand.length > 25 ? "STUDIO PLATFORM" : rawBrand;
     return {
       brand: {
         name: brandName,
-        tagline: brief.artDirectionRationale || "Curated Domain Experience",
-        valueProposition: "Engineered with precision, domain clarity, and authentic interactive capabilities.",
-        contact: { phone: "(555) 019-2834", email: "contact@experience.io", hours: "Mon-Fri: 9:00 AM - 6:00 PM", address: "Creative District, Studio 4" }
+        tagline: `${domainCategory} & Operational Precision`,
+        valueProposition: `Authentic domain workflows, verified data management, and specialized tools engineered for ${brandName}.`,
+        contact: {
+          phone: "+1 (800) 555-0142",
+          email: `contact@${brandName.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`,
+          hours: "Mon–Fri: 9:00 AM – 6:00 PM",
+          address: "100 Innovation Corridor, Suite 400",
+        },
       },
-      navigationLabels: { "/": "Explore", "/overview": "Overview", "/details": "Details", "/connect": "Contact" },
-      pages: {
-        "/": {
-          title: `${brandName} | Official Experience`,
-          headline: "Engineered for Discovery and Creative Interaction",
-          subheadline: "Explore bespoke capabilities, detailed archives, and curated domain records.",
-          primaryCta: "Explore Now",
-          secondaryCta: "Learn More",
-          highlights: [
-            { label: "Authentic Design", description: "Bespoke typography, curated color palette, and responsive composition." },
-            { label: "Interactive Architecture", description: "Fast client-side state transitions with rich interactive controls." }
-          ]
-        }
-      },
-      mockRecords: [
-        { id: "rec-1", title: "Curated Showcase Feature 01", category: "Featured", status: "Active" },
-        { id: "rec-2", title: "Precision Studio Work 02", category: "Archive", status: "Published" },
-        { id: "rec-3", title: "Spatial Innovation Review 03", category: "Case Study", status: "Active" }
-      ],
-      testimonials: [
-        { author: "Elena Rostova", role: "Design Principal", location: "New York", quote: "The attention to craft and typography sets a new benchmark for web experiences.", rating: 5, isPlaceholder: true, isSampleData: true }
-      ],
+      navigationLabels,
+      pages,
+      mockRecords,
+      testimonials,
       imageKeywords: {
-        hero: "modern studio architecture minimalist clean design",
-        features: ["tactile materials craftsmanship details", "editorial layout typography showcase"],
-        gallery: ["monochrome studio workspace", "curated portfolio display"]
-      }
+        hero: `${primaryKeywords} editorial lighting professional photography`,
+        features: [
+          `${promptWords[0] || "product"} craftsmanship detail`,
+          `${promptWords[1] || "system"} workspace modern`,
+        ],
+        gallery: [
+          `${promptWords[2] || "studio"} interior spatial daylight`,
+          `${promptWords[3] || "process"} verified procedure`,
+        ],
+      },
     };
   }
 }

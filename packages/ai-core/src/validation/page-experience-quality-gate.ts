@@ -120,6 +120,22 @@ export class PageExperienceQualityGate {
       );
     }
 
+    const rawPromptText = `${plan?.rawPrompt || ""} ${(plan as any)?.brief?.productCharacteristics?.category || ""}`.toLowerCase();
+    const isScientificOrGlaciology = /\b(glaciology|glacier|ice core|scientific|research|telemetry|laboratory|specimen)\b/i.test(rawPromptText);
+    const isExplicitHospitality = /\b(hotel|resort|hospitality|villa|lodging|vacation stay)\b/i.test(rawPromptText);
+
+    if (isScientificOrGlaciology && !isExplicitHospitality && /sanctuary hero|date booking bar|villa showcase|concierge/i.test(pagePlan.pageRole)) {
+      violations.push(
+        `DOMAIN_ROLE_MISMATCH: Route '${pagePlan.route}' was assigned hospitality role '${pagePlan.pageRole}' in a scientific/glaciology domain.`
+      );
+    }
+
+    if (isScientificOrGlaciology && /character spotlight|lore stage|companion turntable|3d avatar stage/i.test(pagePlan.pageRole)) {
+      violations.push(
+        `DOMAIN_ROLE_MISMATCH: Route '${pagePlan.route}' was assigned character spotlight role '${pagePlan.pageRole}' in a scientific/glaciology domain.`
+      );
+    }
+
     if (!targetFile) {
       return {
         route: pagePlan.route,
@@ -160,34 +176,36 @@ export class PageExperienceQualityGate {
 
     const relPath = relative(projectRoot, targetFile).replace(/\\/g, "/");
 
-    // If the file is a delegating proxy component (e.g. `return <RecipeCollectionPage />;`), follow the delegate
-    if (content.length < 600 && /return\s+<([A-Za-z0-9]+)/.test(content)) {
-      const match = content.match(/return\s+<([A-Za-z0-9]+)/);
-      if (match && match[1]) {
-        const delegateName = match[1];
-        const importMatch = content.match(new RegExp(`import\\s+(?:\\*\\s+as\\s+)?(?:${delegateName}|\\{[^}]*\\b${delegateName}\\b[^}]*\\})\\s+from\\s+["']([^"']+)["']`, "i"));
-        if (importMatch && importMatch[1]) {
-          const importPath = importMatch[1];
-          const dir = dirname(targetFile);
-          const candidates = [
-            join(dir, `${importPath}.tsx`),
-            join(dir, `${importPath}.jsx`),
-            join(dir, `${importPath}.ts`),
-            join(dir, `${importPath}.js`),
-            join(dir, importPath, "index.tsx"),
-            join(dir, importPath, "index.jsx"),
-          ];
-          for (const cand of candidates) {
-            if (existsSync(cand)) {
-              try {
-                content += "\n" + readFileSync(cand, "utf8");
-                break;
-              } catch {}
-            }
+    // Resolve all local relative imports (composite child components, workspace panels, proxy targets)
+    const resolvedFiles = new Set<string>();
+    const resolveLocalImports = (filePath: string, fileContent: string) => {
+      const importRegex = /import\s+(?:(?:\*\s+as\s+[A-Za-z0-9_$]+)|(?:\{[^}]+\})|(?:[A-Za-z0-9_$]+(?:\s*,\s*\{[^}]+\})?))\s+from\s+["'](\.[^"']+)["']/g;
+      let impMatch: RegExpExecArray | null;
+      const dir = dirname(filePath);
+      while ((impMatch = importRegex.exec(fileContent)) !== null) {
+        const importRel = impMatch[1];
+        const candidates = [
+          join(dir, `${importRel}.tsx`),
+          join(dir, `${importRel}.jsx`),
+          join(dir, `${importRel}.ts`),
+          join(dir, `${importRel}.js`),
+          join(dir, importRel, "index.tsx"),
+          join(dir, importRel, "index.jsx"),
+        ];
+        for (const cand of candidates) {
+          if (existsSync(cand) && !resolvedFiles.has(cand)) {
+            resolvedFiles.add(cand);
+            try {
+              const childContent = readFileSync(cand, "utf8");
+              content += "\n" + childContent;
+              resolveLocalImports(cand, childContent);
+            } catch {}
+            break;
           }
         }
       }
-    }
+    };
+    resolveLocalImports(targetFile, content);
 
     // 1. Accidental stub detection
     const isAccidentalStub =
@@ -202,7 +220,7 @@ export class PageExperienceQualityGate {
 
     // 2. Forbidden template / Generic secondary page collapse detection
     let hasForbiddenPattern = false;
-    for (const forbidden of pagePlan.forbiddenPatterns) {
+    for (const forbidden of (pagePlan.forbiddenPatterns || [])) {
       if (forbidden === "search bar" || forbidden === "search input") {
         if (/<input[^>]*\b(?:search|placeholder=[^>]*search)[^>]*>/i.test(content) || /searchQuery|searchTerm|setSearchQuery|setSearchTerm/i.test(content)) {
           hasForbiddenPattern = true;
@@ -300,7 +318,7 @@ export class PageExperienceQualityGate {
         }
       }
       if (reqCap === "suite-showcase" || reqCap === "room-storytelling" || reqCap === "cinematic-hero") {
-        if (!/suite|room|villa|amenit|photo|stay|capacity|sqft|sqm|price|night|hero|luxury|velora|curat/i.test(content)) {
+        if (!/suite|room|villa|amenit|photo|stay|capacity|sqft|sqm|price|night|hero|luxury|curat/i.test(content)) {
           specializedPresent = false;
           violations.push(`MISSING_CAPABILITY: Route '${pagePlan.route}' requires '${reqCap}' but no suite showcase or room storytelling logic was detected.`);
         }

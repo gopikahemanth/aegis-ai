@@ -27,13 +27,13 @@ export class ArchitectureContractNormalizer {
 
     const conflicts: ContractConflict[] = [];
 
-    // Check frontend conflict
+    // Check frontend conflict only when user explicitly specified a constraint
     if (rawSpec.frontend && rawSpec.frontend.toLowerCase() !== contract.frontend.framework.toLowerCase()) {
       const isSignificantDrift = (
         (rawSpec.frontend.toLowerCase().includes("next") && !contract.frontend.framework.toLowerCase().includes("next")) ||
         (rawSpec.frontend.toLowerCase().includes("react") && !contract.frontend.framework.toLowerCase().includes("react"))
       );
-      if (isSignificantDrift) {
+      if (isSignificantDrift && contract.frontend.provenance === "user") {
         conflicts.push({
           error: "CONTRACT_CONFLICT",
           field: "frontend",
@@ -45,13 +45,13 @@ export class ArchitectureContractNormalizer {
       }
     }
 
-    // Check backend conflict
+    // Check backend conflict only when user explicitly specified a constraint
     if (rawSpec.backend && rawSpec.backend.toLowerCase() !== contract.backend.framework.toLowerCase()) {
       const isSignificantDrift = (
         (rawSpec.backend.toLowerCase().includes("next") && !contract.backend.framework.toLowerCase().includes("next")) ||
         (rawSpec.backend.toLowerCase().includes("express") && !contract.backend.framework.toLowerCase().includes("express"))
       );
-      if (isSignificantDrift) {
+      if (isSignificantDrift && contract.backend.provenance === "user") {
         conflicts.push({
           error: "CONTRACT_CONFLICT",
           field: "backend",
@@ -63,28 +63,28 @@ export class ArchitectureContractNormalizer {
       }
     }
 
-    // Check database conflict
+    // Check database conflict only when user explicitly specified a constraint
     if (rawSpec.database && rawSpec.database.toLowerCase() !== contract.database.provider.toLowerCase()) {
-      conflicts.push({
-        error: "CONTRACT_CONFLICT",
-        field: "database",
-        expected: contract.database.provider,
-        actual: rawSpec.database,
-        expectedSource: contract.database.provenance || "contract",
-        actualSource: "llm_inference"
-      });
+      if (contract.database.provenance === "user") {
+        conflicts.push({
+          error: "CONTRACT_CONFLICT",
+          field: "database",
+          expected: contract.database.provider,
+          actual: rawSpec.database,
+          expectedSource: contract.database.provenance || "contract",
+          actualSource: "llm_inference"
+        });
+      }
     }
 
     if (conflicts.length > 0) {
       for (const conflict of conflicts) {
-        console.error(
-          `[ContractNormalizer] ❌ CONTRACT_CONFLICT detected:\n` +
-          `  Field:    ${conflict.field}\n` +
-          `  Expected: ${conflict.expected} [${conflict.expectedSource}]\n` +
-          `  Actual:   ${conflict.actual} [${conflict.actualSource}]\n` +
-          `  → Keeping locked contract value. Specification drift will be corrected.`
+        console.warn(
+          `[ContractNormalizer] ⚠️ Contract divergence noted on ${conflict.field}: Expected ${conflict.expected} [${conflict.expectedSource}], Specification was ${conflict.actual}. Harmonizing to authoritative contract.`
         );
       }
+    } else {
+      console.log(`[ContractNormalizer] ✓ Authoritative contract locked: ${contract.frontend.framework} + ${contract.backend.framework} + ${contract.database.provider} (${contract.database.orm})`);
     }
 
     // Reconstruct domain and model fields from the authoritative locked contract

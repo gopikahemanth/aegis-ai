@@ -188,6 +188,22 @@ export const CURATED_FONT_PAIRINGS: FontPairing[] = [
     rationale: "Roman inscriptional capitals paired with refined classical serif for bespoke luxury.",
     scale: EDITORIAL_SCALE,
   },
+  // 7b. Luxury Architecture Studio & Sustainable Interior Atelier
+  {
+    id: "cormorant_dm_sans",
+    name: "Cormorant Garamond & DM Sans",
+    category: "luxury",
+    displayFont: "Cormorant Garamond",
+    bodyFont: "DM Sans",
+    monoFont: "IBM Plex Mono",
+    displayStack: '"Cormorant Garamond", Garamond, Georgia, serif',
+    bodyStack: '"DM Sans", -apple-system, BlinkMacSystemFont, sans-serif',
+    monoStack: '"IBM Plex Mono", monospace',
+    googleFontsUrl: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
+    useCase: "Luxury architectural studios, interior design monographs, and spatial planning ateliers",
+    rationale: "Expressive editorial serif headings paired with restrained modern sans-serif for architectural clarity.",
+    scale: EDITORIAL_SCALE,
+  },
   // 8. Luxury Automotive Performance
   {
     id: "clash_display_archivo",
@@ -586,32 +602,34 @@ export class TypographyManager {
     const { domain = "", prompt = "", tone = "", seed = 0, avoidList = [] } = options;
     const text = `${domain} ${prompt} ${tone}`.toLowerCase();
 
-    // 1. Identify candidate category
+    // 1. Identify candidate category dynamically from aesthetic tone and domain context
     let categoryMatches: FontPairing[] = [];
-    if (/satellite|orbit|aerospace|space|telemetry|avionics|rocket|ground station/i.test(text)) {
-      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "aerospace");
-    } else if (/marine|underwater|habitat|subsea|ocean|bathymetry|diver|submersible/i.test(text)) {
-      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "marine");
-    } else if (/hypercar|atelier|supercar|luxury|bespoke|watch|jewelry|couture|haute/i.test(text)) {
-      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "luxury");
-    } else if (/student|school|learn|course|education|k-12|university|academy/i.test(text)) {
-      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "education");
-    } else if (/restaurant|dining|wine|culinary|chef|bistro|cafe|food/i.test(text)) {
-      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "artisanal" || p.category === "hospitality");
-    } else if (/health|clinic|patient|doctor|medical|wellness|pharma|habit/i.test(text)) {
-      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "healthcare");
-    } else if (/factory|warehouse|industrial|machinery|robotics|heavy equipment/i.test(text)) {
-      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "industrial");
-    } else if (/crypto|web3|fintech|banking|payment|invest|portfolio|wealth/i.test(text)) {
-      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "fintech");
-    } else if (/news|journal|editorial|magazine|article|publishing|lit/i.test(text)) {
-      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "editorial");
-    } else if (/art|design studio|creative|gallery|exhibition|portfolio/i.test(text)) {
-      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "creative");
+    const toneLower = (tone || "").toLowerCase();
+
+    if (text.includes("architect") || text.includes("interior design") || text.includes("spatial planning") || text.includes("interior studio") || text.includes("architecture studio")) {
+      const arch = CURATED_FONT_PAIRINGS.find((p) => p.id === "cormorant_dm_sans");
+      if (arch && !avoidList.includes(arch.id)) return arch;
+      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.id === "cormorant_dm_sans" || p.category === "luxury");
+    } else if (text.includes("aerospace") || text.includes("satellite") || text.includes("constellation") || text.includes("telemetry") || text.includes("avionics") || text.includes("spaceflight")) {
+      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "aerospace" || p.id.includes("space") || p.id.includes("barlow") || p.id.includes("archivo") || p.id.includes("spline"));
+    } else if (text.includes("marine") || text.includes("ocean") || text.includes("subsea") || text.includes("underwater")) {
+      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.id.includes("outfit") || p.id.includes("lexend"));
+    } else if (text.includes("automotive") || text.includes("hypercar") || text.includes("supercar")) {
+      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.id.includes("cinzel") || p.id.includes("clash") || p.id.includes("fraunces") || p.category === "luxury");
+    } else if (toneLower.includes("editorial") || toneLower.includes("contemplative") || toneLower.includes("literary")) {
+      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "editorial" || p.category === "artisanal");
+    } else if (toneLower.includes("luxurious") || toneLower.includes("prestigious") || toneLower.includes("refined")) {
+      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "luxury" || p.category === "creative");
+    } else if (toneLower.includes("technical") || toneLower.includes("precise") || toneLower.includes("scientific") || toneLower.includes("analytical")) {
+      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "aerospace" || p.category === "industrial" || p.category === "fintech");
+    } else if (toneLower.includes("playful") || toneLower.includes("friendly") || toneLower.includes("approachable")) {
+      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "creative" || p.category === "education");
+    } else if (toneLower.includes("calm") || toneLower.includes("serene") || toneLower.includes("wellness")) {
+      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "healthcare" || p.category === "hospitality");
     }
 
     if (categoryMatches.length === 0) {
-      categoryMatches = CURATED_FONT_PAIRINGS.filter((p) => p.category === "saas" || p.category === "enterprise");
+      categoryMatches = CURATED_FONT_PAIRINGS;
     }
 
     // Filter out avoid list items
@@ -619,8 +637,14 @@ export class TypographyManager {
     const pool = viable.length > 0 ? viable : CURATED_FONT_PAIRINGS.filter((p) => !avoidList.includes(p.id));
     const finalPool = pool.length > 0 ? pool : CURATED_FONT_PAIRINGS;
 
-    // Pick deterministically based on seed
-    const idx = Math.abs(seed) % finalPool.length;
+    // Pick deterministically based on seed combined with prompt/domain hash
+    let textHash = 0;
+    for (let i = 0; i < text.length; i++) {
+      textHash = ((textHash << 5) - textHash) + text.charCodeAt(i);
+      textHash |= 0;
+    }
+    const effectiveSeed = Math.abs(seed ^ textHash);
+    const idx = effectiveSeed % finalPool.length;
     return finalPool[idx];
   }
 

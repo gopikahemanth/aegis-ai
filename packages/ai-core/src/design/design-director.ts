@@ -59,6 +59,7 @@ export interface ProductDesignBrief {
 
   artDirectionName: string;
   artDirectionRationale: string; // e.g. "isPersonal=true + calm + warm → CALM_BOTANICAL"
+  artDirection?: VisualArtDirectionContract;
 
   colorSystem: {
     background: string;
@@ -261,7 +262,7 @@ type ArchetypeKey =
   | "EDITORIAL_HERITAGE" | "OBSIDIAN_PRECISION" | "MODERN_SWISS"
   | "BOTANICAL_EARTH" | "NORDIC_MINIMAL" | "AMBER_WARM_DARK"
   | "NEON_SYNTHETIC" | "EDITORIAL_NARRATIVE" | "RESTRAINED_PRODUCT"
-  | "PLAYFUL_APPROACHABLE" | "SOPHISTICATED_ELEGANT" | "CALM_BOTANICAL";
+  | "PLAYFUL_APPROACHABLE" | "SOPHISTICATED_ELEGANT" | "ARCHITECTURAL_EDITORIAL" | "CALM_BOTANICAL";
 
 function candidatesFromCharacteristics(
   characteristics: ProductCharacteristics,
@@ -317,10 +318,10 @@ function candidatesFromCharacteristics(
       return ["PLAYFUL_APPROACHABLE", "EDITORIAL_NARRATIVE", "NORDIC_MINIMAL"];
 
     case "editorial":
-      return ["EDITORIAL_NARRATIVE", "EDITORIAL_HERITAGE", "AMBER_WARM_DARK"];
+      return ["ARCHITECTURAL_EDITORIAL", "EDITORIAL_NARRATIVE", "EDITORIAL_HERITAGE", "AMBER_WARM_DARK"];
 
     case "luxurious":
-      return ["SOPHISTICATED_ELEGANT", "AMBER_WARM_DARK", "EDITORIAL_HERITAGE"];
+      return ["ARCHITECTURAL_EDITORIAL", "EDITORIAL_HERITAGE", "SOPHISTICATED_ELEGANT", "AMBER_WARM_DARK"];
 
     case "technical":
       if (isDataDriven && isProfessional) return ["SOPHISTICATED_ELEGANT", "OBSIDIAN_PRECISION", "INDUSTRIAL_UTILITY"];
@@ -586,6 +587,64 @@ export class DesignDirector {
       return buildCalmBotanicalContract(seed, rawPrompt);
     }
 
+    const hasArchitecturalDirectives =
+      promptLower.includes("architect") ||
+      promptLower.includes("interior") ||
+      promptLower.includes("spatial") ||
+      promptLower.includes("atelier");
+
+    if (hasArchitecturalDirectives) {
+      return deriveArtDirection(rawPrompt || "architectural interior luxury spatial editorial", undefined, seed, "ARCHITECTURAL_EDITORIAL");
+    }
+
+    const hasMaritimeDirectives =
+      promptLower.includes("maritime") ||
+      promptLower.includes("vessel") ||
+      promptLower.includes("ocean") ||
+      promptLower.includes("marine") ||
+      promptLower.includes("port logistics") ||
+      promptLower.includes("ais navigation");
+
+    if (hasMaritimeDirectives) {
+      return deriveArtDirection(rawPrompt || "ocean maritime navigation vessel", undefined, seed, "OCEANIC_MARITIME");
+    }
+
+    const hasClinicalDirectives =
+      promptLower.includes("clinical") ||
+      promptLower.includes("laboratory") ||
+      promptLower.includes("pathology") ||
+      promptLower.includes("diagnostic") ||
+      promptLower.includes("biospecimen");
+
+    if (hasClinicalDirectives) {
+      return deriveArtDirection(rawPrompt || "clinical laboratory diagnostic hospital", undefined, seed, "CLINICAL_LABORATORY");
+    }
+
+    const hasIndustrialDirectives =
+      promptLower.includes("industrial") ||
+      promptLower.includes("heavy equipment") ||
+      promptLower.includes("motor maintenance") ||
+      promptLower.includes("predictive maintenance") ||
+      promptLower.includes("factory") ||
+      promptLower.includes("manufacturing") ||
+      promptLower.includes("machinery");
+
+    if (hasIndustrialDirectives) {
+      return deriveArtDirection(rawPrompt || "industrial equipment telemetry maintenance machinery", undefined, seed, "INDUSTRIAL_UTILITY");
+    }
+
+    const hasPetDirectives =
+      promptLower.includes("pet") ||
+      promptLower.includes("puppy") ||
+      promptLower.includes("kitten") ||
+      promptLower.includes("dog") ||
+      promptLower.includes("cat") ||
+      promptLower.includes("petshop");
+
+    if (hasPetDirectives) {
+      return deriveArtDirection(rawPrompt || "playful friendly pet boutique puppy companion", undefined, seed, "PLAYFUL_APPROACHABLE");
+    }
+
     const candidates = candidatesFromCharacteristics(characteristics, modeHint);
     const archetypeKey = candidates[Math.abs(seed) % candidates.length];
 
@@ -608,6 +667,7 @@ export class DesignDirector {
     // For all other archetypes, derive art direction for the selected archetypeKey
     // passing the run seed to vary both archetype and palette variants deterministically
     const archetypeSignals: Partial<Record<ArchetypeKey, string>> = {
+      "ARCHITECTURAL_EDITORIAL": "architectural editorial studio limestone olive charcoal terracotta",
       "INDUSTRIAL_UTILITY": "industrial utility sensor telemetry monitoring",
       "OCEANIC_MARITIME": "ocean maritime navigation",
       "CLINICAL_LABORATORY": "clinical laboratory diagnostic hospital",
@@ -624,7 +684,7 @@ export class DesignDirector {
       "SOPHISTICATED_ELEGANT": "sophisticated elegant wealth premium",
     };
     const forcedPrompt = archetypeSignals[archetypeKey] || syntheticPrompt;
-    return deriveArtDirection(forcedPrompt, undefined, seed);
+    return deriveArtDirection(rawPrompt || forcedPrompt, undefined, seed, archetypeKey);
   }
 
   /**
@@ -795,6 +855,7 @@ export class DesignDirector {
       featurePriority,
       artDirectionName,
       artDirectionRationale,
+      artDirection,
       colorSystem,
       typography,
       geometry,

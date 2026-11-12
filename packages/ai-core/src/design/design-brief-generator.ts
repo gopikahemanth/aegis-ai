@@ -196,7 +196,31 @@ export class DesignBriefGenerator {
     let brandPersonality = "Balanced, trustworthy, and modern";
     let visualPositioning = "Modern Digital Utility";
 
-    if (/hypercar|atelier|luxury|bespoke|supercar|automotive/i.test(lower)) {
+    if (/\b(architect|architecture|architectural|interior design|spatial design|sustainable design)\b/i.test(lower)) {
+      projectType = "Luxury Architectural & Sustainable Interior Design Studio";
+      purpose = "Present curated spatial portfolios, interactive room dimension & budget estimation, sustainable material swatchboard, consultation booking, project milestones tracking, and verified client craftsmanship reviews.";
+      targetAudience = "Architectural clients, residential homeowners, sustainable design patrons, and institutional commissioners";
+      brandPersonality = "Sophisticated, artistic, quiet luxury, tactile, and environmentally conscious";
+      visualPositioning = "High-End Architectural Studio & Sustainable Material Atelier";
+    } else if (/\b(skincare|botanical|serum|apothecary|cosmetics|beauty|dermatology)\b/i.test(lower)) {
+      projectType = "Botanical Skincare & Sensory E-Commerce Platform";
+      purpose = "Explore curated botanical formulas, diagnostic skin routine builder, ingredient monographs, and sensory skincare ordering.";
+      targetAudience = "Conscious skincare consumers, botanical wellness enthusiasts, and dermatology clients";
+      brandPersonality = "Sensory, editorial, tranquil, botanical, and minimalist";
+      visualPositioning = "Luxury Apothecary & Botanical Skincare Laboratory";
+    } else if (/\b(expedition|adventure|wilderness|trekking|trail|hiking|mountaineering|safari)\b/i.test(lower)) {
+      projectType = "Wilderness Expedition & Adventure Travel Platform";
+      purpose = "Discover geographic expeditions on topographic maps, elevation profiles, gear checklists, and multi-day itinerary bookings.";
+      targetAudience = "Outdoor explorers, alpine adventurers, and wilderness expedition travelers";
+      brandPersonality = "Exploratory, rugged, topographic, energetic, and authentic";
+      visualPositioning = "Cartographic Wilderness Expedition Hub";
+    } else if (/\b(maritime|vessel|cargo|shipping|freight|port|berth|container|terminal|dock)\b/i.test(lower)) {
+      projectType = "Maritime Logistics & Port Fleet Telemetry Platform";
+      purpose = "Live vessel AIS tracking, berth allocation Gantt schedule, container cargo manifest inspection, and terminal dispatch telemetry.";
+      targetAudience = "Port terminal operators, fleet dispatchers, cargo logistics managers, and vessel captains";
+      brandPersonality = "Operational, data-dense, technical, nautical, and authoritative";
+      visualPositioning = "Real-Time Maritime Command & Port Operations Center";
+    } else if (/\b(hypercar|supercar|automotive|coachbuild|motorsport|racing)\b/i.test(lower)) {
       projectType = "Bespoke Hypercar Atelier & Commissioning Experience";
       purpose = "Configure vehicle aerodynamics, bespoke liveries, composite materials, and reserve track commissioning.";
       targetAudience = "Discerning collectors, performance automotive connoisseurs, and VIP clients";
@@ -253,7 +277,19 @@ export class DesignBriefGenerator {
     // 6. Hero Composition
     let heroType: AegisDesignBriefV2["heroComposition"]["type"] = "split-media";
     let heroConcept = "Domain-focused introductory headline with actionable call-to-action";
-    if (/hypercar|atelier|bespoke|luxury|automotive/i.test(lower)) {
+    if (/\b(architect|architecture|architectural|interior design|spatial design|sustainable design)\b/i.test(lower)) {
+      heroType = "editorial-headline";
+      heroConcept = "Monumental architectural photograph, oversized editorial serif headline, asymmetric project preview, and studio philosophy";
+    } else if (/\b(skincare|botanical|serum|apothecary|cosmetics)\b/i.test(lower)) {
+      heroType = "split-media";
+      heroConcept = "Sensory botanical formulation hero paired with ingredient monograph and diagnostic regimen trigger";
+    } else if (/\b(expedition|adventure|wilderness|trail|hiking)\b/i.test(lower)) {
+      heroType = "interactive-canvas";
+      heroConcept = "Interactive cartographic terrain map with real-time elevation profile and trail waypoint indicators";
+    } else if (/\b(maritime|vessel|cargo|shipping|port|berth)\b/i.test(lower)) {
+      heroType = "interactive-canvas";
+      heroConcept = "Real-time nautical AIS vessel tracking canvas with live port berth allocation Gantt matrix";
+    } else if (/\b(hypercar|supercar|automotive|coachbuild|racing)\b/i.test(lower)) {
       heroType = "centered-cinematic";
       heroConcept = "Full-bleed aerodynamic silhouette showcasing wind-tunnel vortex streamlines";
     } else if (/satellite|orbit|constellation/i.test(lower)) {
@@ -276,7 +312,32 @@ export class DesignBriefGenerator {
       workflow: ["Initiate state", "Real-time feedback update", "Persistent outcome confirmation"],
     };
 
-    if (/satellite|orbit/i.test(lower)) {
+    if (/\b(architect|architecture|architectural|interior design|spatial design|sustainable design)\b/i.test(lower)) {
+      signatureInteraction.name = "Spatial Room Dimension & Live Budget Estimator";
+      signatureInteraction.description = "Interactive 2D spatial canvas with dynamic dimensional scaling, sustainable finish selection, and live itemized cost calculation.";
+      signatureInteraction.trigger = "Adjust room dimension slider or toggle material finish grade";
+      signatureInteraction.workflow = ["Update room length/width dimensions", "Spatial canvas redraws scale preview", "Itemized architectural budget ledger recalculates in real time"];
+    } else if (/\b(skincare|botanical|apothecary)\b/i.test(lower)) {
+      signatureInteraction.name = "Diagnostic Skin Regimen & Ingredient Monograph Finder";
+      signatureInteraction.description = "Multi-step diagnostic skin questionnaire generating a tailored routine with botanical ingredient texture monographs.";
+      signatureInteraction.trigger = "Select skin profile diagnostic parameters";
+      signatureInteraction.workflow = ["Choose skin concern and climate zone", "Inspect active botanical formulation", "Compose customized daily regimen"];
+    } else if (/\b(expedition|adventure|wilderness|trail)\b/i.test(lower)) {
+      signatureInteraction.name = "Topographic Elevation Scrubber & Route Waypoint Navigator";
+      signatureInteraction.description = "Interactive elevation profile linked to geographic route waypoints with terrain difficulty indicators.";
+      signatureInteraction.trigger = "Scrub elevation profile graph";
+      signatureInteraction.workflow = ["Hover elevation milestone", "Map centers on waypoint coordinate", "Display trail gradient and water source intel"];
+    } else if (/\b(maritime|vessel|cargo|shipping|port)\b/i.test(lower)) {
+      signatureInteraction.name = "Live AIS Vessel Tracking & Berth Allocation Matrix";
+      signatureInteraction.description = "Real-time ship transponder radar paired with Gantt-style berth allocation timeline and draught clearance check.";
+      signatureInteraction.trigger = "Select arriving vessel from AIS feed";
+      signatureInteraction.workflow = ["Inspect vessel draught and deadweight tonnage", "Assign available terminal berth slot", "Validate container manifest"];
+    } else if (/\b(hypercar|supercar|automotive)\b/i.test(lower)) {
+      signatureInteraction.name = "Active Aerodynamics & Carbon Weave Visualizer";
+      signatureInteraction.description = "Dynamic wind-tunnel angle slider that adjusts rear wing angle of attack and re-computes downforce-to-drag balance in real time.";
+      signatureInteraction.trigger = "Aerodynamic trim control slider";
+      signatureInteraction.workflow = ["Drag wing angle", "Vector streamlines compress", "Downforce numeric gauge updates"];
+    } else if (/satellite|orbit/i.test(lower)) {
       signatureInteraction.name = "Pass Downlink Scheduler & Transponder Allocator";
       signatureInteraction.description = "Interactive orbital pass timeline allowing drag-to-reschedule downlink windows with live Doppler frequency shift calculation.";
       signatureInteraction.trigger = "Select satellite from constellation view";
@@ -286,11 +347,6 @@ export class DesignBriefGenerator {
       signatureInteraction.description = "Spatial cutaway mode switch transitioning between Observation Mode (low lumens, bioluminescence filter) and Deep Maintenance Mode.";
       signatureInteraction.trigger = "Lighting & Atmosphere HUD control";
       signatureInteraction.workflow = ["Toggle depth lighting", "Canvas surface reacts smoothly", "Chamber sensor telemetry adjusts"];
-    } else if (/hypercar|atelier/i.test(lower)) {
-      signatureInteraction.name = "Active Aerodynamics & Carbon Weave Visualizer";
-      signatureInteraction.description = "Dynamic wind-tunnel angle slider that adjusts rear wing angle of attack and re-computes downforce-to-drag balance in real time.";
-      signatureInteraction.trigger = "Aerodynamic trim control slider";
-      signatureInteraction.workflow = ["Drag wing angle", "Vector streamlines compress", "Downforce numeric gauge updates"];
     } else if (/student|education/i.test(lower)) {
       signatureInteraction.name = "Curriculum Pathway & Mastery Graph Navigator";
       signatureInteraction.description = "Interactive prerequisite dependency tree linking completed courses to capstone research milestones.";
@@ -298,28 +354,77 @@ export class DesignBriefGenerator {
       signatureInteraction.workflow = ["Highlight prerequisite chain", "Expand syllabus deliverables", "Calculate graduation trajectory"];
     }
 
-    // 8. Page Section Plan
+    // 8. Purpose-Driven Page Section Plan (Zero generic DataTableSection duplication)
     const pageSectionPlan: PageSectionPlan[] = routes.map((route, i) => {
-      const cleanName = route === "/" ? "Home" : route.replace("/", "").replace(/-/g, " ");
+      const cleanSlug = route === "/" ? "home" : route.replace(/^\//, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const cleanName = route === "/" ? "Home" : route.replace(/^\//, "").replace(/-/g, " ");
       const capitalized = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+
+      // Derive purpose-specific sections based on route purpose
+      let sections: Array<{ id: string; name: string; purpose: string; componentType: string }> = [];
+
+      if (cleanSlug.includes("estimat") || cleanSlug.includes("estimate") || cleanSlug.includes("estimator") || cleanSlug.includes("budget") || cleanSlug.includes("calculator") || cleanSlug.includes("dimension") || cleanSlug.includes("cost")) {
+        sections = [
+          { id: `sec_${i}_1`, name: "Spatial Dimension Canvas", purpose: "Interactive 2D spatial canvas with live dimensional scaling", componentType: "SpatialCanvasSection" },
+          { id: `sec_${i}_2`, name: "Dimensional Controls & Finishes", purpose: "Precision sliders for width, length, height, and sustainable materials", componentType: "ParameterControlsSection" },
+          { id: `sec_${i}_3`, name: "Live Itemized Budget Ledger", purpose: "Real-time cost calculation and material bill breakdown", componentType: "LiveBudgetLedgerSection" },
+          { id: `sec_${i}_4`, name: "Architectural Estimate Export", purpose: "Download formal estimate specification package", componentType: "ExportActionSection" }
+        ];
+      } else if (cleanSlug.includes("review") || cleanSlug.includes("feedback") || cleanSlug.includes("testimonial") || cleanSlug.includes("rating")) {
+        sections = [
+          { id: `sec_${i}_1`, name: "Client Reputation & Scores", purpose: "Studio craftsmanship metrics and verified rating scores", componentType: "ReputationHeaderSection" },
+          { id: `sec_${i}_2`, name: "Featured Client Spotlight", purpose: "In-depth case study story and completed project photography", componentType: "ClientSpotlightSection" },
+          { id: `sec_${i}_3`, name: "Verified Reviews Grid", purpose: "Multi-criteria client evaluations with craft and timeline ratings", componentType: "ReviewsGridSection" },
+          { id: `sec_${i}_4`, name: "Submit Review Portal", purpose: "Formal review submission form with project photo upload", componentType: "ReviewSubmissionSection" }
+        ];
+      } else if (cleanSlug.includes("consultation") || cleanSlug.includes("booking") || cleanSlug.includes("schedule") || cleanSlug.includes("appointment")) {
+        sections = [
+          { id: `sec_${i}_1`, name: "Consultation Service Tiers", purpose: "Service package cards with scope and deliverables", componentType: "ServiceTiersSection" },
+          { id: `sec_${i}_2`, name: "Studio Calendar & Slots", purpose: "Interactive real-time availability calendar and time slot picker", componentType: "CalendarSchedulerSection" },
+          { id: `sec_${i}_3`, name: "Principal Architect Profiles", purpose: "Architect credentials, design philosophy, and portfolio links", componentType: "SpecialistProfilesSection" },
+          { id: `sec_${i}_4`, name: "Spatial Project Intake Brief", purpose: "Questionnaire for room dimensions, budget tier, and style preferences", componentType: "IntakeBriefSection" }
+        ];
+      } else if (cleanSlug.includes("material") || cleanSlug.includes("swatch") || cleanSlug.includes("palette") || cleanSlug.includes("texture")) {
+        sections = [
+          { id: `sec_${i}_1`, name: "Material Sustainability Filter", purpose: "Filter by provenance, embodied carbon, and finish texture", componentType: "MaterialFilterSection" },
+          { id: `sec_${i}_2`, name: "Tactile Swatchboard Canvas", purpose: "High-resolution texture swatches with tactile zoom inspection", componentType: "SwatchboardGridSection" },
+          { id: `sec_${i}_3`, name: "Macro Texture Loupe", purpose: "Detailed finish examination and technical properties", componentType: "TextureLoupeSection" },
+          { id: `sec_${i}_4`, name: "LEED & Carbon Specs Dossier", purpose: "Environmental performance and material sample kit request", componentType: "CarbonDossierSection" }
+        ];
+      } else if (cleanSlug.includes("milestone") || cleanSlug.includes("portal") || cleanSlug.includes("tracking") || cleanSlug.includes("deliverable") || cleanSlug.includes("approval")) {
+        sections = [
+          { id: `sec_${i}_1`, name: "Project Phase Overview", purpose: "Active phase progress bar and completion metrics", componentType: "PhaseProgressSection" },
+          { id: `sec_${i}_2`, name: "Chronological Journey Timeline", purpose: "Phased milestone progression across design and build stages", componentType: "MilestoneTimelineSection" },
+          { id: `sec_${i}_3`, name: "Drawing Inspection Viewer", purpose: "Annotated schematic drawings and deliverable revision history", componentType: "DrawingViewerSection" },
+          { id: `sec_${i}_4`, name: "Client Milestone Sign-Off", purpose: "Formal deliverable approval action with verification signature", componentType: "SignOffActionSection" }
+        ];
+      } else if (cleanSlug.includes("portfolio") || cleanSlug.includes("gallery") || cleanSlug.includes("project") || cleanSlug.includes("works")) {
+        sections = [
+          { id: `sec_${i}_1`, name: "Portfolio Typology Filter", purpose: "Filter works by architectural typology, climate zone, and completion year", componentType: "TypologyFilterSection" },
+          { id: `sec_${i}_2`, name: "Asymmetric Masonry Showcase", purpose: "Irregular masonry grid of full-bleed architectural photography", componentType: "MasonryShowcaseSection" },
+          { id: `sec_${i}_3`, name: "Featured Monograph Spotlight", purpose: "Seminal built project with spatial storytelling and drawings", componentType: "MonographSpotlightSection" },
+          { id: `sec_${i}_4`, name: "Architectural Style Taxonomy", purpose: "Curated lineage of design movements and material palettes", componentType: "StyleTaxonomySection" }
+        ];
+      } else if (route === "/" || cleanSlug === "home") {
+        sections = [
+          { id: `sec_${i}_1`, name: `${capitalized} Hero Showcase`, purpose: "Monumental visual anchor with introductory manifesto and primary CTA", componentType: "Hero" },
+          { id: `sec_${i}_2`, name: "Curatorial Philosophy & Manifesto", purpose: "Core design thesis, sustainable principles, and craft standards", componentType: "ManifestoSection" },
+          { id: `sec_${i}_3`, name: "Curated Selected Works Showcase", purpose: "Asymmetric preview of hallmark architectural projects", componentType: "WorksPreviewSection" },
+          { id: `sec_${i}_4`, name: "Studio Capabilities & Intake", purpose: "Interactive entry points to estimator, materials, and consultations", componentType: "CapabilitiesSection" }
+        ];
+      } else {
+        sections = [
+          { id: `sec_${i}_1`, name: `${capitalized} Primary Stage`, purpose: `Focal interactive interface and controls for ${cleanName}`, componentType: `${capitalized.replace(/\s+/g, "")}StageSection` },
+          { id: `sec_${i}_2`, name: `${capitalized} Detailed Inspection`, purpose: `Contextual parameters, specifications, and data for ${cleanName}`, componentType: `${capitalized.replace(/\s+/g, "")}DetailsSection` },
+          { id: `sec_${i}_3`, name: `${capitalized} Summary Actions`, purpose: `Actions, status updates, and confirmations for ${cleanName}`, componentType: `${capitalized.replace(/\s+/g, "")}ActionsSection` }
+        ];
+      }
+
       return {
         pageRoute: route,
         pageName: capitalized,
-        heroType: i === 0 ? heroType : "split-media",
-        sections: [
-          {
-            id: `sec_${i}_1`,
-            name: `${capitalized} Overview`,
-            purpose: `Primary focus and controls for ${cleanName}`,
-            componentType: i === 0 ? "Hero" : "OverviewSection",
-          },
-          {
-            id: `sec_${i}_2`,
-            name: `${capitalized} Data Grid`,
-            purpose: `Detailed specifications and metrics for ${cleanName}`,
-            componentType: "DataTableSection",
-          },
-        ],
+        heroType: i === 0 ? heroType : "editorial-headline",
+        sections,
       };
     });
 

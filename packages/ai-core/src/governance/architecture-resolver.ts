@@ -14,6 +14,7 @@ export type ProvenanceSource = "user" | "default" | "inferred" | "existing_proje
 export type ApplicationCategory =
   | "FULLSTACK_WEB_APPLICATION"
   | "SAAS_APPLICATION"
+  | "CLIENT_SIDE_APPLICATION"
   | "STATIC_SITE"
   | "CLI_APPLICATION"
   | "DESKTOP_APPLICATION"
@@ -125,34 +126,84 @@ export class ArchitectureResolver {
       }
     }
 
-    // ── Priority 3: Simple Project Rule (Static Site minimalism) ─────────────
+    // ── Priority 3: Architecture Category Resolution ────────────────────────
     const isStaticRequest =
+      (cleanPromptLower.includes("static html") || cleanPromptLower.includes("plain html") || cleanPromptLower.includes("pure html")) ||
+      (cleanPromptLower.includes("pure html, css") || cleanPromptLower.includes("html, css and javascript") || cleanPromptLower.includes("pure html and css")) ||
       (cleanPromptLower.includes("static") && (cleanPromptLower.includes("landing") || cleanPromptLower.includes("page") || cleanPromptLower.includes("site") || cleanPromptLower.includes("html"))) ||
-      (cleanPromptLower.includes("simple") && cleanPromptLower.includes("landing page") && !cleanPromptLower.includes("database") && !cleanPromptLower.includes("auth"));
+      (cleanPromptLower.includes("simple") && cleanPromptLower.includes("landing page") && !cleanPromptLower.includes("database") && !cleanPromptLower.includes("auth") && !cleanPromptLower.includes("react"));
 
     const isCliRequest = /\b(cli|command line tool|terminal app)\b/i.test(cleanPromptLower);
     const isPythonRequest = cleanPromptLower.includes("fastapi") || cleanPromptLower.includes("django") || cleanPromptLower.includes("python");
+
+    const hasExplicitAuthOrAccounts =
+      /\b(user accounts|user management|login|log in|register|registration|signup|sign up|sign in|auth|authentication|jwt|sessions|multi-tenant|tenant|subscription|stripe|billing)\b/i.test(cleanPromptLower);
+
+    const hasExplicitBackendOrDb =
+      /\b(database|postgres|postgresql|sqlite|mysql|mongodb|backend|server|api|rest api|endpoints|prisma|drizzle|mongoose)\b/i.test(cleanPromptLower) ||
+      hasExplicitAuthOrAccounts;
+
+    const hasExplicitPersistenceFlow =
+      /\b(book appointments|manage bookings|schedule appointments|booking platform|appointment booking|reservation platform|order system|e-commerce|checkout|shopping cart|inventory management|fleet management)\b/i.test(cleanPromptLower);
+
+    const isSaaSRequest =
+      (cleanPromptLower.includes("saas") && !cleanPromptLower.includes("avoid saas") && !cleanPromptLower.includes("no saas") && !cleanPromptLower.includes("not saas")) ||
+      /\b(multi-tenant|subscription billing|tenant isolation|b2b saas)\b/i.test(cleanPromptLower);
+
+    const isClientSideCandidate =
+      !hasExplicitBackendOrDb &&
+      !hasExplicitPersistenceFlow &&
+      !isSaaSRequest &&
+      !isStaticRequest &&
+      !isCliRequest &&
+      (/\b(portfolio|single-page|single page|showcase|brochure|resume|cv|personal site|photographer|artist|musician|marketing page|client-side|frontend-only|static showcase|calculator|demo app)\b/i.test(cleanPromptLower) ||
+       /\b(landing page|landing)\b/i.test(cleanPromptLower));
 
     let applicationType: ApplicationCategory = "FULLSTACK_WEB_APPLICATION";
     if (isStaticRequest) applicationType = "STATIC_SITE";
     else if (isCliRequest) applicationType = "CLI_APPLICATION";
     else if (cleanPromptLower.includes("api") && !cleanPromptLower.includes("ui") && !cleanPromptLower.includes("frontend")) applicationType = "API_SERVICE";
+    else if (isSaaSRequest) applicationType = "SAAS_APPLICATION";
+    else if (hasExplicitBackendOrDb || hasExplicitPersistenceFlow) applicationType = "FULLSTACK_WEB_APPLICATION";
+    else if (isClientSideCandidate) applicationType = "CLIENT_SIDE_APPLICATION";
     else if (!PromptConstraints.isForbiddenByPrompt(userPrompt, "hotel") && /\b(hotel|boutique hotel|resort|hospitality|luxury stay)\b/i.test(cleanPromptLower)) applicationType = "FULLSTACK_WEB_APPLICATION";
     else if (/\b(observatory|astronomy|astrophysics|telescope|celestial)\b/i.test(cleanPromptLower)) applicationType = "FULLSTACK_WEB_APPLICATION";
-    else if (cleanPromptLower.includes("saas") && !cleanPromptLower.includes("avoid saas") && !cleanPromptLower.includes("no saas") && !cleanPromptLower.includes("not saas")) applicationType = "SAAS_APPLICATION";
+
+    const isClientOnly = applicationType === "CLIENT_SIDE_APPLICATION" || applicationType === "STATIC_SITE";
 
     // ── Priority 1: FRONTEND resolution ──────────────────────────────────────
     let frontendFramework = isStaticRequest ? "HTML5/Vanilla" : "React-Vite";
-    let frontendProvenance: ProvenanceSource = isStaticRequest ? "user" : "default";
+    let frontendProvenance: ProvenanceSource = isStaticRequest ? "user" : (isClientOnly ? "inferred" : "default");
 
     if (promptLower.includes("next.js") || promptLower.includes("nextjs") || promptLower.includes("next 14") || promptLower.includes("next 15")) {
       frontendFramework = "Next.js";
       frontendProvenance = "user";
-    } else if (promptLower.includes("vite") || promptLower.includes("react")) {
+    } else if (promptLower.includes("mern")) {
       frontendFramework = "React-Vite";
+      frontendProvenance = "user";
+    } else if (promptLower.includes("mean")) {
+      frontendFramework = "Angular";
+      frontendProvenance = "user";
+    } else if (promptLower.includes("mevn")) {
+      frontendFramework = "Vue-Vite";
+      frontendProvenance = "user";
+    } else if (promptLower.includes("angular")) {
+      frontendFramework = "Angular";
+      frontendProvenance = "user";
+    } else if (promptLower.includes("sveltekit") || promptLower.includes("svelte")) {
+      frontendFramework = "SvelteKit";
       frontendProvenance = "user";
     } else if (promptLower.includes("vue")) {
       frontendFramework = "Vue-Vite";
+      frontendProvenance = "user";
+    } else if (promptLower.includes("astro")) {
+      frontendFramework = "Astro";
+      frontendProvenance = "user";
+    } else if (promptLower.includes("htmx")) {
+      frontendFramework = "HTMX";
+      frontendProvenance = "user";
+    } else if (promptLower.includes("vite") || promptLower.includes("react")) {
+      frontendFramework = "React-Vite";
       frontendProvenance = "user";
     } else if (canonical.lockedStack?.frontend && !canonical.lockedStack.frontend.toLowerCase().includes("next")) {
       frontendFramework = canonical.lockedStack.frontend;
@@ -161,53 +212,70 @@ export class ArchitectureResolver {
       frontendFramework = raw.frontend;
       frontendProvenance = "inferred";
     } else {
-      frontendFramework = "React-Vite";
-      frontendProvenance = "default";
+      frontendFramework = isStaticRequest ? "HTML5/Vanilla" : "React-Vite";
+      frontendProvenance = isStaticRequest ? "user" : (isClientOnly ? "inferred" : "default");
     }
 
     // ── Priority 1: BACKEND resolution ───────────────────────────────────────
-    let backendFramework = isStaticRequest ? "None" : (isPythonRequest ? "FastAPI" : "Express");
-    let backendProvenance: ProvenanceSource = isStaticRequest ? "user" : (isPythonRequest ? "user" : "default");
+    let backendFramework = isClientOnly ? "None" : (isPythonRequest ? "FastAPI" : "Express");
+    let backendProvenance: ProvenanceSource = isClientOnly ? "inferred" : (isPythonRequest ? "user" : "default");
 
-    if (promptLower.includes("next.js api") || promptLower.includes("next api")) {
-      backendFramework = "Next.js API Routes";
-      backendProvenance = "user";
-    } else if (promptLower.includes("express")) {
+    if (!isClientOnly) {
+      if (promptLower.includes("next.js api") || promptLower.includes("next api")) {
+        backendFramework = "Next.js API Routes";
+        backendProvenance = "user";
+      } else if (promptLower.includes("spring boot") || promptLower.includes("spring")) {
+        backendFramework = "Spring Boot";
+        backendProvenance = "user";
+      } else if (promptLower.includes("django")) {
+        backendFramework = "Django";
+        backendProvenance = "user";
+      } else if (promptLower.includes("fastapi")) {
+        backendFramework = "FastAPI";
+        backendProvenance = "user";
+      } else if (promptLower.includes("laravel")) {
+        backendFramework = "Laravel";
+        backendProvenance = "user";
+      } else if (promptLower.includes("asp.net") || promptLower.includes(".net")) {
+        backendFramework = "ASP.NET Core";
+        backendProvenance = "user";
+      } else if (promptLower.includes("express") || promptLower.includes("mern") || promptLower.includes("mean") || promptLower.includes("mevn")) {
+        backendFramework = "Express";
+        backendProvenance = "user";
+      } else if (promptLower.includes("fastify")) {
+        backendFramework = "Fastify";
+        backendProvenance = "user";
+      } else if (promptLower.includes("nestjs") || promptLower.includes("nest.js")) {
+        backendFramework = "NestJS";
+        backendProvenance = "user";
+      } else if (canonical.lockedStack?.backend && !canonical.lockedStack.backend.toLowerCase().includes("next")) {
+        backendFramework = canonical.lockedStack.backend;
+        backendProvenance = "inferred";
+      } else if (raw.backend && !raw.backend.toLowerCase().includes("next")) {
+        backendFramework = raw.backend;
+        backendProvenance = "inferred";
+      }
+
+      // Stack alignment: React-Vite requires Express backend if none specified
+      if (frontendFramework.toLowerCase().includes("vite") || frontendFramework.toLowerCase().includes("react")) {
+        if (backendFramework.toLowerCase().includes("next")) {
+          backendFramework = "Express";
+          backendProvenance = "default";
+        }
+      }
+    } else if (promptLower.includes("express") || promptLower.includes("backend")) {
       backendFramework = "Express";
       backendProvenance = "user";
-    } else if (promptLower.includes("fastify")) {
-      backendFramework = "Fastify";
-      backendProvenance = "user";
-    } else if (promptLower.includes("nestjs") || promptLower.includes("nest.js")) {
-      backendFramework = "NestJS";
-      backendProvenance = "user";
-    } else if (promptLower.includes("fastapi")) {
-      backendFramework = "FastAPI";
-      backendProvenance = "user";
-    } else if (canonical.lockedStack?.backend && !canonical.lockedStack.backend.toLowerCase().includes("next")) {
-      backendFramework = canonical.lockedStack.backend;
-      backendProvenance = "inferred";
-    } else if (raw.backend && !raw.backend.toLowerCase().includes("next")) {
-      backendFramework = raw.backend;
-      backendProvenance = "inferred";
-    }
-
-    // Stack alignment: React-Vite requires Express backend
-    if (frontendFramework.toLowerCase().includes("vite") || frontendFramework.toLowerCase().includes("react")) {
-      if (backendFramework.toLowerCase().includes("next")) {
-        backendFramework = "Express";
-        backendProvenance = "default";
-      }
     }
 
     // ── Priority 1: DATABASE resolution ─────────────────────────────────────
-    let dbProvider = isStaticRequest ? "None" : "PostgreSQL";
-    let dbProvenance: ProvenanceSource = isStaticRequest ? "user" : "default";
+    let dbProvider = isClientOnly ? "None" : (promptLower.includes("postgres") || promptLower.includes("postgresql") ? "PostgreSQL" : "SQLite");
+    let dbProvenance: ProvenanceSource = isClientOnly ? "inferred" : (promptLower.includes("postgres") || promptLower.includes("postgresql") || promptLower.includes("sqlite") ? "user" : "default");
 
     if (promptLower.includes("postgres") || promptLower.includes("postgresql")) {
       dbProvider = "PostgreSQL";
       dbProvenance = "user";
-    } else if (promptLower.includes("mongodb") || promptLower.includes("mongo")) {
+    } else if (promptLower.includes("mongodb") || promptLower.includes("mongo") || promptLower.includes("mern") || promptLower.includes("mean") || promptLower.includes("mevn")) {
       dbProvider = "MongoDB";
       dbProvenance = "user";
     } else if (promptLower.includes("sqlite")) {
@@ -222,14 +290,14 @@ export class ArchitectureResolver {
     }
 
     // ── Priority 1: ORM resolution ──────────────────────────────────────────
-    let orm = (isStaticRequest || dbProvider === "None") ? "None" : "Prisma";
-    let ormProvenance: ProvenanceSource = (isStaticRequest || dbProvider === "None") ? "user" : "default";
+    let orm = (isClientOnly || dbProvider === "None") ? "None" : (dbProvider === "MongoDB" ? "Mongoose" : "Prisma");
+    let ormProvenance: ProvenanceSource = (isClientOnly || dbProvider === "None") ? "inferred" : "default";
 
     if (dbProvider !== "None") {
       if (promptLower.includes("drizzle")) {
         orm = "Drizzle";
         ormProvenance = "user";
-      } else if (promptLower.includes("mongoose")) {
+      } else if (promptLower.includes("mongoose") || promptLower.includes("mern") || promptLower.includes("mean") || promptLower.includes("mevn") || dbProvider === "MongoDB") {
         orm = "Mongoose";
         ormProvenance = "user";
       } else if (promptLower.includes("prisma")) {
@@ -249,7 +317,7 @@ export class ArchitectureResolver {
     }
 
     // ── AUTH resolution ─────────────────────────────────────────────────────
-    let auth = isStaticRequest ? "None" : (canonical.lockedStack?.auth || raw.auth || "JWT");
+    let auth = isClientOnly ? "None" : (hasExplicitAuthOrAccounts || isSaaSRequest ? (canonical.lockedStack?.auth || raw.auth || "JWT") : "None");
     if (promptLower.includes("nextauth") || promptLower.includes("next-auth")) auth = "NextAuth.js";
     else if (promptLower.includes("jwt")) auth = "JWT";
     else if (promptLower.includes("no auth") || promptLower.includes("without auth")) auth = "None";
@@ -336,231 +404,7 @@ export class ArchitectureResolver {
       }
     }
 
-    // Domain-specific rich product routes extraction (e.g. Renewable Energy Operations Platform / GreenPulse)
-    if (!PromptConstraints.isForbiddenByPrompt(userPrompt, "energy") &&
-        /\b(renewable energy|solar farm|wind turbine|clean energy|energy operations|power grid|greenpulse)\b/i.test(cleanPrompt)) {
-      const energyRoutes = [
-        "/",
-        "/operations",
-        "/assets",
-        "/analytics",
-        "/maintenance",
-        "/incidents",
-        "/reports",
-      ];
-      for (const er of energyRoutes) {
-        if (!explicitRoutes.includes(er)) {
-          explicitRoutes.push(er);
-        }
-      }
-      const energyModels = ["Asset", "TelemetryReading", "WorkOrder", "Incident", "EnergyReport"];
-      for (const em of energyModels) {
-        if (!explicitModels.includes(em)) {
-          explicitModels.push(em);
-        }
-      }
-    }
-
-    // Domain-specific rich product routes extraction (e.g. Premium Furniture Store & Interior Furnishings E-Commerce / Velora Living)
-    if (!PromptConstraints.isForbiddenByPrompt(userPrompt, "furniture") &&
-        /\b(furniture|furnishing|furnishings|interior furnishings|furniture store|handcrafted furniture|timber joinery)\b/i.test(cleanPrompt)) {
-      const furnitureRoutes = [
-        "/",
-        "/products",
-        "/categories",
-        "/product-details",
-        "/dimension-specs",
-        "/cart",
-        "/order-summary",
-      ];
-      for (const fr of furnitureRoutes) {
-        if (!explicitRoutes.includes(fr)) {
-          explicitRoutes.push(fr);
-        }
-      }
-      const furnitureModels = ["Product", "Category", "Material", "DimensionSpec", "CartItem", "Order"];
-      for (const fm of furnitureModels) {
-        if (!explicitModels.includes(fm)) {
-          explicitModels.push(fm);
-        }
-      }
-    }
-
-    // Domain-specific rich product routes extraction (e.g. Restaurant Food Ordering & Table Reservation / Savoria Kitchen)
-    if (/\b(food ordering|restaurant ordering|ordering platform|table reservation|restaurant menu|takeout|delivery|dish details)\b/i.test(cleanPrompt) ||
-        (/\b(restaurant|kitchen)\b/i.test(cleanPrompt) && /\b(menu|ordering|reservation|cart|checkout)\b/i.test(cleanPrompt))) {
-      const restaurantRoutes = [
-        "/",
-        "/menu",
-        "/dish-details",
-        "/cart",
-        "/checkout",
-        "/order-history",
-        "/table-reservation",
-      ];
-      const restaurantModels = ["MenuItem", "Category", "CartItem", "Order", "Reservation", "Review"];
-      if (/\b(contact|inquiry)\b/i.test(cleanPrompt)) {
-        if (!restaurantRoutes.includes("/contact")) restaurantRoutes.push("/contact");
-        if (!restaurantModels.includes("ContactMessage")) restaurantModels.push("ContactMessage");
-      }
-      for (const rr of restaurantRoutes) {
-        if (!explicitRoutes.includes(rr)) {
-          explicitRoutes.push(rr);
-        }
-      }
-      for (const rm of restaurantModels) {
-        if (!explicitModels.includes(rm)) {
-          explicitModels.push(rm);
-        }
-      }
-    }
-
-    // Domain-specific rich product routes extraction (e.g. Healthcare Appointment Booking Platform / Aura Health)
-    if (/\b(healthcare|medical appointment|doctor booking|patient scheduling|clinic booking)\b/i.test(cleanPrompt) ||
-        (/\b(medical|clinic|doctor|patient|hospital)\b/i.test(cleanPrompt) && /\b(appointment|booking|schedule|scheduling)\b/i.test(cleanPrompt))) {
-      const healthcareRoutes = [
-        "/",
-        "/providers",
-        "/clinic-calendar",
-        "/book-appointment",
-        "/my-appointments",
-        "/patient-management",
-      ];
-      for (const hr of healthcareRoutes) {
-        if (!explicitRoutes.includes(hr)) {
-          explicitRoutes.push(hr);
-        }
-      }
-      const healthcareModels = ["Provider", "Specialty", "Appointment", "TimeSlot", "Clinic", "Patient"];
-      for (const hm of healthcareModels) {
-        if (!explicitModels.includes(hm)) {
-          explicitModels.push(hm);
-        }
-      }
-    }
-
-    // Domain-specific rich product routes extraction (e.g. Real Estate Property Marketplace / Dwellio Realty)
-    if (/\b(real estate|property marketplace|property platform|realty)\b/i.test(cleanPrompt)) {
-      const realEstateRoutes = [
-        "/",
-        "/filter-properties",
-        "/property-details",
-        "/schedule-property-tour",
-        "/favorite-listings",
-        "/contact-property-agent",
-      ];
-      for (const rer of realEstateRoutes) {
-        if (!explicitRoutes.includes(rer)) {
-          explicitRoutes.push(rer);
-        }
-      }
-      const realEstateModels = ["Property", "Agent", "Tour", "Favorite", "Inquiry"];
-      for (const rem of realEstateModels) {
-        if (!explicitModels.includes(rem)) {
-          explicitModels.push(rem);
-        }
-      }
-    }
-
-    // Domain-specific rich product routes extraction (e.g. Culinary Travel Magazine / Savorline)
-    const isRestaurantOrdering = /\b(ordering|takeout|delivery|cart|checkout|reservation)\b/i.test(cleanPrompt);
-    if (!isRestaurantOrdering && !PromptConstraints.isForbiddenByPrompt(userPrompt, "culinary") &&
-        /\b(culinary travel|food travel|gastronomic journal|food journey|recipe collection|chef stories|taste atlas|terroir|savorline)\b/i.test(cleanPrompt)) {
-      const culinaryRoutes = ["/", "/editorial-stories", "/explore-culinary-destinations", "/and-filter-recipes", "/saved-discoveries", "/build-custom-itinerary"];
-      for (const cr of culinaryRoutes) {
-        if (!explicitRoutes.includes(cr)) {
-          explicitRoutes.push(cr);
-        }
-      }
-      const culinaryModels = ["CulinaryStory", "CulinaryDestination", "Recipe", "SavedDiscovery", "CulinaryItinerary"];
-      for (const cm of culinaryModels) {
-        if (!explicitModels.includes(cm)) {
-          explicitModels.push(cm);
-        }
-      }
-    }
-
-    // Domain-specific rich product routes extraction (e.g. Contemporary Art Museum / Lumen House)
-    const isCommercialStoreOrFurniture = /\b(furniture|furnishing|furnishings|store|retail|e-commerce|ecommerce|shop|cart|checkout)\b/i.test(cleanPrompt);
-    if (!isCommercialStoreOrFurniture && !PromptConstraints.isForbiddenByPrompt(userPrompt, "museum") && !PromptConstraints.isForbiddenByPrompt(userPrompt, "art") &&
-        /\b(museum|art museum|contemporary art|art gallery|curatorial|exhibitions|artwork collection)\b/i.test(cleanPrompt)) {
-      const museumRoutes = [
-        "/",
-        "/rotating-exhibitions",
-        "/explore-artist-profiles",
-        "/search-semantic-artworks",
-        "/navigate-interactive-floor-plan",
-        "/listen-to-audio-guide",
-        "/plan-museum-visit",
-        "/saved-artworks",
-      ];
-      for (const mr of museumRoutes) {
-        if (!explicitRoutes.includes(mr)) {
-          explicitRoutes.push(mr);
-        }
-      }
-      const museumModels = ["Exhibition", "Artist", "Artwork", "AudioTrack", "VisitPlan", "SavedArtwork"];
-      for (const mm of museumModels) {
-        if (!explicitModels.includes(mm)) {
-          explicitModels.push(mm);
-        }
-      }
-    }
-
-    // Domain-specific rich product routes extraction (e.g. Luxury Boutique Hotel & Hospitality / Velora House)
-    if (!PromptConstraints.isForbiddenByPrompt(userPrompt, "hotel") && !PromptConstraints.isForbiddenByPrompt(userPrompt, "hospitality") && !PromptConstraints.isForbiddenByPrompt(userPrompt, "booking") &&
-        /\b(hotel|boutique hotel|resort|hospitality|luxury stay|luxury suites|villa resort)\b/i.test(cleanPrompt)) {
-      const hotelRoutes = [
-        "/",
-        "/suites",
-        "/booking",
-        "/stay-planner",
-        "/guest-preferences",
-        "/amenities-and-spa",
-        "/dining",
-        "/local-experiences",
-      ];
-      for (const hr of hotelRoutes) {
-        if (!explicitRoutes.includes(hr)) {
-          explicitRoutes.push(hr);
-        }
-      }
-      const hotelModels = ["Suite", "Reservation", "GuestPreference", "StayPlan", "Amenity", "DiningVenue", "LocalExperience"];
-      for (const hm of hotelModels) {
-        if (!explicitModels.includes(hm)) {
-          explicitModels.push(hm);
-        }
-      }
-    }
-
-    // Domain-specific rich product routes extraction (e.g. Scientific Observatory / Orbitallis)
-    if (/\b(observatory|astronomy|astrophysics|telescope|celestial|sky observation|star map)\b/i.test(cleanPrompt)) {
-      const observatoryRoutes = [
-        "/",
-        "/sky-observations",
-        "/telescope-instruments",
-        "/observation-schedules",
-        "/research-discoveries",
-        "/celestial-archives",
-        "/research-publications",
-        "/facility-info",
-        "/observation-events",
-      ];
-      for (const or of observatoryRoutes) {
-        if (!explicitRoutes.includes(or)) {
-          explicitRoutes.push(or);
-        }
-      }
-      const observatoryModels = ["Observation", "Telescope", "CelestialObject", "ResearchDiscovery", "Publication", "ObservationEvent", "Instrument"];
-      for (const om of observatoryModels) {
-        if (!explicitModels.includes(om)) {
-          explicitModels.push(om);
-        }
-      }
-    }
-
-    // Natural Language Entity Extraction fallback from prose prompts (e.g. "explore handcrafted pendant lights, compare ceramic finishes, view maker profiles, ...")
-    // Authority hierarchy: Authoritative LLM models/flows > Explicit Domain Matchers > Prose Verb Extraction Fallback
+    // Natural Language Entity Extraction fallback from prose prompts
     const hasAuthoritativeModels = Boolean(
       (canonical.dataModels && canonical.dataModels.length > 0 && !canonical.dataModels.every(m => m === "User")) ||
       (raw.dataModels && raw.dataModels.length > 0 && !raw.dataModels.every(m => m === "User"))
@@ -572,34 +416,6 @@ export class ArchitectureResolver {
     );
 
     if (explicitModels.length === 0 && !hasAuthoritativeModels) {
-      const archetypeCatalog: Record<string, string[]> = {
-        portfolio: ["Project", "Skill", "ContactMessage"],
-        marketing: ["Lead", "Campaign", "Inquiry", "Testimonial"],
-        ecommerce: ["Product", "Order", "OrderItem", "Category"],
-        store: ["Product", "Order", "OrderItem", "Category"],
-        shop: ["Product", "Order", "OrderItem", "Category"],
-        saas: ["Metric", "Alert", "LogEvent", "Organization"],
-        telemetry: ["Metric", "Alert", "LogEvent", "Device"],
-        booking: ["Service", "Appointment", "ScheduleRule"],
-        appointment: ["Service", "Appointment", "ScheduleRule"],
-        healthcare: ["Patient", "Doctor", "Appointment", "MedicalRecord"],
-        clinic: ["Patient", "Doctor", "Appointment", "Prescription"],
-        cms: ["Article", "Category", "Author", "Comment"],
-        blog: ["Post", "Category", "Comment", "Tag"],
-        community: ["Post", "Comment", "Discussion", "Profile"],
-        social: ["Post", "Comment", "Discussion", "Notification"],
-      };
-
-      const promptLower = cleanPrompt.toLowerCase();
-      for (const [kw, models] of Object.entries(archetypeCatalog)) {
-        if (promptLower.includes(kw)) {
-          for (const m of models) {
-            if (!explicitModels.includes(m)) explicitModels.push(m);
-          }
-          break;
-        }
-      }
-
       const verbRegex = /(?:show|shows|present|presents|display|displays|feature|features|featuring|manage|manages|managing|track|tracks|tracking|monitor|monitors|monitoring|explore|explores|exploring|browse|browses|browsing|compare|compares|comparing|inspect|inspects|inspecting|view|views|viewing|discover|discovers|discovering|purchase|purchases|purchasing|order|orders|ordering|book|books|booking|reserve|reserves|reserving|submit|submits|submitting|handling|handle|handles|coordinates|coordinate|supporting|support|supports|adjust|adjusts|adjusting|upload|uploads|uploading|extract|extracts|extracting|match|matches|matching|calculate|calculates|calculating|analyze|analyzes|analyzing|scan|scans|scanning|publish|publishes|publishing|moderate|moderates|moderating|schedule|schedules|scheduling|diagnose|diagnoses|diagnosing|evaluate|evaluates|evaluating|author|authors|authoring|share|shares|sharing|search|searches|searching|filter|filters|filtering|create|creates|creating|review|reviews|reviewing|audit|audits|auditing|generate|generates|generating|configure|configures|configuring|organize|organizes|organizing|stream|streams|streaming|discuss|discusses|discussing)\s+([a-zA-Z0-9_,\s\-]+?)(?:\.|\n|The dashboard|Create appropriate|with persistent|Do not|Make the|$)/gi;
       let match: RegExpExecArray | null;
       while ((match = verbRegex.exec(cleanPrompt)) !== null) {
@@ -639,18 +455,20 @@ export class ArchitectureResolver {
       return `/${cleaned}`;
     };
 
-    let resolvedRoutes = (hasAuthoritativeFlows && explicitRoutes.length === 0)
+    const isSinglePage = /\b(single-page|single page|one-page|one page)\b/i.test(cleanPromptLower);
+
+    let resolvedRoutes = (hasAuthoritativeFlows && explicitRoutes.length === 0 && !isSinglePage)
       ? (canonical.userFlows && canonical.userFlows.length > 0
         ? ["/", ...canonical.userFlows.map(mapFlowToRoute)]
         : ["/", ...(raw.userFlows || []).map(mapFlowToRoute)])
       : (explicitRoutes.length > 0
         ? explicitRoutes
-        : (isStaticRequest ? ["/"] : ["/", "/dashboard"]));
+        : (isStaticRequest || isSinglePage ? ["/"] : (isClientOnly ? ["/", "/showcase"] : ["/", "/dashboard"])));
     resolvedRoutes = Array.from(new Set(resolvedRoutes)).filter(r => !PromptConstraints.isGovernanceDirective(r));
 
-    let resolvedModels = hasAuthoritativeModels
+    let resolvedModels = (hasAuthoritativeModels && !isClientOnly)
       ? (canonical.dataModels && canonical.dataModels.length > 0 ? canonical.dataModels : (raw.dataModels || ["User"]))
-      : (explicitModels.length > 0
+      : (explicitModels.length > 0 && !isClientOnly
         ? ["User", ...explicitModels]
         : (dbProvider === "None" ? [] : ["User"]));
     resolvedModels = Array.from(new Set(resolvedModels)).filter(m => !PromptConstraints.isGovernanceDirective(m));

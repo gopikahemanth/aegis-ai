@@ -3,5 +3,4 @@ export type ProviderName =
   | "openai"
   | "anthropic"
   | "gemini"
-  | "ollama"
   | "openrouter";

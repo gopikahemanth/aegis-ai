@@ -309,6 +309,23 @@ export class InProjectTestRunner {
       stderr = err.stderr ? String(err.stderr) : (err.message || "");
       if (err.code === "ETIMEDOUT" || (err.killed && err.signal === "SIGTERM")) {
         isTimeout = true;
+      } else {
+        // Fallback: try npx vitest if direct node vitest.mjs invocation hit loader resolution errors
+        try {
+          console.log(`[InProjectTestRunner] 🔄 Retrying test suite via npx vitest run fallback...`);
+          stdout = execSync(`npx --no-install vitest run --reporter=json --outputFile="${jsonOutputFile}"`, {
+            cwd: projectRoot,
+            timeout: 60000,
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"],
+          });
+          exitCode = 0;
+          stderr = "";
+        } catch (retryErr: any) {
+          exitCode = retryErr.status || 1;
+          stdout = retryErr.stdout ? String(retryErr.stdout) : stdout;
+          stderr = retryErr.stderr ? String(retryErr.stderr) : stderr;
+        }
       }
     }
 

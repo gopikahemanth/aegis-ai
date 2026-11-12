@@ -40,7 +40,7 @@ describe("Phase 6.2: Clean Real-CLI Generation + Browser & Visual Acceptance", (
 
     if (!existsSync(join(cleanAppDir, "package.json"))) {
       const result = execSync(
-        `node "${cliEntry}" create "${prompt}" --output "${cleanAppDir}"`,
+        `node "${cliEntry}" create "${prompt}" --output "${cleanAppDir}" -y --auto`,
         {
           cwd: repoRoot,
           stdio: "pipe",
@@ -267,6 +267,19 @@ describe("Phase 6.2: Clean Real-CLI Generation + Browser & Visual Acceptance", (
         testsPassed: 10,
         testsTotal: 10,
         durationMs: 3500,
+      },
+      testReport: {
+        status: "PASS",
+        totalTests: 10,
+        passedTests: 10,
+        failedTests: 0,
+        durationMs: 3500,
+      },
+      runtimeReport: {
+        status: "SUCCESS",
+        passed: true,
+        totalScenarios: 3,
+        passedScenarios: 3,
       },
     });
 

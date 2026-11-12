@@ -246,8 +246,66 @@ export class CompositionGraphSynthesizer {
     const intent = CompositionGraphSynthesizer.deriveIntent(prompt);
     const text = `${prompt} ${domain || ""} ${layoutFamily || ""}`.toLowerCase();
 
+    // 0a. OPERATIONAL_TELEMETRY (Aviation, Avionics, Turbines, Fleet Maintenance, SCADA, Defense, Industrial Hardware)
+    if (
+      /\b(avionics|aerospace|aircraft|flight|aviation|telemetry|turbine|scada|radar|defense|satellite|drone|uav|mission control|cockpit|subsystem|firmware|airframe|fleet maintenance|mro|airworthiness)\b/i.test(text)
+    ) {
+      return {
+        intent: "MONITOR_CONTROL",
+        topology: {
+          type: "OPERATIONAL_COMMAND_CONSOLE",
+          regions: [
+            { id: "hero", role: "hero", gridSpan: { cols: 12 }, density: "compact" },
+            { id: "primary_telemetry", role: "primary", gridSpan: { cols: 8 }, density: "compact" },
+            { id: "primary_diagnostics", role: "primary", gridSpan: { cols: 4 }, density: "compact" },
+            { id: "secondary_actions", role: "secondary", gridSpan: { cols: 12 }, density: "compact" },
+          ],
+        },
+        primaryFocus: {
+          type: "telemetry_grid",
+          entity: "TurbineEngine",
+          title: "Turbine Engine Telemetry & Vibration Spectrogram Analysis",
+          description: "Real-time FFT vibration harmonics, thermal cycle fatigue, and predictive component remaining useful life.",
+          density: "compact",
+        },
+        secondaryFocus: {
+          type: "dispatch_board",
+          entity: "MroWorkOrder",
+          title: "MRO Maintenance Dispatch & FAA Airworthiness Ledger",
+        },
+        widgets: [
+          { id: "w1", type: "velocity_gauge", title: "Turbine Vibration Peak Amplitude", regionId: "hero" },
+          { id: "w2", type: "telemetry_monitor", title: "Thermal Cycle & Exhaust Gas Temp", regionId: "primary_diagnostics" },
+        ],
+        interactions: [
+          { trigger: "click", target: "+ Log Pre-Flight Inspection", action: "open_modal", description: "Opens inspection sign-off checklist" },
+          { trigger: "select", target: "filter_engine", action: "filter_feed", description: "Selects active turbine engine telemetry feed" },
+        ],
+        expectedCapabilities: [
+          "Turbine Vibration Telemetry & Spectrogram Analysis",
+          "Pre-Flight Inspection Checklist & Sign-Off",
+          "FAA Airworthiness Directive Compliance Matrix",
+          "MRO Work Order Dispatch & Part Replacement",
+          "Fleet Health & Cycle Wear Forecasting",
+        ],
+        userJourneys: [
+          { id: "inspect_vibration", name: "Inspect Vibration Telemetry", triggerTarget: "filter_engine", intent: "Analyze engine FFT frequency harmonics" },
+          { id: "log_inspection", name: "Log Pre-Flight Inspection", triggerTarget: "+ Log Pre-Flight Inspection", intent: "Perform and sign off digital safety checklist" },
+          { id: "dispatch_mro", name: "Dispatch MRO Work Order", triggerTarget: "open_modal", intent: "Create corrective maintenance task" },
+        ],
+        responsiveStrategy: {
+          desktop: "command-console-3",
+          tablet: "stack-vertical-split",
+          mobile: "single-column-flow",
+        },
+      };
+    }
+
     // 0. CREATE_AUTHOR (Photography Studio, Visual Monograph Portfolio, Fine Art Exhibition)
-    if (text.includes("photo") || text.includes("photography") || text.includes("wedding") || text.includes("editorial") || text.includes("portfolio")) {
+    if (
+      !/\b(avionics|aerospace|aircraft|flight|aviation|telemetry|turbine|scada|fleet maintenance|mro)\b/i.test(text) &&
+      (/\b(photo|photography|wedding|wedding-photographer|fine-art|monograph|exhibition)\b/i.test(text) || (text.includes("portfolio") && !text.includes("telemetry")))
+    ) {
       return {
         intent: "CREATE_AUTHOR",
         topology: {
@@ -299,8 +357,11 @@ export class CompositionGraphSynthesizer {
     }
 
     // 1. TRANSACT_BROWSE (Craft Atelier, Resort, Yacht Charter, Luxury Travel, Bookings)
-    if (intent === "TRANSACT_BROWSE" || text.includes("yacht") || text.includes("charter") || text.includes("resort") || text.includes("craft") || text.includes("handicraft") || text.includes("cart")) {
-      const isCraft = text.includes("craft") || text.includes("handicraft") || text.includes("brass") || text.includes("textile") || text.includes("decor") || text.includes("atelier");
+    if (
+      !/\b(avionics|aerospace|aircraft|flight|aviation|telemetry|turbine|scada|fleet maintenance|mro)\b/i.test(text) &&
+      (intent === "TRANSACT_BROWSE" || text.includes("yacht") || text.includes("charter") || text.includes("resort") || /\b(crafts?|handicrafts?|artisan)\b/i.test(text) || text.includes("cart"))
+    ) {
+      const isCraft = /\b(crafts?|handicrafts?|artisan)\b/i.test(text) || text.includes("brass") || text.includes("textile") || text.includes("decor") || text.includes("atelier");
       const isYacht = text.includes("yacht") || text.includes("charter") || text.includes("fleet");
       return {
         intent: "TRANSACT_BROWSE",

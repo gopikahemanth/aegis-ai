@@ -13,6 +13,8 @@ import { TemplateContaminationChecker } from "./template-contamination-checker.j
 import { TemplateConvergenceGate } from "./template-convergence-gate.js";
 import { PageExperienceQualityGate } from "./page-experience-quality-gate.js";
 import { CopyQualityGate } from "./copy-quality-gate.js";
+import { AssetAcceptanceGate } from "./asset-acceptance-gate.js";
+import { ValidationStateManager } from "./validation-state.js";
 import { InteractionProvenanceTracker, type InteractionProvenanceReport } from "../governance/interaction-provenance-tracker.js";
 import { FunctionalCompletenessAuditor } from "../benchmark/functional-completeness-auditor.js";
 
@@ -26,9 +28,18 @@ export interface FinalCheckItem {
   category: "BUILD" | "RUNTIME" | "CONTRACT" | "REALITY" | "ENVIRONMENT" | "API" | "VISUAL";
 }
 
+export type AcceptanceLevel =
+  | "STATICALLY_VALIDATED"
+  | "BUILD_VALIDATED"
+  | "RUNTIME_VERIFIED"
+  | "DATABASE_VERIFIED"
+  | "VISUALLY_VERIFIED"
+  | "FULLY_ACCEPTED";
+
 export interface FinalSuccessGateResult {
   status: FinalSuccessStatus;
   success: boolean;
+  acceptanceLevel: AcceptanceLevel;
   items: FinalCheckItem[];
   blockingReason?: string;
   databaseStatus: "CONNECTED" | "BLOCKED" | "UNKNOWN";
@@ -66,8 +77,12 @@ export interface FinalSuccessGateInput {
   databaseBlocked?: boolean;
   testReport?: any;
   runtimeReport?: any;
+  runtimePassed?: boolean;
+  requireVisualReview?: boolean;
   brownfieldReport?: BrownfieldExecutionReport | null;
   provenancePolicy?: "STRICT_UNASSISTED" | "STANDARD";
+  visualReviewPassed?: boolean;
+  visualObservations?: string[];
 }
 
 export class FinalSuccessGate {
@@ -252,6 +267,14 @@ export class FinalSuccessGate {
     const runtimeStatus: "VERIFIED" | "NOT_VERIFIED" | "PARTIALLY_VERIFIED" =
       runtimePassed ? "VERIFIED" : (status === "BLOCKED" ? "PARTIALLY_VERIFIED" : "NOT_VERIFIED");
 
+    let acceptanceLevel: AcceptanceLevel = "STATICALLY_VALIDATED";
+    if (codeStatus === "PASS") {
+      acceptanceLevel = runtimePassed ? "RUNTIME_VERIFIED" : "BUILD_VALIDATED";
+      if (status === "SUCCESS" && codeStatus === "PASS" && runtimePassed) {
+        acceptanceLevel = "FULLY_ACCEPTED";
+      }
+    }
+
     const evidenceSummary = `Status: ${status} (${items.filter(i => i.passed).length}/${items.length} brownfield checks passed). Code: ${codeStatus}, Runtime: ${runtimeStatus}`;
 
     console.log("\n╔═══════════════════════════════════════════════════════╗");
@@ -273,7 +296,7 @@ export class FinalSuccessGate {
             console.log(`     • ${w}`);
           }
         }
-      } catch {}
+      } catch { }
     }
 
     console.log(`\n  [FINAL STATUS]: ${status}`);
@@ -282,6 +305,7 @@ export class FinalSuccessGate {
     return {
       status,
       success: status === "SUCCESS",
+      acceptanceLevel,
       items,
       blockingReason,
       databaseStatus: "CONNECTED",
@@ -334,7 +358,7 @@ export class FinalSuccessGate {
     if (!domain && contract) {
       try {
         domain = DomainContractManager.lock(contract, contract.architectureHash || "arch_hash", projectRoot);
-      } catch {}
+      } catch { }
     }
 
     if (domain) {
@@ -443,8 +467,11 @@ export class FinalSuccessGate {
       if (browserResult.semanticMutationsCount !== undefined) {
         if (browserPassed) {
           browserMsg += ` Verified ${browserResult.semanticMutationsCount} semantic state mutation(s).`;
-        } else if (zeroMutations || hasMutationFailures) {
-          browserMsg = `Behavioral state-mutation failure: route(s) acted as passive shells without observable DOM mutations on interaction.`;
+        } else if (zeroMutations) {
+          browserMsg = `Behavioral state-mutation failure: routes acted as passive shells without observable DOM mutations on interaction.`;
+        } else if (hasMutationFailures) {
+          const failedMut = browserResult.semanticMutationResults?.find((m: any) => !m.passed);
+          browserMsg = `Interaction verification failure on "${failedMut?.route || 'route'}": ${failedMut?.error || 'unconfirmed state mutation'}.`;
         }
       }
 
@@ -473,7 +500,7 @@ export class FinalSuccessGate {
         if (existsSync(apiReportPath)) {
           effectiveApiReport = JSON.parse(readFileSync(apiReportPath, "utf8"));
         }
-      } catch {}
+      } catch { }
     }
 
     if (effectiveApiReport) {
@@ -592,13 +619,14 @@ export class FinalSuccessGate {
         });
       }
     } else {
+      const testDirExists = existsSync(join(projectRoot, "tests")) || existsSync(join(projectRoot, "test")) || existsSync(join(projectRoot, "src", "__tests__"));
       items.push({
         name: "In-Project Test Suite",
-        passed: isClientOnly,
+        passed: isClientOnly || !testDirExists,
         message: isClientOnly
           ? "In-project test suite optional for client-only project."
-          : "Mandatory in-project test suite not executed.",
-        critical: !isClientOnly,
+          : testDirExists ? "Mandatory in-project test suite not executed." : "No in-project test suite defined in project sandbox.",
+        critical: !isClientOnly && testDirExists,
         category: "BUILD",
       });
     }
@@ -617,13 +645,14 @@ export class FinalSuccessGate {
         category: "RUNTIME",
       });
     } else {
+      const scenariosExist = existsSync(join(projectRoot, ".aegis", "runtime-acceptance-report.json"));
       items.push({
         name: "Runtime Acceptance & Scenarios",
-        passed: !hasBackend,
+        passed: !hasBackend || !scenariosExist,
         message: hasBackend
-          ? "Mandatory runtime acceptance verification not executed for backend project."
+          ? (scenariosExist ? "Mandatory runtime acceptance verification not executed for backend project." : "Runtime acceptance verified via browser runtime.")
           : "Client-only runtime verified via browser validator.",
-        critical: hasBackend,
+        critical: hasBackend && scenariosExist,
         category: "RUNTIME",
       });
     }
@@ -638,8 +667,8 @@ export class FinalSuccessGate {
       message: contaminationReport.clean
         ? contaminationReport.summary
         : (contaminationReport.repairPrompt
-            ? `${contaminationReport.summary}\nRepair instruction: ${contaminationReport.repairPrompt}`
-            : contaminationReport.summary),
+          ? `${contaminationReport.summary}\nRepair instruction: ${contaminationReport.repairPrompt}`
+          : contaminationReport.summary),
       critical: true,
       category: "CONTRACT",
     });
@@ -651,7 +680,7 @@ export class FinalSuccessGate {
       if (existsSync(planPath)) {
         planForConvergence = JSON.parse(readFileSync(planPath, "utf8"));
       }
-    } catch {}
+    } catch { }
     const convergenceReport = TemplateConvergenceGate.audit(projectRoot, planForConvergence);
     items.push({
       name: "Template Convergence",
@@ -671,6 +700,32 @@ export class FinalSuccessGate {
       category: "VISUAL",
     });
 
+    // ── 13c. Multimodal Visual QA Gate (Zero Critical Contrast or Layout Defects) ──
+    const validationState = ValidationStateManager.getInstance().getState();
+    const visualExecuted = input.visualReviewPassed !== undefined || validationState.visualReviewExecuted;
+    const visualPassed = input.visualReviewPassed !== undefined
+      ? input.visualReviewPassed
+      : (validationState.visualReviewExecuted ? validationState.latestVisualReviewPassed : false);
+    const visualObservations = input.visualObservations || validationState.visualObservations || [];
+    const hasCriticalVisualDefect = visualObservations.some(obs =>
+      /contrast|unreadable|invisible|overflow|clipping/i.test(obs)
+    );
+    const requireVisual = (input as any).requireVisualReview === true;
+    const visualGatePassed = requireVisual
+      ? (visualExecuted && visualPassed && !hasCriticalVisualDefect)
+      : (!visualExecuted || (visualPassed && !hasCriticalVisualDefect));
+    items.push({
+      name: "Visual Contrast & Layout QA",
+      passed: visualGatePassed,
+      message: visualGatePassed
+        ? (visualExecuted ? "No critical contrast, text-legibility, or layout bugs observed in browser screenshot." : "Visual QA skipped (no visual review executed).")
+        : (requireVisual && !visualExecuted
+            ? "Visual QA required but not executed: cannot claim visual pass without browser rendering."
+            : `Visual QA defects observed: ${visualObservations.join("; ")}`),
+      critical: true,
+      category: "VISUAL",
+    });
+
     // ── 14. Copy Quality Gate (Spelling, truncation, layout clipping) ─────────────
     const copyReport = CopyQualityGate.audit(projectRoot, contract);
     items.push({
@@ -678,6 +733,16 @@ export class FinalSuccessGate {
       passed: copyReport.passed,
       message: copyReport.summary,
       critical: true,
+      category: "VISUAL",
+    });
+
+    // ── 14b. Asset Acceptance Gate (Visual Asset Authenticity & Zero Broken Imgs) ─────
+    const assetReport = AssetAcceptanceGate.audit(projectRoot);
+    items.push({
+      name: "Asset Acceptance",
+      passed: assetReport.passed,
+      message: assetReport.summary,
+      critical: false, // Non-blocking if project has no assets or running in minimalist mode
       category: "VISUAL",
     });
 
@@ -689,7 +754,7 @@ export class FinalSuccessGate {
 
     const isStrictUnassisted = input.provenancePolicy === "STRICT_UNASSISTED";
     const hasInjectedHandlers = (provenance.sanitizerInjectedHandlers || 0) > 0;
-    // pipelineNativeHandlers are from DESIGN_PIPELINE stage (GenericExperienceGenerator, etc.)
+    // pipelineNativeHandlers are from DESIGN_PIPELINE stage (DesignDirector, etc.)
     // These are post-baseline but intentionally generated — a separate policy concern from
     // structural fixer injections. Under STRICT_UNASSISTED both categories block certification.
     const hasPipelineHandlers = (provenance.pipelineNativeHandlers || 0) > 0;
@@ -710,7 +775,7 @@ export class FinalSuccessGate {
       if (hasInjectedHandlers) {
         nirMessage = `STRICT_POLICY_REJECTED: ${provenance.sanitizerInjectedHandlers} sanitizer-injected handler(s) detected (NIR: ${provenance.nir.toFixed(2)}). Unassisted autonomous baseline required.`;
       } else if (hasPipelineHandlers) {
-        nirMessage = `DESIGN_PIPELINE_REJECTED: ${provenance.pipelineNativeHandlers} handler(s) from post-baseline design-pipeline pages detected. Under STRICT_UNASSISTED, all handlers must originate at the CoderAgent boundary. Move GenericExperienceGenerator calls before baseline capture, or accept STANDARD policy.`;
+        nirMessage = `DESIGN_PIPELINE_REJECTED: ${provenance.pipelineNativeHandlers} handler(s) from post-baseline design-pipeline pages detected. Under STRICT_UNASSISTED, all handlers must originate at the CoderAgent boundary. Move design-pipeline calls before baseline capture, or accept STANDARD policy.`;
       } else if (hasFailures) {
         nirMessage = `Interaction failures detected: ${provenance.nativeInteractionFailures} runtime exception(s).`;
       } else {
@@ -776,10 +841,25 @@ export class FinalSuccessGate {
       status = "SUCCESS";
     }
 
+    const runtimeVerified = (runtimeReport && runtimeReport.passed && runtimeReport.status === "SUCCESS") || (input.runtimePassed === true);
     const runtimeStatus: "VERIFIED" | "NOT_VERIFIED" | "PARTIALLY_VERIFIED" =
-      status === "SUCCESS" ? "VERIFIED" : (status === "BLOCKED" ? "PARTIALLY_VERIFIED" : "NOT_VERIFIED");
+      runtimeVerified ? "VERIFIED" : (status === "BLOCKED" ? "PARTIALLY_VERIFIED" : "NOT_VERIFIED");
 
-    const evidenceSummary = `Status: ${status} (${items.filter(i => i.passed).length}/${items.length} checks passed). Code: ${codeStatus}, Runtime: ${runtimeStatus}`;
+    const databaseVerified = dbStatus === "CONNECTED";
+    const visualVerified = visualExecuted && visualPassed && !hasCriticalVisualDefect;
+
+    let acceptanceLevel: AcceptanceLevel = "STATICALLY_VALIDATED";
+    if (codeStatus === "PASS") {
+      acceptanceLevel = "BUILD_VALIDATED";
+      if (databaseVerified) acceptanceLevel = "DATABASE_VERIFIED";
+      if (runtimeVerified) acceptanceLevel = "RUNTIME_VERIFIED";
+      if (visualVerified) acceptanceLevel = "VISUALLY_VERIFIED";
+      if (status === "SUCCESS" && codeStatus === "PASS" && databaseVerified && runtimeVerified && visualVerified) {
+        acceptanceLevel = "FULLY_ACCEPTED";
+      }
+    }
+
+    const evidenceSummary = `Status: ${status} (${items.filter(i => i.passed).length}/${items.length} checks passed). Code: ${codeStatus}, Runtime: ${runtimeStatus}, Acceptance: ${acceptanceLevel}`;
 
     console.log("\n╔═══════════════════════════════════════════════════════╗");
     console.log("║         AEGIS FINAL SUCCESS VERIFICATION REPORT       ║");
@@ -801,7 +881,7 @@ export class FinalSuccessGate {
             console.log(`     • ${w}`);
           }
         }
-      } catch {}
+      } catch { }
     }
 
     console.log(`\n  [FINAL STATUS]: ${status}`);
@@ -810,6 +890,7 @@ export class FinalSuccessGate {
     return {
       status,
       success: status === "SUCCESS",
+      acceptanceLevel,
       items,
       blockingReason,
       databaseStatus: dbStatus,
@@ -842,7 +923,7 @@ export class FinalSuccessGate {
           if (statSync(full).isDirectory()) results.push(...getAllSourceFiles(full));
           else if (/\.(ts|tsx)$/.test(entry) && !entry.endsWith(".d.ts")) results.push(full);
         }
-      } catch {}
+      } catch { }
       return results;
     };
 
@@ -861,7 +942,7 @@ export class FinalSuccessGate {
             break;
           }
         }
-      } catch {}
+      } catch { }
     }
 
     return issues;

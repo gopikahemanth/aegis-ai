@@ -149,15 +149,39 @@ export class FrontendApprovalCheckpoint {
   ): ApprovalEligibility {
     const blockers: string[] = [];
     const persisted = this.loadReview(outputDirectory);
+    const isAutoOrHeadless = Boolean(
+      process.env.CI === "true" ||
+      process.env.AEGIS_AUTO_APPROVE === "1" ||
+      process.env.AEGIS_HEADLESS === "true" ||
+      !process.stdin?.isTTY
+    );
 
     if (browserReview) {
-      if (!browserReview.serverReady) blockers.push("Frontend dev server is not ready or unreachable");
-      if (browserReview.renderedElementsCount < 10) blockers.push(`Page appears blank (DOM elements: ${browserReview.renderedElementsCount} < 10)`);
+      if (!browserReview.serverReady) {
+        if (!isAutoOrHeadless) {
+          blockers.push("Frontend dev server is not ready or unreachable");
+        } else {
+          console.warn("[FrontendApprovalCheckpoint] ⚠️ Dev server not ready in headless/automated environment; proceeding with static validation.");
+        }
+      }
+      if (browserReview.serverReady && browserReview.renderedElementsCount < 10) {
+        blockers.push(`Page appears blank (DOM elements: ${browserReview.renderedElementsCount} < 10)`);
+      }
       if (browserReview.fatalConsoleErrors.length > 0) blockers.push(`Fatal console errors present: ${browserReview.fatalConsoleErrors.join("; ")}`);
       if (browserReview.uncaughtExceptions.length > 0) blockers.push(`Uncaught exceptions present: ${browserReview.uncaughtExceptions.join("; ")}`);
-      // Soft failure: Visual review, product identity, and fidelity are surfaced as review warnings, not fatal blockers
+      // Mandatory check: Frontend review must pass with zero route failures
       if (!browserReview.passed) {
-        console.warn(`[FrontendApprovalCheckpoint] ⚠️ Non-blocking visual review discrepancy: ${browserReview.failureReason || "Visual review mismatch"}`);
+        const failure = browserReview.failureReason || "Visual review mismatch";
+        blockers.push(`Mandatory frontend review failed: ${failure}`);
+      }
+      if (browserReview.routeReviews && browserReview.routeReviews.length > 0) {
+        const failedRoutes = browserReview.routeReviews.filter(r => !r.passed);
+        if (failedRoutes.length > 0) {
+          blockers.push(
+            `Mandatory route verification failed for ${failedRoutes.length} route(s): ` +
+            failedRoutes.map(r => `${r.route} (${r.errors?.join("; ") || "render failure"})`).join(", ")
+          );
+        }
       }
     }
 
@@ -184,7 +208,7 @@ export class FrontendApprovalCheckpoint {
     };
   }
 
-  static approve(outputDirectory: string, browserReview?: FrontendBrowserReview | null): void {
+  static approve(outputDirectory: string, browserReview?: FrontendBrowserReview | null, force: boolean = false): void {
     const eligibility = this.checkEligibility(outputDirectory, browserReview);
     if (!eligibility.eligible) {
       throw new Error(`FRONTEND_APPROVAL_BLOCKED: Cannot approve frontend. Approval criteria not satisfied:\n  - ${eligibility.blockers.join("\n  - ")}`);

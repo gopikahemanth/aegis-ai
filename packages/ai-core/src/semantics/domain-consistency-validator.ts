@@ -1,7 +1,6 @@
 import { readdirSync, readFileSync, statSync, existsSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { CanonicalProjectSpecification } from "../spec/canonical-spec.js";
-import { DomainAwareFallbackGenerator } from "./domain-fallback-generator.js";
 
 export interface DomainValidationResult {
   passed: boolean;
@@ -63,6 +62,17 @@ export class DomainConsistencyValidator {
     const files = getAllFiles(outputDirectory);
     const domain = spec.domainCategory;
 
+    let contractPrompt = "";
+    try {
+      const contractPath = join(outputDirectory, ".aegis", "architecture-contract.json");
+      if (existsSync(contractPath)) {
+        const loaded = JSON.parse(readFileSync(contractPath, "utf8"));
+        contractPrompt = (loaded.prompt || "").toLowerCase();
+      }
+    } catch { }
+    const fullContext = `${contractPrompt} ${(spec as any)?.prompt || ""} ${spec.domainCategory || ""}`.toLowerCase();
+    const allowsGallery = fullContext.includes("gallery") || fullContext.includes("galleries") || fullContext.includes("photo") || (spec.features || []).some((f: any) => String(f.name || f).toLowerCase().includes("gallery"));
+
     for (const file of files) {
       try {
         const content = readFileSync(file, "utf8");
@@ -73,18 +83,13 @@ export class DomainConsistencyValidator {
 
         // Check for forbidden domain patterns (structural)
         for (const pattern of spec.forbiddenPatterns) {
+          if (allowsGallery && (pattern === "Gallery" || pattern === "Artwork" || pattern === "ArtworkCard" || pattern === "ArtworkDashboard")) {
+            continue;
+          }
           if (content.includes(pattern) || rel.includes(pattern)) {
             forbiddenMatches.push(`${rel}: contains forbidden pattern '${pattern}'`);
-
-            // Unconditional Contamination Purge for components/layouts (only on generic projects without custom PageExperiencePlans)
-            const hasPagePlan = existsSync(join(outputDirectory, ".aegis", "page-experience-plans.json")) ||
-                                existsSync(join(outputDirectory, ".aegis", "product-experience-plan.json"));
-            if (rel.includes("src/") && !hasPagePlan) {
-              const compName = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Component";
-              const cleanContent = DomainAwareFallbackGenerator.generateFallbackComponent(spec, compName, rel);
-              writeFileSync(file, cleanContent, "utf8");
-              purgedFiles.push(rel);
-            }
+            // Read-Only Safety Invariant: Validators NEVER silently overwrite or purge source files during validation.
+            // Diagnosis is reported to the repair engine or caller.
           }
         }
 
@@ -96,7 +101,7 @@ export class DomainConsistencyValidator {
             }
           }
         }
-      } catch {}
+      } catch { }
     }
 
     // Required domain feature checks

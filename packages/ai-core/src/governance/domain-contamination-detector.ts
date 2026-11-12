@@ -54,7 +54,7 @@ export class DomainContaminationDetector {
     artGallery: {
       name: "Art Gallery / Exhibition",
       terms: ["artwork", "artist", "exhibition", "painting", "gallery overview"],
-      forbiddenInOtherDomains: ["artworkstats", "artworkdashboard", "curated exhibition", "artworkcard", "starry horizon", "vincent van gogh"],
+      forbiddenInOtherDomains: ["Artwork", "Gallery", "artworkstats", "artworkdashboard", "curated exhibition", "artworkcard", "starry horizon", "vincent van gogh"],
     },
     studentManagement: {
       name: "Student Management System",

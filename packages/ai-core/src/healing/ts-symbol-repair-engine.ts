@@ -22,7 +22,7 @@ export interface SymbolRepairAction {
 }
 
 export interface TsErrorParsed {
-  code: "TS2724" | "TS2305" | "TS2551" | "TS2614" | "TS2304" | string;
+  code: "TS2724" | "TS2305" | "TS2551" | "TS2614" | "TS2304" | "TS2322" | "TS2345" | string;
   importerFile: string;
   line: number;
   col: number;
@@ -130,7 +130,33 @@ export class TsSymbolRepairEngine {
         continue;
       }
 
-      // TS2749: 'Status' refers to a value, but is being used as a type here. Did you mean 'typeof Status'?
+      // TS2561 / TS2353: Object literal may only specify known properties, but/and 'costPsqFt' does not exist in type 'MaterialOption'. Did you mean to write 'costPerSqFt'?
+      const ts2561Match = line.match(/^([^(]+)\((\d+),(\d+)\):\s+error\s+(TS2561|TS2353):\s+Object literal may only specify known properties,\s+(?:but|and)\s+(.+?)\s+does not exist in type\s+(.+?)\.\s+Did you mean (?:to write\s+)?(.+?)\?/);
+      if (ts2561Match) {
+        results.push({
+          importerFile: ts2561Match[1].trim().replace(/\\/g, "/"),
+          line: parseInt(ts2561Match[2], 10),
+          col: parseInt(ts2561Match[3], 10),
+          code: ts2561Match[4],
+          requestedSymbol: cleanQuotes(ts2561Match[5]),
+          suggestedSymbol: cleanQuotes(ts2561Match[7]),
+          message: line,
+        });
+        continue;
+      }
+
+      // TS1117: An object literal cannot have multiple properties with the same name.
+      const ts1117Match = line.match(/^([^(]+)\((\d+),(\d+)\):\s+error\s+(TS1117):\s+An object literal cannot have multiple properties with the same name\./);
+      if (ts1117Match) {
+        results.push({
+          importerFile: ts1117Match[1].trim().replace(/\\/g, "/"),
+          line: parseInt(ts1117Match[2], 10),
+          col: parseInt(ts1117Match[3], 10),
+          code: "TS1117",
+          message: line,
+        });
+        continue;
+      }
       const ts2749Match = line.match(/^([^(]+)\((\d+),(\d+)\):\s+error\s+(TS2749):\s+['"]?([a-zA-Z0-9_]+)['"]?\s+refers to a value, but is being used as a type here/);
       if (ts2749Match) {
         results.push({
@@ -213,6 +239,63 @@ export class TsSymbolRepairEngine {
         });
         continue;
       }
+
+      // TS2374: Duplicate index signature for type 'string'.
+      const ts2374Match = line.match(/^([^(]+)\((\d+),(\d+)\):\s+error\s+(TS2374):\s+Duplicate index signature/);
+      if (ts2374Match) {
+        results.push({
+          importerFile: ts2374Match[1].trim().replace(/\\/g, "/"),
+          line: parseInt(ts2374Match[2], 10),
+          col: parseInt(ts2374Match[3], 10),
+          code: "TS2374",
+          message: line,
+        });
+        continue;
+      }
+
+      // TS2322: Type '...' is not assignable to type '...'.
+      const ts2322Match = line.match(/^([^(]+)\((\d+),(\d+)\):\s+error\s+(TS2322):\s+Type\s+(.+?)\s+is not assignable to type\s+(.+?)\.?$/);
+      if (ts2322Match) {
+        results.push({
+          importerFile: ts2322Match[1].trim().replace(/\\/g, "/"),
+          line: parseInt(ts2322Match[2], 10),
+          col: parseInt(ts2322Match[3], 10),
+          code: "TS2322",
+          requestedSymbol: cleanQuotes(ts2322Match[5]),
+          suggestedSymbol: cleanQuotes(ts2322Match[6]),
+          message: line,
+        });
+        continue;
+      }
+
+      // TS2440: Import declaration conflicts with local declaration of 'Button'.
+      const ts2440Match = line.match(/^([^(]+)\(([0-9]+),([0-9]+)\):\s+error\s+(TS2440):\s+Import declaration conflicts with local declaration of\s+['"]?([a-zA-Z0-9_$]+)['"]?/);
+      if (ts2440Match) {
+        results.push({
+          importerFile: ts2440Match[1].trim().replace(/\\/g, "/"),
+          line: parseInt(ts2440Match[2], 10),
+          col: parseInt(ts2440Match[3], 10),
+          code: "TS2440",
+          requestedSymbol: cleanQuotes(ts2440Match[5]),
+          message: line,
+        });
+        continue;
+      }
+
+      // TS2345: Argument of type '...' is not assignable to parameter of type '...'.
+      const ts2345Match = line.match(/^([^(]+)\((\d+),(\d+)\):\s+error\s+(TS2345):\s+Argument of type\s+(.+?)\s+is not assignable to parameter of type\s+(.+?)\.?$/);
+      if (ts2345Match) {
+        results.push({
+          importerFile: ts2345Match[1].trim().replace(/\\/g, "/"),
+          line: parseInt(ts2345Match[2], 10),
+          col: parseInt(ts2345Match[3], 10),
+          code: "TS2345",
+          requestedSymbol: cleanQuotes(ts2345Match[5]),
+          suggestedSymbol: cleanQuotes(ts2345Match[6]),
+          message: line,
+        });
+        continue;
+      }
     }
 
     return results;
@@ -237,9 +320,14 @@ export class TsSymbolRepairEngine {
       return this.fixMissingExportInModule(projectRoot, err);
     }
 
-    // 4. Handle TS2551 (Property name mismatch in caller)
-    if (err.code === "TS2551" && err.requestedSymbol && err.suggestedSymbol) {
+    // 4. Handle TS2551, TS2561, TS2353 (Property / Object literal key mismatch in caller)
+    if ((err.code === "TS2551" || err.code === "TS2561" || (err.code === "TS2353" && !err.suggestedSymbol?.startsWith("{"))) && err.requestedSymbol && err.suggestedSymbol) {
       return this.fixPropertyMismatch(projectRoot, err);
+    }
+
+    // 4b. Handle TS1117 (Duplicate property in object literal)
+    if (err.code === "TS1117") {
+      return this.fixDuplicateObjectProperty(projectRoot, err);
     }
 
     // 5. Handle TS2749 (Value identifier used as type annotation)
@@ -270,6 +358,26 @@ export class TsSymbolRepairEngine {
     // 10. Handle TS2353 (Object literal may only specify known properties)
     if (err.code === "TS2353" && err.requestedSymbol) {
       return this.fixObjectLiteralExcessProperty(projectRoot, err);
+    }
+
+    // 11. Handle TS2374 (Duplicate index signature)
+    if (err.code === "TS2374") {
+      return this.fixDuplicateIndexSignature(projectRoot, err);
+    }
+
+    // 12. Handle TS2322 (Type assignment mismatch - narrow union cast)
+    if (err.code === "TS2322") {
+      return this.fixTypeAssignmentMismatch(projectRoot, err);
+    }
+
+    // 14. Handle TS2440 (Import declaration conflicts with local declaration)
+    if (err.code === "TS2440" && err.requestedSymbol) {
+      return this.fixImportConflictWithLocal(projectRoot, err);
+    }
+
+    // 13. Handle TS2345 (Argument type mismatch - callback or union parameter)
+    if (err.code === "TS2345") {
+      return this.fixArgumentTypeMismatch(projectRoot, err);
     }
 
     return null;
@@ -352,6 +460,38 @@ export class TsSymbolRepairEngine {
           applied: true,
         };
       }
+    }
+
+    // Check if target module has an unexported interface or type matching requested
+    const unexportedDeclMatch = content.match(new RegExp(`(^|\\r?\\n)(?:export\\s+)?(interface|type)\\s+${requested}\\b`));
+    if (unexportedDeclMatch) {
+      if (!unexportedDeclMatch[0].includes("export")) {
+        const newContent = content.replace(new RegExp(`(^|\\r?\\n)(interface|type)\\s+${requested}\\b`), `$1export $2 ${requested}`);
+        writeFileSync(targetModuleAbs, newContent, "utf8");
+        console.log(`[TsSymbolRepairEngine] ✓ Exported unexported ${unexportedDeclMatch[2]} '${requested}' in ${targetModuleAbs}`);
+        return {
+          fileToModify: targetModuleAbs,
+          originalContent: content,
+          modifiedContent: newContent,
+          description: `Exported unexported ${unexportedDeclMatch[2]} '${requested}' in target module`,
+          applied: true,
+        };
+      }
+    }
+
+    // If requested symbol ends with Props or Type and not declared, export a flexible type alias
+    if ((requested.endsWith("Props") || requested.endsWith("Type")) && !content.includes(requested)) {
+      const aliasShim = `\nexport type ${requested} = Record<string, any>;\n`;
+      const newContent = content + aliasShim;
+      writeFileSync(targetModuleAbs, newContent, "utf8");
+      console.log(`[TsSymbolRepairEngine] ✓ Created missing type alias '${requested}' in ${targetModuleAbs}`);
+      return {
+        fileToModify: targetModuleAbs,
+        originalContent: content,
+        modifiedContent: newContent,
+        description: `Created missing type alias '${requested}' in target module`,
+        applied: true,
+      };
     }
 
     // Check if target module has a default export that matches requested
@@ -499,6 +639,30 @@ export class TsSymbolRepairEngine {
     const requested = err.requestedSymbol!;
     const suggested = err.suggestedSymbol!;
 
+    const lines = content.split("\n");
+    const lineIdx = (err.line ?? 1) - 1;
+    if (lineIdx >= 0 && lineIdx < lines.length) {
+      const targetLine = lines[lineIdx];
+      // If the suggested property is ALREADY present on this line, remove the requested property assignment instead of renaming it!
+      if (new RegExp(`\\b${this.escapeRegex(suggested)}\\s*:`).test(targetLine)) {
+        const removeRegex = new RegExp(`(?:,\\s*)?\\b${this.escapeRegex(requested)}\\s*:[^,}]+|\\b${this.escapeRegex(requested)}\\s*:[^,}]+,\\s*`, "g");
+        const newLine = targetLine.replace(removeRegex, "");
+        if (newLine !== targetLine) {
+          lines[lineIdx] = newLine;
+          const newContent = lines.join("\n");
+          writeFileSync(absImporter, newContent, "utf8");
+          console.log(`[TsSymbolRepairEngine] ✓ Removed redundant property '${requested}' (target '${suggested}' already present) in ${absImporter}`);
+          return {
+            fileToModify: absImporter,
+            originalContent: content,
+            modifiedContent: newContent,
+            description: `Removed redundant property '${requested}' in ${err.importerFile}`,
+            applied: true,
+          };
+        }
+      }
+    }
+
     const propRegex = new RegExp(`\\b${this.escapeRegex(requested)}\\b`, "g");
     if (propRegex.test(content)) {
       const newContent = content.replace(propRegex, suggested);
@@ -509,6 +673,50 @@ export class TsSymbolRepairEngine {
         originalContent: content,
         modifiedContent: newContent,
         description: `Corrected property '${requested}' to '${suggested}' in ${err.importerFile}`,
+        applied: true,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Fix TS1117: duplicate property in object literal.
+   */
+  private static fixDuplicateObjectProperty(
+    projectRoot: string,
+    err: TsErrorParsed
+  ): SymbolRepairAction | null {
+    const absImporter = join(projectRoot, err.importerFile);
+    if (!existsSync(absImporter)) return null;
+
+    const content = readFileSync(absImporter, "utf8");
+    const lines = content.split("\n");
+    const lineIdx = err.line - 1;
+    if (lineIdx < 0 || lineIdx >= lines.length) return null;
+
+    const originalLine = lines[lineIdx];
+    // Find duplicate property around col or duplicate identifiers in the line
+    let newLine = originalLine.replace(/(\b\w+\b\s*:\s*[^,}]+),\s*\1\s*:\s*[^,}]+/g, "$1");
+    if (newLine === originalLine) {
+      const col = Math.max(0, err.col - 1);
+      const after = originalLine.slice(col);
+      const propMatch = after.match(/^(\w+)\s*:[^,}]+,?/);
+      if (propMatch) {
+        newLine = originalLine.slice(0, col) + originalLine.slice(col + propMatch[0].length);
+      }
+    }
+
+    if (newLine !== originalLine) {
+      lines[lineIdx] = newLine;
+      const newContent = lines.join("\n");
+      writeFileSync(absImporter, newContent, "utf8");
+      console.log(`[TsSymbolRepairEngine] ✓ Removed duplicate object property in ${absImporter}:${err.line}`);
+      return {
+        fileToModify: absImporter,
+        originalContent: content,
+        modifiedContent: newContent,
+        description: `Removed duplicate object property in ${err.importerFile}:${err.line}`,
         applied: true,
       };
     }
@@ -789,25 +997,56 @@ export class TsSymbolRepairEngine {
 
     // 2. If targetType is a named interface/type: e.g. "CartItem" or "Book"
     if (/^[a-zA-Z0-9_$]+$/.test(targetType)) {
-      const ifaceRegex = new RegExp(`(interface\\s+${this.escapeRegex(targetType)}\\s*\\{[^}]*\\})`, "g");
-      if (ifaceRegex.test(content)) {
-        const patched = content.replace(new RegExp(`(interface\\s+${this.escapeRegex(targetType)}\\s*\\{)`), `$1\n  ${missingProp}?: any;\n  [key: string]: any;`);
-        writeFileSync(absImporter, patched, "utf8");
-        console.log(`[TsSymbolRepairEngine] ✓ Repaired TS2353: added '${missingProp}?: any' to interface ${targetType} in ${absImporter}`);
-        return {
-          fileToModify: absImporter,
-          originalContent: content,
-          modifiedContent: patched,
-          description: `Repaired TS2353: added '${missingProp}' to interface ${targetType} in ${err.importerFile}`,
-          applied: true,
-        };
+      const ifaceRegex = new RegExp(`(interface\\s+${this.escapeRegex(targetType)}\\s*\\{([\\s\\S]*?)\\})`, "m");
+      const match = ifaceRegex.exec(content);
+      if (match) {
+        const fullMatch = match[0];
+        const body = match[2];
+        const hasProp = body.includes(`${missingProp}:`) || body.includes(`${missingProp}?:`);
+        const hasIndex = body.includes("[key: string]: any");
+        let newBody = body;
+        if (!hasProp) {
+          newBody = `\n  ${missingProp}?: any;` + newBody;
+        }
+        if (!hasIndex && !newBody.includes("[key: string]: any")) {
+          newBody = `\n  [key: string]: any;` + newBody;
+        }
+        newBody = newBody.replace(/(\[\s*key\s*:\s*string\s*\]\s*:\s*any\s*;?[\r\n\s]*){2,}/g, "[key: string]: any;\n  ");
+
+        const patched = content.replace(fullMatch, `interface ${targetType} {${newBody}}`);
+        if (patched !== content) {
+          writeFileSync(absImporter, patched, "utf8");
+          console.log(`[TsSymbolRepairEngine] ✓ Repaired TS2353: added '${missingProp}?: any' to interface ${targetType} in ${absImporter}`);
+          return {
+            fileToModify: absImporter,
+            originalContent: content,
+            modifiedContent: patched,
+            description: `Repaired TS2353: added '${missingProp}' to interface ${targetType} in ${err.importerFile}`,
+            applied: true,
+          };
+        }
       }
     }
 
     // 3. Fallback: Check if there's any interface in absImporter
-    const localIfaceRegex = /(interface\s+[a-zA-Z0-9_$]+\s*\{)/g;
-    if (localIfaceRegex.test(content)) {
-      const patched = content.replace(/(interface\s+[a-zA-Z0-9_$]+\s*\{)/, `$1\n  ${missingProp}?: any;\n  [key: string]: any;`);
+    const localIfaceRegex = /(interface\s+([a-zA-Z0-9_$]+)\s*\{([\s\S]*?)\})/m;
+    const match = localIfaceRegex.exec(content);
+    if (match) {
+      const fullMatch = match[0];
+      const ifaceName = match[2];
+      const body = match[3];
+      const hasProp = body.includes(`${missingProp}:`) || body.includes(`${missingProp}?:`);
+      const hasIndex = body.includes("[key: string]: any");
+      let newBody = body;
+      if (!hasProp) {
+        newBody = `\n  ${missingProp}?: any;` + newBody;
+      }
+      if (!hasIndex && !newBody.includes("[key: string]: any")) {
+        newBody = `\n  [key: string]: any;` + newBody;
+      }
+      newBody = newBody.replace(/(\[\s*key\s*:\s*string\s*\]\s*:\s*any\s*;?[\r\n\s]*){2,}/g, "[key: string]: any;\n  ");
+
+      const patched = content.replace(fullMatch, `interface ${ifaceName} {${newBody}}`);
       if (patched !== content) {
         writeFileSync(absImporter, patched, "utf8");
         console.log(`[TsSymbolRepairEngine] ✓ Repaired TS2353: added fallback '${missingProp}?: any' to local interface in ${absImporter}`);
@@ -819,6 +1058,165 @@ export class TsSymbolRepairEngine {
           applied: true,
         };
       }
+    }
+
+    return null;
+  }
+
+  /**
+   * Fix TS2374: Deduplicate index signatures in interface definition.
+   */
+  private static fixDuplicateIndexSignature(
+    projectRoot: string,
+    err: TsErrorParsed
+  ): SymbolRepairAction | null {
+    const absImporter = join(projectRoot, err.importerFile);
+    if (!existsSync(absImporter)) return null;
+
+    const content = readFileSync(absImporter, "utf8");
+    let patched = content.replace(/(\[\s*key\s*:\s*string\s*\]\s*:\s*any\s*;?[\r\n\s]*){2,}/g, "[key: string]: any;\n  ");
+    patched = patched.replace(/interface\s+([a-zA-Z0-9_$]+)\s*\{([\s\S]*?)\}/g, (match, ifaceName, body) => {
+      let seenIndex = false;
+      const lines = body.split("\n");
+      const cleanedLines = lines.filter((l: string) => {
+        if (/\[\s*key\s*:\s*string\s*\]\s*:\s*any/.test(l)) {
+          if (seenIndex) return false;
+          seenIndex = true;
+          return true;
+        }
+        return true;
+      });
+      return `interface ${ifaceName} {${cleanedLines.join("\n")}}`;
+    });
+
+    if (patched !== content) {
+      writeFileSync(absImporter, patched, "utf8");
+      console.log(`[TsSymbolRepairEngine] ✓ Repaired TS2374: deduplicated index signatures in ${absImporter}`);
+      return {
+        fileToModify: absImporter,
+        originalContent: content,
+        modifiedContent: patched,
+        description: `Repaired TS2374: deduplicated index signatures in ${err.importerFile}`,
+        applied: true,
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Fix TS2322 (Type assignment mismatch) caused by narrow union casting in event handlers or setters.
+   */
+  private static fixTypeAssignmentMismatch(
+    projectRoot: string,
+    err: TsErrorParsed
+  ): SymbolRepairAction | null {
+    const callerAbs = resolve(projectRoot, err.importerFile);
+    if (!existsSync(callerAbs)) return null;
+
+    const content = readFileSync(callerAbs, "utf8");
+    const lines = content.split(/\r?\n/);
+    const targetIdx = err.line - 1;
+    if (targetIdx < 0 || targetIdx >= lines.length) return null;
+
+    let targetLine = lines[targetIdx];
+    let replaced = false;
+
+    // Pattern 1: as 'A' | 'B' ... -> as any
+    if (/as\s+['"][A-Za-z0-9_-]+['"](?:\s*\|\s*['"][A-Za-z0-9_-]+['"])+/.test(targetLine)) {
+      targetLine = targetLine.replace(/as\s+['"][A-Za-z0-9_-]+['"](?:\s*\|\s*['"][A-Za-z0-9_-]+['"])+/g, "as any");
+      replaced = true;
+    } else if (/\bas\s+\([^)]+\)/.test(targetLine)) {
+      targetLine = targetLine.replace(/\bas\s+\([^)]+\)/g, "as any");
+      replaced = true;
+    }
+
+    if (replaced && targetLine !== lines[targetIdx]) {
+      lines[targetIdx] = targetLine;
+      const modifiedContent = lines.join("\n");
+      writeFileSync(callerAbs, modifiedContent, "utf8");
+      console.log(`[TsSymbolRepairEngine] ✓ Repaired TS2322 type assignment error on line ${err.line} in ${err.importerFile}`);
+      return {
+        fileToModify: callerAbs,
+        originalContent: content,
+        modifiedContent,
+        description: `Relaxed TS2322 union cast on line ${err.line} to 'as any'`,
+        applied: true,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Fix TS2345: Argument of type '...' is not assignable to parameter of type '...'.
+   * Handles accidental identity arrow functions, e.g. updateQty(id => id, -1) -> updateQty((item as any)?.id || "1", -1)
+   * or relaxes narrow literal arguments with 'as any'.
+   */
+  private static fixArgumentTypeMismatch(
+    projectRoot: string,
+    err: TsErrorParsed
+  ): SymbolRepairAction | null {
+    const callerAbs = resolve(projectRoot, err.importerFile);
+    if (!existsSync(callerAbs)) return null;
+
+    const content = readFileSync(callerAbs, "utf8");
+    const lines = content.split(/\r?\n/);
+    const targetIdx = err.line - 1;
+    if (targetIdx < 0 || targetIdx >= lines.length) return null;
+
+    let targetLine = lines[targetIdx];
+    let replaced = false;
+
+    // Pattern A: Accidental arrow function passed where primitive is expected, e.g. fn(id => id, -1) or fn((id) => id)
+    if (
+      /\b\w+\(\s*(?:\(?\s*[a-zA-Z0-9_$]+\s*\)?)\s*=>\s*[a-zA-Z0-9_$]+(?:\.[a-zA-Z0-9_$]+)?\s*,/.test(targetLine) ||
+      /\b\w+\(\s*(?:\(?\s*[a-zA-Z0-9_$]+\s*\)?)\s*=>\s*[a-zA-Z0-9_$]+(?:\.[a-zA-Z0-9_$]+)?\s*\)/.test(targetLine)
+    ) {
+      let candidateVar = "item";
+      for (let i = Math.max(0, targetIdx - 35); i < targetIdx; i++) {
+        const mapMatch = lines[i].match(/\.map\(\s*\(?\s*([a-zA-Z0-9_$]+)/);
+        if (mapMatch) {
+          candidateVar = mapMatch[1];
+          break;
+        }
+      }
+      const preLine = targetLine;
+      targetLine = targetLine.replace(
+        /(\b\w+\()\s*(?:\(?\s*[a-zA-Z0-9_$]+\s*\)?)\s*=>\s*[a-zA-Z0-9_$]+(?:\.[a-zA-Z0-9_$]+)?\s*(,\s*|\))/g,
+        `$1((${candidateVar} as any)?.id || (${candidateVar} as any) || "1")$2`
+      );
+      if (targetLine !== preLine) {
+        replaced = true;
+      }
+    }
+
+    // Pattern B: Argument literal or expression mismatch at error column — widen with 'as any'
+    if (!replaced) {
+      const colIdx = err.col - 1;
+      if (colIdx >= 0 && colIdx < targetLine.length) {
+        const beforeCol = targetLine.slice(0, colIdx);
+        const fromCol = targetLine.slice(colIdx);
+        const tokenMatch = fromCol.match(/^([a-zA-Z0-9_$.?]+)/);
+        if (tokenMatch && !tokenMatch[1].endsWith("any")) {
+          const token = tokenMatch[1];
+          targetLine = beforeCol + `(${token} as any)` + fromCol.slice(token.length);
+          replaced = true;
+        }
+      }
+    }
+
+    if (replaced && targetLine !== lines[targetIdx]) {
+      lines[targetIdx] = targetLine;
+      const modifiedContent = lines.join("\n");
+      writeFileSync(callerAbs, modifiedContent, "utf8");
+      console.log(`[TsSymbolRepairEngine] ✓ Repaired TS2345 argument type mismatch on line ${err.line} in ${err.importerFile}`);
+      return {
+        fileToModify: callerAbs,
+        originalContent: content,
+        modifiedContent,
+        description: `Repaired TS2345 argument type mismatch on line ${err.line}`,
+        applied: true,
+      };
     }
 
     return null;
@@ -876,6 +1274,87 @@ export class TsSymbolRepairEngine {
 
   private static normalizeToken(s: string): string {
     return (s || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  }
+
+  /**
+   * Fix TS2440: Import declaration conflicts with local declaration of 'X'.
+   * Removes redundant local fallback stub (e.g. const Button = (props: any) => ...)
+   * or removes conflicting import symbol.
+   */
+  public static fixImportConflictWithLocal(
+    projectRoot: string,
+    err: TsErrorParsed
+  ): SymbolRepairAction | null {
+    const absImporter = resolve(projectRoot, err.importerFile);
+    if (!existsSync(absImporter)) return null;
+
+    const content = readFileSync(absImporter, "utf8");
+    const requested = err.requestedSymbol;
+    if (!requested) return null;
+
+    const lines = content.split(/\r?\n/);
+    const escaped = this.escapeRegex(requested);
+
+    // 1. Look for a local component fallback stub or duplicate variable declaration
+    let localDeclLineIdx = -1;
+    const localDeclRegex = new RegExp(`^\\s*(?:export\\s+)?(?:const|let|var|function|class)\\s+${escaped}\\b`);
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.includes("import ") || line.includes("from ")) continue;
+      if (localDeclRegex.test(line)) {
+        localDeclLineIdx = i;
+        break;
+      }
+    }
+
+    if (localDeclLineIdx !== -1) {
+      const targetLine = lines[localDeclLineIdx];
+      // Check if it's a fallback stub or declaration
+      if (targetLine.includes("=>") || targetLine.includes("return") || targetLine.includes("<") || targetLine.trim().endsWith(";")) {
+        lines.splice(localDeclLineIdx, 1);
+        const newContent = lines.join("\n");
+        writeFileSync(absImporter, newContent, "utf8");
+        console.log(`[TsSymbolRepairEngine] ✓ Removed redundant local declaration of imported symbol '${requested}' in ${absImporter}:${localDeclLineIdx + 1}`);
+        return {
+          fileToModify: absImporter,
+          originalContent: content,
+          modifiedContent: newContent,
+          description: `Removed redundant local declaration of imported symbol '${requested}'`,
+          applied: true,
+        };
+      }
+    }
+
+    // 2. If no local declaration was removed, remove symbol from import line
+    const targetImportIdx = err.line - 1;
+    if (targetImportIdx >= 0 && targetImportIdx < lines.length) {
+      const line = lines[targetImportIdx];
+      if (line.includes(requested)) {
+        let newLine = line.replace(new RegExp(`\\b${escaped}\\s*,\\s*`), "");
+        if (newLine === line) {
+          newLine = line.replace(new RegExp(`,\\s*\\b${escaped}\\b`), "");
+        }
+        if (newLine === line) {
+          newLine = line.replace(new RegExp(`\\b${escaped}\\b`), "");
+        }
+        if (newLine !== line) {
+          lines[targetImportIdx] = newLine;
+          const newContent = lines.join("\n");
+          writeFileSync(absImporter, newContent, "utf8");
+          console.log(`[TsSymbolRepairEngine] ✓ Removed conflicting import '${requested}' in ${absImporter}:${err.line}`);
+          return {
+            fileToModify: absImporter,
+            originalContent: content,
+            modifiedContent: newContent,
+            description: `Removed conflicting import '${requested}' from import declaration`,
+            applied: true,
+          };
+        }
+      }
+    }
+
+    return null;
   }
 
   private static escapeRegex(s: string): string {

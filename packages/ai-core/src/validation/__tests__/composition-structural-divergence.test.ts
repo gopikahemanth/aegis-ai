@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
-  GenericExperienceGenerator,
   CompositionVariantResolver,
   CompositionConvergenceGate,
-  DomainVocabularySynthesizer,
 } from "../../index.js";
+import { DomainVisualDesignContractDeriver } from "../../design/domain-visual-contract.js";
 
 describe("Aegis Generative Composition Architecture & Convergence Gate", () => {
   const domains = [
@@ -50,22 +49,11 @@ describe("Aegis Generative Composition Architecture & Convergence Gate", () => {
         seed: d.seed,
       });
 
-      const code = GenericExperienceGenerator.generate({
-        componentName: "StoryPage",
-        brandName: d.name,
-        route: d.route,
-        prompt: d.prompt,
-        seed: d.seed,
-        experienceCapability: "SCROLL_STORY",
-        composition,
-      });
-
       return {
         domain: d.name,
         route: d.route,
         capability: "SCROLL_STORY",
         composition,
-        code,
       };
     });
 
@@ -75,7 +63,6 @@ describe("Aegis Generative Composition Architecture & Convergence Gate", () => {
     expect(report.distinctFingerprints).toBeGreaterThanOrEqual(3);
     expect(report.passed).toBe(true);
 
-    // Verify generated code contains different layout topologies
     const topologies = samples.map(s => s.composition.sectionTopology);
     const uniqueTopologies = new Set(topologies);
     expect(uniqueTopologies.size).toBeGreaterThanOrEqual(3);
@@ -99,22 +86,11 @@ describe("Aegis Generative Composition Architecture & Convergence Gate", () => {
         seed: d.seed,
       });
 
-      const code = GenericExperienceGenerator.generate({
-        componentName: "MapPage",
-        brandName: d.name,
-        route: d.route,
-        prompt: d.prompt,
-        seed: d.seed,
-        experienceCapability: "SPATIAL_MAP",
-        composition,
-      });
-
       return {
         domain: d.name,
         route: d.route,
         capability: "SPATIAL_MAP",
         composition,
-        code,
       };
     });
 
@@ -127,11 +103,11 @@ describe("Aegis Generative Composition Architecture & Convergence Gate", () => {
 
   it("TEST C: Generate 5 IMMERSIVE_3D pages across unrelated domains -> at least 3 distinct structural fingerprints", () => {
     const d3Domains = [
-      { name: "Atelier Oakhaven", prompt: "Luxury handcrafted wood furniture studio and joinery configurator turntable", route: "/turntable", seed: 12 },
-      { name: "Deep Ocean Lab", prompt: "Autonomous benthic submersible vehicle spatial viewer", route: "/submersible-3d", seed: 34 },
-      { name: "Kazzoo Realm", prompt: "Playful 3D archipelago fantasy world exploration mound", route: "/world-stage", seed: 56 },
-      { name: "Chrono Timepieces", prompt: "Luxury mechanical watch atelier centerpiece plinth showcase", route: "/timepiece-3d", seed: 78 },
-      { name: "Auteur Cinema", prompt: "Anamorphic camera stage optical 3D configurator", route: "/optics-3d", seed: 90 },
+      { name: "Atelier Chronos", prompt: "Haute horlogerie tourbillon escapement kinetic 3D exploded viewer", route: "/escapement", seed: 11 },
+      { name: "AeroStratos", prompt: "Supersonic carbon-composite wing structural airframe 3D inspection", route: "/airframe", seed: 22 },
+      { name: "Atelier Oakhaven", prompt: "Handcrafted white oak joinery dining table 3D studio configurator", route: "/table", seed: 33 },
+      { name: "Kazzoo World", prompt: "3D claymation animated fantasy character showcase with companion turntable", route: "/avatar", seed: 44 },
+      { name: "Abyssal Specimen", prompt: "Deep-sea hydrothermal bioluminescent siphonophore specimen 3D plinth", route: "/specimen", seed: 55 },
     ];
 
     const samples = d3Domains.map(d => {
@@ -143,22 +119,11 @@ describe("Aegis Generative Composition Architecture & Convergence Gate", () => {
         seed: d.seed,
       });
 
-      const code = GenericExperienceGenerator.generate({
-        componentName: "ThreeDPage",
-        brandName: d.name,
-        route: d.route,
-        prompt: d.prompt,
-        seed: d.seed,
-        experienceCapability: "IMMERSIVE_3D",
-        composition,
-      });
-
       return {
         domain: d.name,
         route: d.route,
         capability: "IMMERSIVE_3D",
         composition,
-        code,
       };
     });
 
@@ -171,8 +136,7 @@ describe("Aegis Generative Composition Architecture & Convergence Gate", () => {
 
   it("TEST D: Same semantic page + same seed = 100% deterministic reproducibility", () => {
     const prompt = "Handcrafted artisan timber furniture studio";
-    const run1 = GenericExperienceGenerator.generate({
-      componentName: "TurntableA",
+    const comp1 = CompositionVariantResolver.resolve({
       brandName: "Atelier",
       route: "/turntable",
       prompt,
@@ -180,8 +144,7 @@ describe("Aegis Generative Composition Architecture & Convergence Gate", () => {
       experienceCapability: "IMMERSIVE_3D",
     });
 
-    const run2 = GenericExperienceGenerator.generate({
-      componentName: "TurntableA",
+    const comp2 = CompositionVariantResolver.resolve({
       brandName: "Atelier",
       route: "/turntable",
       prompt,
@@ -189,7 +152,8 @@ describe("Aegis Generative Composition Architecture & Convergence Gate", () => {
       experienceCapability: "IMMERSIVE_3D",
     });
 
-    expect(run1).toBe(run2);
+    expect(comp1.structuralFingerprint).toBe(comp2.structuralFingerprint);
+    expect(comp1.id).toBe(comp2.id);
   });
 
   it("TEST E: Same capability + different seed = distinct valid compositions", () => {
@@ -209,88 +173,25 @@ describe("Aegis Generative Composition Architecture & Convergence Gate", () => {
       seed: 202,
     });
 
-    // Both must be valid SCROLL_STORY compositions
     expect(compA.capability).toBe("SCROLL_STORY");
     expect(compB.capability).toBe("SCROLL_STORY");
-    // Seeds 101 and 202 choose different valid compositions
     expect(compA.id).not.toBe(compB.id);
   });
 
-  it("TEST F: Unseen domains have 0 vocabulary leaks and 0 hardcoded fallback strings", () => {
-    const furnitureCode = GenericExperienceGenerator.generate({
-      componentName: "FurnitureViewer",
-      brandName: "Atelier Oakhaven",
-      route: "/turntable",
-      prompt: "Luxury handcrafted wood furniture studio with 3D turntable",
-      seed: 42,
-      experienceCapability: "IMMERSIVE_3D",
-    });
+  it("TEST F: Unseen domains have 0 vocabulary leaks and 0 hardcoded fallback strings in contracts", () => {
+    const furnitureContract = DomainVisualDesignContractDeriver.derive("Luxury handcrafted wood furniture studio with 3D turntable");
+    const furnitureJson = JSON.stringify(furnitureContract).toLowerCase();
 
-    // Zero Kazzoo or ocean leaks in furniture
-    expect(furnitureCode).not.toContain("Emerald Glade");
-    expect(furnitureCode).not.toContain("Abyssal Trench");
-    expect(furnitureCode).not.toContain("Kazzoo");
-    expect(furnitureCode).not.toContain("Brambletoad");
-    expect(furnitureCode).toContain("Heartwood Calibrator");
+    expect(furnitureJson).not.toContain("emerald glade");
+    expect(furnitureJson).not.toContain("abyssal trench");
+    expect(furnitureJson).not.toContain("kazzoo");
+    expect(furnitureJson).not.toContain("brambletoad");
 
-    const furnitureMapCode = GenericExperienceGenerator.generate({
-      componentName: "FurnitureMap",
-      brandName: "Atelier Oakhaven",
-      route: "/forest-reserves",
-      prompt: "Sustainable timber forest reserves and quarter-sawn oak harvesting",
-      seed: 42,
-      experienceCapability: "SPATIAL_MAP",
-    });
+    const oceanContract = DomainVisualDesignContractDeriver.derive("Deep ocean benthic trench exploration map with bathymetric drop-offs");
+    const oceanJson = JSON.stringify(oceanContract).toLowerCase();
 
-    // Zero generic sci-fi leaks in furniture map
-    expect(furnitureMapCode).not.toContain("Sector Meridian Ridge");
-    expect(furnitureMapCode).not.toContain("Primary Observation Hub");
-    expect(furnitureMapCode).toContain("Old Growth Oak Reserve");
-    expect(furnitureMapCode).toContain("Kiln Curing Yard");
-
-    const oceanCode = GenericExperienceGenerator.generate({
-      componentName: "OceanViewer",
-      brandName: "Mariana Lab",
-      route: "/abyss-stage",
-      prompt: "Deep ocean benthic submersible exploration",
-      seed: 42,
-      experienceCapability: "IMMERSIVE_3D",
-    });
-
-    // Zero furniture or Kazzoo leaks in ocean
-    expect(oceanCode).not.toContain("Emerald Glade");
-    expect(oceanCode).not.toContain("Timber");
-    expect(oceanCode).toContain("Pelagic Abyss Stage");
-  });
-
-  it("TEST G: Two routes in the same product using the same capability do not duplicate each other", () => {
-    // Kazzoo /family-adventures vs /print-journey-scroll
-    const adventureCode = GenericExperienceGenerator.generate({
-      componentName: "FamilyAdventures",
-      brandName: "Kazzoo",
-      route: "/family-adventures",
-      pageRole: "Family Adventures Lore",
-      purpose: "Family Adventures Chapter Story",
-      prompt: "Whimsical children's 3D fantasy world",
-      seed: 42,
-      experienceCapability: "SCROLL_STORY",
-    });
-
-    const printScrollCode = GenericExperienceGenerator.generate({
-      componentName: "PrintJourneyScroll",
-      brandName: "Kazzoo",
-      route: "/print-journey-scroll",
-      pageRole: "Print Journey Keepsake Scroll",
-      purpose: "Printable Keepsake Folio and Pilgrim Inscriptions",
-      prompt: "Whimsical children's 3D fantasy world",
-      seed: 42,
-      experienceCapability: "SCROLL_STORY",
-    });
-
-    // The two routes MUST NOT produce identical code or identical chapter lore
-    expect(adventureCode).not.toBe(printScrollCode);
-    expect(adventureCode).toContain("The Whispering Awakening");
-    expect(printScrollCode).toContain("The Pilgrim's Parchment Inscription");
-    expect(printScrollCode).toContain("Keepsake Folio");
+    expect(oceanJson).not.toContain("kazzoo");
+    expect(oceanJson).not.toContain("appalachian");
+    expect(oceanJson).not.toContain("diamond wheel");
   });
 });

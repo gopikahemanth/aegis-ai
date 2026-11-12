@@ -9,7 +9,16 @@
  * A capability MUST NOT prescribe its own page wireframe."
  */
 
-import type { ExperienceCapabilityType } from "./experience-generators/generic-experience-generator.js";
+export type ExperienceCapabilityType =
+  | "SPATIAL_MAP"
+  | "SCROLL_STORY"
+  | "AUDIO_SYNTH"
+  | "CHARACTER_STAGE"
+  | "IMMERSIVE_3D"
+  | "WORKSPACE_TOOL"
+  | "COLLECTION_HUB"
+  | "ITINERARY_PLANNER"
+  | "STOREFRONT_CATALOG";
 
 export type DominantAxisType = "vertical" | "horizontal" | "radial" | "split" | "asymmetric";
 export type FocalRegionType = "full_bleed" | "center_stage" | "left_rail" | "split_screen" | "top_hero" | "radial_hub";

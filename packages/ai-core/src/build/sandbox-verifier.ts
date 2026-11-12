@@ -47,26 +47,47 @@ export class SandboxVerifier {
     return server;
   }
 
-  private async pollUrl(url: string, timeoutMs: number): Promise<boolean> {
+  private async pollUrl(url: string, timeoutMs: number, getLogs?: () => string): Promise<{ ready: boolean; resolvedUrl: string }> {
     const start = Date.now();
     return new Promise((resolve) => {
       const check = () => {
         if (Date.now() - start > timeoutMs) {
-          resolve(false);
+          resolve({ ready: false, resolvedUrl: url });
           return;
         }
 
-        const req = get(url, (res) => {
-          if (res.statusCode === 200) {
-            resolve(true);
-          } else {
-            setTimeout(check, 500);
-          }
-        });
+        const candidateUrls = [url];
+        if (url.includes(":3000")) candidateUrls.push(url.replace(":3000", ":5173"));
+        if (url.includes(":5173")) candidateUrls.push(url.replace(":5173", ":3000"));
 
-        req.on("error", () => {
-          setTimeout(check, 500);
-        });
+        if (getLogs) {
+          const logMatch = getLogs().match(/http:\/\/localhost:(\d+)/i);
+          if (logMatch && !candidateUrls.includes(logMatch[0])) {
+            candidateUrls.unshift(logMatch[0]);
+          }
+        }
+
+        let answered = false;
+        let pending = candidateUrls.length;
+
+        for (const candidate of candidateUrls) {
+          const req = get(candidate, (res) => {
+            if (!answered && res.statusCode && res.statusCode < 500) {
+              answered = true;
+              resolve({ ready: true, resolvedUrl: candidate });
+            } else if (!answered) {
+              pending--;
+              if (pending === 0) setTimeout(check, 500);
+            }
+          });
+
+          req.on("error", () => {
+            if (!answered) {
+              pending--;
+              if (pending === 0) setTimeout(check, 500);
+            }
+          });
+        }
       };
       check();
     });
@@ -77,7 +98,7 @@ export class SandboxVerifier {
     const packageJsonPath = join(projectPath, "package.json");
     let childProcess: any = null;
     let staticServer: Server | null = null;
-    let port = 3000;
+    let port = 5173;
     let targetUrl = `http://localhost:${port}`;
     let isNext = false;
     let logs = "";
@@ -86,7 +107,9 @@ export class SandboxVerifier {
       try {
         const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8"));
         if (pkg.scripts && pkg.scripts.dev) {
-          isNext = !!(pkg.dependencies && pkg.dependencies.next);
+          const devScript = String(pkg.scripts.dev || "").toLowerCase();
+          const isVite = devScript.includes("vite");
+          isNext = !isVite && (devScript.includes("next") || Boolean(pkg.dependencies?.next && !pkg.devDependencies?.vite && !pkg.dependencies?.vite));
           port = isNext ? 3000 : 5173;
           targetUrl = `http://localhost:${port}`;
 
@@ -132,14 +155,17 @@ export class SandboxVerifier {
     }
 
     // Wait for the server to bind and respond (25s — Windows npm/npx startup is slower)
-    const serverReady = await this.pollUrl(targetUrl, 25000);
+    const pollResult = await this.pollUrl(targetUrl, 25000, () => logs);
+    if (pollResult.ready) {
+      targetUrl = pollResult.resolvedUrl;
+    }
 
-    if (!serverReady) {
+    if (!pollResult.ready) {
       this.killChildProcess(childProcess);
       if (staticServer) staticServer.close();
       return {
         success: false,
-        message: `Dev server failed to respond at ${targetUrl} within 10 seconds.`,
+        message: `Dev server failed to respond at ${targetUrl} within timeout.`,
         logs,
       };
     }

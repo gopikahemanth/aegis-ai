@@ -28,10 +28,39 @@ export class ThemeModifier {
     theme: { primaryColor: string; backgroundColor: string }
   ): { success: boolean; modifiedFiles: string[] } {
     const cleanRoot = projectRoot.replace(/\\/g, "/");
+    const isDarkBg = ThemeGenerator.generateTheme({
+      domain: "custom",
+      prompt: "custom theme",
+      seed: 1,
+    });
+    const spec = ThemeGenerator.generateTheme({
+      domain: "custom",
+      mode: theme.backgroundColor.toLowerCase() === "#ffffff" || theme.backgroundColor.toLowerCase() === "#faf7f2" || theme.backgroundColor.toLowerCase() === "#f8fafc" ? "light" : "dark",
+      prompt: `Primary ${theme.primaryColor} on ${theme.backgroundColor}`,
+      colorSystem: {
+        background: theme.backgroundColor,
+        primary: theme.primaryColor,
+      } as any,
+      seed: 1,
+    });
+
     const cssPath = join(cleanRoot, "src", "index.css");
-    const css = `:root {\n  --color-primary: ${theme.primaryColor};\n  --color-background: ${theme.backgroundColor};\n  --color-surface: #1e293b;\n  --color-text: #f8fafc;\n}\n`;
-    writeFileSync(cssPath, css, "utf8");
-    return { success: true, modifiedFiles: ["src/index.css"] };
+    const newCssVars = ThemeGenerator.generateCssVariables(spec);
+    if (existsSync(cssPath)) {
+      const existingCss = readFileSync(cssPath, "utf8");
+      const rootRegex = /:root\s*\{[^}]*\}/;
+      let updatedCss: string;
+      if (rootRegex.test(existingCss)) {
+        updatedCss = existingCss.replace(rootRegex, newCssVars.trim());
+      } else {
+        updatedCss = `${newCssVars}\n\n${existingCss}`;
+      }
+      writeFileSync(cssPath, updatedCss, "utf8");
+    } else {
+      writeFileSync(cssPath, newCssVars, "utf8");
+    }
+    ThemeGenerator.save(cleanRoot, spec);
+    return { success: true, modifiedFiles: ["src/index.css", ".aegis/theme.json"] };
   }
   /**
    * Modifies the visual theme of the project based on natural language instructions.
@@ -52,12 +81,25 @@ export class ThemeModifier {
 
     // 2. Parse mode & hue hints from instruction
     let mode: "dark" | "light" | "warm_dark" | "obsidian" = "dark";
-    if (lower.includes("light") || lower.includes("cream") || lower.includes("ivory") || lower.includes("white")) {
+    let customBg: string | undefined;
+    let customTextPrimary: string | undefined;
+
+    if (lower.includes("cream") || lower.includes("ivory")) {
       mode = "light";
+      customBg = "#FAF7F2";
+    } else if (lower.includes("light") || lower.includes("white")) {
+      mode = "light";
+      customBg = "#F8FAFC";
     } else if (lower.includes("obsidian")) {
       mode = "obsidian";
+      customBg = "#05070A";
     } else if (lower.includes("warm")) {
       mode = "warm_dark";
+      customBg = "#120E0C";
+    }
+
+    if (lower.includes("dark green text") || (lower.includes("green text") && mode === "light")) {
+      customTextPrimary = "#133E2B";
     }
 
     let brandHue: number | undefined;
@@ -73,11 +115,16 @@ export class ThemeModifier {
       brandHue = 350;
     }
 
-    // 3. Generate new theme specification
+    // 3. Generate new theme specification with mathematical WCAG AA compliance
     const theme = ThemeGenerator.generateTheme({
       domain,
       mode,
       brandHue,
+      colorSystem: (customBg || customTextPrimary) ? {
+        background: customBg,
+        textPrimary: customTextPrimary,
+        surface: mode === "light" ? "#FFFFFF" : undefined,
+      } as any : undefined,
       prompt: instruction,
       seed: Math.floor(Math.random() * 1000) + 1,
     });

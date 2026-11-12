@@ -3,6 +3,7 @@ export interface ValidationStateRecord {
   latestRuntimeSuccess: boolean;
   latestRealityCheckPassed: boolean;
   latestVisualReviewPassed: boolean;
+  visualReviewExecuted: boolean;
   latestSemanticScore: number;
   buildDiagnostics?: string;
   visualObservations: string[];
@@ -16,6 +17,7 @@ export class ValidationStateManager {
     latestRuntimeSuccess: false,
     latestRealityCheckPassed: false,
     latestVisualReviewPassed: false,
+    visualReviewExecuted: false,
     latestSemanticScore: 0,
     visualObservations: [],
     timestamp: new Date().toISOString()
@@ -45,6 +47,7 @@ export class ValidationStateManager {
   }
 
   public recordVisualReview(passed: boolean, observations: string[]): void {
+    this.state.visualReviewExecuted = true;
     this.state.latestVisualReviewPassed = passed;
     this.state.visualObservations = observations;
     this.state.timestamp = new Date().toISOString();
@@ -65,6 +68,7 @@ export class ValidationStateManager {
       latestRuntimeSuccess: false,
       latestRealityCheckPassed: false,
       latestVisualReviewPassed: false,
+      visualReviewExecuted: false,
       latestSemanticScore: 0,
       visualObservations: [],
       timestamp: new Date().toISOString()

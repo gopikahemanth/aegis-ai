@@ -3,7 +3,13 @@ import { AppRoutes } from "./routes";
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div
+      className="min-h-screen bg-background text-foreground"
+      style={{
+        backgroundColor: "var(--color-background)",
+        color: "var(--color-text-primary, var(--color-text))",
+      }}
+    >
       <AppRoutes />
     </div>
   );

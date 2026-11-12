@@ -290,7 +290,20 @@ export class CandidateCompositionSynthesizer {
 
     if (features.length >= 2) return features;
 
-    return ["Interactive Model Stage", "Structural Inspection", "Telemetry & Controls", "Operational Systems"];
+    // Derive features from prompt keywords or domain terms instead of hardcoded generic strings
+    const words = prompt
+      .replace(/[^a-zA-Z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !/^(build|simple|single|page|with|that|this|from|have|will|should|user|make|create|need)$/i.test(w));
+    const titleWords = words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+    const primarySubject = titleWords[0] || "Product";
+
+    return [
+      `${primarySubject} Showcase`,
+      `${primarySubject} Highlights`,
+      `${primarySubject} Gallery`,
+      `${primarySubject} Overview`
+    ];
   }
 
   /**
@@ -324,12 +337,6 @@ export class CandidateCompositionSynthesizer {
     const candidateD = this.buildFocalStageCandidate(semanticProfile, characteristics, ctx);
     const candidateE = this.buildPlaygroundCandidate(semanticProfile, characteristics, ctx);
 
-    if (semanticProfile.entityCategory === "flacon" || semanticProfile.entityCategory === "sneaker") {
-      return [candidateD, candidateB, candidateC, candidateA, candidateE];
-    }
-    if (semanticProfile.entityCategory === "orrery") {
-      return [candidateC, candidateB, candidateD, candidateA, candidateE];
-    }
     return [candidateA, candidateB, candidateC, candidateD, candidateE];
   }
 
@@ -346,7 +353,7 @@ export class CandidateCompositionSynthesizer {
       ? (typeof domainContract.entities[0] === "string" ? domainContract.entities[0] : domainContract.entities[0].name)
       : (characteristics.vocabularyContract?.required?.[0] || "Item");
 
-    const tone = characteristics.emotionalTone.primary || "professional";
+    const tone = characteristics?.emotionalTone?.primary || "professional";
     const pattern = characteristics.experiencePattern || "content-feed";
 
     // Candidate 1: Asymmetric Editorial Monograph
@@ -576,76 +583,25 @@ export class CandidateCompositionSynthesizer {
     capabilityPlan: ExperienceCapabilityPlan
   ) {
     const charAny = characteristics as any;
-    let primarySubject = charAny.coreEntityName ? `${charAny.coreEntityName} spatial environment` : "spatial environment";
-    let focalEntityName = charAny.coreEntityName || "Spatial Stage";
+    const coreNoun = charAny.coreEntityName || "Focal Subject";
+    let primarySubject = `${coreNoun.toLowerCase()} centerpiece`;
+    let focalEntityName = `${coreNoun} Centerpiece`;
     let entityCategory = "structure";
-
-    if (rawPrompt.includes("perfume") || rawPrompt.includes("fragrance") || rawPrompt.includes("scent") || rawPrompt.includes("bottle") || rawPrompt.includes("flacon")) {
-      primarySubject = "sculptural crystal perfume flacon";
-      focalEntityName = "Crystal Perfume Flacon";
-      entityCategory = "flacon";
-    } else if (rawPrompt.includes("sneaker") || rawPrompt.includes("shoe") || rawPrompt.includes("footwear")) {
-      primarySubject = "futuristic athletic sneaker";
-      focalEntityName = "Suspended Sneaker Mesh";
-      entityCategory = "sneaker";
-    } else if (rawPrompt.includes("space") || rawPrompt.includes("astronomy") || rawPrompt.includes("planet") || rawPrompt.includes("orrery") || rawPrompt.includes("cosmos") || rawPrompt.includes("observatory")) {
-      primarySubject = "celestial solar system orrery";
-      focalEntityName = "Solar System Orrery";
-      entityCategory = "orrery";
-    } else if (rawPrompt.includes("kazzoo") || rawPrompt.includes("claymation") || rawPrompt.includes("animated")) {
-      primarySubject = "whimsical 3D animated universe";
-      focalEntityName = "Animated World Stage";
-      entityCategory = "character";
-    } else if (rawPrompt.includes("ocean") || rawPrompt.includes("underwater") || rawPrompt.includes("submersible") || rawPrompt.includes("abyssal") || rawPrompt.includes("thalassa") || rawPrompt.includes("habitat")) {
-      primarySubject = "deep sea underwater architectural habitat";
-      focalEntityName = "Underwater Research Habitat";
-      entityCategory = "specimen";
-    } else if (rawPrompt.includes("watch") || rawPrompt.includes("horology") || rawPrompt.includes("timepiece")) {
-      primarySubject = "artisan mechanical horology caliber";
-      focalEntityName = "Tourbillon Timepiece";
-      entityCategory = "caliber";
-    } else if (rawPrompt.includes("furniture") || rawPrompt.includes("chair") || rawPrompt.includes("sofa") || rawPrompt.includes("interior")) {
-      primarySubject = "architectural modular furniture suite";
-      focalEntityName = "Modular Furniture Centerpiece";
-      entityCategory = "module";
-    } else if (rawPrompt.includes("climate") || rawPrompt.includes("planet") || rawPrompt.includes("earth")) {
-      primarySubject = "planetary atmosphere and orbital systems";
-      focalEntityName = "Planetary Biosphere";
-      entityCategory = "biome";
-    } else if (rawPrompt.includes("music") || rawPrompt.includes("sound") || rawPrompt.includes("chime")) {
-      primarySubject = "tactile acoustic music playground";
-      focalEntityName = "Acoustic Melody Stage";
-      entityCategory = "instrument";
-    }
 
     let environmentDescription = "Tactile ambient lighting with procedural volumetric atmosphere and soft directional illumination";
     let lightingModel = "Warm ambient daylight with soft directional sunlight casting realistic contact shadows";
-    let materialsDescription = "Physically based materials (roughness 0.5, metalness 0.1) with rich contextual surface texturing";
+    let materialsDescription = "Physically based materials (roughness 0.5, metalness 0.2) with rich contextual surface texturing";
 
-    if (rawPrompt.includes("perfume") || rawPrompt.includes("fragrance") || rawPrompt.includes("scent") || rawPrompt.includes("flacon")) {
-      environmentDescription = "Minimal dark studio void with subtle warm rim lighting and floating aromatic dust particles";
-      lightingModel = "Three-point studio lighting with high specular highlights and soft ground shadow plane";
-      materialsDescription = "Physical glass material (transparency 0.9, roughness 0.05, transmission 0.95, IOR 1.52) with liquid inner mesh";
-    } else if (rawPrompt.includes("sneaker") || rawPrompt.includes("shoe")) {
-      environmentDescription = "Dark industrial soundstage with dynamic floor neon reflection grid and volumetric light shafts";
-      lightingModel = "Dual high-contrast rim lights (cyan + electric orange) with soft key fill";
-      materialsDescription = "Procedural carbon fiber weave, translucent air bubble shader, and breathable engineered mesh";
-    } else if (rawPrompt.includes("space") || rawPrompt.includes("astronomy") || rawPrompt.includes("orrery")) {
-      environmentDescription = "Deep space cosmic void with procedural starfield (10,000 points) and subtle chromatic nebula dust";
-      lightingModel = "Omnidirectional sun point light with volumetric corona glow and soft cosmic ambient fill";
-      materialsDescription = "Procedural planet surface shaders and emissive star particles";
-    } else if (rawPrompt.includes("ocean") || rawPrompt.includes("underwater") || rawPrompt.includes("marine") || rawPrompt.includes("thalassa") || rawPrompt.includes("habitat")) {
-      environmentDescription = "Deep oceanic abyssal void with bioluminescent particles and shimmering water caustics";
-      lightingModel = "Submersible dual halogen beam lighting cutting through deep ocean darkness with soft blue backfill";
-      materialsDescription = "Deep ocean water shader, refractive pressure glass, and structural titanium composite";
-    } else if (rawPrompt.includes("watch") || rawPrompt.includes("atelier") || rawPrompt.includes("luxury")) {
-      environmentDescription = "Dark studio void with brushed graphite plinth, warm golden grazing rim light, and floating dust";
-      lightingModel = "Precision chiaroscuro spotlighting with anisotropic highlights on brushed metal bevels and polished anglage";
-      materialsDescription = "Brushed grade-5 titanium, 18k 5N rose gold, anti-reflective sapphire crystal, and vitreous enamel";
-    } else if (rawPrompt.includes("furniture") || rawPrompt.includes("architectural")) {
-      environmentDescription = "Sun-drenched architectural pavilion with natural oak planking and soft daylight diffused through floor-to-ceiling glass";
-      lightingModel = "Natural northern daylight with soft ambient bounce light and gentle ground contact shadows";
-      materialsDescription = "Full-grain aniline leather, oiled solid walnut, brushed champagne brass, and bouclé textile weave";
+    if (/\b(underwater|deep-sea|ocean|marine|subsea|hydrothermal|abyssal|submersible)\b/i.test(rawPrompt)) {
+      primarySubject = "submersible explorer and hydrothermal vent field";
+      focalEntityName = "Hydrothermal Submersible Explorer";
+      lightingModel = "Bioluminescent oceanic lighting with deep-sea particulate scattering and hydrophone glow";
+      environmentDescription = "Abyssal underwater ocean trench with hydrothermal chimneys and bathymetric terrain";
+    } else if (/\b(horolog|tourbillon|watch|caliber|escapement)\b/i.test(rawPrompt)) {
+      primarySubject = "mechanical tourbillon caliber movement";
+      focalEntityName = "Tourbillon Caliber";
+      lightingModel = "Macro studio lighting with specular highlights off beveled bridges and rubies";
+      environmentDescription = "Minimalist atelier viewing pedestal with ambient directional shadows";
     }
 
     const hasCharacters = rawPrompt.includes("character") || rawPrompt.includes("avatar") || rawPrompt.includes("specimen") || rawPrompt.includes("inhabitant");
@@ -683,14 +639,9 @@ export class CandidateCompositionSynthesizer {
     const sections = this.deriveSectionPlan(ctx);
     const scenes = this.deriveScenesPlan(profile, sections);
     const primarySection = sections[0];
+    const focalSubject = profile.focalEntityName || profile.primarySubject || (primarySection ? extractFeatureNoun(primarySection.name) : "Focal Subject");
     const experienceIntent = `Immersive 3D ${profile.primarySubject} with interactive spatial exploration, real-time telemetry, and module inspection`;
-    const focalElement = profile.entityCategory === "caliber"
-      ? "Hand-finished tourbillon timepiece in grade-5 titanium and 18k rose gold with interactive 360-degree rotation"
-      : profile.entityCategory === "specimen"
-      ? "Abyssal research habitat with structural modules, cutaway viewing planes, and volumetric lighting"
-      : profile.entityCategory === "module"
-      ? "Architectural modular seating centerpiece with customizable tactile materials and proportions"
-      : `Interactive 3D ${primarySection ? extractFeatureNoun(primarySection.name) : profile.primarySubject} stage with volumetric atmosphere and status beacons`;
+    const focalElement = `Interactive 3D ${focalSubject} stage with volumetric atmosphere, interactive spatial exploration, and status beacons`;
 
     const navigationModel = "immersive-hud" as any;
     const layoutTopology: LayoutTopologyType = "PLAYFUL_WORKSPACE";
@@ -698,13 +649,7 @@ export class CandidateCompositionSynthesizer {
 
     const spatialPlan: SpatialPlan = {
       sceneType: "WORLD_EXPLORATION",
-      focalObject: profile.entityCategory === "caliber"
-        ? "Artisan tourbillon watch with sapphire crystal, grand feu enamel dial, and exhibition caseback"
-        : profile.entityCategory === "specimen"
-        ? "Deep sea abyssal research submersible and habitat facility with pressurized marine modules, external manipulator arrays, and telemetry sensors"
-        : profile.entityCategory === "module"
-        ? "Modular architectural furniture suite in daylight interior pavilion"
-        : `Floating 3D island terrain stage with tactile contours, landmark beacons, and responsive inspection points`,
+      focalObject: `Procedural 3D ${focalSubject} stage with tactile contours, landmark beacons, and responsive inspection points`,
       sceneEnvironment: profile.environmentDescription,
       cameraStrategy: "Gentle smooth orbit camera with responsive landmark focusing on user click",
       lightingModel: profile.lightingModel,
@@ -779,13 +724,8 @@ export class CandidateCompositionSynthesizer {
     const primarySection = sections[0];
 
     const experienceIntent = `Cinematic 3D ${profile.primarySubject} scroll journey through interactive systems, focal viewpoints, and atmospheric audio`;
-    const focalElement = profile.entityCategory === "caliber"
-      ? "Cinematic slow-orbit tourbillon centerpiece with macro focal transitions across dial indices"
-      : profile.entityCategory === "specimen"
-      ? "Submersible architectural descent journey tracking pressure hulls and internal decks"
-      : profile.entityCategory === "module"
-      ? "Architectural furniture craft journey following joinery, material selection, and final hand finishing"
-      : `Panoramic 3D cinematic ${primarySection ? extractFeatureNoun(primarySection.name) : profile.primarySubject} with volumetric atmosphere and milestone waypoints`;
+    const focalSubject = profile.focalEntityName || profile.primarySubject || (primarySection ? extractFeatureNoun(primarySection.name) : "Focal Subject");
+    const focalElement = `Panoramic 3D cinematic ${focalSubject} with volumetric atmosphere and milestone waypoints`;
 
     const navigationModel: NavigationModel = "floating_pills";
     const layoutTopology: LayoutTopologyType = "PORTAL_HERO_SHOWCASE";
@@ -793,13 +733,7 @@ export class CandidateCompositionSynthesizer {
 
     const spatialPlan: SpatialPlan = {
       sceneType: "NARRATIVE_JOURNEY",
-      focalObject: profile.entityCategory === "caliber"
-        ? "Artisan tourbillon watch with sapphire crystal, grand feu enamel dial, and exhibition caseback"
-        : profile.entityCategory === "specimen"
-        ? "Descending research habitat complex traversing benthic marine zones and deep hydrothermal plumes"
-        : profile.entityCategory === "module"
-        ? "Handcrafted solid walnut joinery framework with bespoke leather upholstery layers"
-        : `Contoured structural terrain stage with interactive landmark inspection nodes and environmental sensors`,
+      focalObject: `Contoured structural ${focalSubject} stage with interactive landmark inspection nodes and environmental sensors`,
       sceneEnvironment: profile.environmentDescription,
       cameraStrategy: "Cinematic scroll-linked dolly camera gliding along architectural terrain pass",
       lightingModel: profile.lightingModel,
@@ -864,73 +798,25 @@ export class CandidateCompositionSynthesizer {
     ctx: SectionPlanContext
   ): CandidateExperienceArchitecture {
     const baseSections = this.deriveSectionPlan(ctx);
-    const sections: CompositionSection[] = profile.entityCategory === "orrery"
-      ? [
-          {
-            id: "sec_orrery",
-            order: 1,
-            name: "Cosmic Orrery Stage",
-            focalElement: "Full-bleed 3D solar system canvas with orbital ring compass",
-            layoutFamily: "IMMERSIVE_WORLD",
-            gridStructure: "canvas-fullbleed",
-            contentPurpose: "Interactive planetary exploration and orbital navigation",
-            primaryAction: { label: "Focus Inner Planets", action: "focus_planets" },
-            secondaryElements: ["Spacecraft tracker", "Live celestial clock"],
-          },
-          {
-            id: "sec_telemetry",
-            order: 2,
-            name: "Planetary Telemetry & Surface Diagnostics",
-            focalElement: "Spatial planet inspection HUD with atmospheric density charts",
-            layoutFamily: "CONSOLE",
-            gridStructure: "split-3d-text",
-            contentPurpose: "Examine geological composition, atmosphere, and surface probes",
-            secondaryElements: ["Probe mission log", "Spectroscopy readings"],
-          },
-          {
-            id: "sec_booking",
-            order: 3,
-            name: "Observatory Telescope Reservation",
-            focalElement: "Observation session schedule and dome booking form",
-            layoutFamily: "FORM_CENTRIC",
-            gridStructure: "split-form-schedule",
-            contentPurpose: "Reserve viewing time with resident astrophysicists",
-            primaryAction: { label: "Reserve Observation Slot", action: "open_reservation" },
-            secondaryElements: ["Telescope specs", "Sky condition forecast"],
-          },
-        ]
-      : baseSections.map((s, idx) => ({
-          ...s,
-          layoutFamily: idx === 0 ? "IMMERSIVE_WORLD" : idx === 1 ? "SPLIT_SHOWCASE" : idx === 2 ? "EDITORIAL" : "CONSOLE",
-          gridStructure: idx === 0 ? "canvas-fullbleed" : idx === 1 ? "split-6-6" : idx === 2 ? "split-3d-text" : "dock-panel",
-        }));
+    const sections: CompositionSection[] = baseSections.map((s, idx) => ({
+      ...s,
+      layoutFamily: idx === 0 ? "IMMERSIVE_WORLD" : idx === 1 ? "SPLIT_SHOWCASE" : idx === 2 ? "EDITORIAL" : "CONSOLE",
+      gridStructure: idx === 0 ? "canvas-fullbleed" : idx === 1 ? "split-6-6" : idx === 2 ? "split-3d-text" : "dock-panel",
+    }));
     const scenes = this.deriveScenesPlan(profile, sections);
     const primarySection = sections[0];
 
     const experienceIntent = `Spatial cartography & landmark atlas with 3D terrain topography, system waypoints, and telemetry nodes`;
-    const focalElement = profile.entityCategory === "caliber"
-      ? "Exploded caliber complication matrix with separated balance wheel, tourbillon cage, and bridges"
-      : profile.entityCategory === "specimen"
-      ? "Bathymetric ocean floor relief model with coordinates of research modules and abyssal cutaways"
-      : profile.entityCategory === "module"
-      ? "Architectural spatial matrix and blueprint layout with modular component specifications"
-      : `Interactive 3D topological atlas map with active system landmarks and animated waypoint trails`;
+    const focalSubject = profile.focalEntityName || profile.primarySubject || (primarySection ? extractFeatureNoun(primarySection.name) : "Topological Atlas");
+    const focalElement = `Interactive 3D topological atlas map for ${focalSubject} with active system landmarks and animated waypoint trails`;
 
-    const navigationModel: NavigationModel = profile.entityCategory === "orrery" ? ("orbital-ring-compass" as any) : "floating_pills";
+    const navigationModel: NavigationModel = "floating_pills";
     const layoutTopology: LayoutTopologyType = "ASYMMETRIC_SPLIT_PANE";
     const cardDensityRatio = 0.07;
 
     const spatialPlan: SpatialPlan = {
       sceneType: "SPATIAL_EXHIBITION",
-      focalObject: profile.entityCategory === "caliber"
-        ? "Exploded caliber complication assembly of manufacture movement with floating tourbillon components"
-        : profile.entityCategory === "specimen"
-        ? "Bathymetric ocean floor relief model with coordinates of research modules and deep trench cutaways"
-        : profile.entityCategory === "module"
-        ? "Architectural floorplan spatial matrix with configurable furniture modules"
-        : profile.entityCategory === "orrery"
-        ? "Full scale 3D procedural Solar system orrery with central sun, orbiting textured planets, and asteroid belt"
-        : `Topological relief model stage with system node markers, module coordinates, and telemetry landmark beacons`,
+      focalObject: `Topological relief model stage for ${focalSubject} with system node markers, module coordinates, and telemetry landmark beacons`,
       sceneEnvironment: profile.environmentDescription,
       cameraStrategy: "Topological spatial atlas view with bird's-eye panning and telemetry pin focusing",
       lightingModel: profile.lightingModel,
@@ -998,36 +884,16 @@ export class CandidateCompositionSynthesizer {
     const primarySection = baseSections[0];
 
     const experienceIntent = `Focused 3D spotlight and inspection stage with rotatable model plinth, audio feedback, and system status`;
-    const focalElement = profile.entityCategory === "caliber"
-      ? "Hand-finished tourbillon timepiece in grade-5 titanium and 18k rose gold with interactive 360-degree rotation"
-      : profile.entityCategory === "specimen"
-      ? "3D deep sea habitat specimen turntable with interior cutaway callouts and volumetric lighting"
-      : profile.entityCategory === "module"
-      ? "3D architectural lounge chair with rotatable plinth and customizable leather materials"
-      : `Large 3D focal inspection plinth with animated model display and contextual controls`;
+    const focalSubject = profile.focalEntityName || profile.primarySubject || (primarySection ? extractFeatureNoun(primarySection.name) : "Focal Feature");
+    const focalElement = `Large 3D focal inspection plinth for ${focalSubject} with animated model display and contextual controls`;
 
     let navigationModel: NavigationModel = "bottom_dock";
-    if (profile.entityCategory === "flacon") {
-      navigationModel = "minimal-floating-wordmark" as any;
-    } else if (profile.entityCategory === "sneaker") {
-      navigationModel = "kinetic-corner-hud" as any;
-    }
-    const layoutTopology: LayoutTopologyType = profile.entityCategory === "flacon" ? "PORTAL_HERO_SHOWCASE" : "SPLIT_SCREEN_WORKSPACE";
+    const layoutTopology: LayoutTopologyType = "SPLIT_SCREEN_WORKSPACE";
     const cardDensityRatio = 0.05;
 
     const spatialPlan: SpatialPlan = {
-      sceneType: profile.entityCategory === "flacon" ? "PRODUCT_REVEAL" : "PRODUCT_STAGE",
-      focalObject: profile.entityCategory === "flacon"
-        ? "Bespoke geometric glass flacon with inner golden fragrance liquid and brushed brass cap"
-        : profile.entityCategory === "sneaker"
-        ? "Futuristic athletic sneaker suspended in air with separated upper, carbon plate, and foam sole"
-        : profile.entityCategory === "caliber"
-        ? "Artisan tourbillon watch on rotating graphite plinth with exhibition caseback and macro inspection"
-        : profile.entityCategory === "specimen"
-        ? "Deep sea research module specimen on floating acoustic observation turntable"
-        : profile.entityCategory === "module"
-        ? "Sculptural lounge chair on rotating architectural plinth with real-time textile swatches"
-        : `Tactile 3D model on rotating pedestal stage with responsive controls`,
+      sceneType: "PRODUCT_STAGE",
+      focalObject: `Tactile 3D ${focalSubject} model on rotating pedestal stage with responsive controls`,
       sceneEnvironment: profile.environmentDescription,
       cameraStrategy: "Pedestal model turntable with close-up inspection and gesture tracking",
       lightingModel: profile.lightingModel,
@@ -1039,77 +905,7 @@ export class CandidateCompositionSynthesizer {
       interactionTopology: "direct_mesh_manipulation",
     };
 
-    let sections: CompositionSection[] = profile.entityCategory === "flacon"
-      ? [
-          {
-            id: "sec_hero",
-            order: 1,
-            name: "Flacon Stage & Scent Monograph",
-            focalElement: "Full-bleed 3D perfume bottle canvas with minimal editorial title",
-            layoutFamily: "IMMERSIVE_WORLD",
-            gridStructure: "canvas-fullbleed",
-            contentPurpose: "Sculptural introduction to the signature fragrance",
-            primaryAction: { label: "Explore Scent Pyramid", action: "scroll_to_notes" },
-            secondaryElements: ["Edition number", "Grasse provenance badge", "Audio fragrance tone"],
-          },
-          {
-            id: "sec_pyramid",
-            order: 2,
-            name: "Olfactory Architecture",
-            focalElement: "Interactive 3D note spheres floating in atmospheric ring",
-            layoutFamily: "EDITORIAL",
-            gridStructure: "split-3d-text",
-            contentPurpose: "Discover top, heart, and base notes with ingredient origins",
-            secondaryElements: ["Botanical monographs", "Extraction timeline"],
-          },
-          {
-            id: "sec_engraving",
-            order: 3,
-            name: "Bespoke Acquisition",
-            focalElement: "Interactive bottle customizer with live typography engraving preview",
-            layoutFamily: "FORM_CENTRIC",
-            gridStructure: "split-customizer",
-            contentPurpose: "Personalized bottle engraving and acquisition checkout",
-            primaryAction: { label: "Acquire Numbered Edition", action: "open_acquisition" },
-            secondaryElements: ["Engraving font options", "Complimentary sample vial"],
-          },
-        ]
-      : profile.entityCategory === "sneaker"
-      ? [
-          {
-            id: "sec_hero",
-            order: 1,
-            name: "Kinetic Sneaker Stage",
-            focalElement: "Full 3D sneaker canvas with live 360 orbit and explosive anatomy toggle",
-            layoutFamily: "IMMERSIVE_WORLD",
-            gridStructure: "canvas-fullbleed",
-            contentPurpose: "Immersive hero experience and product inspection",
-            primaryAction: { label: "Explode Technical Anatomy", action: "explode_parts" },
-            secondaryElements: ["Drop countdown", "Weight specification", "Carbon plate badge"],
-          },
-          {
-            id: "sec_lab",
-            order: 2,
-            name: "Material & Colorway Laboratory",
-            focalElement: "Colorway selector dock updating 3D sneaker materials in real-time",
-            layoutFamily: "FORM_CENTRIC",
-            gridStructure: "dock-overlay",
-            contentPurpose: "Customize shoe upper, laces, and sole colors",
-            secondaryElements: ["Material description", "Traction rating"],
-          },
-          {
-            id: "sec_drop",
-            order: 3,
-            name: "Drop Intake & Size Reservation",
-            focalElement: "Interactive size grid and quick-checkout trigger",
-            layoutFamily: "FORM_CENTRIC",
-            gridStructure: "centered-action",
-            contentPurpose: "Lock in shoe size and preorder allotment",
-            primaryAction: { label: "Pre-order Drop", action: "open_checkout" },
-            secondaryElements: ["Size guide", "Worldwide shipping estimate"],
-          },
-        ]
-      : baseSections;
+    let sections: CompositionSection[] = baseSections;
 
     const scenes = this.deriveScenesPlan(profile, sections);
 
@@ -1175,13 +971,8 @@ export class CandidateCompositionSynthesizer {
     const primarySection = sections[0];
 
     const experienceIntent = `Dynamic living simulation workspace with interactive physics, acoustic console, and operational metrics`;
-    const focalElement = profile.entityCategory === "caliber"
-      ? "Interactive horological workbench with escapement speed regulator and complication simulator"
-      : profile.entityCategory === "specimen"
-      ? "Submersible sonar acoustic console with hydrophone frequency mixer and pressure chamber simulator"
-      : profile.entityCategory === "module"
-      ? "Interactive 3D interior layout sandbox with drag-and-drop modular furniture pieces"
-      : `Interactive simulation sandbox with physics objects, telemetry totems, and atmospheric lighting`;
+    const focalSubject = profile.focalEntityName || profile.primarySubject || (primarySection ? extractFeatureNoun(primarySection.name) : "Simulation Model");
+    const focalElement = `Interactive simulation sandbox for ${focalSubject} with physics objects, telemetry totems, and atmospheric lighting`;
 
     const navigationModel: NavigationModel = "bottom_dock";
     const layoutTopology: LayoutTopologyType = "PLAYFUL_WORKSPACE";
@@ -1189,13 +980,7 @@ export class CandidateCompositionSynthesizer {
 
     const spatialPlan: SpatialPlan = {
       sceneType: "WORLD_EXPLORATION",
-      focalObject: profile.entityCategory === "caliber"
-        ? "Artisan tourbillon caliber calibration laboratory with live regulation controls"
-        : profile.entityCategory === "specimen"
-        ? "Submersible acoustic observation basin with interactive hydrophone sensors"
-        : profile.entityCategory === "module"
-        ? "Interactive architectural space planner with responsive daylight and furniture swatches"
-        : `Interactive simulation basin with physical entities, telemetry sensors, and acoustic resonance`,
+      focalObject: `Interactive simulation basin for ${focalSubject} with physical entities, telemetry sensors, and acoustic resonance`,
       sceneEnvironment: profile.environmentDescription,
       cameraStrategy: "Interactive tilt-and-pan camera with responsive physics interactions",
       lightingModel: profile.lightingModel,

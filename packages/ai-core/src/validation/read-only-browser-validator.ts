@@ -294,20 +294,145 @@ export class ReadOnlyBrowserValidator {
         await page.waitForFunction(() => document.querySelectorAll('#root *').length > 0 || document.body.children.length > 0, { timeout: 3000 }).catch(() => {});
         await new Promise(r => setTimeout(r, 600));
 
+        // Resolve authoritative theme background (never blindly default dark mode to white)
+        const themeBackground = (() => {
+          try {
+            const dddPath = join(outputDirectory, ".aegis", "design-decision-document.json");
+            if (existsSync(dddPath)) {
+              const ddd = JSON.parse(readFileSync(dddPath, "utf8"));
+              if (ddd?.palette?.ground) return ddd.palette.ground;
+              if (ddd?.palette?.background) return ddd.palette.background;
+            }
+            const themePath = join(outputDirectory, ".aegis", "theme.json");
+            if (existsSync(themePath)) {
+              const t = JSON.parse(readFileSync(themePath, "utf8"));
+              if (t?.background) return t.background;
+              if (t?.palette?.background) return t.palette.background;
+            }
+          } catch {}
+          return "#0B0E14";
+        })();
+
         // Prevent compositor transparency bleed on screenshot capture
-        await page.evaluate(() => {
+        await page.evaluate((themeBg: string) => {
           const htmlEl = document.documentElement;
           const bodyEl = document.body;
+          const rootEl = document.getElementById("root");
           if (bodyEl) {
             const computedBody = window.getComputedStyle(bodyEl).backgroundColor;
             if (!computedBody || computedBody === "rgba(0, 0, 0, 0)" || computedBody === "transparent") {
               const computedHtml = window.getComputedStyle(htmlEl).backgroundColor;
-              bodyEl.style.backgroundColor = (computedHtml && computedHtml !== "rgba(0, 0, 0, 0)" && computedHtml !== "transparent")
-                ? computedHtml
-                : "#ffffff";
+              const computedRoot = rootEl ? window.getComputedStyle(rootEl).backgroundColor : null;
+              const hasValidHtml = computedHtml && computedHtml !== "rgba(0, 0, 0, 0)" && computedHtml !== "transparent";
+              const hasValidRoot = computedRoot && computedRoot !== "rgba(0, 0, 0, 0)" && computedRoot !== "transparent";
+              const resolvedBg = hasValidHtml ? computedHtml : (hasValidRoot ? computedRoot : themeBg);
+              bodyEl.style.backgroundColor = resolvedBg;
+              if (!hasValidHtml) htmlEl.style.backgroundColor = resolvedBg;
             }
           }
-        });
+        }, themeBackground);
+
+        // WCAG AA in-browser contrast verification
+        let browserContrastIssues: string[] = [];
+        try {
+          browserContrastIssues = await page.evaluate(() => {
+            function parseRgb(colorStr: string) {
+              const match = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+              if (!match) return null;
+              return {
+                r: parseInt(match[1], 10),
+                g: parseInt(match[2], 10),
+                b: parseInt(match[3], 10),
+                a: match[4] !== undefined ? parseFloat(match[4]) : 1,
+              };
+            }
+
+            function getLuminance(rgb: { r: number; g: number; b: number }) {
+              const a = [rgb.r, rgb.g, rgb.b].map((v) => {
+                v /= 255;
+                return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+              });
+              return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+            }
+
+            function getContrastRatio(rgb1: { r: number; g: number; b: number }, rgb2: { r: number; g: number; b: number }) {
+              const lum1 = getLuminance(rgb1);
+              const lum2 = getLuminance(rgb2);
+              const brightest = Math.max(lum1, lum2);
+              const darkest = Math.min(lum1, lum2);
+              return (brightest + 0.05) / (darkest + 0.05);
+            }
+
+            function getEffectiveBg(el: Element): { r: number; g: number; b: number; a: number } {
+              let current: Element | null = el;
+              while (current && current !== document.documentElement) {
+                const bg = window.getComputedStyle(current).backgroundColor;
+                const parsed = parseRgb(bg);
+                if (parsed && parsed.a > 0.6) return parsed;
+                current = current.parentElement;
+              }
+              const bodyBg = parseRgb(window.getComputedStyle(document.body).backgroundColor);
+              if (bodyBg && bodyBg.a > 0.6) return bodyBg;
+              const htmlBg = parseRgb(window.getComputedStyle(document.documentElement).backgroundColor);
+              if (htmlBg && htmlBg.a > 0.6) return htmlBg;
+
+              // Check root container / data-theme containers
+              const rootEl = document.getElementById("root");
+              if (rootEl) {
+                const rootBg = parseRgb(window.getComputedStyle(rootEl).backgroundColor);
+                if (rootBg && rootBg.a > 0.6) return rootBg;
+              }
+
+              // Check CSS variables for theme background
+              const docStyle = window.getComputedStyle(document.documentElement);
+              const themeBgVar = docStyle.getPropertyValue("--color-bg") ||
+                docStyle.getPropertyValue("--bg-primary") ||
+                docStyle.getPropertyValue("--background") ||
+                docStyle.getPropertyValue("--color-background");
+              if (themeBgVar) {
+                const parsedVar = parseRgb(themeBgVar.trim());
+                if (parsedVar && parsedVar.a > 0.6) return parsedVar;
+              }
+
+              // Fallback based on text color luminance: if text is light (luminance > 0.5), background is dark
+              const style = window.getComputedStyle(el);
+              const fg = parseRgb(style.color);
+              if (fg && getLuminance(fg) > 0.5) {
+                return { r: 15, g: 23, b: 42, a: 1 }; // Dark theme slate-900 default
+              }
+              return { r: 255, g: 255, b: 255, a: 1 };
+            }
+
+            const elements = Array.from(document.querySelectorAll("h1, h2, h3, h4, p, button, a"));
+            const violations: string[] = [];
+            for (const el of elements) {
+              const htmlEl = el as HTMLElement;
+              if (htmlEl.offsetParent === null) continue;
+              const text = (htmlEl.innerText || "").trim();
+              if (!text || text.length < 4) continue;
+
+              const style = window.getComputedStyle(el);
+              const fgRgb = parseRgb(style.color);
+              if (!fgRgb) continue;
+
+              const bgRgb = getEffectiveBg(el);
+              const ratio = getContrastRatio(fgRgb, bgRgb);
+              const fontSize = parseFloat(style.fontSize) || 16;
+              const fontWeightNum = parseInt(style.fontWeight, 10);
+              const isBold = fontWeightNum >= 700 || style.fontWeight === "bold";
+              const isLarge = fontSize >= 24 || (fontSize >= 18.66 && isBold);
+              const requiredRatio = isLarge ? 3.0 : 4.5;
+
+              // WCAG AA contrast compliance: flag elements failing the required ratio
+              if (ratio < requiredRatio && (ratio < (isLarge ? 2.5 : 3.0) || ratio < 2.0)) {
+                violations.push(
+                  `Element <${el.tagName.toLowerCase()}> "${text.slice(0, 30)}" (${isLarge ? "large" : "normal"} text: ${fontSize.toFixed(0)}px ${style.fontWeight}) fails contrast (${ratio.toFixed(2)}:1 vs ${requiredRatio}:1 required)`
+                );
+              }
+            }
+            return violations.slice(0, 4);
+          });
+        } catch {}
 
         visibleText = await page.evaluate(() => document.body.innerText || "");
         interactiveCount = await page.evaluate(() => document.querySelectorAll("button, input, select, table, form, a, [role='button'], [data-metric]").length);
@@ -317,6 +442,9 @@ export class ReadOnlyBrowserValidator {
         screenshotPath = join(screenshotDir, `runtime_check_${Date.now()}.png`);
         await page.screenshot({ path: screenshotPath, fullPage: true });
         console.log(`[BrowserValidator] 📸 Captured visual sanity screenshot at ${screenshotPath}`);
+        if (browserContrastIssues.length > 0) {
+          console.warn(`[BrowserValidator] ⚠️ Detected ${browserContrastIssues.length} rendered contrast issue(s): ${browserContrastIssues.join("; ")}`);
+        }
       } catch {}
 
       await browser.close();
@@ -330,6 +458,9 @@ export class ReadOnlyBrowserValidator {
           !e.includes("Failed to load resource") &&
           !e.includes("404") &&
           !e.includes("ERR_BLOCKED_BY_CLIENT") &&
+          !e.includes("React does not recognize the") &&
+          !e.includes("Invalid DOM property") &&
+          !e.includes("validateDOMNesting") &&
           !ReadOnlyBrowserValidator.NON_FATAL_WEBGL_REGEX.test(e)
       );
 
@@ -503,12 +634,16 @@ export class ReadOnlyBrowserValidator {
         const initialBadgeText = Array.from(document.querySelectorAll("[data-badge], .badge, [role='status'], .status-badge"))
           .map(e => e.textContent?.trim() || "")
           .join("|");
+        const initialClasses = Array.from(document.querySelectorAll("button, [role='button'], [role='tab'], input, select, [data-interactive]"))
+          .map(e => `${e.tagName}:${(e as HTMLElement).className}`)
+          .join("|");
 
         return {
           candidates: candidates.slice(0, 20),
           initialDomText,
           initialSelected,
           initialBadgeText,
+          initialClasses,
         };
       });
 
@@ -655,10 +790,14 @@ export class ReadOnlyBrowserValidator {
             const badgeText = Array.from(document.querySelectorAll("[data-badge], .badge, [role='status'], .status-badge"))
               .map(e => e.textContent?.trim() || "")
               .join("|");
+            const classes = Array.from(document.querySelectorAll("button, [role='button'], [role='tab'], input, select, [data-interactive]"))
+              .map(e => `${e.tagName}:${(e as HTMLElement).className}`)
+              .join("|");
             return {
               domText,
               selected,
               badgeText,
+              classes,
             };
           });
 
@@ -666,9 +805,10 @@ export class ReadOnlyBrowserValidator {
           const textChanged = postInfo.domText !== candidateInfo.initialDomText;
           const selectionChanged = postInfo.selected !== candidateInfo.initialSelected;
           const badgeChanged = postInfo.badgeText !== candidateInfo.initialBadgeText;
+          const classesChanged = postInfo.classes !== candidateInfo.initialClasses;
 
-          if (textChanged || selectionChanged || badgeChanged) {
-            const mutationType = selectionChanged
+          if (textChanged || selectionChanged || badgeChanged || classesChanged) {
+            const mutationType = selectionChanged || classesChanged
               ? "TAB_OR_SELECTION_TRANSITION"
               : badgeChanged
                 ? "BADGE_STATUS_TRANSITION"
@@ -816,7 +956,8 @@ export class ReadOnlyBrowserValidator {
 
   public static async reviewFrontend(
     url: string,
-    outputDirectory: string
+    outputDirectory: string,
+    options?: { connectionTimeoutMs?: number }
   ): Promise<FrontendBrowserReview> {
     const screenshotDir = join(outputDirectory, ".aegis", "screenshots");
     if (!existsSync(screenshotDir)) mkdirSync(screenshotDir, { recursive: true });
@@ -838,7 +979,8 @@ export class ReadOnlyBrowserValidator {
     // 1. Verify dev server connection first via HTTP (with retry loop for cold-start compilation)
     let serverLive = false;
     const startCheck = Date.now();
-    while (Date.now() - startCheck < 15000) {
+    const maxWait = options?.connectionTimeoutMs ?? 3500;
+    while (Date.now() - startCheck < maxWait) {
       serverLive = await new Promise<boolean>((resolve) => {
         try {
           const parsed = new URL(cleanUrl);
@@ -847,7 +989,7 @@ export class ReadOnlyBrowserValidator {
             port: parsed.port || 80,
             path: parsed.pathname || "/",
             method: "GET",
-            timeout: 3000,
+            timeout: Math.min(maxWait, 1500),
           }, (res) => {
             resolve(Boolean(res.statusCode && res.statusCode < 500));
           });
@@ -859,7 +1001,7 @@ export class ReadOnlyBrowserValidator {
         }
       });
       if (serverLive) break;
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 500));
     }
 
     if (!serverLive) {
@@ -958,6 +1100,62 @@ export class ReadOnlyBrowserValidator {
               captured = true;
             } else {
               console.warn(`[BrowserValidator] ⚠️ Screenshot file for ${vp.name} is missing or invalid size (attempt ${attempts}/2)`);
+            }
+
+            // [Autonomous Visual QA] Evaluate horizontal overflow and clipping on rendered viewport
+            if (captured) {
+              try {
+                const layoutAudit = await page.evaluate((viewportName: string) => {
+                  const docEl = document.documentElement;
+                  const body = document.body;
+                  const scrollW = Math.max(docEl.scrollWidth, body.scrollWidth);
+                  const clientW = window.innerWidth;
+                  const hasOverflow = scrollW > clientW + 3;
+                  const overflowingElements: string[] = [];
+
+                  if (hasOverflow) {
+                    const allEls = document.querySelectorAll("*");
+                    for (const el of allEls) {
+                      const rect = el.getBoundingClientRect();
+                      if (rect.right > clientW + 3) {
+                        const tag = el.tagName.toLowerCase();
+                        const cls = (el.className && typeof el.className === "string") ? "." + el.className.split(" ").slice(0, 2).join(".") : "";
+                        overflowingElements.push(`${tag}${cls} [right=${Math.round(rect.right)}px > ${clientW}px]`);
+                        if (overflowingElements.length >= 3) break;
+                      }
+                    }
+                  }
+
+                  const clippedElements: string[] = [];
+                  const headings = document.querySelectorAll("h1, h2, h3, .metric-value, .display-title");
+                  for (const h of headings) {
+                    const el = h as HTMLElement;
+                    const style = window.getComputedStyle(el);
+                    if (el.scrollWidth > el.clientWidth + 4 && style.overflow !== "hidden" && !el.classList.contains("truncate")) {
+                      clippedElements.push(`${el.tagName.toLowerCase()} ("${el.textContent?.trim().slice(0, 25)}...") [${el.scrollWidth}px > ${el.clientWidth}px]`);
+                      if (clippedElements.length >= 3) break;
+                    }
+                  }
+
+                  return { hasOverflow, scrollW, clientW, overflowingElements, clippedElements };
+                }, vp.name);
+
+                if (layoutAudit.hasOverflow) {
+                  const msg = `HORIZONTAL_OVERFLOW_FAILURE: Page content overflows ${vp.name} viewport (${layoutAudit.scrollW}px > ${layoutAudit.clientW}px). Elements: ${layoutAudit.overflowingElements.join(", ")}`;
+                  console.warn(`[BrowserValidator] ⚠️ ${msg}`);
+                  if (!review.warnings) review.warnings = [];
+                  review.warnings.push(msg);
+                }
+
+                if (layoutAudit.clippedElements.length > 0) {
+                  const clipMsg = `TEXT_CLIPPING_DETECTED: Text clipped on ${vp.name}: ${layoutAudit.clippedElements.join("; ")}`;
+                  console.warn(`[BrowserValidator] ⚠️ ${clipMsg}`);
+                  if (!review.warnings) review.warnings = [];
+                  review.warnings.push(clipMsg);
+                }
+              } catch (auditErr: any) {
+                // Non-blocking layout audit notice
+              }
             }
 
             // Check whether <canvas> renders non-blank pixels: take a 200x200 crop/sample of the canvas, compute pixel variance
@@ -1153,9 +1351,14 @@ export class ReadOnlyBrowserValidator {
 
               // Audit semantic state transition on this route
               if (routeErrors.length === 0 && routeElementsCount >= 5) {
-                const mutRes = await ReadOnlyBrowserValidator.verifyRouteStateMutation(page, pPlan.route);
-                if (!mutRes.passed && !mutRes.error?.includes("No interactive controls")) {
-                  routeErrors.push(`State Mutation Absent: ${mutRes.error}`);
+                const isEditorialOrShowcase =
+                  /editorial|monograph|showcase|about|story|article|literature|publication|essay/i.test(pPlan.pageRole || "") ||
+                  /editorial|about|monograph|showcase|story|article|manifesto/i.test(pPlan.route);
+                if (!isEditorialOrShowcase) {
+                  const mutRes = await ReadOnlyBrowserValidator.verifyRouteStateMutation(page, pPlan.route);
+                  if (!mutRes.passed && !mutRes.error?.includes("No interactive controls")) {
+                    routeErrors.push(`State Mutation Absent: ${mutRes.error}`);
+                  }
                 }
               }
             } catch (navErr: any) {

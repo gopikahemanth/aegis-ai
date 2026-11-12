@@ -3,7 +3,6 @@ import { join, relative, resolve, dirname, basename } from "node:path";
 import { execSync, spawn } from "node:child_process";
 import { isLikelySyntacticallyComplete } from "../utils/syntax-validator.js";
 import { SpecificationNormalizer } from "../spec/canonical-spec.js";
-import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-generator.js";
 import { FastDeterministicSanitizer } from "../governance/fast-sanitizer.js";
 import { DomainContaminationDetector } from "../governance/domain-contamination-detector.js";
 import { ArchitectureResolver } from "../governance/architecture-resolver.js";
@@ -61,9 +60,9 @@ export class ProjectStartupAgent {
     const canonicalFilePatches = this.ensureRequiredCanonicalFiles(outputDirectory);
     patches.push(...canonicalFilePatches);
 
-    // Ensure .npmrc overrides pnpm minimum-release-age policy and approves build scripts
+    // Ensure .npmrc approves build scripts cleanly without non-standard npm warnings
     const npmrcPath = join(outputDirectory, ".npmrc");
-    const npmrcContent = "confirm-modules-purge=false\nconfirmModulesPurge=false\nminimum-release-age=0\nminimumReleaseAge=0\nverify-deps-before-run=false\nignore-scripts=false\nonly-built-dependencies[]=@prisma/client\nonly-built-dependencies[]=@prisma/engines\nonly-built-dependencies[]=prisma\nonly-built-dependencies[]=esbuild\nonly-built-dependencies[]=core-js\nonly-built-dependencies[]=bcryptjs\n";
+    const npmrcContent = "ignore-scripts=false\n";
     writeFileSync(npmrcPath, npmrcContent, "utf8");
 
     // ── 2. Patch or Create package.json ──────────────────────────────────────
@@ -251,11 +250,26 @@ export class ProjectStartupAgent {
   // ── Framework Detection ────────────────────────────────────────────────────
 
   private detectFramework(dir: string): string {
-    // Presence of .tsx files strongly implies React
+    // 0. Check locked architecture contract if available
+    const contract = ArchitectureResolver.loadContract(dir);
+    if (contract?.frontend?.framework) {
+      const fw = contract.frontend.framework.toLowerCase();
+      if (fw.includes("vue")) return "vue";
+      if (fw.includes("svelte")) return "svelte";
+      if (fw.includes("angular")) return "angular";
+      if (fw.includes("next")) return "next";
+      if (fw.includes("html") || fw.includes("vanilla")) return "html";
+      if (fw.includes("react") || fw.includes("vite")) return "react-vite";
+    }
+
+    // Check for framework specific file types
     const srcDir = join(dir, "src");
     if (existsSync(srcDir)) {
       try {
         const files = this.walkFiles(srcDir, 2);
+        if (files.some(f => f.endsWith(".vue"))) return "vue";
+        if (files.some(f => f.endsWith(".svelte"))) return "svelte";
+        if (files.some(f => f.endsWith(".component.ts"))) return "angular";
         const hasTsx = files.some(f => f.endsWith(".tsx") || f.endsWith(".jsx"));
         if (hasTsx) return "react-vite";
       } catch { /* ignore */ }
@@ -267,6 +281,9 @@ export class ProjectStartupAgent {
       try {
         const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as Record<string, unknown>;
         const deps = { ...((pkg.dependencies as Record<string, string>) ?? {}), ...((pkg.devDependencies as Record<string, string>) ?? {}) };
+        if ("vue" in deps) return "vue";
+        if ("svelte" in deps) return "svelte";
+        if ("@angular/core" in deps) return "angular";
         if ("react" in deps || "next" in deps || "@vitejs/plugin-react" in deps) return "react-vite";
         if ("next" in deps) return "next";
         if ("express" in deps) return "express";
@@ -372,9 +389,9 @@ export default apiClient;
       mkdirSync(join(dir, "src/lib"), { recursive: true });
       writeFileSync(authPath, `export function getToken(): string | null {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("aegis_token") || "demo_session_token";
+    return localStorage.getItem("aegis_token") || localStorage.getItem("aegis_auth_token");
   }
-  return "demo_session_token";
+  return null;
 }
 
 export function setToken(token: string): void {
@@ -436,7 +453,7 @@ export default {};
               const mod = f.replace(/\.ts$/, "");
               entityExports += `\nexport * from "../entities/${mod}";`;
             }
-          } catch {}
+          } catch { }
         }
         writeFileSync(typesPath, `export interface User {
   id: string;
@@ -466,7 +483,7 @@ export default {};
             writeFileSync(typesPath, content, "utf8");
             patches.push("Synchronized entity re-exports in src/types/index.ts");
           }
-        } catch {}
+        } catch { }
       }
     }
 
@@ -548,12 +565,14 @@ export default uploadMiddleware;
       }
     }
 
-    // 2. src/shared/components/Layout.tsx
+    // 2. src/shared/components/Layout.tsx (Only for React projects)
+    const detectedFw = this.detectFramework(dir);
+    const isReactProject = detectedFw === "react-vite" || detectedFw === "react" || existsSync(join(dir, "src/main.tsx")) || existsSync(join(dir, "src/App.tsx"));
     const layoutPath = join(dir, "src/shared/components/Layout.tsx");
-    if (!existsSync(layoutPath)) {
-      const appTitle = (contract as any)?.name || "Application Platform";
+    if (isReactProject && !existsSync(layoutPath)) {
       mkdirSync(join(dir, "src/shared/components"), { recursive: true });
       writeFileSync(layoutPath, `import React from "react";
+import { Navbar } from "../../design-system/components/Navbar";
 
 export interface LayoutProps {
   children?: React.ReactNode;
@@ -562,30 +581,14 @@ export interface LayoutProps {
 export default function Layout({ children }: LayoutProps = {}) {
   return (
     <div
-      className="min-h-screen flex flex-col font-sans"
+      className="app-shell min-h-screen flex flex-col font-sans"
       style={{
-        backgroundColor: "var(--color-background, #090d16)",
-        color: "var(--color-text-primary, #f8fafc)",
+        backgroundColor: "var(--color-background, #090a0f)",
+        color: "var(--color-text-primary, #ffffff)",
       }}
     >
-      <header
-        className="px-6 py-4 flex items-center justify-between backdrop-blur sticky top-0 z-40"
-        style={{
-          borderBottom: "1px solid var(--color-border, rgba(51, 65, 85, 0.5))",
-          backgroundColor: "var(--color-surface, rgba(15, 23, 42, 0.75))",
-        }}
-      >
-        <h1
-          className="text-xl font-bold"
-          style={{
-            fontFamily: "var(--font-display, inherit)",
-            color: "var(--color-primary, #38bdf8)",
-          }}
-        >
-          ${appTitle}
-        </h1>
-      </header>
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6">{children}</main>
+      <Navbar />
+      <main className="main-container flex-1 w-full mx-auto">{children}</main>
     </div>
   );
 }
@@ -595,7 +598,7 @@ export { Layout };
     }
 
     const altLayoutPath = join(dir, "src/components/Layout.tsx");
-    if (!existsSync(altLayoutPath)) {
+    if (isReactProject && !existsSync(altLayoutPath)) {
       mkdirSync(join(dir, "src/components"), { recursive: true });
       writeFileSync(altLayoutPath, `export { default, default as Layout } from "../shared/components/Layout";\nexport * from "../shared/components/Layout";\n`, "utf8");
       patches.push("Created src/components/Layout.tsx re-export bridge");
@@ -606,7 +609,7 @@ export { Layout };
     const loginPagePath = join(dir, "src/features/auth/LoginPage.tsx");
     const lowerPrompt = ((contract as any)?.prompt || "").toLowerCase();
     const wantsAuth = lowerPrompt.includes("auth") || lowerPrompt.includes("login") || lowerPrompt.includes("sso") ||
-                      (contract?.requiredRoutes || []).some((r: any) => typeof r === "string" ? r.includes("login") : r?.path?.includes("login"));
+      (contract?.requiredRoutes || []).some((r: any) => typeof r === "string" ? r.includes("login") : r?.path?.includes("login"));
     if (wantsAuth && !existsSync(loginPagePath)) {
       mkdirSync(join(dir, "src/features/auth"), { recursive: true });
       writeFileSync(loginPagePath, `import React, { useState } from "react";
@@ -1249,14 +1252,14 @@ process.on("SIGTERM", () => { vite.kill(); process.exit(); });
 
       // Server-side package type mappings
       const serverTypeMappings: Record<string, { dep?: string; devDep?: string }> = {
-        "express":   { dep: "express",          devDep: "@types/express" },
-        "cors":      { dep: "cors",              devDep: "@types/cors" },
-        "dotenv":    { dep: "dotenv" },
-        "multer":    { dep: "multer",            devDep: "@types/multer" },
-        "bcryptjs":  { dep: "bcryptjs",         devDep: "@types/bcryptjs" },
-        "jsonwebtoken": { dep: "jsonwebtoken",  devDep: "@types/jsonwebtoken" },
+        "express": { dep: "express", devDep: "@types/express" },
+        "cors": { dep: "cors", devDep: "@types/cors" },
+        "dotenv": { dep: "dotenv" },
+        "multer": { dep: "multer", devDep: "@types/multer" },
+        "bcryptjs": { dep: "bcryptjs", devDep: "@types/bcryptjs" },
+        "jsonwebtoken": { dep: "jsonwebtoken", devDep: "@types/jsonwebtoken" },
         "cookie-parser": { dep: "cookie-parser", devDep: "@types/cookie-parser" },
-        "morgan":    { dep: "morgan",           devDep: "@types/morgan" },
+        "morgan": { dep: "morgan", devDep: "@types/morgan" },
       };
 
       // Scan all source files for npm imports and auto-add missing packages
@@ -1421,11 +1424,11 @@ allowBuilds:
     writeFileSync(pnpmWorkspacePath, workspaceContent, "utf8");
     patches.push("Created pnpm-workspace.yaml (workspace isolation & build dependencies)");
 
-    // Allow Prisma and esbuild build scripts in pnpm and bypass release age policies
+    // Allow Prisma and esbuild build scripts without non-standard npm warnings
     const npmrcPath = join(dir, ".npmrc");
-    const npmrcContent = "confirm-modules-purge=false\nconfirmModulesPurge=false\nminimum-release-age=0\nminimumReleaseAge=0\nverify-deps-before-run=false\nignore-scripts=false\nonly-built-dependencies[]=@prisma/client\nonly-built-dependencies[]=@prisma/engines\nonly-built-dependencies[]=prisma\nonly-built-dependencies[]=esbuild\nonly-built-dependencies[]=core-js\nonly-built-dependencies[]=bcryptjs\n";
+    const npmrcContent = "ignore-scripts=false\n";
     writeFileSync(npmrcPath, npmrcContent, "utf8");
-    patches.push("Created .npmrc (allow build scripts & bypass release age policies)");
+    patches.push("Created .npmrc (allow build scripts)");
 
     const tsconfigPath = join(dir, "tsconfig.json");
     if (!existsSync(tsconfigPath)) {
@@ -1523,8 +1526,18 @@ allowBuilds:
           const pep = JSON.parse(readFileSync(pepFile, "utf8"));
           if (pep?.brandIdentity?.name) brandTitle = pep.brandIdentity.name;
         }
-      } catch {}
-      writeFileSync(indexHtmlPath, `<!DOCTYPE html>\n<html lang="en" class="dark">\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${brandTitle}</title>\n  </head>\n  <body class="bg-slate-950 text-white">\n    <div id="root"></div>\n    <script type="module" src="/src/main.tsx"></script>\n  </body>\n</html>\n`, "utf8");
+      } catch { }
+      let isDark = true;
+      try {
+        const themeFile = join(dir, ".aegis", "theme.json");
+        if (existsSync(themeFile)) {
+          const theme = JSON.parse(readFileSync(themeFile, "utf8"));
+          if (theme?.mode === "light") isDark = false;
+        }
+      } catch { }
+      const htmlClass = isDark ? ' class="dark"' : '';
+      const bodyClass = isDark ? 'class="bg-slate-950 text-white"' : 'class="bg-[#F3F0E8] text-[#252821]"';
+      writeFileSync(indexHtmlPath, `<!DOCTYPE html>\n<html lang="en"${htmlClass}>\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${brandTitle}</title>\n    <link rel="preconnect" href="https://fonts.googleapis.com">\n    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">\n  </head>\n  <body ${bodyClass}>\n    <div id="root"></div>\n    <script type="module" src="/src/main.tsx"></script>\n  </body>\n</html>\n`, "utf8");
       patches.push("Created index.html");
     }
 
@@ -1614,7 +1627,7 @@ interface ImportMeta {
     // Auto-create src/utils/cn.ts if missing
     const utilsDir = join(dir, "src", "utils");
     if (!existsSync(utilsDir)) {
-      try { mkdirSync(utilsDir, { recursive: true }); } catch {}
+      try { mkdirSync(utilsDir, { recursive: true }); } catch { }
     }
     const cnPath = join(utilsDir, "cn.ts");
     if (!existsSync(cnPath)) {
@@ -1688,7 +1701,7 @@ interface ImportMeta {
           if (reqContract?.immutableRequirements?.database?.toLowerCase().includes("postgres")) {
             allowSqliteFallback = false;
           }
-        } catch {}
+        } catch { }
       }
 
       const archContractPath = join(dir, ".aegis", "architecture-contract.json");
@@ -1726,7 +1739,7 @@ interface ImportMeta {
       try {
         const arch = JSON.parse(readFileSync(archContractPath, "utf8"));
         dbProvider = (arch.database?.provider || arch.stack?.database || "postgresql").toLowerCase();
-      } catch {}
+      } catch { }
 
       if (!schema.includes("datasource db")) {
         const defaultUrl = dbProvider.includes("mongo") ? 'env("DATABASE_URL")' : dbProvider.includes("sqlite") ? '"file:./dev.db"' : 'env("DATABASE_URL")';
@@ -1745,8 +1758,8 @@ interface ImportMeta {
         const defaultDbUrl = dbProvider.includes("mongo")
           ? 'mongodb://localhost:27017/aegis_app'
           : dbProvider.includes("sqlite")
-          ? 'file:./dev.db'
-          : 'postgresql://postgres:postgres@localhost:5432/app_db?schema=public';
+            ? 'file:./dev.db'
+            : 'postgresql://postgres:postgres@localhost:5432/app_db?schema=public';
         writeFileSync(envPath, `PORT=5000\nDATABASE_URL="${defaultDbUrl}"\n`, "utf8");
         patches.push(`Created .env file with canonical ${dbProvider} DATABASE_URL`);
       }
@@ -1754,7 +1767,7 @@ interface ImportMeta {
       // Remove conflicting Prisma 7 prisma.config.ts if present so Prisma 6 operates cleanly
       const prismaConfigPath = join(dir, "prisma.config.ts");
       if (existsSync(prismaConfigPath)) {
-        try { unlinkSync(prismaConfigPath); } catch {}
+        try { unlinkSync(prismaConfigPath); } catch { }
       }
 
       // Execute Prisma database push and client generation using local node_modules/.bin/prisma first
@@ -1776,7 +1789,7 @@ interface ImportMeta {
           let schemaModified = false;
           const modelBlocks = schemaContent.split(/(?=model\s+\w+\s*\{)/);
           const models: Record<string, string[]> = {};
-          
+
           for (const block of modelBlocks) {
             const mMatch = block.match(/model\s+([A-Za-z0-9_$]+)\s*\{/);
             if (mMatch) {
@@ -1865,8 +1878,8 @@ interface ImportMeta {
           } catch (genErr: any) {
             prismaError = genErr.stderr?.toString() || genErr.stdout?.toString() || genErr.message;
             const clientExists = existsSync(join(absDir, "node_modules", ".prisma", "client")) ||
-                                 existsSync(join(absDir, "node_modules", "@prisma", "client", "default.js")) ||
-                                 existsSync(join(absDir, "node_modules", "@prisma", "client", "index.js"));
+              existsSync(join(absDir, "node_modules", "@prisma", "client", "default.js")) ||
+              existsSync(join(absDir, "node_modules", "@prisma", "client", "index.js"));
             if (clientExists && (prismaError?.includes("EPERM") || prismaError?.includes("EBUSY") || prismaError?.includes("operation not permitted"))) {
               console.warn(`[Startup] ⚠️ Prisma client already exists; skipping client rewrite blocked by Windows file lock (EPERM).`);
               clientGenerated = true;
@@ -1891,7 +1904,7 @@ interface ImportMeta {
             }, null, 2),
             "utf8"
           );
-        } catch {}
+        } catch { }
 
         // Attempt db push (requires live database connection) — P1000 is classified as non-fatal warning
         try {
@@ -1903,7 +1916,7 @@ interface ImportMeta {
           try {
             const seedScript = `const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function seed() { try { if (prisma.user) { await prisma.user.upsert({ where: { email: 'user@aegis.internal' }, update: {}, create: { id: '00000000-0000-0000-0000-000000000001', email: 'user@aegis.internal', passwordHash: 'hash_test_123' } }); } } catch {} finally { await prisma.$disconnect().catch(() => {}); } } seed();`;
             execSync(`node -e "${seedScript}"`, { cwd: absDir, stdio: "pipe" });
-          } catch {}
+          } catch { }
         } catch (dbPushErr: any) {
           const errMsg = dbPushErr.message || "";
           if (errMsg.includes("--force-reset") || errMsg.includes("cannot be executed")) {
@@ -1914,7 +1927,7 @@ interface ImportMeta {
               try {
                 const seedScript = `const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function seed() { try { if (prisma.user) { await prisma.user.upsert({ where: { email: 'user@aegis.internal' }, update: {}, create: { id: '00000000-0000-0000-0000-000000000001', email: 'user@aegis.internal', passwordHash: 'hash_test_123' } }); } } catch {} finally { await prisma.$disconnect().catch(() => {}); } } seed();`;
                 execSync(`node -e "${seedScript}"`, { cwd: absDir, stdio: "pipe" });
-              } catch {}
+              } catch { }
             } catch (resetErr: any) {
               console.warn(`[Startup] Warning: Prisma db push force-reset failed: ${resetErr.message}`);
             }
@@ -1961,6 +1974,18 @@ interface ImportMeta {
             .replace(/^[ \t]*(?:tsx|ts|jsx|js|typescript|javascript)\r?$/gm, "");
           changed = true;
           fixed.push(`Cleaned stray markdown/language fence artifacts in: ${rel}`);
+        }
+
+        // Ensure Select component supports both options prop and children <option> tags
+        if (rel.endsWith("Select.tsx") && content.includes("options: Array<{ value: string; label: string }>;")) {
+          content = content.replace("options: Array<{ value: string; label: string }>;", "options?: Array<{ value: string; label: string }>;");
+          content = content.replace("{options.map", "{(options || []).map");
+          if (!content.includes("children")) {
+            content = content.replace("({ label, options, error, className = '', ...props })", "({ label, options, error, className = '', children, ...props })");
+            content = content.replace("))} </select>", ")) : children} </select>");
+          }
+          changed = true;
+          fixed.push(`Relaxed Select options requirement for children compatibility in: ${rel}`);
         }
 
         // SCOPE GUARD: Files owned by DesignSystemGenerator or shared canonical components
@@ -2088,11 +2113,11 @@ interface ImportMeta {
           const mainHasRouter = existsSync(mainPath) && (readFileSync(mainPath, "utf8").includes("<BrowserRouter") || readFileSync(mainPath, "utf8").includes("<Router"));
 
           const needsFix = !content.includes("QueryClientProvider")
-            || content.includes("Aegis React Template") 
-            || content.includes("import scan.routes") 
+            || content.includes("Aegis React Template")
+            || content.includes("import scan.routes")
             || content.includes("../server/routes")
             || !content.includes("AppRoutes");
-          
+
           if (needsFix) {
             const routerImport = mainHasRouter ? "" : `import { BrowserRouter } from "react-router-dom";\n`;
             const routerOpen = mainHasRouter ? "" : "      <BrowserRouter>\n  ";
@@ -2505,22 +2530,22 @@ export default cn;
         // Fix 1.8: Empty/minimal/sparse component stub replacement or domain mismatch purge
         // IMPORTANT: Only apply to UI components in pages/features/components, NEVER to routes.tsx, App.tsx, test files, or server files
         const isUiComponent = (rel.startsWith("src/pages/") || rel.startsWith("src/features/") || rel.startsWith("src/components/")) &&
-                              !rel.endsWith(".d.ts") &&
-                              !rel.includes("routes.") &&
-                              !rel.includes("App.") &&
-                              !rel.startsWith("test/") &&
-                              !rel.startsWith("server/");
+          !rel.endsWith(".d.ts") &&
+          !rel.includes("routes.") &&
+          !rel.includes("App.") &&
+          !rel.startsWith("test/") &&
+          !rel.startsWith("server/");
         if (isUiComponent) {
           const spec = SpecificationNormalizer.normalize(dir, { name: "app", type: "fullstack", language: "TypeScript", packageManager: "pnpm" });
           const hasDomainMismatch = spec.forbiddenPatterns.some(pat => content.includes(pat));
           const hasPagePlan = existsSync(join(dir, ".aegis", "page-experience-plans.json")) ||
-                              existsSync(join(dir, ".aegis", "product-experience-plan.json"));
+            existsSync(join(dir, ".aegis", "product-experience-plan.json"));
           if (!hasPagePlan && (hasDomainMismatch || content.length < 100)) {
             const compName = rel.split("/").pop()?.replace(/\.(tsx|ts|js|jsx)$/, "") || "Dashboard";
             if (rel.toLowerCase().includes("context")) {
               content = `import React, { createContext, useContext } from 'react';\nexport const ${compName} = createContext<any>({ isDarkMode: true, toggleDarkMode: () => {} });\nexport const ${compName}Provider: React.FC<{ children?: any }> = ({ children }) => <${compName}.Provider value={{ isDarkMode: true, toggleDarkMode: () => {} }}>{children}</${compName}.Provider>;\nexport default ${compName}Provider;\n`;
             } else {
-              content = DomainAwareFallbackGenerator.generateFallbackComponent(spec, compName, rel);
+              content = `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="p-8">\n      <h1 className="text-2xl font-bold">${compName}</h1>\n      <p className="text-muted-foreground mt-2">Synthesized for ${spec.name}.</p>\n    </div>\n  );\n}\n\nexport default ${compName};\n`;
             }
             changed = true;
             fixed.push(`Replaced truncated/empty/mismatched stub in ${rel} with domain-aware fallback UI`);
@@ -2967,10 +2992,10 @@ export default cn;
               "router"
             ])).filter(a => /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(a));
 
-            const missingAliases = aliases.filter(a => 
-              a !== routerId && 
-              !new RegExp(`\\bexport\\s+(?:const|let|var)\\s+${a}\\b`).test(content) && 
-              !new RegExp(`\\bas\\s+${a}\\b`).test(content) && 
+            const missingAliases = aliases.filter(a =>
+              a !== routerId &&
+              !new RegExp(`\\bexport\\s+(?:const|let|var)\\s+${a}\\b`).test(content) &&
+              !new RegExp(`\\bas\\s+${a}\\b`).test(content) &&
               !new RegExp(`\\bexport\\s*\\{[^}]*\\b${a}\\b[^}]*\\}`).test(content)
             );
 
@@ -3210,7 +3235,7 @@ export default DataTable;\n`;
           if (hasJsx) {
             const tsxPath = absPath + "x";
             writeFileSync(tsxPath, content, "utf8");
-            try { unlinkSync(absPath); } catch {}
+            try { unlinkSync(absPath); } catch { }
             fixed.push(`${rel} -> ${rel}x`);
             continue;
           }
@@ -3396,7 +3421,7 @@ export default DataTable;\n`;
           if (existsSync(targetPath + ext)) {
             try {
               if (!statSync(targetPath + ext).isDirectory()) { targetFileExists = true; break; }
-            } catch {}
+            } catch { }
           }
         }
 
@@ -3404,8 +3429,8 @@ export default DataTable;\n`;
           const rawFileName = targetPath.split(/[\/\\]/).pop() || "";
           const isHookTarget = /[\/\\]hooks[\/\\]/i.test(targetPath) || /^use[A-Z]/.test(rawFileName) || rawFileName.startsWith("use");
           const isUtilTarget = isHookTarget ||
-                              /[\/\\](utils|helpers|services|lib|store|api)[\/\\]/i.test(targetPath) ||
-                              /(util|helper|service|api|cn|clsx|format|calc)/i.test(rawFileName);
+            /[\/\\](utils|helpers|services|lib|store|api)[\/\\]/i.test(targetPath) ||
+            /(util|helper|service|api|cn|clsx|format|calc)/i.test(rawFileName);
 
           const isUiTarget = !isUtilTarget && (
             /[\/\\](pages|components|views|ui|features|routes|design-system)[\/\\]/i.test(targetPath) ||
@@ -3447,7 +3472,7 @@ export default DataTable;\n`;
                 unlinkSync(fullStubPath);
                 console.log(`[Startup] Purged unauthorized alias file: ${relStub}`);
               }
-            } catch {}
+            } catch { }
             continue;
           }
 
@@ -3491,7 +3516,7 @@ export default DataTable;\n`;
                 unlinkSync(fullStubPath);
                 console.log(`[Startup] Purged redundant stub file: ${relStub}`);
               }
-            } catch {}
+            } catch { }
             continue;
           } else {
             // CRITICAL GUARD: If fullStubPath points to a directory (stripped of extension), e.g. src/design-system,

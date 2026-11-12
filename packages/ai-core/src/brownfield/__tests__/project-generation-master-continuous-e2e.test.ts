@@ -6,7 +6,6 @@ import http from "node:http";
 import { TemplateContaminationChecker } from "../../validation/template-contamination-checker.js";
 import { FinalSuccessGate } from "../../validation/final-success-gate.js";
 import { SpecificationNormalizer } from "../../spec/canonical-spec.js";
-import { DomainAwareFallbackGenerator } from "../../semantics/domain-fallback-generator.js";
 import { BrownfieldTransactionManager } from "../brownfield-transaction-manager.js";
 
 describe("Aegis Master Autonomous Website Generator Continuous Verification E2E", () => {
@@ -64,11 +63,7 @@ describe("Aegis Master Autonomous Website Generator Continuous Verification E2E"
       mkdirSync(join(gardenDir, "prisma"), { recursive: true });
 
       // Generate dashboard component
-      const dashboardCode = DomainAwareFallbackGenerator.generateFallbackComponent(
-        spec,
-        "CommunityGardenDashboard",
-        "src/features/dashboard/CommunityGardenDashboard.tsx"
-      );
+      const dashboardCode = `import React from "react";\nexport default function ${"CommunityGardenDashboard"}() {\n  return <div><h1>${spec.name} Dashboard</h1></div>;\n}\n`;
       writeFileSync(join(gardenDir, "src/features/dashboard/CommunityGardenDashboard.tsx"), dashboardCode, "utf8");
 
       // Generate Prisma schema
@@ -501,11 +496,7 @@ export default defineConfig({
       mkdirSync(join(repairDir, "prisma"), { recursive: true });
 
       // Generate dashboard
-      const dashboardCode = DomainAwareFallbackGenerator.generateFallbackComponent(
-        spec,
-        "HomeRepairDashboard",
-        "src/features/dashboard/HomeRepairDashboard.tsx"
-      );
+      const dashboardCode = `import React from "react";\nexport default function ${"HomeRepairDashboard"}() {\n  return <div><h1>${spec.name} Dashboard</h1></div>;\n}\n`;
       writeFileSync(join(repairDir, "src/features/dashboard/HomeRepairDashboard.tsx"), dashboardCode, "utf8");
 
       // Generate Prisma schema

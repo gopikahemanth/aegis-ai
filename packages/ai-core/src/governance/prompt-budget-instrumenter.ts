@@ -143,7 +143,7 @@ export class PromptBudgetInstrumenter {
       return 48000;
     }
     if (norm.includes("groq") || norm.includes("cerebras")) {
-      return 6000;
+      return 24000;
     }
 
     // Default general-purpose model context capacity ceiling

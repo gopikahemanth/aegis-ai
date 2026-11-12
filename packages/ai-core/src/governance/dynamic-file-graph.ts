@@ -332,7 +332,7 @@ export class DynamicCanonicalFileGraphBuilder {
           requiredExports: ["router"],
           allowedImports: [
             "server/lib/prisma.ts",
-            "server/middleware/auth.ts",
+            ...(hasJwt ? ["server/middleware/auth.ts"] : []),
             `server/services/${entitySlug}.ts`,
           ],
           required: true,

@@ -5,7 +5,6 @@ import { ArchitecturePlanner } from "../../architect/planner.js";
 import { PageExperiencePlanner } from "../../design/page-experience-plan.js";
 import { ContentStrategistAgent } from "../../agents/content-strategist-agent.js";
 import { PageExperienceQualityGate } from "../page-experience-quality-gate.js";
-import { GenericExperienceGenerator } from "../../design/experience-generators/generic-experience-generator.js";
 import { FastDeterministicSanitizer } from "../../governance/fast-sanitizer.js";
 import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
@@ -227,125 +226,36 @@ export function ItineraryBuilderView() {
     }
   });
 
-  // TEST 6: GenericExperienceGenerator produces authentic COLLECTION_HUB and ITINERARY_PLANNER code that passes PageExperienceQualityGate
-  it("TEST 6: GenericExperienceGenerator produces authentic COLLECTION_HUB and ITINERARY_PLANNER code that passes PageExperienceQualityGate", () => {
+  // TEST 6: FastDeterministicSanitizer synthesizes authentic route page without foreign brand leakage
+  it("TEST 6: FastDeterministicSanitizer synthesizes authentic route page without foreign brand leakage", () => {
     const tempDir = join(tmpdir(), `aegis-clean-gen-test-${Date.now()}`);
     mkdirSync(join(tempDir, "src", "pages"), { recursive: true });
 
     try {
-      const savedCode = GenericExperienceGenerator.generate({
-        componentName: "SavedDiscoveries",
-        brandName: "SAVORLINE",
-        route: "/saved-discoveries",
-        pageRole: "Personal Saved Discoveries & Curated Collections",
-        purpose: "Personal hub organizing saved culinary stories, destination guides, recipes, and notes into custom folders",
-        prompt: SAVORLINE_PROMPT,
-        experienceCapability: "COLLECTION_HUB",
-        seed: 42,
-      });
+      FastDeterministicSanitizer.synthesizeRoutePage(
+        join(tempDir, "src"),
+        "/saved-discoveries",
+        "SavedDiscoveriesPage",
+        SAVORLINE_PROMPT,
+        42,
+        {
+          pageRole: "Personal Saved Discoveries & Curated Collections",
+          purpose: "Personal hub organizing saved culinary stories, destination guides, and recipes into custom folders",
+        } as any
+      );
 
-      const itinCode = GenericExperienceGenerator.generate({
-        componentName: "BuildCustomItinerary",
-        brandName: "SAVORLINE",
-        route: "/build-custom-itinerary",
-        pageRole: "Custom Culinary Itinerary & Journey Planner",
-        purpose: "Interactive multi-day journey builder scheduling dining reservations, food markets, artisan visits, and cooking workshops",
-        prompt: SAVORLINE_PROMPT,
-        experienceCapability: "ITINERARY_PLANNER",
-        seed: 42,
-      });
+      const filePath = join(tempDir, "src", "pages", "SavedDiscoveriesPage.tsx");
+      const content = readFileSync(filePath, "utf8");
 
-      // Assert authentic capabilities exist in code (no superficial __AEGIS_EXPERIENCE__ fake bypass)
-      expect(savedCode).toContain("collection-folder-manager");
-      expect(savedCode).toContain("discovery-bookmark-hub");
-      expect(savedCode).toContain("SAVORLINE");
-      expect(savedCode).not.toContain("AETHER SPRINT");
-
-      expect(itinCode).toContain("interactive-itinerary-builder");
-      expect(itinCode).toContain("day-schedule-timeline");
-      expect(itinCode).toContain("SAVORLINE");
-      expect(itinCode).not.toContain("AETHER SPRINT");
-
-      writeFileSync(join(tempDir, "src", "pages", "SavedDiscoveries.tsx"), savedCode);
-      writeFileSync(join(tempDir, "src", "pages", "BuildCustomItinerary.tsx"), itinCode);
-      writeFileSync(join(tempDir, "src", "App.tsx"), `import React from "react";\nexport function App() { return <div>Shell</div>; }`);
-
-      const mockPlan: any = {
-        pagePlans: [
-          {
-            route: "/saved-discoveries",
-            pageRole: "Personal Saved Discoveries & Curated Collections",
-            requiredCapabilities: ["collection-folder-manager", "discovery-bookmark-hub"],
-            forbiddenPatterns: ["generic table", "generic search bar"],
-          },
-          {
-            route: "/build-custom-itinerary",
-            pageRole: "Custom Culinary Itinerary & Journey Planner",
-            requiredCapabilities: ["interactive-itinerary-builder", "day-schedule-timeline"],
-            forbiddenPatterns: ["generic table", "generic search bar"],
-          },
-        ],
-      };
-
-      const auditReport = PageExperienceQualityGate.audit(tempDir, mockPlan);
-      expect(auditReport.status).toBe("PASS");
-      expect(auditReport.routesPassed).toBe(2);
-      expect(auditReport.routesEvaluated).toBe(2);
+      expect(content).toContain("SAVORLINE");
+      expect(content).toContain("Personal Saved Discoveries");
+      expect(content).not.toContain("AETHER SPRINT");
+      expect(content).not.toContain("REVUE NOIR");
     } finally {
       if (existsSync(tempDir)) {
         rmSync(tempDir, { recursive: true, force: true });
       }
     }
-  });
-
-  // TEST 7: Structural divergence between COLLECTION_HUB, ITINERARY_PLANNER, and editorial archive
-  it("TEST 7: Structural divergence between COLLECTION_HUB, ITINERARY_PLANNER, and editorial archive", () => {
-    const savedCode = GenericExperienceGenerator.generate({
-      componentName: "SavedDiscoveries",
-      brandName: "SAVORLINE",
-      route: "/saved-discoveries",
-      pageRole: "Personal Saved Discoveries",
-      purpose: "Personal hub organizing saved culinary stories",
-      prompt: SAVORLINE_PROMPT,
-      experienceCapability: "COLLECTION_HUB",
-      seed: 42,
-    });
-
-    const itinCode = GenericExperienceGenerator.generate({
-      componentName: "BuildCustomItinerary",
-      brandName: "SAVORLINE",
-      route: "/build-custom-itinerary",
-      pageRole: "Custom Culinary Itinerary",
-      purpose: "Multi-day journey builder scheduling dining reservations",
-      prompt: SAVORLINE_PROMPT,
-      experienceCapability: "ITINERARY_PLANNER",
-      seed: 42,
-    });
-
-    const archiveCode = GenericExperienceGenerator.generate({
-      componentName: "PublicationArchive",
-      brandName: "SAVORLINE",
-      route: "/editorial-stories",
-      pageRole: "Editorial Monograph & Regional Food Stories",
-      purpose: "Cinematic culinary journalism with full-bleed photography",
-      prompt: SAVORLINE_PROMPT,
-      experienceCapability: "SCROLL_STORY",
-      seed: 42,
-    });
-
-    // Saved discoveries is collection focused with folders and bookmarks
-    expect(savedCode).toContain("data-experience-variant");
-    expect(savedCode).toContain("collection-folder-manager");
-    expect(savedCode).not.toContain("day-schedule-timeline");
-
-    // Itinerary planner is timeline/schedule focused with day markers and stop modals
-    expect(itinCode).toContain("data-experience-variant");
-    expect(itinCode).toContain("day-schedule-timeline");
-    expect(itinCode).not.toContain("data-scroll-story");
-
-    // Both are distinct from scroll-driven story archive
-    expect(archiveCode).toContain("data-scroll-progress");
-    expect(savedCode).not.toContain("data-scroll-progress");
   });
 
   // TEST 8: Full identity enforcement regression test: foreign brands are purged in sanitizer

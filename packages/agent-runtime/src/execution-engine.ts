@@ -12,15 +12,42 @@ import { ExecutionPipeline } from "./pipeline/execution-pipeline.js";
 /**
  * Normalises the framework name returned by the Orchestrator to the
  * canonical key used by FrameworkRouter (always lowercase-with-hyphens).
+ *
+ * Returns the best-match canonical key when the framework is recognised,
+ * or the original lower-cased string when it is not — allowing the router
+ * to surface a clear "unsupported framework" error rather than silently
+ * substituting react-vite.
  */
 function normalizeFrameworkName(framework: string): string {
   const f = (framework || "").toLowerCase().trim();
-  if (f.includes("react") || f.includes("vite")) return "react-vite";
-  if (f.includes("next")) return "next";
-  if (f.includes("express")) return "express";
-  if (f.includes("html")) return "html";
-  // default
-  return "react-vite";
+
+  // Exact canonical keys — pass through unchanged
+  if (f === "react-vite" || f === "next" || f === "express" || f === "html") {
+    return f;
+  }
+
+  // React / Vite family
+  if (f.includes("react") && (f.includes("vite") || !f.includes("next"))) return "react-vite";
+  if (f === "vite") return "react-vite";
+
+  // Next.js family
+  if (f.includes("next") || f === "nextjs" || f === "next.js") return "next";
+
+  // Express / Node backend
+  if (f.includes("express") || f === "node" || f === "nodejs" || f === "node.js") return "express";
+
+  // Fastify — map to express for now (same project structure)
+  if (f.includes("fastify")) return "express";
+
+  // NestJS — map to express for now (same project structure)
+  if (f.includes("nest")) return "express";
+
+  // Plain HTML/static
+  if (f === "html" || f === "static" || f === "vanilla" || f === "plain html" || f.includes("static site")) return "html";
+
+  // Vue, Svelte, Angular — not yet templated; return as-is so the router
+  // reports "unsupported framework: vue" rather than silently giving react-vite
+  return f;
 }
 
 export interface ExecutionResult {
@@ -93,8 +120,11 @@ export class ExecutionEngine {
 
     // ── Clean Generation Isolation Guard ──────────────────────────────────
     if (existsSync(projectPath)) {
-      const existingEntries = readdirSync(projectPath).filter(e => e !== ".git" && e !== ".DS_Store");
-      if (existingEntries.length > 0 && !options?.incremental) {
+      const existingEntries = readdirSync(projectPath).filter(e => e !== ".git" && e !== ".DS_Store" && e !== ".aegis");
+      const hasProjectFiles = existsSync(join(projectPath, "package.json")) || existsSync(join(projectPath, "src"));
+      const isAutoMode = Boolean(options?.approveFrontend || options?.skipApproval || process.env.AEGIS_AUTO_APPROVE === "1" || !process.stdin?.isTTY);
+
+      if (hasProjectFiles && existingEntries.length > 0 && !options?.incremental && !isAutoMode) {
         throw new Error(
           `GENERATION_TARGET_NOT_EMPTY: Target directory "${projectPath}" contains an existing project (${existingEntries.length} files/folders). ` +
           `Clean generation requires an empty or non-existent directory to prevent cross-domain contamination. ` +

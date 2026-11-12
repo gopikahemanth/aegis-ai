@@ -554,6 +554,121 @@ ${principles || "  • Domain authenticity and high-contrast usability"}
       } catch {}
     }
 
+    let frontendSpecContext = "";
+    const frontendSpecPath = join(outputDirectory, ".aegis", "design", "frontend-design-spec.json");
+    if (existsSync(frontendSpecPath)) {
+      try {
+        const fSpec = JSON.parse(readFileSync(frontendSpecPath, "utf8"));
+        const matchedPageSpec = (fSpec.pages || []).find((p: any) => {
+          const pRoute = (p.route || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          const pName = (p.pageName || "").toLowerCase();
+          const tTitle = taskTitle.toLowerCase();
+          const tDesc = taskDesc.toLowerCase();
+          return (pRoute && (tTitle.includes(pRoute) || tDesc.includes(pRoute) || taskOwnedRoutes.some((r: string) => r.replace(/[^a-z0-9]/g, "") === pRoute))) ||
+                 (pName && (tTitle.includes(pName) || tDesc.includes(pName)));
+        });
+
+        frontendSpecContext = `
+══════════════════════════════════════════════════════════════════════════════
+AUTONOMOUS FRONTEND DESIGN SPECIFICATION (MANDATORY IMPLEMENTATION DIRECTIVE)
+══════════════════════════════════════════════════════════════════════════════
+- Product: ${fSpec.projectIdentity?.productName} (${fSpec.projectIdentity?.businessDomain})
+- Art Direction: ${fSpec.visualDirection?.artDirectionName}
+- Color Mode: ${fSpec.colorStrategy?.paletteMode}
+  • Canvas Ground: ${fSpec.colorStrategy?.backgroundColor}
+  • Surface Panel: ${fSpec.colorStrategy?.surfaceColor} (Elevated: ${fSpec.colorStrategy?.surfaceElevated})
+  • Text: Primary=${fSpec.colorStrategy?.textPrimaryColor}, Secondary=${fSpec.colorStrategy?.textSecondaryColor}, Muted=${fSpec.colorStrategy?.textMutedColor}
+  • Brand Primary: ${fSpec.colorStrategy?.primaryBrandColor} (TextOnPrimary: ${fSpec.colorStrategy?.textOnPrimary})
+  • Border: ${fSpec.colorStrategy?.borderColor}
+- Typography Scaling & Hierarchy:
+  • Display: ${fSpec.typographyStrategy?.displayFont} [${fSpec.typographyStrategy?.headingScale?.display}]
+  • Body: ${fSpec.typographyStrategy?.bodyFont} [${fSpec.typographyStrategy?.bodyScale?.base}]
+  • Telemetry/Mono: ${fSpec.typographyStrategy?.monoFont}
+- Responsive & Viewport Hardening Rules:
+  • Headings MUST use fluid clamp sizing and break-words to eliminate mobile text clipping.
+  • Metric values MUST be wrapped with truncate and overflow-hidden to prevent container overflow.
+  • NEVER hardcode white text without explicit dark surface wrappers or dark text without light surface wrappers.
+  • All routes MUST render inside a cohesive layout using the global Navbar and design tokens.
+${matchedPageSpec ? `
+PAGE BLUEPRINT FOR CURRENT ROUTE:
+- Route: ${matchedPageSpec.route} (${matchedPageSpec.pageName})
+- Purpose: ${matchedPageSpec.purpose}
+- Visual Composition: ${matchedPageSpec.visualComposition}
+- Section Structure: ${(matchedPageSpec.sectionOrder || []).map((s: any) => s.name).join(" -> ")}
+- Mobile Strategy: ${matchedPageSpec.mobileBehavior}` : ""}
+══════════════════════════════════════════════════════════════════════════════
+`;
+      } catch {}
+    }
+
+    let dddBlueprintContext = "";
+    const dddPath = join(outputDirectory, ".aegis", "design-decision-document.json");
+    if (existsSync(dddPath)) {
+      try {
+        const ddd = JSON.parse(readFileSync(dddPath, "utf8"));
+        const matchedBlueprint = (ddd.pageBlueprints || []).find((b: any) => {
+          const bRoute = (b.route || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          const bName = (b.pageName || "").toLowerCase();
+          const tTitle = taskTitle.toLowerCase();
+          const tDesc = taskDesc.toLowerCase();
+          return (bRoute && (tTitle.includes(bRoute) || tDesc.includes(bRoute) || taskOwnedRoutes.some((r: string) => r.replace(/[^a-z0-9]/g, "") === bRoute))) ||
+                 (bName && (tTitle.includes(bName) || tDesc.includes(bName)));
+        });
+
+        const visual = ddd.visualSystem;
+        const colors = visual?.colorPalette;
+        const typo = visual?.typography;
+        const spatial = visual?.spatialSystem;
+        const imagery = visual?.imageryAndGraphicDirection;
+
+        let bpDetails = "";
+        if (matchedBlueprint) {
+          bpDetails = `
+MATCHED ROUTE BLUEPRINT (MANDATORY IMPLEMENTATION BLUEPRINT FOR THIS ROUTE):
+- Route: ${matchedBlueprint.route} (${matchedBlueprint.pageName})
+- Primary Purpose: ${matchedBlueprint.primaryPurpose}
+- User Goal: ${matchedBlueprint.userGoal}
+- Information Hierarchy: ${(matchedBlueprint.informationHierarchy || []).join(" -> ")}
+- Above-The-Fold Structure: ${matchedBlueprint.aboveTheFoldStructure}
+- Overall Composition: ${matchedBlueprint.overallComposition}
+- Section Order: ${(matchedBlueprint.sectionOrder || []).join(" -> ")}
+- Main Visual Element: ${matchedBlueprint.mainVisualElement}
+- Unique Functional Modules: ${(matchedBlueprint.uniqueFunctionalModules || []).join(", ")}
+- Controls & Actions: ${(matchedBlueprint.controlsAndActions || []).join(", ")}
+- Interaction Behavior: ${matchedBlueprint.interactionBehavior}
+- Mobile Layout: ${matchedBlueprint.mobileLayout}
+- Desktop Layout: ${matchedBlueprint.desktopLayout}`;
+        }
+
+        dddBlueprintContext = `
+══════════════════════════════════════════════════════════════════════════════
+LOCKED DESIGN DECISION DOCUMENT (AUTHORITATIVE SYSTEM SPECIFICATION)
+══════════════════════════════════════════════════════════════════════════════
+- Brand Thesis: ${ddd.projectIdentity?.visualThesis || ddd.projectIdentity?.brandPersonality || ""}
+- Exact Color Palette:
+  • Background: ${colors?.background || ""} (Secondary: ${colors?.secondaryBackground || ""})
+  • Surface: ${colors?.surface || ""} (SurfaceRaised: ${colors?.surfaceRaised || ""})
+  • Text: Primary=${colors?.primaryText || ""}, Secondary=${colors?.secondaryText || ""}, Muted=${colors?.mutedText || ""}
+  • Accents: Primary=${colors?.primaryAccent || ""}, Secondary=${colors?.secondaryAccent || ""}
+  • Border: ${colors?.border || ""}
+  • Rationale: ${colors?.rationale || ""}
+- Typography Stack & Pairing:
+  • Display / Heading: ${typo?.displayFont || ""} (use font-serif or font-display for editorial headlines)
+  • Body / Interface: ${typo?.bodyFont || ""} (use font-sans for clean UI reading)
+  • Monospace / Metrics: ${typo?.monoFont || "IBM Plex Mono, monospace"} (use font-mono for data/dimensions)
+  • Line Heights & Letter Spacing: ${typo?.lineHeights || "1.25 headings, 1.6 prose"}, ${typo?.letterSpacing || "-0.02em"}
+- Spatial Design System:
+  • Max Content Width: ${spatial?.contentWidthMax || "1440px"}
+  • Section Spacing: ${spatial?.sectionSpacing || "4rem to 6rem"}
+  • Grid Columns: ${spatial?.gridColumns || 12}
+- Imagery & Asset Direction:
+  • Style: ${imagery?.photographyStyle || ""}
+  • Textures: ${imagery?.textures || ""}
+${bpDetails}
+══════════════════════════════════════════════════════════════════════════════
+`;
+      } catch {}
+    }
 
 
     let brandName = "";
@@ -991,6 +1106,7 @@ STRICTLY FORBIDDEN IN ALL GENERATED VIEWS (violation = immediate rejection):
 - NEVER render "+ New [Entity]" or "+ Add [Item]" forms with [newTitle, setNewTitle] state
 - NEVER render "Service Status: Online", "Sync Mode: Automatic", or "Availability: Online" info panels
 - NEVER use hardcoded Tailwind color classes (stone-*, indigo-*); use CSS tokens or Tailwind utility tokens.
+      * NEVER declare or shadow imported components locally (e.g. NEVER write "const Button = ..." or "function Card(...)" when Button or Card is already imported from "../design-system"). Doing so causes TS2440 duplicate identifier compiler errors.
 
 EVERY ROUTE IS A FIRST-CLASS DESIGNED EXPERIENCE:
 1. Adhere strictly to the PageExperiencePlan for each route being generated in this task.
@@ -1026,12 +1142,18 @@ ${isFrontendStage ? `   - FRONTEND-ONLY TASK: You are implementing Task #${task.
 
 3. CANONICAL COMPONENTS & SERVICE ARCHITECTURE:
    - Shared Components (USE THESE — DO NOT INVENT ARBITRARY SHARED COMPONENTS):
-     * Button:      src/design-system/components/Button.tsx
-     * Skeleton:    src/design-system/components/Skeleton.tsx
-     * EmptyState:  src/design-system/components/EmptyState.tsx
-     * GlassCard:   src/design-system/components/GlassCard.tsx
-     * Card:        src/shared/components/Card.tsx
-     * Layout:      src/shared/components/Layout.tsx
+     * Button:       src/design-system/components/Button.tsx
+     * Skeleton:     src/design-system/components/Skeleton.tsx
+     * EmptyState:   src/design-system/components/EmptyState.tsx
+     * GlassCard:    src/design-system/components/GlassCard.tsx
+     * Card:         src/shared/components/Card.tsx
+     * Layout:       src/shared/components/Layout.tsx
+     * Modal/Dialog: src/design-system/components/Modal.tsx (import { Modal, Dialog } from "../design-system")
+     * Tabs:         src/design-system/components/Tabs.tsx (import { Tabs, TabPanel } from "../design-system")
+     * Alert/Toast:  src/design-system/components/Alert.tsx, src/design-system/components/Toast.tsx (import { Alert, useToast } from "../design-system")
+     * Navbar:       src/design-system/components/Navbar.tsx (import { Navbar } from "../design-system")
+     * DatePicker:   src/design-system/components/DatePicker.tsx (import { DatePicker } from "../design-system")
+     * FileUpload:   src/design-system/components/FileUpload.tsx (import { FileUpload } from "../design-system")
    - Canonical Frontend API Service:
      * Canonical API Service: src/services/api.ts (import { api, login, register } from "@/services/api" or "../../services/api")
      * FORBIDDEN IMPORT ALIASES: NEVER import "@/services/apiClient" or "src/services/apiClient.ts" or "src/services/api-client". The ONLY canonical API module is "src/services/api.ts".
@@ -1050,12 +1172,23 @@ ${lockedPrismaSchemaContext ? lockedPrismaSchemaContext : canonicalDomainModelsL
    - Build the exact focal element specified in the plan with meaningful interactive state (working sliders, selectors, tables, modals).
    - Set container root attribute: data-workspace="[workspace_identifier]" (e.g. data-workspace="character_stage", "operations_terminal").
    - Every primary view MUST render a semantic <h1> containing the domain feature title followed by a descriptive <p> explaining its purpose.
-   - STRICTLY FORBIDDEN IN ALL VIEWS:
+   - INTERACTION & STATE DYNAMISM (MANDATORY IN ALL VIEWS):
+      * Every interactive button, filter, tab, search bar, and form MUST produce tangible, observable DOM state changes using React state (useState/useReducer).
+      * Tabbing: Tabs must switch visible content/panels seamlessly.
+      * Modals & Dialogs: Clicking action buttons (e.g. "Book Now", "View Details", "Inquire", "Open") MUST set isOpen=true and render the Modal/Dialog overlay.
+      * Forms: Form inputs must be controlled; on submit, validate inputs and display real feedback via Alert or useToast().
+      * Search & Filters: Typing in search inputs or clicking category filter pills must immediately re-filter displayed items.
+      * Date Selection: DatePicker selections must update form state and display chosen dates clearly.
+      * Responsive Navigation: Mobile hamburger button in Navbar MUST toggle the mobile menu drawer open/closed with zero horizontal overflow.
+    - STRICTLY FORBIDDEN IN ALL VIEWS:
      * NEVER render "Active Service View" as any badge, label, or heading text.
      * NEVER render "Manage and interact with [feature] services and features." as description text.
      * NEVER render "Submit your inquiry or update configuration for [feature].".
      * NEVER render generic placeholder text ("Welcome to the application platform", "Dashboard placeholder", or unmounted views).
      * NEVER render generic 3-column card grids as a substitute for rich feature composition.
+     * NEVER write empty event handlers like onClick={() => {}} or onSubmit={() => {}}; every button and form MUST execute real state modifications.
+      * NEVER use window.alert() or alert('...') as a placeholder for user feedback; always use Alert or useToast() from the design system.
+     * NEVER write fake alerts like alert('Exporting...') or console.log('Exporting...'); for document or PDF export, use window.print() or a real Blob download.
      * NEVER use hardcoded Tailwind color classes (stone-*, indigo-*); use CSS tokens in src/design-system/tokens.ts.
      * NEVER use technologies conflicting with the locked ArchitectureContract (Frontend: ${contract?.frontend?.framework || "React"}, Backend: ${contract?.backend?.framework || "Express"}, DB: ${contract?.database?.provider || "SQLite"}, ORM: ${contract?.database?.orm || "Prisma"}).
 
@@ -1063,6 +1196,8 @@ ${taskPageExperienceContract}
 ${productExperiencePlanContext}
 ${capabilityInstructions}
 ${designBriefContext}
+${frontendSpecContext}
+${dddBlueprintContext}
 ${pageMetricGuidance}
 ══════════════════════════════════════════════════════════════════════════════
 `.trim();

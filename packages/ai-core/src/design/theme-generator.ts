@@ -246,6 +246,8 @@ export class ThemeGenerator {
     mode?: "dark" | "light" | "warm_dark" | "obsidian";
     prompt?: string;
     seed?: number;
+    colorSystem?: any;
+    artDirection?: any;
   }): ThemeSpecification {
     const {
       domain = "general",
@@ -256,7 +258,11 @@ export class ThemeGenerator {
     // 1. Derive base mode
     let mode: ThemeSpecification["mode"] = options.mode || "dark";
     if (!options.mode) {
-      if (/botanical|plant|ivory|cream|health|clinic|student|education/i.test(`${domain} ${prompt}`)) {
+      if (options.artDirection?.colorSystem?.mode) {
+        mode = options.artDirection.colorSystem.mode === "light" ? "light" : options.artDirection.colorSystem.mode === "obsidian" ? "obsidian" : options.artDirection.colorSystem.mode === "warm_dark" ? "warm_dark" : "dark";
+      } else if (/telemetry|avionics|radar|cyber|security|soc|ops|terminal|command|satellite|spectrogram|cluster|infrastructure|cloudpulse|sre\b/i.test(`${domain} ${prompt}`)) {
+        mode = "obsidian";
+      } else if (/fashion|clothing|apparel|boutique|restaurant|dining|bistro|culinary|cafe|food|photography|portfolio|gallery|travel|tourism|resort|hotel|hospitality|botanical|plant|garden|nature|ivory|cream|healthcare|clinic|medical|dental|student|education|school|academy|architect|interior|limestone|atelier|editorial|magazine|publishing/i.test(`${domain} ${prompt}`)) {
         mode = "light";
       } else {
         mode = "dark";
@@ -267,24 +273,43 @@ export class ThemeGenerator {
     let brandHue = options.brandHue;
     if (brandHue === undefined || brandHue === null) {
       const text = `${domain} ${prompt}`.toLowerCase();
+      let baseHue = 180;
       if (/aerospace|satellite|orbit|space/i.test(text)) {
-        brandHue = 215; // Electric Azure
+        baseHue = 215; // Electric Azure
       } else if (/marine|ocean|underwater|habitat|subsea/i.test(text)) {
-        brandHue = 185; // Deep Cyan / Aquamarine
+        baseHue = 185; // Deep Cyan / Aquamarine
       } else if (/hypercar|atelier|luxury|speed|race/i.test(text)) {
-        brandHue = 25; // Amber / Burnt Copper
-      } else if (/plant|botanical|garden|nature|eco/i.test(text)) {
-        brandHue = 145; // Sage / Forest Emerald
-      } else if (/health|medical|clinic|pharma/i.test(text)) {
-        brandHue = 195; // Clinical Sky
+        baseHue = 25; // Amber / Burnt Copper
+      } else if (/fashion|apparel|boutique|clothing/i.test(text)) {
+        baseHue = 345; // Rosewood / Crimson Velvet
+      } else if (/photography|monograph|fineart|gallery/i.test(text)) {
+        baseHue = 40; // Warm Ochre / Sepia Sand
+      } else if (/restaurant|dining|bistro|culinary|cafe/i.test(text)) {
+        baseHue = 18; // Terracotta Rust / Sienna
+      } else if (/travel|hospitality|resort|hotel/i.test(text)) {
+        baseHue = 175; // Caribbean Seafoam / Azure
+      } else if (/plant|botanical|garden|bonsai|nature|eco/i.test(text)) {
+        baseHue = 145; // Sage / Forest Emerald
+      } else if (/health|medical|clinic|pharma|dental/i.test(text)) {
+        baseHue = 195; // Clinical Sky
       } else if (/fintech|crypto|bank/i.test(text)) {
-        brandHue = 260; // Deep Violet / Indigo
-      } else if (/education|school|learning/i.test(text)) {
-        brandHue = 225; // Royal Academic Cobalt
+        baseHue = 260; // Deep Violet / Indigo
+      } else if (/education|school|learning|academy/i.test(text)) {
+        baseHue = 225; // Royal Academic Cobalt
+      } else if (/creative|agency|design studio|art/i.test(text)) {
+        baseHue = 275; // Electric Violet / Mulberry
+      } else if (/geothermal|thermal|energy|magma|heat|volcan/i.test(text)) {
+        baseHue = 35; // Volcanic Amber / Terracotta
+      } else if (/cheese|creamery|dairy|farm|pastoral|harvest|vineyard/i.test(text)) {
+        baseHue = 85; // Warm Olive / Meadow Gold
       } else {
-        // Deterministic hash selection across vibrant spectrum
-        brandHue = (Math.abs(seed * 37) + 180) % 360;
+        // Deterministic text hash combined with seed across vibrant spectrum
+        const textHash = text.split("").reduce((acc, c, i) => acc + c.charCodeAt(0) * (i + 1), 0);
+        baseHue = (Math.abs(textHash + seed * 37) + 180) % 360;
       }
+      // Apply organic seed-based hue distribution nuance (±15°) so different generations create authentic original palettes
+      const jitter = seed !== 0 ? ((Math.abs(seed) % 31) - 15) : 0;
+      brandHue = (baseHue + jitter + 360) % 360;
     }
 
     const secondaryHue = (brandHue + 35) % 360;
@@ -324,6 +349,23 @@ export class ThemeGenerator {
     let textSecondary = isDark ? "#94a3b8" : "#475569";
     let textMuted = isDark ? "#64748b" : "#64748b";
     let textOnPrimary = getContrastRatio("#ffffff", primary) >= 4.5 ? "#ffffff" : "#0f172a";
+
+    // If explicit color system or art direction provided, honor its locked tokens
+    const cs = options.colorSystem || options.artDirection?.colorSystem;
+    if (cs) {
+      if (cs.background) background = cs.background;
+      if (cs.surface) surface = cs.surface;
+      if (cs.surfaceRaised || cs.surfaceElevated) surfaceRaised = cs.surfaceRaised || cs.surfaceElevated;
+      if (cs.primary || cs.primaryHex) primary = cs.primary || cs.primaryHex;
+      if (cs.primaryHover || cs.primaryHoverHex) primaryHover = cs.primaryHover || cs.primaryHoverHex;
+      if (cs.secondary || cs.secondaryHex) secondary = cs.secondary || cs.secondaryHex;
+      if (cs.textPrimary) textPrimary = cs.textPrimary;
+      if (cs.textSecondary) textSecondary = cs.textSecondary;
+      if (cs.textMuted) textMuted = cs.textMuted;
+      if (cs.border) border = cs.border;
+      if (cs.borderSubtle) borderSubtle = cs.borderSubtle;
+      if (cs.accent || cs.accentGradient) accent = cs.accent || cs.accentGradient;
+    }
 
     // Auto-tune contrast against WCAG AA requirements
     textPrimary = ensureContrast(textPrimary, background, 4.5);

@@ -66,6 +66,8 @@ export interface ApiWorkflowReport {
 export class ApiWorkflowVerifier {
   public static lastAuthEmail = `operator_test_${Date.now()}@test.internal`;
   public static lastAuthPassword = "Secr3t_1234!";
+  public static activeUserId: string | undefined;
+  public static entityIdByPrefix = new Map<string, string>();
 
   /**
    * Discover registered API endpoints directly from project source files (server/routes, server/index.ts).
@@ -296,11 +298,18 @@ export class ApiWorkflowVerifier {
    * Generate test workflow steps from the current locked API contract or discovered endpoints.
    */
   public static generateWorkflowsFromContract(projectRoot?: string): ApiWorkflowStep[] {
-    let endpoints = projectRoot ? this.discoverEndpointsFromProject(projectRoot) : [];
-    if (endpoints.length === 0) {
-      endpoints = ApiContractRegistry.getEndpoints();
-    } else {
+    const registered = ApiContractRegistry.getEndpoints();
+    const discovered = projectRoot ? this.discoverEndpointsFromProject(projectRoot) : [];
+    let endpoints: ApiEndpointContract[] = [];
+
+    if (registered.length > 0) {
+      // Authoritative API contract is strictly preserved as single source of truth (no alias drift)
+      endpoints = registered;
+    } else if (discovered.length > 0) {
+      endpoints = discovered;
       ApiContractRegistry.registerContract(endpoints);
+    } else {
+      endpoints = registered;
     }
 
     const steps: ApiWorkflowStep[] = [];
@@ -337,17 +346,62 @@ export class ApiWorkflowVerifier {
         if (!sampleBody.status) sampleBody.status = "active";
         if (!sampleBody.description) sampleBody.description = `Test payload for ${ep.path}`;
         if (!sampleBody.data) sampleBody.data = { summary: `Sample data for ${ep.path}` };
-        if (!sampleBody.email && (ep.path.includes("contact") || ep.path.includes("message") || ep.path.includes("user") || ep.path.includes("profile"))) {
+        if (!sampleBody.email && /(contact|message|user|profile|inquir|booking|lead|reserv)/i.test(ep.path)) {
           sampleBody.email = "test@internal.aegis";
         }
-        if (!sampleBody.message && (ep.path.includes("contact") || ep.path.includes("message"))) {
+        if (!sampleBody.message && /(contact|message|inquir|booking|lead|comment|feedback)/i.test(ep.path)) {
           sampleBody.message = "Automated test verification message.";
+        }
+        if (!sampleBody.clientName && /(inquir|booking|lead|reserv)/i.test(ep.path)) {
+          sampleBody.clientName = "Elena Vance Client";
+        }
+        if (!sampleBody.service && /(inquir|booking|reserv|appointment)/i.test(ep.path)) {
+          sampleBody.service = "Standard Session";
+        }
+        if (!sampleBody.date && /(booking|reserv|appointment|event|schedule)/i.test(ep.path)) {
+          sampleBody.date = new Date(Date.now() + 86400000).toISOString().split("T")[0];
         }
         if (!sampleBody.company && (ep.path.includes("experience") || ep.path.includes("work") || ep.path.includes("job"))) {
           sampleBody.company = "Technology Systems Inc.";
         }
         if (!sampleBody.startDate && (ep.path.includes("experience") || ep.path.includes("education"))) {
           sampleBody.startDate = "2024-01-01";
+        }
+
+        // Dynamically inspect project source controllers if available to satisfy explicit destructured properties
+        if (projectRoot) {
+          try {
+            const lastSegment = ep.path.split("/").filter(Boolean).pop()?.toLowerCase();
+            if (lastSegment) {
+              const searchDirs = [
+                join(projectRoot, "server", "controllers"),
+                join(projectRoot, "server", "routes")
+              ];
+              for (const dir of searchDirs) {
+                if (!existsSync(dir)) continue;
+                for (const file of readdirSync(dir)) {
+                  if (file.toLowerCase().includes(lastSegment)) {
+                    const code = readFileSync(join(dir, file), "utf8");
+                    const bodyDestruct = code.match(/const\s+\{([^}]+)\}\s*=\s*req\.body/);
+                    if (bodyDestruct && bodyDestruct[1]) {
+                      const fields = bodyDestruct[1].split(",").map(f => f.trim().split(":")[0].trim()).filter(Boolean);
+                      for (const field of fields) {
+                        if (sampleBody[field] === undefined) {
+                          sampleBody[field] = field.toLowerCase().includes("email")
+                            ? "test@internal.aegis"
+                            : field.toLowerCase().includes("phone")
+                            ? "555-0199"
+                            : field.toLowerCase().includes("date")
+                            ? "2026-11-12"
+                            : `Sample ${field}`;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } catch {}
         }
       }
 
@@ -359,14 +413,16 @@ export class ApiWorkflowVerifier {
         }
       }
 
-      if (ep.path.includes("/auth/register") || ep.path.includes("/auth/login")) {
+      if (/\/auths?\/(register|login)/i.test(ep.path) || ep.path.includes("/auth/register") || ep.path.includes("/auth/login")) {
         sampleBody.email = sharedAuthEmail;
         sampleBody.password = sharedAuthPassword;
+        sampleBody.name = "Test Operator";
+        sampleBody.role = "OPERATOR";
       }
 
       // If stateful POST, identify corresponding read-back route IF a matching GET endpoint exists
       let readBackPath: string | undefined;
-      if (ep.method === "POST" && !ep.path.includes("/auth/")) {
+      if (ep.method === "POST" && !/\/auths?\//i.test(ep.path) && !ep.path.includes("/auth/")) {
         const normPath = ep.path.toLowerCase().replace(/\/$/, "");
         const hasGetRoute = endpoints.some(e => {
           if (e.method !== "GET") return false;
@@ -453,10 +509,10 @@ export class ApiWorkflowVerifier {
     }
 
     steps.sort((a, b) => {
-      if (a.path.includes("/auth/register") && !a.isNegativeTest) return -1;
-      if (b.path.includes("/auth/register") && !b.isNegativeTest) return 1;
-      if (a.path.includes("/auth/login") && !a.isNegativeTest) return -1;
-      if (b.path.includes("/auth/login") && !b.isNegativeTest) return 1;
+      if (/\/auths?\/register/i.test(a.path) && !a.isNegativeTest) return -1;
+      if (/\/auths?\/register/i.test(b.path) && !b.isNegativeTest) return 1;
+      if (/\/auths?\/login/i.test(a.path) && !a.isNegativeTest) return -1;
+      if (/\/auths?\/login/i.test(b.path) && !b.isNegativeTest) return 1;
       return 0;
     });
 
@@ -521,6 +577,9 @@ export class ApiWorkflowVerifier {
 
     console.log(`[ApiWorkflowVerifier] 🧪 Executing ${workflowSteps.length} API workflow test(s) against ${baseUrl}...`);
 
+    ApiWorkflowVerifier.activeUserId = undefined;
+    ApiWorkflowVerifier.entityIdByPrefix.clear();
+
     let readOnlyTested = 0;
     let statefulTested = 0;
     let mutationsVerified = 0;
@@ -536,10 +595,9 @@ export class ApiWorkflowVerifier {
     for (const step of workflowSteps) {
       registeredEndpoints.add(`${step.method}:${step.path}`);
       const start = Date.now();
-      const targetPath = step.path
-        .replace(/:model\b/gi, resolvedModel)
-        .replace(/:[a-zA-Z0-9_]+/g, capturedEntityId || "1");
-      const url = `${baseUrl.replace(/\/$/, "")}${targetPath.startsWith("/") ? "" : "/"}${targetPath}`;
+
+      const endpointPrefix = step.path.replace(/\/:[a-zA-Z0-9_]+.*$/, "").toLowerCase();
+      let resolvedId = ApiWorkflowVerifier.entityIdByPrefix.get(endpointPrefix) || capturedEntityId;
 
       const headers = { ...step.headers };
       if (!step.isNegativeTest && !step.path.includes("/auth/") && !step.path.includes("/health")) {
@@ -552,11 +610,53 @@ export class ApiWorkflowVerifier {
         headers["Authorization"] = `Bearer ${capturedAuthToken}`;
       }
 
+      // If positive test with parameterized ID and no ID mapped yet, discover existing entity from GET list
+      if (!resolvedId && !step.isNegativeTest && (step.path.includes("/:id") || step.path.includes("/:") || step.method === "PATCH" || step.method === "PUT")) {
+        try {
+          const listUrl = `${baseUrl.replace(/\/$/, "")}${endpointPrefix}`;
+          const listHeaders = { ...headers };
+          if (capturedAuthToken) listHeaders["Authorization"] = `Bearer ${capturedAuthToken}`;
+          const listRes = await fetch(listUrl, { headers: listHeaders });
+          if (listRes.status >= 200 && listRes.status < 300) {
+            const listData = await listRes.json();
+            const items = Array.isArray(listData) ? listData : (Array.isArray(listData?.data) ? listData.data : []);
+            if (items.length > 0 && items[0]?.id) {
+              resolvedId = String(items[0].id);
+              ApiWorkflowVerifier.entityIdByPrefix.set(endpointPrefix, resolvedId);
+            }
+          }
+        } catch {}
+      }
+
+      const targetPath = step.path
+        .replace(/:model\b/gi, resolvedModel)
+        .replace(/:[a-zA-Z0-9_]+/g, resolvedId || "1");
+      const url = `${baseUrl.replace(/\/$/, "")}${targetPath.startsWith("/") ? "" : "/"}${targetPath}`;
+
+      // Inject activeUserId into stateful payload if present
+      let payloadToSend = step.requestBody ? JSON.parse(JSON.stringify(step.requestBody)) : undefined;
+      if (payloadToSend && typeof payloadToSend === "object" && !step.isNegativeTest) {
+        if (ApiWorkflowVerifier.activeUserId) {
+          payloadToSend.userId = ApiWorkflowVerifier.activeUserId;
+          payloadToSend.user_id = ApiWorkflowVerifier.activeUserId;
+        }
+        if (!payloadToSend.name && payloadToSend.title) payloadToSend.name = payloadToSend.title;
+        if (!payloadToSend.title && payloadToSend.name) payloadToSend.title = payloadToSend.name;
+        if (step.method === "PATCH" || step.method === "PUT") {
+          const targetId = resolvedId || capturedEntityId || ApiWorkflowVerifier.entityIdByPrefix.values().next().value;
+          if (targetId) {
+            if (!payloadToSend.id) payloadToSend.id = targetId;
+            if (!payloadToSend.directiveId) payloadToSend.directiveId = targetId;
+            if (!payloadToSend.adId) payloadToSend.adId = targetId;
+          }
+        }
+      }
+
       try {
         let fetchResponse = await fetch(url, {
           method: step.method,
           headers,
-          body: step.requestBody ? JSON.stringify(step.requestBody) : undefined,
+          body: payloadToSend ? JSON.stringify(payloadToSend) : undefined,
         });
 
         let durationMs = Date.now() - start;
@@ -583,11 +683,15 @@ export class ApiWorkflowVerifier {
               if (!loginBody?.token && !loginBody?.data?.token) {
                 // If login failed, register a fresh user
                 const freshEmail = `operator_test_${Date.now()}_retry@test.internal`;
-                await fetch(`${baseUrl.replace(/\/$/, "")}/api/auth/register`, {
+                const regRes = await fetch(`${baseUrl.replace(/\/$/, "")}/api/auth/register`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ email: freshEmail, password: ApiWorkflowVerifier.lastAuthPassword }),
                 });
+                const regBody = await regRes.json();
+                const regUser = regBody?.user || regBody?.data?.user;
+                if (regUser?.id) ApiWorkflowVerifier.activeUserId = regUser.id;
+
                 loginRes = await fetch(`${baseUrl.replace(/\/$/, "")}/api/auth/login`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -600,6 +704,10 @@ export class ApiWorkflowVerifier {
                 retryToken = foundToken;
                 capturedAuthToken = foundToken;
               }
+              const foundUser = loginBody?.user || loginBody?.data?.user;
+              if (foundUser?.id && !ApiWorkflowVerifier.activeUserId) {
+                ApiWorkflowVerifier.activeUserId = foundUser.id;
+              }
             } catch {}
           }
           headers["Authorization"] = `Bearer ${retryToken || "test_token"}`;
@@ -607,7 +715,7 @@ export class ApiWorkflowVerifier {
             fetchResponse = await fetch(url, {
               method: step.method,
               headers,
-              body: step.requestBody ? JSON.stringify(step.requestBody) : undefined,
+              body: payloadToSend ? JSON.stringify(payloadToSend) : undefined,
             });
             durationMs = Date.now() - start;
             actualStatus = fetchResponse.status;
@@ -630,10 +738,26 @@ export class ApiWorkflowVerifier {
           } else if (actualBody.data && typeof actualBody.data.token === "string") {
             capturedAuthToken = actualBody.data.token;
           }
-          if (step.method === "POST" && !step.isNegativeTest) {
-            const rawId = actualBody?.data?.id ?? actualBody?.id;
+          const foundUser = actualBody.user || actualBody.data?.user;
+          const foundUserId = foundUser?.id || actualBody.userId || actualBody.id || actualBody.data?.id;
+          if (foundUserId && typeof foundUserId === "string" && !ApiWorkflowVerifier.activeUserId) {
+            ApiWorkflowVerifier.activeUserId = foundUserId;
+          }
+          if (!ApiWorkflowVerifier.activeUserId && capturedAuthToken && capturedAuthToken.includes(".")) {
+            try {
+              const payloadBase64 = capturedAuthToken.split(".")[1];
+              const payloadJson = JSON.parse(Buffer.from(payloadBase64, "base64").toString("utf8"));
+              const jwtUserId = payloadJson.userId || payloadJson.id || payloadJson.sub;
+              if (jwtUserId && typeof jwtUserId === "string") {
+                ApiWorkflowVerifier.activeUserId = jwtUserId;
+              }
+            } catch {}
+          }
+          if ((step.method === "POST" || step.method === "PUT") && !step.isNegativeTest) {
+            const rawId = actualBody?.data?.id ?? actualBody?.id ?? actualBody?.result?.id;
             if (rawId && (typeof rawId === "string" || typeof rawId === "number")) {
               capturedEntityId = String(rawId);
+              ApiWorkflowVerifier.entityIdByPrefix.set(endpointPrefix, capturedEntityId);
             }
           }
         }
@@ -677,7 +801,7 @@ export class ApiWorkflowVerifier {
                 try {
                   const targetReadBack = step.readBackPath
                     .replace(/:model\b/gi, resolvedModel)
-                    .replace(/:[a-zA-Z0-9_]+/g, "1");
+                    .replace(/:[a-zA-Z0-9_]+/g, resolvedId || capturedEntityId || "1");
                   const readBackUrl = `${baseUrl.replace(/\/$/, "")}${targetReadBack.startsWith("/") ? "" : "/"}${targetReadBack}`;
                   const rbRes = await fetch(readBackUrl, {
                     method: "GET",
@@ -807,6 +931,9 @@ export class ApiWorkflowVerifier {
     const fn = (fieldName || "").toLowerCase();
 
     // Semantic field name hints
+    if (fn === "userid" || fn === "user_id" || fn.endsWith("userid")) {
+      return ApiWorkflowVerifier.activeUserId || "00000000-0000-0000-0000-000000000001";
+    }
     if (fn.includes("email")) return "test_user@example.internal";
     if (fn.includes("password")) return "Secr3t_1234!";
     if (fn.includes("phone")) return "+1234567890";

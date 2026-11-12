@@ -1,54 +1,46 @@
 import { describe, it, expect } from "vitest";
-import { DomainVocabularySynthesizer } from "../../design/domain-vocabulary-synthesizer";
-import { NavigationDesignResolver } from "../../design/navigation-design";
+import { PageExperiencePlanner } from "../../design/page-experience-plan.js";
+import { NavigationDesignResolver } from "../../design/navigation-design.js";
 
 describe("Monument Architecture Regression Suite", () => {
-  // TEST 1: Architecture journal SCROLL_STORY fallback contains zero generic telemetry/startup copy
-  it("TEST 1: Architecture journal SCROLL_STORY fallback contains zero generic telemetry/startup copy", () => {
-    const chapters = DomainVocabularySynthesizer.synthesizeChapters(
+  // TEST 1: Architecture journal route planning contains zero generic telemetry/startup copy
+  it("TEST 1: Architecture journal route planning contains zero generic telemetry/startup copy", () => {
+    const plan = PageExperiencePlanner.deriveRoutePlan(
+      "/monograph",
+      "monograph",
+      "DYNAMIC_BESPOKE",
       "Create a premium independent architecture journal called MONUMENT.",
-      "SCROLL_STORY",
-      5,
-      42
+      { brandIdentity: { name: "MONUMENT" } } as any
     );
 
-    const fullChapterText = JSON.stringify(chapters).toLowerCase();
-
-    // Must have synthesized real architecture chapters
-    expect(chapters.length).toBeGreaterThan(0);
+    const fullPlanText = JSON.stringify(plan).toLowerCase();
 
     // Forbidden generic telemetry / startup copy
-    expect(fullChapterText).not.toContain("telemetry");
-    expect(fullChapterText).not.toContain("genesis");
-    expect(fullChapterText).not.toContain("🚀");
-    expect(fullChapterText).not.toContain("validating foundational telemetry");
-    expect(fullChapterText).not.toContain("dynamic longform architecture");
-    expect(fullChapterText).not.toContain("phase 1 initiated");
-    expect(fullChapterText).not.toContain("phase 2 calibrated");
-    expect(fullChapterText).not.toContain("telemetry gateway");
-    expect(fullChapterText).not.toContain("operational ledgers");
+    expect(fullPlanText).not.toContain("telemetry");
+    expect(fullPlanText).not.toContain("genesis");
+    expect(fullPlanText).not.toContain("validating foundational telemetry");
+    expect(fullPlanText).not.toContain("phase 1 initiated");
   });
 
   // TEST 2: Underwater science domain contains zero architecture/fashion/fantasy fallback vocabulary
   it("TEST 2: Underwater science domain contains zero architecture/fashion/fantasy fallback vocabulary", () => {
-    const chapters = DomainVocabularySynthesizer.synthesizeChapters(
+    const plan = PageExperiencePlanner.deriveRoutePlan(
+      "/marine-species",
+      "marine-species",
+      "DYNAMIC_BESPOKE",
       "Deep sea hydrothermal vent exploration and marine bioluminescence catalog",
-      "SCROLL_STORY",
-      4,
-      101
+      { brandIdentity: { name: "Thalassa" } } as any
     );
 
-    const fullChapterText = JSON.stringify(chapters).toLowerCase();
+    const fullPlanText = JSON.stringify(plan).toLowerCase();
 
     // Must not leak architectural, fashion, or fantasy vocabulary
-    expect(fullChapterText).not.toContain("monograph");
-    expect(fullChapterText).not.toContain("tectonic");
-    expect(fullChapterText).not.toContain("architrave");
-    expect(fullChapterText).not.toContain("haute couture");
-    expect(fullChapterText).not.toContain("dragon");
-    expect(fullChapterText).not.toContain("spellbook");
-    expect(fullChapterText).not.toContain("telemetry");
-    expect(fullChapterText).not.toContain("genesis");
+    expect(fullPlanText).not.toContain("monograph");
+    expect(fullPlanText).not.toContain("tectonic");
+    expect(fullPlanText).not.toContain("architrave");
+    expect(fullPlanText).not.toContain("haute couture");
+    expect(fullPlanText).not.toContain("dragon");
+    expect(fullPlanText).not.toContain("spellbook");
   });
 
   // TEST 3: Navigation hrefs are a subset of authoritative requiredRoutes

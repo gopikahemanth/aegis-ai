@@ -362,6 +362,7 @@ export class TestPyramidRunner {
     while ((match = importRegex.exec(content)) !== null) {
       const relTarget = match[1];
       const targetBase = resolve(fileDir, relTarget);
+      const targetWithoutJs = targetBase.replace(/\.(js|jsx)$/, "");
 
       const candidateExtensions = [
         "",
@@ -377,7 +378,7 @@ export class TestPyramidRunner {
         "/index.js",
       ];
 
-      const exists = candidateExtensions.some(ext => existsSync(targetBase + ext));
+      const exists = candidateExtensions.some(ext => existsSync(targetBase + ext) || existsSync(targetWithoutJs + ext));
       if (!exists) {
         return relTarget;
       }

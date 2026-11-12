@@ -16,7 +16,7 @@ import { PromptConstraints } from "../governance/prompt-constraints.js";
 
 export interface SemanticPersonality {
   tone: "playful" | "friendly" | "calm" | "warm" | "editorial" | "minimal" | "technical" | "luxurious" | "bold";
-  compositionPreference: "EDITORIAL_LANDING" | "ASYMMETRIC_PRODUCT_DASHBOARD" | "SPLIT_SCREEN_WORKSPACE" | "VISUAL_ANALYTICS_CANVAS" | "PLAYFUL_WORKSPACE" | "MINIMAL_SAAS_CONSOLE";
+  compositionPreference: "EDITORIAL_LANDING" | "ASYMMETRIC_PRODUCT_DASHBOARD" | "SPLIT_SCREEN_WORKSPACE" | "VISUAL_ANALYTICS_CANVAS" | "PLAYFUL_WORKSPACE" | "MINIMAL_SAAS_CONSOLE" | "COMMAND_CENTER";
   cardEnclosureStyle: "borderless" | "soft_floating" | "translucent_glass" | "structured_ruled";
 }
 
@@ -38,6 +38,7 @@ export interface VisualArtDirectionContract {
     | "RESTRAINED_PRODUCT"
     | "PLAYFUL_APPROACHABLE"
     | "SOPHISTICATED_ELEGANT"
+    | "ARCHITECTURAL_EDITORIAL"
     | "CALM_BOTANICAL";   // sage/terracotta/marigold on warm ivory — personal tracker direction
 
   colorSystem: {
@@ -229,6 +230,55 @@ interface ArchetypeDefinition {
 }
 
 const ARCHETYPES: Record<VisualArtDirectionContract["archetype"], ArchetypeDefinition> = {
+  // ARCHITECTURAL_EDITORIAL — warm limestone, forest olive, deep charcoal, muted terracotta
+  // The authoritative direction for luxury architecture studios, interior design ateliers, and curated spatial monographs
+  ARCHITECTURAL_EDITORIAL: {
+    archetype: "ARCHITECTURAL_EDITORIAL",
+    mode: "light",
+    background: "#F3F0E8", // warm limestone
+    surface: "#FFFFFF",
+    surfaceElevated: "#EAE6DC",
+    primaryVariants: [
+      { name: "forest-olive", hex: "#465342", hoverHex: "#374234", subtle: "rgba(70, 83, 66, 0.16)", gradient: "from-[#465342] to-[#252821]" },
+      { name: "terracotta", hex: "#B9785E", hoverHex: "#A0644D", subtle: "rgba(185, 120, 94, 0.16)", gradient: "from-[#B9785E] to-[#8C523D]" },
+      { name: "charcoal", hex: "#252821", hoverHex: "#181A16", subtle: "rgba(37, 40, 33, 0.16)", gradient: "from-[#252821] to-[#465342]" },
+    ],
+    secondary: "forest-olive",
+    secondaryHex: "#465342",
+    textPrimary: "#252821", // deep charcoal
+    textSecondary: "#57534E",
+    textMuted: "#78716C",
+    border: "rgba(70, 83, 66, 0.15)",
+    borderSubtle: "rgba(70, 83, 66, 0.08)",
+    geometry: {
+      style: "refined",
+      radiusSm: "2px",
+      radiusMd: "4px",
+      radiusLg: "8px",
+      radiusXl: "12px",
+      radiusFull: "9999px",
+    },
+    surfaceTreatment: {
+      type: "borderless_clean",
+      backdropBlur: "0px",
+      cardShadow: "0 1px 3px 0 rgba(37, 40, 33, 0.05), 0 2px 8px -2px rgba(37, 40, 33, 0.08)",
+      cardBorder: "1px solid rgba(70, 83, 66, 0.12)",
+    },
+    typography: {
+      pairing: "editorial_serif",
+      fontDisplay: "Cormorant Garamond, Georgia, serif",
+      fontBody: "DM Sans, -apple-system, sans-serif",
+      headingStyle: "font-serif font-light tracking-tight text-[#252821]",
+      bodyStyle: "text-sm text-[#57534E] leading-relaxed",
+      emphasis: "font-serif italic font-normal text-[#B9785E]",
+    },
+    tailwindBgClass: "bg-[#F3F0E8]",
+    tailwindSurfaceClass: "bg-white border-[#465342]/15 shadow-sm",
+    tailwindCardClass: "bg-white border border-[#465342]/12 shadow-sm",
+    mood: "Sophisticated architectural atelier — warm limestone surfaces, forest olive and muted terracotta accents, editorial serif headlines with restrained modern sans-serif",
+    motifs: ["monolithic_asymmetric_heroes", "tactile_material_swatches", "curated_plate_numbers"],
+  },
+
   // CALM_BOTANICAL — sage/terracotta/dusty rose on warm ivory
   // The intentional personal-tracker direction for calm/warm emotional tones
   CALM_BOTANICAL: {
@@ -944,6 +994,17 @@ export function extractSemanticPersonality(prompt: string, domainHint?: string):
   const cleanPrompt = PromptConstraints.stripNegativeConstraints(prompt || "");
   const text = `${cleanPrompt} ${domainHint || ""}`.toLowerCase();
 
+  // 0a. Operational, avionics, aerospace, aircraft, flight, telemetry, turbine, SCADA, fleet maintenance
+  if (
+    /\b(avionics|aerospace|aircraft|flight|aviation|telemetry|turbine|scada|radar|defense|satellite|drone|uav|mission control|cockpit|subsystem|firmware|airframe|fleet maintenance|mro|airworthiness)\b/i.test(text)
+  ) {
+    return {
+      tone: "technical",
+      compositionPreference: "COMMAND_CENTER",
+      cardEnclosureStyle: "structured_ruled",
+    };
+  }
+
   // 0. Observatory, astronomy, astrophysics, telescope, celestial signals
   if (
     text.includes("observatory") ||
@@ -993,9 +1054,9 @@ export function extractSemanticPersonality(prompt: string, domainHint?: string):
     text.includes("spa") ||
     text.includes("calm") ||
     text.includes("serene") ||
-    text.includes("sanctuary") ||
-    text.includes("retreat") ||
-    text.includes("holistic") ||
+    text.includes("mindfulness sanctuary") ||
+    text.includes("holistic wellness") ||
+    text.includes("meditation retreat") ||
     text.includes("therapy") ||
     text.includes("yoga") ||
     text.includes("botanical")
@@ -1007,8 +1068,12 @@ export function extractSemanticPersonality(prompt: string, domainHint?: string):
     };
   }
 
-  // 3. Editorial, curatorial, museum, archive, monograph, cultural, heritage signals
+  // 3. Editorial, architecture, spatial atelier, curatorial, museum, archive signals
   if (
+    text.includes("architect") ||
+    text.includes("interior design") ||
+    text.includes("spatial") ||
+    text.includes("atelier") ||
     text.includes("museum") ||
     text.includes("curatorial") ||
     text.includes("archive") ||
@@ -1017,9 +1082,8 @@ export function extractSemanticPersonality(prompt: string, domainHint?: string):
     text.includes("exhibition") ||
     text.includes("provenance") ||
     text.includes("heritage") ||
-    text.includes("atelier") ||
     text.includes("editorial") ||
-    text.includes("craft") ||
+    /\b(craft|crafts|handicrafts?|artisan)\b/i.test(text) ||
     text.includes("ceramics") ||
     text.includes("luthier") ||
     text.includes("history") ||
@@ -1027,6 +1091,22 @@ export function extractSemanticPersonality(prompt: string, domainHint?: string):
   ) {
     return {
       tone: "editorial",
+      compositionPreference: "EDITORIAL_LANDING",
+      cardEnclosureStyle: "borderless",
+    };
+  }
+
+  // 3b. Luxury, high-end, wealth, premium brand signals
+  if (
+    text.includes("luxury") ||
+    text.includes("wealth") ||
+    text.includes("private banking") ||
+    text.includes("bespoke") ||
+    text.includes("haute") ||
+    text.includes("couture")
+  ) {
+    return {
+      tone: "luxurious",
       compositionPreference: "EDITORIAL_LANDING",
       cardEnclosureStyle: "borderless",
     };
@@ -1120,7 +1200,12 @@ export function extractSemanticPersonality(prompt: string, domainHint?: string):
  * Derives a complete, deterministic, and WCAG-compliant VisualArtDirectionContract
  * based on prompt semantics, semantic personality, and a reproducible hash seed.
  */
-export function deriveArtDirection(prompt: string, domainHint?: string, explicitSeed?: number): VisualArtDirectionContract {
+export function deriveArtDirection(
+  prompt: string,
+  domainHint?: string,
+  explicitSeed?: number,
+  preferredArchetype?: VisualArtDirectionContract["archetype"],
+): VisualArtDirectionContract {
   const seedString = `${prompt.trim()} ${domainHint || ""}`.trim();
   const hash = explicitSeed !== undefined ? Math.abs(explicitSeed) : computeDeterministicHash(seedString);
   const promptLower = seedString.toLowerCase();
@@ -1129,46 +1214,57 @@ export function deriveArtDirection(prompt: string, domainHint?: string, explicit
   const semanticPersonality = extractSemanticPersonality(prompt, domainHint);
 
   // 2. Archetype Mapping based on Semantic Personality Tone & Domain Signals
-  let compatibleArchetypes: Array<VisualArtDirectionContract["archetype"]> = [];
+  let archetypeKey: VisualArtDirectionContract["archetype"];
 
-  if (promptLower.includes("botanical") || promptLower.includes("plant") || promptLower.includes("sage") || promptLower.includes("terracotta") || promptLower.includes("houseplant")) {
-    compatibleArchetypes = ["CALM_BOTANICAL"];
-  } else if (semanticPersonality.tone === "playful" || semanticPersonality.tone === "friendly") {
-    compatibleArchetypes = ["PLAYFUL_APPROACHABLE", "CALM_BOTANICAL", "BOTANICAL_EARTH", "NORDIC_MINIMAL"];
-  } else if (semanticPersonality.tone === "calm") {
-    compatibleArchetypes = ["CALM_BOTANICAL", "EDITORIAL_NARRATIVE", "BOTANICAL_EARTH", "NORDIC_MINIMAL"];
-  } else if (semanticPersonality.tone === "editorial") {
-    compatibleArchetypes = ["EDITORIAL_NARRATIVE", "EDITORIAL_HERITAGE", "AMBER_WARM_DARK"];
-  } else if (semanticPersonality.tone === "minimal") {
-    compatibleArchetypes = ["RESTRAINED_PRODUCT", "MODERN_SWISS", "NORDIC_MINIMAL"];
-  } else if (semanticPersonality.tone === "technical") {
-    if (promptLower.includes("observatory") || promptLower.includes("astronomy") || promptLower.includes("astrophysics") || promptLower.includes("telescope") || promptLower.includes("celestial") || promptLower.includes("star map")) {
-      compatibleArchetypes = ["OBSIDIAN_PRECISION", "EDITORIAL_NARRATIVE", "MODERN_SWISS"];
-    } else if (promptLower.includes("clinical") || promptLower.includes("laboratory") || promptLower.includes("pathology") || promptLower.includes("diagnostic") || promptLower.includes("biospecimen") || promptLower.includes("hospital")) {
-      compatibleArchetypes = ["CLINICAL_LABORATORY"];
-    } else if (promptLower.includes("trading") || promptLower.includes("fintech") || promptLower.includes("var") || promptLower.includes("order routing")) {
-      compatibleArchetypes = ["SOPHISTICATED_ELEGANT", "OBSIDIAN_PRECISION", "INDUSTRIAL_UTILITY"];
-    } else if (promptLower.includes("ocean") || promptLower.includes("maritime") || promptLower.includes("marine")) {
-      compatibleArchetypes = ["OCEANIC_MARITIME", "INDUSTRIAL_UTILITY", "OBSIDIAN_PRECISION"];
-    } else {
-      compatibleArchetypes = ["INDUSTRIAL_UTILITY", "OBSIDIAN_PRECISION", "MODERN_SWISS"];
-    }
-  } else if (semanticPersonality.tone === "luxurious") {
-    compatibleArchetypes = ["SOPHISTICATED_ELEGANT", "AMBER_WARM_DARK", "EDITORIAL_HERITAGE"];
+  if (preferredArchetype && ARCHETYPES[preferredArchetype]) {
+    archetypeKey = preferredArchetype;
   } else {
-    // Bold / general
-    compatibleArchetypes = [
-      "RESTRAINED_PRODUCT",
-      "EDITORIAL_NARRATIVE",
-      "MODERN_SWISS",
-      "OCEANIC_MARITIME",
-      "NEON_SYNTHETIC",
-      "BOTANICAL_EARTH",
-    ];
+    let compatibleArchetypes: Array<VisualArtDirectionContract["archetype"]> = [];
+
+    if (promptLower.includes("botanical") || promptLower.includes("plant") || promptLower.includes("sage") || promptLower.includes("terracotta") || promptLower.includes("houseplant")) {
+      compatibleArchetypes = ["CALM_BOTANICAL"];
+    } else if (promptLower.includes("architect") || promptLower.includes("interior design") || promptLower.includes("spatial") || promptLower.includes("atelier")) {
+      compatibleArchetypes = ["ARCHITECTURAL_EDITORIAL", "EDITORIAL_HERITAGE"];
+    } else if (semanticPersonality.tone === "playful" || semanticPersonality.tone === "friendly") {
+      compatibleArchetypes = ["PLAYFUL_APPROACHABLE", "CALM_BOTANICAL", "BOTANICAL_EARTH", "NORDIC_MINIMAL"];
+    } else if (semanticPersonality.tone === "calm") {
+      compatibleArchetypes = ["CALM_BOTANICAL", "EDITORIAL_NARRATIVE", "BOTANICAL_EARTH", "NORDIC_MINIMAL"];
+    } else if (semanticPersonality.tone === "editorial") {
+      compatibleArchetypes = ["ARCHITECTURAL_EDITORIAL", "EDITORIAL_NARRATIVE", "EDITORIAL_HERITAGE", "AMBER_WARM_DARK"];
+    } else if (semanticPersonality.tone === "minimal") {
+      compatibleArchetypes = ["RESTRAINED_PRODUCT", "MODERN_SWISS", "NORDIC_MINIMAL"];
+    } else if (semanticPersonality.tone === "technical") {
+      if (/\b(avionics|aerospace|aircraft|flight|aviation|telemetry|turbine|scada|radar|defense|satellite|drone|uav|mission control|cockpit|subsystem|firmware|airframe|fleet maintenance|mro|airworthiness)\b/i.test(promptLower)) {
+        compatibleArchetypes = ["INDUSTRIAL_UTILITY", "OBSIDIAN_PRECISION"];
+      } else if (promptLower.includes("observatory") || promptLower.includes("astronomy") || promptLower.includes("astrophysics") || promptLower.includes("telescope") || promptLower.includes("celestial") || promptLower.includes("star map")) {
+        compatibleArchetypes = ["OBSIDIAN_PRECISION", "EDITORIAL_NARRATIVE", "MODERN_SWISS"];
+      } else if (promptLower.includes("clinical") || promptLower.includes("laboratory") || promptLower.includes("pathology") || promptLower.includes("diagnostic") || promptLower.includes("biospecimen") || promptLower.includes("hospital")) {
+        compatibleArchetypes = ["CLINICAL_LABORATORY"];
+      } else if (promptLower.includes("trading") || promptLower.includes("fintech") || promptLower.includes("var") || promptLower.includes("order routing")) {
+        compatibleArchetypes = ["SOPHISTICATED_ELEGANT", "OBSIDIAN_PRECISION", "INDUSTRIAL_UTILITY"];
+      } else if (promptLower.includes("ocean") || promptLower.includes("maritime") || promptLower.includes("marine")) {
+        compatibleArchetypes = ["OCEANIC_MARITIME", "INDUSTRIAL_UTILITY", "OBSIDIAN_PRECISION"];
+      } else {
+        compatibleArchetypes = ["INDUSTRIAL_UTILITY", "OBSIDIAN_PRECISION", "MODERN_SWISS"];
+      }
+    } else if (semanticPersonality.tone === "luxurious") {
+      compatibleArchetypes = ["ARCHITECTURAL_EDITORIAL", "SOPHISTICATED_ELEGANT", "AMBER_WARM_DARK", "EDITORIAL_HERITAGE"];
+    } else if (promptLower.includes("cyberpunk") || promptLower.includes("synthwave") || promptLower.includes("neon") || promptLower.includes("rave") || promptLower.includes("night club")) {
+      compatibleArchetypes = ["NEON_SYNTHETIC"];
+    } else {
+      // Bold / general fallback — NEVER neon for ordinary projects
+      compatibleArchetypes = [
+        "RESTRAINED_PRODUCT",
+        "EDITORIAL_NARRATIVE",
+        "MODERN_SWISS",
+        "OCEANIC_MARITIME",
+        "BOTANICAL_EARTH",
+      ];
+    }
+
+    archetypeKey = compatibleArchetypes[hash % compatibleArchetypes.length];
   }
 
-  // 3. Deterministic Selection
-  const archetypeKey = compatibleArchetypes[hash % compatibleArchetypes.length];
   const def = ARCHETYPES[archetypeKey];
 
   // Primary color variant selection
@@ -1223,6 +1319,7 @@ export function deriveArtDirection(prompt: string, domainHint?: string, explicit
     RESTRAINED_PRODUCT: "WORKSPACE_SPLIT",
     PLAYFUL_APPROACHABLE: "PLAYFUL_WORKSPACE",
     SOPHISTICATED_ELEGANT: "ASYMMETRIC_PRODUCT_DASHBOARD",
+    ARCHITECTURAL_EDITORIAL: "EDITORIAL_LANDING",
   };
   const layoutFamily = layoutFamilies[archetypeKey] || "ASYMMETRIC_PRODUCT_DASHBOARD";
 

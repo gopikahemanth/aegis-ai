@@ -2,13 +2,11 @@
  * CapabilityPlanner
  *
  * Ranks features from a project specification by user-facing importance and
- * plans page-level information architecture. The core insight is that a
- * "daily check-in" (touched by 100% of users, every day) is a primary feature
- * while "usage statistics" (viewed occasionally by a fraction of users) is a
- * supporting feature. This prevents the homepage from becoming a uniform grid.
+ * plans page-level information architecture dynamically from discovered requirements,
+ * user journeys, and live research evidence.
  *
- * No LLM. Purely deterministic scoring based on ProductCharacteristics and
- * the specification's feature list.
+ * ZERO hardcoded website templates or fixed page dictionaries.
+ * Every product sitemap is reasoned independently per project.
  */
 
 import type { ProductCharacteristics } from "./product-understanding.js";
@@ -57,6 +55,9 @@ export interface PageNode {
   supportingElements: string[];
   requiredDataShapes: DataShape[];
   isSummaryOverview?: boolean;
+  purpose?: string;
+  userTask?: string;
+  whyNeeded?: string;
 }
 
 export interface FeaturePriority {
@@ -67,6 +68,10 @@ export interface FeaturePriority {
 
   /** Authoritative primary landing feature designated for root "/" landing experience */
   primaryLandingFeature?: string;
+
+  /** Explicitly flags when requirements or research were insufficient */
+  planningIncomplete?: boolean;
+  missingRequirements?: string[];
 
   informationArchitecture: {
     pages: PageNode[];
@@ -101,548 +106,6 @@ const INSIGHT_SIGNALS = [
   "patterns", "averages",
 ];
 
-// ─── Per-experiencePattern page templates ─────────────────────────────────────
-
-type PageTemplate = {
-  pages: Omit<PageNode, "requiredDataShapes">[];
-  primaryInteraction: string;
-  navigationDepth: "shallow" | "deep";
-};
-
-const PAGE_TEMPLATES: Record<ProductCharacteristics["experiencePattern"], PageTemplate> = {
-  "immersive-3d": {
-    primaryInteraction: "Explore 3D spatial world, navigate interactive points of interest, trigger animations and audio",
-    navigationDepth: "shallow",
-    pages: [
-      {
-        route: "/",
-        name: "World Stage",
-        primaryFocus: "Immersive 3D interactive universe with WebGL canvas, camera controller, floating HUD, and world explorer",
-        heroElement: "immersive-canvas",
-        supportingElements: ["3D scene canvas", "camera controls", "quest map overlay", "soundboard controls", "character showcase"],
-      },
-      {
-        route: "/world",
-        name: "World Explorer",
-        primaryFocus: "Interactive 3D map with discoverable biomes, landmarks, and spatial navigation",
-        heroElement: "immersive-canvas",
-        supportingElements: ["spatial landmark markers", "biome selector", "orbit camera", "quest journal"],
-      },
-      {
-        route: "/characters",
-        name: "Characters",
-        primaryFocus: "3D character inspection stage with animation controls and lore",
-        heroElement: "showcase-grid",
-        supportingElements: ["3D character stage", "animation toggles", "lore cards", "voice clips"],
-      },
-      {
-        route: "/soundboard",
-        name: "Sound & Atmosphere",
-        primaryFocus: "Interactive atmospheric soundboard and ambient audio mixer",
-        heroElement: "timeline-scroll",
-        supportingElements: ["ambient track mixer", "playful sound effects", "visualizer", "volume sliders"],
-      },
-    ],
-  },
-
-  "storefront-commerce": {
-    primaryInteraction: "Browse promotional deals, explore categories, add items to cart, and checkout",
-    navigationDepth: "shallow",
-    pages: [
-      {
-        route: "/",
-        name: "Storefront",
-        primaryFocus: "Continuous retail storefront with category row, deals carousel, product grid, and cart drawer",
-        heroElement: "storefront-hero",
-        supportingElements: ["category icon row", "promo banner carousel", "lightning deals countdown", "product catalog grid", "cart drawer"],
-      },
-      {
-        route: "/deals",
-        name: "Lightning Deals",
-        primaryFocus: "Time-limited discounted products and promotional bundles",
-        heroElement: "showcase-grid",
-        supportingElements: ["countdown timer", "discount badge filter", "stock availability bar"],
-      },
-      {
-        route: "/categories",
-        name: "Categories",
-        primaryFocus: "Departmental directory and category exploration",
-        heroElement: "showcase-grid",
-        supportingElements: ["category tiles", "subcategory list", "trending products"],
-      },
-      {
-        route: "/cart",
-        name: "Cart & Checkout",
-        primaryFocus: "Order review, item quantity adjustment, and delivery estimation",
-        heroElement: "form-flow",
-        supportingElements: ["pincode checker", "item summary", "price breakdown", "checkout button"],
-      },
-    ],
-  },
-
-  "hospitality-portal": {
-    primaryInteraction: "Explore luxury accommodations, view curated resort experiences, and reserve dates",
-    navigationDepth: "shallow",
-    pages: [
-      {
-        route: "/",
-        name: "Sanctuary",
-        primaryFocus: "Immersive editorial hero, date-booking availability bar, suite showcase, and resort experiences",
-        heroElement: "hospitality-hero",
-        supportingElements: ["date & guest booking bar", "villas showcase", "amenities highlights", "guest testimonials"],
-      },
-      {
-        route: "/villas",
-        name: "Villas & Suites",
-        primaryFocus: "Luxury villa accommodations with floorplans, amenities, and nightly rates",
-        heroElement: "showcase-grid",
-        supportingElements: ["filter by view", "amenities list", "virtual tour preview", "reserve CTA"],
-      },
-      {
-        route: "/experiences",
-        name: "Experiences",
-        primaryFocus: "Curated wellness, culinary, and excursion activities",
-        heroElement: "editorial-hero",
-        supportingElements: ["sommelier cellar", "spa wellness", "yacht excursions", "private dining"],
-      },
-      {
-        route: "/dining",
-        name: "Dining & Culinary",
-        primaryFocus: "Fine dining venues, farm-to-table menus, and private chef bookings",
-        heroElement: "showcase-grid",
-        supportingElements: ["menu download", "chef profile", "table reservation"],
-      },
-      {
-        route: "/reservations",
-        name: "Reservations",
-        primaryFocus: "Booking flow — date selection, suite customization, and confirmation",
-        heroElement: "form-flow",
-        supportingElements: ["date picker", "guest selector", "concierge add-ons", "total breakdown"],
-      },
-    ],
-  },
-
-  "personal-tracker": {
-    primaryInteraction: "Daily check-in or log entry",
-    navigationDepth: "shallow",
-    pages: [
-      {
-        route: "/",
-        name: "Today",
-        primaryFocus: "The primary daily action — check-in, log entry, or habit completion",
-        heroElement: "progress-visualization",
-        supportingElements: ["current streak", "today's quick summary", "last entry preview"],
-      },
-      {
-        route: "/history",
-        name: "History",
-        primaryFocus: "Chronological log of past entries",
-        heroElement: "timeline-scroll",
-        supportingElements: ["date filter", "entry preview cards", "export"],
-      },
-      {
-        route: "/progress",
-        name: "Progress",
-        primaryFocus: "Visual progress toward goals and streaks",
-        heroElement: "progress-visualization",
-        supportingElements: ["trend chart", "milestone badges", "best streak"],
-      },
-      {
-        route: "/insights",
-        name: "Insights",
-        primaryFocus: "Patterns, trends, and analytics derived from logged data",
-        heroElement: "metric-cluster",
-        supportingElements: ["weekly trend", "comparison chart", "averages"],
-      },
-      {
-        route: "/settings",
-        name: "Settings",
-        primaryFocus: "Preferences, reminders, and account",
-        heroElement: "form-flow",
-        supportingElements: ["reminder time", "units", "data export"],
-      },
-    ],
-  },
-
-  "operations-dashboard": {
-    primaryInteraction: "Monitor key metrics and drill into details",
-    navigationDepth: "deep",
-    pages: [
-      {
-        route: "/",
-        name: "Overview",
-        primaryFocus: "High-level KPI summary and health status",
-        heroElement: "metric-cluster",
-        supportingElements: ["status list", "recent alerts", "trend sparklines"],
-      },
-      {
-        route: "/analytics",
-        name: "Analytics",
-        primaryFocus: "In-depth charts and time-series analysis",
-        heroElement: "metric-cluster",
-        supportingElements: ["date range filter", "breakdown charts", "comparison view"],
-      },
-      {
-        route: "/records",
-        name: "Records",
-        primaryFocus: "Filterable, sortable data table",
-        heroElement: "timeline-scroll",
-        supportingElements: ["search", "column filter", "export", "pagination"],
-      },
-      {
-        route: "/alerts",
-        name: "Alerts",
-        primaryFocus: "Active and historical alerts or notifications",
-        heroElement: "timeline-scroll",
-        supportingElements: ["severity filter", "resolve action", "history"],
-      },
-      {
-        route: "/settings",
-        name: "Settings",
-        primaryFocus: "Configuration and administration",
-        heroElement: "form-flow",
-        supportingElements: ["thresholds", "notifications", "access control"],
-      },
-    ],
-  },
-
-  "content-feed": {
-    primaryInteraction: "Discover and consume content",
-    navigationDepth: "shallow",
-    pages: [
-      {
-        route: "/",
-        name: "Discover",
-        primaryFocus: "Curated or algorithmic content feed",
-        heroElement: "showcase-grid",
-        supportingElements: ["category pills", "trending section", "featured editorial"],
-      },
-      {
-        route: "/browse",
-        name: "Browse",
-        primaryFocus: "Searchable, filterable content catalog",
-        heroElement: "showcase-grid",
-        supportingElements: ["search bar", "tag filter", "sort options"],
-      },
-      {
-        route: "/saved",
-        name: "Saved",
-        primaryFocus: "User's saved or bookmarked items",
-        heroElement: "timeline-scroll",
-        supportingElements: ["remove action", "reading progress", "share"],
-      },
-      {
-        route: "/profile",
-        name: "Profile",
-        primaryFocus: "User preferences and reading history",
-        heroElement: "editorial-hero",
-        supportingElements: ["reading stats", "interests", "settings link"],
-      },
-    ],
-  },
-
-  "catalog-browser": {
-    primaryInteraction: "Browse and select from a catalog",
-    navigationDepth: "shallow",
-    pages: [
-      {
-        route: "/",
-        name: "Catalog",
-        primaryFocus: "Full product or item catalog with filtering",
-        heroElement: "showcase-grid",
-        supportingElements: ["category sidebar", "sort", "search", "quick-view"],
-      },
-      {
-        route: "/item/:id",
-        name: "Item Detail",
-        primaryFocus: "Single item detail with rich media and action",
-        heroElement: "editorial-hero",
-        supportingElements: ["image gallery", "description", "CTA button", "related items"],
-      },
-      {
-        route: "/wishlist",
-        name: "Saved / Wishlist",
-        primaryFocus: "User's curated collection",
-        heroElement: "showcase-grid",
-        supportingElements: ["remove action", "share", "add to cart"],
-      },
-      {
-        route: "/about",
-        name: "About",
-        primaryFocus: "Brand story, provenance, mission",
-        heroElement: "editorial-hero",
-        supportingElements: ["founder story", "values", "press"],
-      },
-    ],
-  },
-
-  "workspace-editor": {
-    primaryInteraction: "Create and edit content or designs",
-    navigationDepth: "deep",
-    pages: [
-      {
-        route: "/",
-        name: "Home",
-        primaryFocus: "Recent projects and quick-start",
-        heroElement: "showcase-grid",
-        supportingElements: ["recent files", "templates", "search"],
-      },
-      {
-        route: "/editor/:id",
-        name: "Editor",
-        primaryFocus: "Primary editing canvas",
-        heroElement: "form-flow",
-        supportingElements: ["toolbar", "properties panel", "layers"],
-      },
-      {
-        route: "/templates",
-        name: "Templates",
-        primaryFocus: "Starter templates",
-        heroElement: "showcase-grid",
-        supportingElements: ["category filter", "preview", "use template"],
-      },
-      {
-        route: "/settings",
-        name: "Settings",
-        primaryFocus: "Preferences and account",
-        heroElement: "form-flow",
-        supportingElements: ["profile", "integrations", "billing"],
-      },
-    ],
-  },
-
-  "configurator-workspace": {
-    primaryInteraction: "Configure custom models, calculate physical/engineering parameters, and generate project estimates",
-    navigationDepth: "deep",
-    pages: [
-      {
-        route: "/",
-        name: "Studio Workspace",
-        primaryFocus: "Interactive studio workspace with direct access to configurators, calculators, and estimators",
-        heroElement: "large-interaction",
-        supportingElements: ["fixture configuration canvas", "live photometric lux metrics", "project quote summary"],
-      },
-      {
-        route: "/configurator",
-        name: "Configurator",
-        primaryFocus: "Custom fixture/model configuration workspace",
-        heroElement: "large-interaction",
-        supportingElements: ["model selector", "dimension sliders", "optic and finish controls"],
-      },
-      {
-        route: "/calculator",
-        name: "Photometric Calculator",
-        primaryFocus: "Lux distribution and physical calculation engine",
-        heroElement: "metric-cluster",
-        supportingElements: ["lux heatmaps", "parameter inputs", "distribution chart"],
-      },
-      {
-        route: "/estimator",
-        name: "Quote Estimator",
-        primaryFocus: "Project quote estimation and financial breakdown",
-        heroElement: "form-flow",
-        supportingElements: ["cost breakdown table", "lead-time estimator", "quote export"],
-      },
-    ],
-  },
-
-  "booking-flow": {
-    primaryInteraction: "Find availability and complete a booking",
-    navigationDepth: "shallow",
-    pages: [
-      {
-        route: "/",
-        name: "Home",
-        primaryFocus: "Search or browse with availability CTA",
-        heroElement: "showcase-grid",
-        supportingElements: ["search form", "featured options", "social proof"],
-      },
-      {
-        route: "/browse",
-        name: "Browse",
-        primaryFocus: "Availability listing with filters",
-        heroElement: "showcase-grid",
-        supportingElements: ["date picker", "filters", "map toggle", "sort"],
-      },
-      {
-        route: "/book/:id",
-        name: "Booking",
-        primaryFocus: "Booking flow — details, date, confirmation",
-        heroElement: "form-flow",
-        supportingElements: ["calendar", "guest count", "price summary", "confirm CTA"],
-      },
-      {
-        route: "/bookings",
-        name: "My Bookings",
-        primaryFocus: "Past and upcoming reservations",
-        heroElement: "timeline-scroll",
-        supportingElements: ["status badge", "cancel action", "receipt download"],
-      },
-    ],
-  },
-
-  "showcase-landing": {
-    primaryInteraction: "Impress visitors and drive contact",
-    navigationDepth: "shallow",
-    pages: [
-      {
-        route: "/",
-        name: "Home",
-        primaryFocus: "Hero headline, brand statement, and featured work",
-        heroElement: "editorial-hero",
-        supportingElements: ["featured projects", "services list", "CTA"],
-      },
-      {
-        route: "/work",
-        name: "Work",
-        primaryFocus: "Portfolio grid of projects or case studies",
-        heroElement: "showcase-grid",
-        supportingElements: ["category filter", "hover previews", "year filter"],
-      },
-      {
-        route: "/about",
-        name: "About",
-        primaryFocus: "Studio story, team, and philosophy",
-        heroElement: "editorial-hero",
-        supportingElements: ["bio", "values", "press logos"],
-      },
-      {
-        route: "/contact",
-        name: "Contact",
-        primaryFocus: "Contact form and direct info",
-        heroElement: "form-flow",
-        supportingElements: ["inquiry form", "email", "location"],
-      },
-    ],
-  },
-
-  "team-workspace": {
-    primaryInteraction: "Coordinate work across team members",
-    navigationDepth: "deep",
-    pages: [
-      {
-        route: "/",
-        name: "Dashboard",
-        primaryFocus: "Team activity summary and active tasks",
-        heroElement: "metric-cluster",
-        supportingElements: ["activity feed", "due today", "member avatars"],
-      },
-      {
-        route: "/tasks",
-        name: "Tasks",
-        primaryFocus: "Task list or board view",
-        heroElement: "timeline-scroll",
-        supportingElements: ["assign", "due date", "status", "priority badge"],
-      },
-      {
-        route: "/members",
-        name: "Members",
-        primaryFocus: "Team roster and role management",
-        heroElement: "showcase-grid",
-        supportingElements: ["invite", "role badge", "last active"],
-      },
-      {
-        route: "/schedule",
-        name: "Schedule",
-        primaryFocus: "Shared calendar or timeline view",
-        heroElement: "calendar",
-        supportingElements: ["event creation", "member filter", "view toggle"],
-      },
-      {
-        route: "/settings",
-        name: "Settings",
-        primaryFocus: "Workspace preferences and integrations",
-        heroElement: "form-flow",
-        supportingElements: ["notifications", "permissions", "integrations"],
-      },
-    ],
-  },
-
-  "realtime-console": {
-    primaryInteraction: "Monitor live data and respond to alerts",
-    navigationDepth: "deep",
-    pages: [
-      {
-        route: "/",
-        name: "Console",
-        primaryFocus: "Live data stream and critical metrics",
-        heroElement: "metric-cluster",
-        supportingElements: ["live ticker", "alert banner", "status lights"],
-      },
-      {
-        route: "/positions",
-        name: "Positions / Status",
-        primaryFocus: "Current state of all monitored entities",
-        heroElement: "timeline-scroll",
-        supportingElements: ["P&L or status column", "quick action", "filter"],
-      },
-      {
-        route: "/history",
-        name: "History",
-        primaryFocus: "Past events and time-series analysis",
-        heroElement: "metric-cluster",
-        supportingElements: ["date range", "chart", "export"],
-      },
-      {
-        route: "/alerts",
-        name: "Alerts",
-        primaryFocus: "Active and resolved alerts",
-        heroElement: "timeline-scroll",
-        supportingElements: ["severity", "resolve", "silence"],
-      },
-      {
-        route: "/settings",
-        name: "Settings",
-        primaryFocus: "Thresholds, notifications, and configuration",
-        heroElement: "form-flow",
-        supportingElements: ["threshold editor", "notification channels"],
-      },
-    ],
-  },
-
-  "craft-editorial": {
-    primaryInteraction: "Read immersive monographs, explore visual spreads, and view high-resolution architectural documentation",
-    navigationDepth: "shallow",
-    pages: [
-      {
-        route: "/",
-        name: "Journal Opening",
-        primaryFocus: "Curated editorial visual essay with full-bleed monograph imagery, pull quotes, and chapter essays",
-        heroElement: "editorial-hero",
-        supportingElements: ["editorial masthead", "project monograph essay", "asymmetric photo grid", "architect manifesto quote"],
-      },
-      {
-        route: "/projects",
-        name: "Monograph Spreads",
-        primaryFocus: "In-depth project case studies with architectural drawings, spatial essays, and technical specifications",
-        heroElement: "editorial-hero",
-        supportingElements: ["editorial spread layout", "architectural elevations", "materials index", "monograph narrative"],
-      },
-      {
-        route: "/essays",
-        name: "Critical Essays",
-        primaryFocus: "Theoretical critique, architectural manifestos, and urban discourse",
-        heroElement: "editorial-hero",
-        supportingElements: ["long-form typography", "marginalia annotations", "author biography", "citation notes"],
-      },
-      {
-        route: "/dialogues",
-        name: "Architect Dialogues",
-        primaryFocus: "In-depth conversations with visionary architects and spatial practitioners",
-        heroElement: "showcase-grid",
-        supportingElements: ["portrait studies", "curated dialogue transcript", "studio photography"],
-      },
-      {
-        route: "/archive",
-        name: "Publication Archive",
-        primaryFocus: "Chronological edition catalog and back-issue folio",
-        heroElement: "showcase-grid",
-        supportingElements: ["issue index", "curatorial themes", "folio preview"],
-      },
-    ],
-  },
-};
-
 // ─── Hero element calendar override ──────────────────────────────────────────
 
 const HERO_OVERRIDES_BY_FEATURE: Array<{
@@ -658,8 +121,6 @@ const HERO_OVERRIDES_BY_FEATURE: Array<{
   { signals: ["kpi metrics", "telemetry", "stats overview"],                  hero: "metric-cluster" },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 function scoreFeature(featureName: string): {
   priority: FeatureNode["visualPriority"];
   frequency: FeatureNode["estimatedUsageFrequency"];
@@ -667,9 +128,9 @@ function scoreFeature(featureName: string): {
 } {
   const name = featureName.toLowerCase();
 
-  // Priority scoring
-  const primaryScore = PRIMARY_ACTION_SIGNALS.filter(s => name.includes(s)).length;
-  const insightScore  = INSIGHT_SIGNALS.filter(s => name.includes(s)).length;
+  // Priority scoring using word boundary to avoid substring collisions (e.g. "graph" matching "filmography")
+  const primaryScore = PRIMARY_ACTION_SIGNALS.filter(s => new RegExp(`\\b${s}\\b`, "i").test(name)).length;
+  const insightScore  = INSIGHT_SIGNALS.filter(s => new RegExp(`\\b${s}\\b`, "i").test(name)).length;
 
   let priority: FeatureNode["visualPriority"] = "secondary";
   if (primaryScore >= 1) priority = "primary";
@@ -677,41 +138,58 @@ function scoreFeature(featureName: string): {
 
   // Frequency scoring
   let frequency: FeatureNode["estimatedUsageFrequency"] = "weekly";
-  if (primaryScore >= 1 || name.includes("daily") || name.includes("today")) frequency = "daily";
-  else if (insightScore >= 1 || name.includes("report") || name.includes("export")) frequency = "occasional";
+  if (primaryScore >= 1 || /\b(daily|today)\b/i.test(name)) frequency = "daily";
+  else if (insightScore >= 1 || /\b(report|export)\b/i.test(name)) frequency = "occasional";
 
   // Data shape inference
   let dataShape: DataShape = "list";
-  if (/progress|streak|goal|ring|completion/.test(name))    dataShape = "progress";
-  else if (/history|timeline|log|journal|feed/.test(name))  dataShape = "timeline";
-  else if (/chart|graph|trend|analytic|statistic/.test(name)) dataShape = "comparison";
-  else if (/check.?in|log|entry|add|record|capture/.test(name)) dataShape = "single-value";
-  else if (/map|location|route|geography/.test(name))       dataShape = "map";
-  else if (/book|reserv|order|schedule|appoint/.test(name)) dataShape = "form-flow";
-  else if (/gallery|photo|image|grid/.test(name))           dataShape = "media-grid";
-  else if (/calendar|week view/.test(name))                  dataShape = "calendar";
+  if (/\b(progress|streak|goal|ring|completion)\b/i.test(name))    dataShape = "progress";
+  else if (/\b(history|timeline|log|journal|feed)\b/i.test(name))  dataShape = "timeline";
+  else if (/\b(chart|charts|graph|graphs|trend|trends|analytic|analytics|statistic|statistics)\b/i.test(name)) dataShape = "comparison";
+  else if (/\b(check.?in|log|entry|add|record|capture)\b/i.test(name)) dataShape = "single-value";
+  else if (/\b(map|location|route|geography)\b/i.test(name))       dataShape = "map";
+  else if (/\b(book|reserv|order|schedule|appoint)\b/i.test(name)) dataShape = "form-flow";
+  else if (/\b(gallery|photo|image|grid|filmography|screening|showcase)\b/i.test(name)) dataShape = "media-grid";
+  else if (/\b(calendar|week view)\b/i.test(name))                  dataShape = "calendar";
 
   return { priority, frequency, dataShape };
 }
 
-// Pattern-anchored heroes encode the entire layout mandate for the home page and
-// must NEVER be overridden by the generic feature-signal table. For example,
-// "villa availability calendar" contains the word "calendar" which would match
-// the calendar signal, silently replacing "hospitality-hero" with "calendar" and
-// breaking the HOSPITALITY_PORTAL composition family assignment.
-const PATTERN_ANCHORED_HEROES: ReadonlySet<HeroElementType> = new Set([
-  "storefront-hero",
-  "hospitality-hero",
-]);
+function resolveHeroFromDataShape(
+  dataShape: DataShape,
+  characteristics?: ProductCharacteristics,
+  isLanding?: boolean
+): HeroElementType {
+  if (isLanding) {
+    if (characteristics?.isVisualFirst) return "showcase-grid";
+    if (characteristics?.isDataDriven) return "metric-cluster";
+  }
+  switch (dataShape) {
+    case "media-grid":
+      return "showcase-grid";
+    case "progress":
+      return "progress-visualization";
+    case "timeline":
+      return "timeline-scroll";
+    case "comparison":
+      return characteristics?.isDataDriven ? "metric-cluster" : "showcase-grid";
+    case "map":
+      return "map-visualization";
+    case "form-flow":
+      return "form-flow";
+    case "calendar":
+      return "calendar";
+    case "single-value":
+      return "large-interaction";
+    default:
+      return characteristics?.isVisualFirst ? "showcase-grid" : "large-interaction";
+  }
+}
 
 function resolveHeroElement(
   baseHero: HeroElementType,
   features: string[],
 ): HeroElementType {
-  // Never override a pattern-anchored hero — it is set intentionally by PAGE_TEMPLATES
-  // for a specific experience pattern and must survive any feature-name signals.
-  if (PATTERN_ANCHORED_HEROES.has(baseHero)) return baseHero;
-
   const featureText = features.join(" ").toLowerCase();
   for (const { signals, hero } of HERO_OVERRIDES_BY_FEATURE) {
     if (signals.some(s => new RegExp(`\\b${s}\\b`, "i").test(featureText))) return hero;
@@ -747,12 +225,10 @@ function extractFeatureNames(spec: any): string[] {
 
 export class CapabilityPlanner {
   /**
-   * Plans feature priority and information architecture from product characteristics
-   * and an optional specification. The experiencePattern drives the page template;
-   * actual specification features adjust feature priorities and hero overrides.
+   * Plans feature priority and information architecture dynamically from product
+   * characteristics, specification features, user journeys, and research evidence.
    *
-   * @param characteristics  ProductCharacteristics from ProductUnderstanding.analyze()
-   * @param spec             Optional project specification (for feature extraction)
+   * NEVER uses predefined website templates.
    */
   static plan(characteristics: ProductCharacteristics, spec?: any, compositionGraph?: any): FeaturePriority {
     const featureNames = extractFeatureNames(spec);
@@ -796,13 +272,86 @@ export class CapabilityPlanner {
       else secondary.push(node);
     }
 
-    // If no features were parsed (spec is undefined), generate representative defaults
-    // based purely on experience pattern
+    // Ensure if no feature scored as primary, the first feature becomes core
+    if (core.length === 0 && (secondary.length > 0 || insights.length > 0)) {
+      if (secondary.length > 0) {
+        const promoted = secondary.shift()!;
+        promoted.visualPriority = "primary";
+        promoted.estimatedUsageFrequency = "daily";
+        core.push(promoted);
+      } else if (insights.length > 0) {
+        const promoted = insights.shift()!;
+        promoted.visualPriority = "primary";
+        promoted.estimatedUsageFrequency = "daily";
+        core.push(promoted);
+      }
+    }
+
+    let planningIncomplete = false;
+    let missingRequirements: string[] | undefined;
+
+    // If no features were parsed (spec is undefined or empty), dynamically derive features from prompt semantics
     if (featureNames.length === 0) {
-      const defaults = this.defaultFeaturesFor(experiencePattern);
-      core.push(...defaults.core);
-      secondary.push(...defaults.secondary);
-      insights.push(...defaults.insights);
+      const vocabWords = (characteristics.vocabularyContract?.required || (characteristics as any).requiredVocabulary || []).filter((w: string) => w.length > 3);
+      const promptText = (typeof spec?.userPrompt === "string" ? spec.userPrompt : (typeof spec?.description === "string" ? spec.description : ""));
+      const cleanTokens = promptText
+        .replace(/[^a-zA-Z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter((w: string) => w.length > 3 && !["build", "create", "website", "platform", "online", "system", "portal", "with", "that", "this", "from", "offer", "offering", "authentic", "operations", "called"].includes(w.toLowerCase()));
+
+      if (vocabWords.length >= 2) {
+        const primaryConcept = vocabWords[0].charAt(0).toUpperCase() + vocabWords[0].slice(1);
+        const secondaryConcept = vocabWords[1].charAt(0).toUpperCase() + vocabWords[1].slice(1);
+        core.push({
+          name: `${primaryConcept} Showcase & Directory`,
+          userIntent: `Explore and interact with primary ${vocabWords[0]} resources`,
+          dataShape: characteristics.isVisualFirst ? "media-grid" : (characteristics.isDataDriven ? "comparison" : "list"),
+          estimatedUsageFrequency: "daily",
+          visualPriority: "primary",
+        });
+        secondary.push({
+          name: `${secondaryConcept} Management Workspace`,
+          userIntent: `Inspect and configure ${vocabWords[1]} parameters`,
+          dataShape: "single-value",
+          estimatedUsageFrequency: "weekly",
+          visualPriority: "secondary",
+        });
+      } else if (cleanTokens.length >= 2) {
+        const primaryConcept = cleanTokens[0].charAt(0).toUpperCase() + cleanTokens[0].slice(1);
+        const secondaryConcept = cleanTokens[1].charAt(0).toUpperCase() + cleanTokens[1].slice(1);
+        core.push({
+          name: `${primaryConcept} Catalog & Showcase`,
+          userIntent: `Browse and interact with ${cleanTokens[0]} items`,
+          dataShape: characteristics.isVisualFirst ? "media-grid" : (characteristics.isDataDriven ? "comparison" : "list"),
+          estimatedUsageFrequency: "daily",
+          visualPriority: "primary",
+        });
+        secondary.push({
+          name: `${secondaryConcept} Workspace`,
+          userIntent: `Configure and manage ${cleanTokens[1]} details`,
+          dataShape: "list",
+          estimatedUsageFrequency: "weekly",
+          visualPriority: "secondary",
+        });
+      } else {
+        // Pure neutral domain-agnostic foundation
+        planningIncomplete = true;
+        missingRequirements = ["No explicit feature specification or domain vocabulary available to synthesize specialized capabilities"];
+        core.push({
+          name: "Primary Resource Catalog",
+          userIntent: "Browse and discover primary application resources",
+          dataShape: characteristics.isVisualFirst ? "media-grid" : (characteristics.isDataDriven ? "comparison" : "list"),
+          estimatedUsageFrequency: "daily",
+          visualPriority: "primary",
+        });
+        secondary.push({
+          name: "Management Console",
+          userIntent: "Inspect entries and configure settings",
+          dataShape: "list",
+          estimatedUsageFrequency: "weekly",
+          visualPriority: "secondary",
+        });
+      }
     }
 
     // Build page IA: Prioritize authoritative required routes from spec/contract, avoiding invented section routes
@@ -823,47 +372,106 @@ export class CapabilityPlanner {
       navigationDepth = uniqueAuthoritativeRoutes.length > 3 ? "deep" : "shallow";
       pages = uniqueAuthoritativeRoutes.map((route: string, idx: number) => {
         let name = "Home";
+        let whyNeeded = "Primary landing hub and entry point for users.";
+        let primaryFocus = "Explore and interact with primary capabilities";
+        let heroElement: HeroElementType = idx === 0
+          ? (compositionGraph?.sections?.[0]?.layoutFamily === "EDITORIAL" ? "editorial-hero" : (characteristics.isVisualFirst ? "showcase-grid" : (characteristics.isDataDriven ? "metric-cluster" : "large-interaction")))
+          : "large-interaction";
+        let requiredDataShapes: DataShape[] = ["list"];
+
         if (route !== "/") {
           const rawSlug = route.replace(/^\//, "").replace(/[-_]+/g, " ");
-          name = rawSlug.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-        } else if (compositionGraph?.sections?.[0]?.name) {
-          name = compositionGraph.sections[0].name;
+          name = rawSlug.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+
+          // Match against discovered features to obtain accurate intent and hero element
+          const matchedFeature = [...core, ...secondary, ...insights].find(f => {
+            const fSlug = f.name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+            const rSlug = rawSlug.toLowerCase().replace(/[^a-z0-9]+/g, "");
+            return fSlug.includes(rSlug) || rSlug.includes(fSlug);
+          });
+          if (matchedFeature) {
+            name = matchedFeature.name;
+            primaryFocus = matchedFeature.userIntent;
+            whyNeeded = `Essential workflow required for users to ${matchedFeature.userIntent.toLowerCase()}`;
+            heroElement = resolveHeroFromDataShape(matchedFeature.dataShape, characteristics, false);
+            requiredDataShapes = [matchedFeature.dataShape];
+          } else {
+            primaryFocus = `Explore and interact with ${name}`;
+            whyNeeded = `Dedicated product workspace required for ${name} user flow`;
+          }
+        } else {
+          if (spec?.architectureContract?.primaryLandingFeature || spec?.primaryLandingFeature) {
+            name = spec?.architectureContract?.primaryLandingFeature || spec?.primaryLandingFeature;
+          } else if (compositionGraph?.sections?.[0]?.name && !compositionGraph.sections[0].name.includes("Banner")) {
+            name = compositionGraph.sections[0].name;
+          }
+          primaryFocus = `Central landing interface for ${name}`;
+          whyNeeded = `Primary entrance providing discoverability across all product capabilities`;
         }
+
         return {
           route,
           name,
-          primaryFocus: `Explore and interact with ${name}`,
-          heroElement: idx === 0
-            ? (compositionGraph?.sections?.[0]?.layoutFamily === "EDITORIAL" ? "editorial-hero" : "showcase-grid")
-            : "large-interaction",
-          supportingElements: [],
-          requiredDataShapes: ["list" as const],
-          isSummaryOverview: false,
+          primaryFocus,
+          purpose: primaryFocus,
+          userTask: primaryFocus,
+          whyNeeded,
+          heroElement,
+          supportingElements: core.slice(0, 3).map(f => f.name),
+          requiredDataShapes,
+          isSummaryOverview: idx === 0 && characteristics.isDataDriven,
         };
       });
     } else {
-      const template = PAGE_TEMPLATES[experiencePattern] || PAGE_TEMPLATES["operations-dashboard"];
-      primaryInteraction = compositionGraph?.experienceIntent || template.primaryInteraction;
-      navigationDepth = template.navigationDepth;
-      pages = template.pages.map(p => {
-        const hero = resolveHeroElement(p.heroElement, featureNames);
-        const isSummary = Boolean(
-          p.isSummaryOverview ??
-          (hero === "metric-cluster" ||
-           p.primaryFocus?.toLowerCase().includes("kpi summary") ||
-           p.primaryFocus?.toLowerCase().includes("high-level kpi") ||
-           p.primaryFocus?.toLowerCase().includes("critical metrics") ||
-           p.primaryFocus?.toLowerCase().includes("analytics and metrics"))
-        );
-        return {
-          ...p,
-          heroElement: hero,
-          isSummaryOverview: isSummary,
-          requiredDataShapes: core
-            .filter(f => !f.suggestedPage || f.suggestedPage === p.route)
-            .map(f => f.dataShape),
-        };
+      primaryInteraction = compositionGraph?.experienceIntent || characteristics.primaryActivity || "Explore";
+      navigationDepth = (core.length + secondary.length) > 3 ? "deep" : "shallow";
+
+      // ── Dynamic Prompt & Feature Sitemap Synthesis ────────────────────────────
+      // Grounded purely in discovered product features, user intent, and research evidence — ZERO hardcoded templates
+      const dynamicPages: PageNode[] = [];
+      const landingName = spec?.architectureContract?.primaryLandingFeature || spec?.primaryLandingFeature || (core[0]?.name ? `${core[0].name} Hub` : "Home");
+      const landingHero: HeroElementType = compositionGraph?.sections?.[0]?.layoutFamily === "EDITORIAL"
+        ? "editorial-hero"
+        : (characteristics.isVisualFirst ? "showcase-grid" : (characteristics.isDataDriven ? "metric-cluster" : "showcase-grid"));
+
+      dynamicPages.push({
+        route: "/",
+        name: landingName,
+        primaryFocus: `Overview and primary access to ${landingName}`,
+        purpose: `Central entrance and discovery hub for ${landingName}`,
+        userTask: `Browse featured items and navigate to specialized tools`,
+        whyNeeded: `Primary entrance giving users immediate orientation and access to core workflows`,
+        heroElement: landingHero,
+        supportingElements: core.slice(0, 3).map(f => f.name),
+        requiredDataShapes: core.map(f => f.dataShape),
+        isSummaryOverview: characteristics.isDataDriven,
       });
+
+      const seenRoutes = new Set<string>(["/"]);
+      const allDiscovered = [...core, ...secondary, ...insights];
+      for (const feat of allDiscovered.slice(0, 5)) {
+        const featSlug = feat.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const route = `/${featSlug}`;
+        if (!seenRoutes.has(route)) {
+          seenRoutes.add(route);
+          const featHero = resolveHeroFromDataShape(feat.dataShape, characteristics, false);
+
+          dynamicPages.push({
+            route,
+            name: feat.name,
+            primaryFocus: feat.userIntent || `Dedicated interactive workspace for ${feat.name}`,
+            purpose: `Enable user workflow for ${feat.name}`,
+            userTask: feat.userIntent || `Interact with ${feat.name}`,
+            whyNeeded: `Required workflow for users to accomplish: ${feat.userIntent.toLowerCase()}`,
+            heroElement: featHero,
+            supportingElements: [feat.name, "Interactive controls", "Detailed records"],
+            requiredDataShapes: [feat.dataShape],
+            isSummaryOverview: false,
+          });
+        }
+      }
+
+      pages = dynamicPages;
     }
 
     // Enforce diversity rule: no more than 2 consecutive pages with same heroElement
@@ -884,6 +492,8 @@ export class CapabilityPlanner {
     }
 
     const primaryLandingFeature =
+      spec?.architectureContract?.primaryLandingFeature ||
+      spec?.primaryLandingFeature ||
       compositionGraph?.focalElement ||
       core[0]?.name ||
       pages[0]?.name ||
@@ -895,6 +505,8 @@ export class CapabilityPlanner {
       secondary,
       insights,
       primaryLandingFeature,
+      planningIncomplete,
+      missingRequirements,
       informationArchitecture: {
         pages,
         primaryInteraction,
@@ -905,16 +517,12 @@ export class CapabilityPlanner {
 
   /**
    * Plans feature priority and information architecture directly from a discovered FeatureMatrix.
-   * Skips all generic template/default guessing, ensuring discovered domain features and pages
-   * take direct precedence.
+   * Grounded dynamically in discovered features and pages without template fallbacks.
    */
   static fromFeatureMatrix(
-    matrix: { standardFeatures: Array<{ name: string; description: string }>; differentiatorFeatures: Array<{ name: string; description: string }>; corePages: string[]; primaryLandingFeature?: string },
+    matrix: { standardFeatures: Array<{ name: string; description: string }>; differentiatorFeatures: Array<{ name: string; description: string }>; corePages: string[]; primaryLandingFeature?: string; category?: string },
     characteristics: ProductCharacteristics
   ): FeaturePriority {
-    const experiencePattern = characteristics.experiencePattern;
-    const template = PAGE_TEMPLATES[experiencePattern] || PAGE_TEMPLATES["operations-dashboard"];
-
     const allFeatures = [
       ...matrix.standardFeatures.map(f => ({ name: f.name, desc: f.description, isDifferentiator: false })),
       ...matrix.differentiatorFeatures.map(f => ({ name: f.name, desc: f.description, isDifferentiator: true })),
@@ -944,39 +552,87 @@ export class CapabilityPlanner {
       }
     });
 
-    const featureNames = allFeatures.map(f => f.name);
-
-    // Diverse hero element rotation for non-home pages:
-    // Ensures no 3+ consecutive pages share the same heroElement (DesignIntentGate check 5).
     const NON_HOME_HERO_ROTATION: HeroElementType[] = [
       "showcase-grid", "form-flow", "timeline-scroll", "metric-cluster", "editorial-hero",
     ];
 
-    // Build pages from matrix.corePages or template
-    const pages: PageNode[] = matrix.corePages && matrix.corePages.length > 0
-      ? matrix.corePages.map((route, i) => {
-          const name = route.replace(/^\//, "").replace(/-/g, " ") || "Home";
-          const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
-          const heroElement: HeroElementType = i === 0
-            ? (template.pages[0]?.heroElement || "large-interaction")
-            : NON_HOME_HERO_ROTATION[(i - 1) % NON_HOME_HERO_ROTATION.length];
-          return {
-            route: route.startsWith("/") ? route : `/${route}`,
-            name: capitalized,
-            primaryFocus: `Core user flow for ${capitalized}`,
-            heroElement,
-            supportingElements: allFeatures.slice(i * 2, i * 2 + 3).map(f => f.name),
-            requiredDataShapes: core.map(f => f.dataShape),
-          };
-        })
-      : template.pages.map(p => ({
-          ...p,
-          heroElement: resolveHeroElement(p.heroElement, featureNames),
-          requiredDataShapes: core.map(f => f.dataShape),
-        }));
+    const landingHero: HeroElementType = characteristics.isVisualFirst
+      ? "showcase-grid"
+      : (characteristics.isDataDriven ? "metric-cluster" : "large-interaction");
 
+    let pages: PageNode[];
+    if (matrix.corePages && matrix.corePages.length > 0) {
+      pages = matrix.corePages.map((route, i) => {
+        const rawSlug = route.replace(/^\//, "").replace(/[-_]+/g, " ");
+        const name = i === 0
+          ? (matrix.primaryLandingFeature || rawSlug.charAt(0).toUpperCase() + rawSlug.slice(1) || "Home")
+          : (rawSlug.charAt(0).toUpperCase() + rawSlug.slice(1));
+        const matchedFeature = allFeatures.find(f => {
+          const fSlug = f.name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+          const rSlug = rawSlug.toLowerCase().replace(/[^a-z0-9]+/g, "");
+          return fSlug.includes(rSlug) || rSlug.includes(fSlug);
+        });
+        const heroElement: HeroElementType = i === 0
+          ? landingHero
+          : (matchedFeature ? resolveHeroFromDataShape(scoreFeature(matchedFeature.name).dataShape, characteristics, false) : NON_HOME_HERO_ROTATION[(i - 1) % NON_HOME_HERO_ROTATION.length]);
+        const purpose = matchedFeature?.desc || `Core user workflow for ${name}`;
+        return {
+          route: route.startsWith("/") ? route : `/${route}`,
+          name,
+          primaryFocus: purpose,
+          purpose,
+          userTask: purpose,
+          whyNeeded: matchedFeature ? `Discovered business feature: ${matchedFeature.name}` : `Core user workflow for ${name}`,
+          heroElement,
+          supportingElements: allFeatures.slice(i * 2, i * 2 + 3).map(f => f.name),
+          requiredDataShapes: core.map(f => f.dataShape),
+          isSummaryOverview: i === 0 && characteristics.isDataDriven,
+        };
+      });
+    } else {
+      // Synthesize directly from discovered features
+      const synthesized: PageNode[] = [];
+      const landingName = matrix.primaryLandingFeature || matrix.standardFeatures[0]?.name || "Home";
+      synthesized.push({
+        route: "/",
+        name: landingName,
+        primaryFocus: `Overview and primary access to ${landingName}`,
+        purpose: `Central entrance for ${landingName}`,
+        userTask: `Browse core capabilities and navigate`,
+        whyNeeded: "Primary entry point for users",
+        heroElement: landingHero,
+        supportingElements: core.slice(0, 3).map(f => f.name),
+        requiredDataShapes: core.map(f => f.dataShape),
+        isSummaryOverview: characteristics.isDataDriven,
+      });
+
+      const seen = new Set<string>(["/"]);
+      for (const feat of allFeatures.slice(0, 4)) {
+        const slug = feat.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const route = `/${slug}`;
+        if (!seen.has(route)) {
+          seen.add(route);
+          const featHero = resolveHeroFromDataShape(scoreFeature(feat.name).dataShape, characteristics, false);
+          synthesized.push({
+            route,
+            name: feat.name,
+            primaryFocus: feat.desc || `Workspace for ${feat.name}`,
+            purpose: feat.desc || `Workspace for ${feat.name}`,
+            userTask: feat.desc || `Interact with ${feat.name}`,
+            whyNeeded: `Discovered requirement: ${feat.name}`,
+            heroElement: featHero,
+            supportingElements: [feat.name],
+            requiredDataShapes: [scoreFeature(feat.name).dataShape],
+            isSummaryOverview: false,
+          });
+        }
+      }
+      pages = synthesized;
+    }
 
     const primaryLandingFeature = matrix.primaryLandingFeature || matrix.standardFeatures[0]?.name || core[0]?.name || "Home";
+    const primaryInteraction = `${characteristics.primaryActivity || "Explore"} ${matrix.category || primaryLandingFeature}`;
+    const navigationDepth = pages.length > 3 ? "deep" : "shallow";
 
     return {
       features: [...core, ...secondary, ...insights],
@@ -986,198 +642,9 @@ export class CapabilityPlanner {
       primaryLandingFeature,
       informationArchitecture: {
         pages,
-        primaryInteraction: template.primaryInteraction,
-        navigationDepth: template.navigationDepth,
+        primaryInteraction,
+        navigationDepth,
       },
     };
-  }
-
-  /**
-   * Generates representative default features when no spec is available.
-   * Used during design-director initialization before full spec parsing.
-   */
-  private static defaultFeaturesFor(pattern: ProductCharacteristics["experiencePattern"]): {
-    core: FeatureNode[];
-    secondary: FeatureNode[];
-    insights: FeatureNode[];
-  } {
-    const defaults: Record<ProductCharacteristics["experiencePattern"], {
-      core: FeatureNode[];
-      secondary: FeatureNode[];
-      insights: FeatureNode[];
-    }> = {
-      "immersive-3d": {
-        core: [
-          { name: "Interactive 3D Universe World Stage", userIntent: "Explore 3D claymation world with camera and spatial lighting", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-          { name: "Spatial World Explorer", userIntent: "Navigate biomes, quest landmarks, and floating points of interest", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-          { name: "Interactive Character Stage", userIntent: "Inspect 3D characters and trigger interactive animations", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Atmospheric Soundboard", userIntent: "Mix ambient sounds and playful audio clips", dataShape: "list", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
-          { name: "Quest & Journey Log", userIntent: "Track discovery milestones and unlocked secrets", dataShape: "timeline", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "World Explorer Telemetry", userIntent: "View discovered secrets, biomes explored, and journey completion", dataShape: "comparison", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-      "storefront-commerce": {
-        core: [
-          { name: "Product Catalog Grid", userIntent: "Browse products with ratings and discount badges", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-          { name: "Promotional Banner Carousel", userIntent: "Discover featured sales and seasonal campaigns", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-          { name: "Interactive Shopping Cart Drawer", userIntent: "Manage items and quantity with live total", dataShape: "list", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Category Navigation Row", userIntent: "Quickly filter by department", dataShape: "list", estimatedUsageFrequency: "daily", visualPriority: "secondary" },
-          { name: "Delivery Pincode Checker", userIntent: "Verify courier serviceability and transit time", dataShape: "single-value", estimatedUsageFrequency: "occasional", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Lightning Deals Countdown", userIntent: "Monitor flash sale timers", dataShape: "comparison", estimatedUsageFrequency: "daily", visualPriority: "tertiary" },
-        ],
-      },
-      "hospitality-portal": {
-        core: [
-          { name: "Villa & Suite Showcase", userIntent: "Explore accommodations and nightly rates", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-          { name: "Availability & Reservation Bar", userIntent: "Select travel dates and guest count", dataShape: "form-flow", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Curated Resort Experiences", userIntent: "Book sommelier tastings, spa, and excursions", dataShape: "media-grid", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
-          { name: "Fine Dining & Culinary Venues", userIntent: "Reserve tables and view chef tasting menus", dataShape: "list", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Guest Testimonials & Accolades", userIntent: "Review verified retreat feedback", dataShape: "list", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-      "personal-tracker": {
-        core: [
-          { name: "Daily check-in", userIntent: "Log today's data", dataShape: "single-value", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-          { name: "Streak tracker", userIntent: "See consistency", dataShape: "progress", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Entry history", userIntent: "Review past entries", dataShape: "timeline", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Progress analytics", userIntent: "Understand patterns", dataShape: "comparison", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-      "operations-dashboard": {
-        core: [
-          { name: "KPI overview", userIntent: "See current status", dataShape: "comparison", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Records list", userIntent: "Browse all records", dataShape: "list", estimatedUsageFrequency: "daily", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Trend report", userIntent: "Understand over time", dataShape: "comparison", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-      "content-feed": {
-        core: [
-          { name: "Feed", userIntent: "Discover content", dataShape: "list", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Search", userIntent: "Find specific content", dataShape: "list", estimatedUsageFrequency: "daily", visualPriority: "secondary" },
-          { name: "Saved collection", userIntent: "Review saved items", dataShape: "timeline", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Reading history", userIntent: "Track consumption", dataShape: "comparison", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-      "catalog-browser": {
-        core: [
-          { name: "Browse catalog", userIntent: "Explore items", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Wishlist", userIntent: "Save items", dataShape: "list", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
-          { name: "Item details", userIntent: "Inspect specifications", dataShape: "single-value", estimatedUsageFrequency: "daily", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Curated collections", userIntent: "Discover featured items", dataShape: "media-grid", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-      "workspace-editor": {
-        core: [
-          { name: "Editor", userIntent: "Create content", dataShape: "form-flow", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Recent files", userIntent: "Continue working", dataShape: "list", estimatedUsageFrequency: "daily", visualPriority: "secondary" },
-          { name: "Template library", userIntent: "Start from template", dataShape: "media-grid", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Version history", userIntent: "Review past versions", dataShape: "timeline", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-      "configurator-workspace": {
-        core: [
-          { name: "Model Configurator", userIntent: "Configure custom fixtures and components", dataShape: "form-flow", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-          { name: "Engineering Calculator", userIntent: "Simulate lux distribution and physics parameters", dataShape: "comparison", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Quote Estimator", userIntent: "Generate pricing and project quote breakdowns", dataShape: "list", estimatedUsageFrequency: "daily", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Specification Breakdown", userIntent: "Export technical specification and telemetry", dataShape: "comparison", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-      "booking-flow": {
-        core: [
-          { name: "Availability search", userIntent: "Find available slots", dataShape: "form-flow", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "My bookings", userIntent: "View reservations", dataShape: "list", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Booking history", userIntent: "Review past reservations", dataShape: "timeline", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-      "showcase-landing": {
-        core: [
-          { name: "Portfolio showcase", userIntent: "View work", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Case studies", userIntent: "Read project narratives", dataShape: "timeline", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
-          { name: "Contact", userIntent: "Get in touch", dataShape: "form-flow", estimatedUsageFrequency: "occasional", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Press and honors", userIntent: "Review recognition", dataShape: "list", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-      "team-workspace": {
-        core: [
-          { name: "Task board", userIntent: "See team tasks", dataShape: "list", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Team members", userIntent: "See who is on the team", dataShape: "list", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Progress report", userIntent: "Track velocity", dataShape: "comparison", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-      "realtime-console": {
-        core: [
-          { name: "Live console", userIntent: "Monitor live data", dataShape: "single-value", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Alerts", userIntent: "Respond to issues", dataShape: "list", estimatedUsageFrequency: "daily", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Historical analysis", userIntent: "Understand trends", dataShape: "comparison", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-      "craft-editorial": {
-        core: [
-          { name: "Editorial Visual Essay", userIntent: "Read immersive monograph and architectural essays", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-          { name: "Monograph Case Studies", userIntent: "Explore architectural drawings and materiality", dataShape: "media-grid", estimatedUsageFrequency: "daily", visualPriority: "primary" },
-        ],
-        secondary: [
-          { name: "Architect Dialogues", userIntent: "Read theoretical discourse and interviews", dataShape: "timeline", estimatedUsageFrequency: "weekly", visualPriority: "secondary" },
-          { name: "Publication Folio Archive", userIntent: "Explore curated back-issues and editions", dataShape: "list", estimatedUsageFrequency: "occasional", visualPriority: "secondary" },
-        ],
-        insights: [
-          { name: "Curatorial Index", userIntent: "Review material lineage and building chronologies", dataShape: "comparison", estimatedUsageFrequency: "occasional", visualPriority: "tertiary" },
-        ],
-      },
-    };
-
-    return defaults[pattern] || defaults["operations-dashboard"];
   }
 }

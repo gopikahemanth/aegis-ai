@@ -159,7 +159,7 @@ export class CopyQualityGate {
     const domainName = (domainContract?.name || "").toLowerCase();
     const isEditorial = domainName.includes("magazine") || domainName.includes("editorial") || domainName.includes("photography");
     const isPerfume = domainName.includes("perfume") || domainName.includes("fragrance") || domainName.includes("flacon");
-    const isFantasy = domainName.includes("kazzoo") || domainName.includes("fantasy") || domainName.includes("adventure");
+    const isFantasy = domainName.includes("fantasy") || domainName.includes("adventure");
     const productVocab = this.extractProductVocabulary(projectRoot, domainContract);
 
     for (const filePath of files) {

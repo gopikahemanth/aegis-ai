@@ -15,12 +15,6 @@ private readonly blocked = {
     "tsconfig.json",
     "tsconfig.node.json",
 
-    "postcss.config.js",
-    "postcss.config.cjs",
-
-    "tailwind.config.js",
-    "tailwind.config.cjs",
-
     "webpack.config.js",
     "next.config.js",
 

@@ -67,30 +67,52 @@ export class UXArchitectureEngine {
       },
     ];
 
-    const directoryPath = visualContract.dashboardComposition.heroAction.targetRoute && visualContract.dashboardComposition.heroAction.targetRoute !== "/"
-      ? visualContract.dashboardComposition.heroAction.targetRoute
-      : "/directory";
+    const isOperationalOrDashboardRequired =
+      visualContract.layoutFamily === "COMMAND_CENTER" ||
+      visualContract.layoutFamily === "ANALYTICS_CONSOLE" ||
+      visualContract.layoutFamily === "VISUAL_ANALYTICS" ||
+      visualContract.layoutFamily === "VISUAL_ANALYTICS_CANVAS" ||
+      visualContract.layoutFamily === "ASYMMETRIC_PRODUCT_DASHBOARD" ||
+      domain.toLowerCase().includes("telemetry") ||
+      domain.toLowerCase().includes("console") ||
+      domain.toLowerCase().includes("dashboard");
 
-    const authenticatedPages: PageNode[] = [
-      {
-        id: "page_dashboard",
-        path: "/dashboard",
-        title: `${productName} Control Center`,
-        roleAccess: ["USER", "ADMIN", "MEMBER", "GUEST", "OPERATOR"],
-        layoutType: "DASHBOARD",
-        primaryActions: [visualContract.dashboardComposition.heroAction.label, "View Operational Metrics"],
-        secondaryActions: ["Filter Events", "Audit Log"],
-      },
-      {
-        id: "page_directory",
-        path: directoryPath,
-        title: `${visualContract.domain} Resource Management`,
-        roleAccess: ["USER", "ADMIN"],
-        layoutType: "DATA_TABLE",
-        primaryActions: [visualContract.dashboardComposition.heroAction.label, "Search & Filter"],
-        secondaryActions: ["Batch Export", "Bulk Edit"],
-      },
-    ];
+    const primaryFeatureRoute = visualContract.dashboardComposition.heroAction.targetRoute && visualContract.dashboardComposition.heroAction.targetRoute !== "/"
+      ? visualContract.dashboardComposition.heroAction.targetRoute
+      : `/${visualContract.domain.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
+    const authenticatedPages: PageNode[] = isOperationalOrDashboardRequired
+      ? [
+          {
+            id: "page_dashboard",
+            path: "/dashboard",
+            title: `${productName} Control Center`,
+            roleAccess: ["USER", "ADMIN", "MEMBER", "GUEST", "OPERATOR"],
+            layoutType: "DASHBOARD",
+            primaryActions: [visualContract.dashboardComposition.heroAction.label, "View Operational Metrics"],
+            secondaryActions: ["Filter Events", "Audit Log"],
+          },
+          {
+            id: "page_directory",
+            path: primaryFeatureRoute,
+            title: `${visualContract.domain} Resource Management`,
+            roleAccess: ["USER", "ADMIN"],
+            layoutType: "DATA_TABLE",
+            primaryActions: [visualContract.dashboardComposition.heroAction.label, "Search & Filter"],
+            secondaryActions: ["Batch Export", "Bulk Edit"],
+          },
+        ]
+      : [
+          {
+            id: "page_primary_feature",
+            path: primaryFeatureRoute,
+            title: `${productName} — ${visualContract.domain}`,
+            roleAccess: ["USER", "ADMIN"],
+            layoutType: "WORKSPACE",
+            primaryActions: [visualContract.dashboardComposition.heroAction.label],
+            secondaryActions: ["Search & Filter", "Details"],
+          },
+        ];
 
     const adminPages: PageNode[] = [
       {
@@ -104,30 +126,36 @@ export class UXArchitectureEngine {
       },
     ];
 
-    const sidebarItems = [
-      { label: "Dashboard", path: "/dashboard", icon: "LayoutDashboard", role: "*" },
-      { label: "Directory", path: directoryPath, icon: "Layers", role: "*" },
-      { label: "Settings", path: "/admin/settings", icon: "Settings", role: "ADMIN" },
-    ];
+    const sidebarItems = isOperationalOrDashboardRequired
+      ? [
+          { label: "Dashboard", path: "/dashboard", icon: "LayoutDashboard", role: "*" },
+          { label: "Directory", path: primaryFeatureRoute, icon: "Layers", role: "*" },
+          { label: "Settings", path: "/admin/settings", icon: "Settings", role: "ADMIN" },
+        ]
+      : [
+          { label: "Overview", path: "/", icon: "Home", role: "*" },
+          { label: visualContract.domain, path: primaryFeatureRoute, icon: "Layers", role: "*" },
+          { label: "Settings", path: "/admin/settings", icon: "Settings", role: "ADMIN" },
+        ];
 
     const userJourneys: UserJourney[] = [
       {
         journeyId: "jrn_onboarding",
-        name: "User Authentication & Dashboard Land",
+        name: "User Authentication & Exploration",
         userRole: "USER",
         flowSteps: [
           { stepOrder: 1, pagePath: "/", goal: "Explore platform landing page" },
           { stepOrder: 2, pagePath: "/login", goal: "Authenticate credentials" },
-          { stepOrder: 3, pagePath: "/dashboard", goal: "Access personal overview" },
+          { stepOrder: 3, pagePath: isOperationalOrDashboardRequired ? "/dashboard" : primaryFeatureRoute, goal: "Access primary domain experience" },
         ],
       },
       {
         journeyId: "jrn_primary_task",
         name: `${visualContract.domain} Core Execution Flow`,
-        userRole: "OPERATOR",
+        userRole: isOperationalOrDashboardRequired ? "OPERATOR" : "USER",
         flowSteps: [
-          { stepOrder: 1, pagePath: "/dashboard", goal: "Review primary operational KPIs & telemetry" },
-          { stepOrder: 2, pagePath: directoryPath, goal: visualContract.dashboardComposition.heroAction.label },
+          { stepOrder: 1, pagePath: isOperationalOrDashboardRequired ? "/dashboard" : "/", goal: "Review primary highlights & status" },
+          { stepOrder: 2, pagePath: primaryFeatureRoute, goal: visualContract.dashboardComposition.heroAction.label },
         ],
       },
     ];

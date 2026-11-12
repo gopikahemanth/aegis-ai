@@ -1,7 +1,8 @@
 import { spawn, execSync, ChildProcess } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import http from "node:http";
+import { BackendCompilationGate } from "../build/backend-compilation-gate.js";
 
 export interface AppServerInfo {
   framework: string;
@@ -126,40 +127,106 @@ export class AppServerRunner {
       console.error(`[AppServerRunner] ❌ PRISMA_CLIENT_BLOCKED: Backend requires generated Prisma client, but generation failed:\n${prismaBlockedReason}`);
       console.error(`[AppServerRunner] 🛑 Aborting backend startup to prevent crash loop.`);
     } else if (existsSync(serverIndex)) {
-      const backendEnv = { ...process.env, ...projectEnv, PORT: "5000" };
-      const localTsxBin = join(absDir, "node_modules", "tsx", "dist", "cli.mjs");
-      if (existsSync(localTsxBin)) {
-        this.backendProcess = spawn(process.execPath, [localTsxBin, "server/index.ts"], {
-          cwd: absDir,
-          shell: false,
-          stdio: ["ignore", "pipe", "pipe"],
-          env: backendEnv,
-        });
-      } else {
-        const cmd = isWindows ? "npx.cmd" : "npx";
-        this.backendProcess = spawn(cmd, ["tsx", "server/index.ts"], {
-          cwd: absDir,
-          shell: isWindows,
-          stdio: ["ignore", "pipe", "pipe"],
-          env: backendEnv,
-        });
+      // Pre-flight check: verify route and controller files have balanced delimiters and correct imports before launching tsx
+      const targetDirs = [
+        join(absDir, "server"),
+        join(absDir, "server", "routes"),
+        join(absDir, "server", "controllers"),
+        join(absDir, "server", "services"),
+        join(absDir, "server", "middleware"),
+      ].filter(existsSync);
+      for (const tDir of targetDirs) {
+        try {
+          const files = readdirSync(tDir);
+          for (const rf of files) {
+            if (rf.endsWith(".ts") || rf.endsWith(".js")) {
+              const rfp = join(tDir, rf);
+              let rfc = readFileSync(rfp, "utf8");
+              let fileModified = false;
+
+              // Harmonize bcrypt imports to bcryptjs (pure-JS standard avoiding missing native bindings)
+              if (rfc.includes("'bcrypt'") || rfc.includes('"bcrypt"')) {
+                console.warn(`[AppServerRunner] ⚠️ Harmonizing bcrypt -> bcryptjs in ${rf}...`);
+                rfc = rfc.replace(/(['"])bcrypt\1/g, "$1bcryptjs$1");
+                fileModified = true;
+              }
+
+              // Auto-repair accidental assignment injection in auth middleware (e.g. const decoded =\n  if (token === ...))
+              if (/const\s+([a-zA-Z0-9_$]+)\s*=\s*(\s*if\s*\([\s\S]*?\}\s*)(?=jwt\.verify)/.test(rfc)) {
+                console.warn(`[AppServerRunner] ⚠️ Auto-repairing corrupted auth middleware assignment in ${rf}...`);
+                rfc = rfc.replace(
+                  /const\s+([a-zA-Z0-9_$]+)\s*=\s*(\s*if\s*\([\s\S]*?\}\s*)(?=jwt\.verify)/,
+                  `$2\n  const $1 = `
+                );
+                fileModified = true;
+              }
+
+              // Auto-repair any malformed trailing delimiters like ";\n  });\n  }\n});" anywhere in the file
+              if (/;\s*\}\);\s*\}\s*\}\);/.test(rfc)) {
+                console.warn(`[AppServerRunner] ⚠️ Detected malformed catch block delimiter in ${rf}. Auto-repairing...`);
+                rfc = rfc.replace(/;\s*\}\);\s*\}\s*\}\);/g, ";\n  }\n});");
+                fileModified = true;
+              }
+              const ob = (rfc.match(/\{/g) || []).length;
+              const cb = (rfc.match(/\}/g) || []).length;
+              const op = (rfc.match(/\(/g) || []).length;
+              const cp = (rfc.match(/\)/g) || []).length;
+              if (ob !== cb || op !== cp) {
+                console.warn(`[AppServerRunner] ⚠️ Detected unbalanced delimiters in ${rf} ({ ${ob} vs ${cb}, ( ${op} vs ${cp} ). Auto-repairing...`);
+                rfc = rfc.replace(/\}\);\s*\}\s*\}\);/g, "  }\n});");
+                rfc = rfc.replace(/\}\);\s*\}\s*$/gm, "});");
+                fileModified = true;
+              }
+
+              if (fileModified) {
+                writeFileSync(rfp, rfc, "utf8");
+              }
+            }
+          }
+        } catch {}
       }
-      this.backendProcess.stderr?.on("data", (data) => {
-        const line = data.toString().trim();
-        if (line) console.error(`[AppServerRunner:Backend] ⚠️ ${line}`);
-      });
-      this.backendProcess.stdout?.on("data", (data) => {
-        const line = data.toString().trim();
-        if (line && (line.includes("Server") || line.includes("running") || line.includes("Listening"))) {
-          console.log(`[AppServerRunner:Backend] ✓ ${line}`);
+
+      // Independent Backend Compilation Gate: statically verify backend code before spawning
+      const backendComp = BackendCompilationGate.verify(absDir);
+      if (!backendComp.passed) {
+        console.error(`[AppServerRunner] ❌ BACKEND_COMPILATION_BLOCKED: Backend failed compilation:\n${backendComp.summary}`);
+        prismaBlockedReason = backendComp.summary;
+      } else {
+        const backendEnv = { ...process.env, ...projectEnv, PORT: "5000" };
+        const localTsxBin = join(absDir, "node_modules", "tsx", "dist", "cli.mjs");
+        if (existsSync(localTsxBin)) {
+          this.backendProcess = spawn(process.execPath, [localTsxBin, "server/index.ts"], {
+            cwd: absDir,
+            shell: false,
+            stdio: ["ignore", "pipe", "pipe"],
+            env: backendEnv,
+          });
+        } else {
+          const cmd = isWindows ? "npx.cmd" : "npx";
+          this.backendProcess = spawn(cmd, ["tsx", "server/index.ts"], {
+            cwd: absDir,
+            shell: isWindows,
+            stdio: ["ignore", "pipe", "pipe"],
+            env: backendEnv,
+          });
         }
-      });
-      this.backendProcess.on("exit", (code) => {
-        if (code !== 0 && code !== null) {
-          console.error(`[AppServerRunner:Backend] ❌ Backend process exited with code ${code}`);
-        }
-      });
-      console.log(`[AppServerRunner] 🚀 Express backend process spawned on port 5000.`);
+        this.backendProcess.stderr?.on("data", (data) => {
+          const line = data.toString().trim();
+          if (line) console.error(`[AppServerRunner:Backend] ⚠️ ${line}`);
+        });
+        this.backendProcess.stdout?.on("data", (data) => {
+          const line = data.toString().trim();
+          if (line && (line.includes("Server") || line.includes("running") || line.includes("Listening"))) {
+            console.log(`[AppServerRunner:Backend] ✓ ${line}`);
+          }
+        });
+        this.backendProcess.on("exit", (code) => {
+          if (code !== 0 && code !== null) {
+            console.error(`[AppServerRunner:Backend] ❌ Backend process exited with code ${code}`);
+          }
+        });
+        console.log(`[AppServerRunner] 🚀 Express backend process spawned on port 5000.`);
+      }
     }
 
     let isReady = false;

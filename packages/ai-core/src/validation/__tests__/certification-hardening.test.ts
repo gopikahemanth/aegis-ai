@@ -542,7 +542,7 @@ describe("Provenance Lifecycle Regression — Baseline Integrity Invariants", ()
     mkdirSync(join(PROV_DIR, "src", "pages"), { recursive: true });
     const designPageCode = "import React, { useState } from 'react';\nexport function ActiveNotamsPage() {\n  const [visible, setVisible] = useState(true);\n  return <button onClick={() => setVisible(!visible)}>Toggle NOTAMs</button>;\n}";
     writeFileSync(join(PROV_DIR, "src", "pages", "ActiveNotamsPage.tsx"), designPageCode);
-    PipelineProvenanceLedger.register(PROV_DIR, "src/pages/ActiveNotamsPage.tsx", "DESIGN_PIPELINE", "GenericExperienceGenerator", designPageCode);
+    PipelineProvenanceLedger.register(PROV_DIR, "src/pages/ActiveNotamsPage.tsx", "DESIGN_PIPELINE", "DesignPipeline", designPageCode);
 
     // 4. ALSO simulate a sanitizer injection into an unrelated existing file
     const injectedCode = "import React, { useState } from 'react';\nexport function FlightDashboard() {\n  const [alt, setAlt] = useState(0);\n  const [injected, setInjected] = useState(false);\n  return (\n    <div>\n      <button onClick={() => setAlt(alt + 1000)}>Climb</button>\n      <button onClick={() => setInjected(true)}>Synthetic Injected</button>\n    </div>\n  );\n}";
@@ -582,7 +582,7 @@ describe("Provenance Lifecycle Regression — Baseline Integrity Invariants", ()
     const synthesizedContent = "import React from 'react';\nexport function MissionBriefPage() { return <div>Mission Brief</div>; }";
     mkdirSync(join(PROV_DIR, "src", "pages"), { recursive: true });
     writeFileSync(join(PROV_DIR, "src", "pages", "MissionBriefPage.tsx"), synthesizedContent);
-    PipelineProvenanceLedger.register(PROV_DIR, "src/pages/MissionBriefPage.tsx", "DESIGN_PIPELINE", "GenericExperienceGenerator", synthesizedContent);
+    PipelineProvenanceLedger.register(PROV_DIR, "src/pages/MissionBriefPage.tsx", "DESIGN_PIPELINE", "DesignPipeline", synthesizedContent);
 
     // 3. Verify the on-disk baseline artifact still only contains the original two files
     // Use the persisted JSON file — the in-memory map is the same because captureBaseline
@@ -615,7 +615,7 @@ describe("Provenance Lifecycle Regression — Baseline Integrity Invariants", ()
     const synthesizedContent = "import React from 'react';\nexport function WeatherPage() { return <div>Weather</div>; }";
     mkdirSync(join(PROV_DIR, "src", "pages"), { recursive: true });
     writeFileSync(join(PROV_DIR, "src", "pages", "WeatherPage.tsx"), synthesizedContent);
-    PipelineProvenanceLedger.register(PROV_DIR, "src/pages/WeatherPage.tsx", "DESIGN_PIPELINE", "GenericExperienceGenerator", synthesizedContent);
+    PipelineProvenanceLedger.register(PROV_DIR, "src/pages/WeatherPage.tsx", "DESIGN_PIPELINE", "DesignPipeline", synthesizedContent);
 
     // 3. A structural fixer modifies WeatherRadar.tsx, injecting a new handler
     const modifiedCode = "import React, { useState } from 'react';\nexport function WeatherRadar() {\n  const [layer, setLayer] = useState('SIGMET');\n  const [alert, setAlert] = useState(false);\n  return (\n    <div>\n      <button onClick={() => setLayer('METAR')}>Switch to METAR</button>\n      <button onClick={() => setAlert(true)}>Alert Injected</button>\n    </div>\n  );\n}";

@@ -111,6 +111,7 @@ export interface ProductCharacteristics {
 
   /** Key supplementary actions and workflows. */
   secondaryActions: string[];
+  avoidancePatterns?: string[];
 
   /** Concrete aesthetic feel, tactile materials, textures, and geometry. */
   visualPersonality: string;
@@ -459,19 +460,21 @@ function detectExperiencePattern(
     lower.includes("villas") ||
     lower.includes("vacation stay") ||
     lower.includes("luxury stay") ||
-    lower.includes("retreat") ||
+    (/\b(wellness retreat|spa retreat|luxury retreat|mountain retreat lodge|meditation retreat)\b/i.test(lower) || (lower.includes("retreat") && !lower.includes("glacier") && !lower.includes("ice") && !lower.includes("telemetry") && !lower.includes("research") && !lower.includes("expedition"))) ||
     (lower.includes("hospitality") && !lower.includes("software")));
 
   if (isHospitality) {
     return "hospitality-portal";
   }
 
-  // 2.3. Operational console & clean energy / grid monitoring detection
+  // 2.3. Operational console & telemetry / grid monitoring detection
   const isOperational =
-    isCleanEnergy(lower) ||
-    (/\b(operations|operations platform|telemetry|grid|scada|inverter|turbine|renewable|clean energy|power plant|fleet operations|maintenance dispatch)\b/i.test(lower) &&
+    (/\b(operations console|operations platform|scada|telemetry console|inverter monitoring|power plant control|fleet operations|maintenance dispatch)\b/i.test(lower) ||
+     (/\b(telemetry|inverter|scada|grid)\b/i.test(lower) && /\b(console|monitoring|dispatch|telemetric|curves|fault)\b/i.test(lower))) &&
      !lower.includes("monograph") &&
-     !lower.includes("magazine"));
+     !lower.includes("magazine") &&
+     !lower.includes("storefront") &&
+     !lower.includes("shop");
 
   if (isOperational) {
     return "operations-dashboard";
@@ -622,7 +625,7 @@ function detectAudienceContext(
 ): ProductCharacteristics["audienceContext"] {
   const isPersonal =
     activity === "personal-tracking" ||
-    activity === "portfolio-showcase" ||
+    (activity === "portfolio-showcase" && !text.includes("studio") && !text.includes("firm") && !text.includes("architect") && !text.includes("interior") && !text.includes("agency") && !text.includes("atelier")) ||
     text.includes("companion") ||
     text.includes("houseplant") ||
     (text.includes("plant") && (text.includes("care") || text.includes("water") || text.includes("companion"))) ||
@@ -786,6 +789,7 @@ export class ProductUnderstanding {
       secondaryActions,
       visualPersonality,
       contentHierarchy,
+      avoidancePatterns: forbidden,
     };
   }
 }
@@ -800,87 +804,37 @@ function deriveTargetAudience(text: string, audience: ProductCharacteristics["au
   return "Discerning end users seeking an intuitive, purposeful product experience";
 }
 
-function isSpace(text: string): boolean {
-  return /\b(space|celestial|orbit|orbital|satellite|planetary|astro|astronomy|observatory|telescope|starmap|star map)\b/i.test(text);
-}
-
-function isCleanEnergy(text: string): boolean {
-  return !isSpace(text) && /\b(renewable|solar|wind|clean energy|greenpulse|energy operations|power grid|microgrid|photovoltaic|inverter|turbine|wind farm)\b/i.test(text);
-}
-
-function isOperationalOrConsole(text: string): boolean {
-  return !isCleanEnergy(text) && !isSpace(text) && /\b(avionics|aerospace|aircraft|flight|aviation|cockpit|airframe|airspace|transponder|squawk|rnav|airway)\b/i.test(text);
-}
-
-function isArchitecturalPublicationDomain(text: string): boolean {
-  if (isOperationalOrConsole(text) || isSpace(text)) return false;
-  if (/\b(software architecture|system architecture|data architecture|application architecture|required by the architecture|backend architecture|cloud architecture)\b/i.test(text)) {
-    return false;
-  }
-  return /\b(architectural\s+(?:monograph|journal|review|digest|firm|studio|practice|portfolio|criticism)|architecture\s+(?:firm|studio|monograph|journal|magazine|exhibition)|building\s+typolog(?:y|ies)|spatial\s+(?:monograph|essay)|tectonic\s+journal)\b/i.test(text);
-}
-
 function derivePrimaryAction(text: string, activity: ProductCharacteristics["primaryActivity"]): string {
-  if (isSpace(text)) {
-    return "Track orbital constellation trajectories, inspect subsystem bus telemetry, schedule downlink passes, and transmit encrypted commands";
-  }
-  if (isCleanEnergy(text)) {
-    return "Monitor renewable generation telemetry, inspect wind and solar assets, and triage grid incidents";
-  }
-  if (isOperationalOrConsole(text)) {
-    return "Monitor real-time avionics telemetry, inspect subsystem bus health, and manage airspace fleet operations";
-  }
-  if (isArchitecturalPublicationDomain(text) || (!isOperationalOrConsole(text) && (text.includes("journal") || text.includes("monograph") || text.includes("editorial")))) {
-    return "Read immersive project essays, inspect architectural photography, and study structural monographs";
-  }
-  if (text.includes("watch") || text.includes("horology") || text.includes("timepiece")) {
-    return "Rotate handcrafted timepieces, inspect caliber complications, and schedule private viewing";
-  }
-  if (text.includes("kazzoo") || text.includes("fantasy") || text.includes("biome") || text.includes("world")) {
-    return "Explore 3D floating biomes, commune with companions, and compose realm chimes";
-  }
-  if (text.includes("glaze") || text.includes("kiln") || text.includes("ceramic")) {
-    return "Formulate glaze chemistry recipes and monitor kiln firing temperature schedules";
-  }
   if (activity === "booking-ordering") return "Browse curated offerings and initiate bespoke bookings/orders";
   if (activity === "personal-tracking") return "Record daily observations and track longitudinal progress";
   if (activity === "data-analysis") return "Inspect real-time telemetry metrics and operational trends";
   if (activity === "content-browsing") return "Discover and explore curated catalog entries";
+  if (activity === "content-creation") return "Create, customize, and refine bespoke project deliverables";
+  if (activity === "realtime-monitoring") return "Tune operational parameters, configure components, and simulate outcomes";
   return "Experience bespoke domain interactions and explore curated stories";
 }
 
 function deriveSecondaryActions(text: string, activity: ProductCharacteristics["primaryActivity"]): string[] {
   const actions: string[] = [];
-  if (isSpace(text)) {
-    actions.push("Calculate orbital maneuver delta-v burn vectors", "Inspect solar array generation, battery state, and radiator thermal loops");
-  } else if (isCleanEnergy(text)) {
-    actions.push("Analyze inverter waveforms and turbine yaw telemetry", "Review preventive maintenance schedules and dispatch work orders");
-  } else if (isOperationalOrConsole(text)) {
-    actions.push("Analyze flight sensor parameters and trajectory vectors", "Inspect subsystem diagnostic logs and alarm thresholds");
-  } else if (isArchitecturalPublicationDomain(text) || ((text.includes("journal") || text.includes("monograph")) && !isOperationalOrConsole(text))) {
-    actions.push("Examine tectonic drawings & material specifications", "Explore scroll-driven visual photo essays");
-  } else if (text.includes("watch") || text.includes("horology")) {
-    actions.push("Inspect macro caliber anglage and black polish", "Compare case metallurgy and ergonomics");
-  } else if (text.includes("kazzoo") || text.includes("fantasy")) {
-    actions.push("Trace waypoint routes on cartographic map", "Trigger harmonious ambient chime pads");
-  } else if (text.includes("commission")) {
-    actions.push("Manage bespoke client commission requests and approvals");
-  } else if (text.includes("monitor") || text.includes("schedule")) {
-    actions.push("Review live execution logs and status alerts");
-  } else if (text.includes("calculator") || text.includes("formulat")) {
-    actions.push("Compute precision batch ingredient ratios and oxide limits");
-  }
-  if (actions.length === 0) {
+  if (activity === "data-analysis") {
+    actions.push("Analyze operational trends and historical metric distributions", "Inspect diagnostic telemetry logs and system alerts");
+  } else if (activity === "booking-ordering") {
+    actions.push("Configure bespoke item specifications", "Review schedule availability and reserve appointments");
+  } else if (activity === "content-creation" || activity === "realtime-monitoring") {
+    actions.push("Simulate parameter adjustments in real time", "Export calibrated project assets and specifications");
+  } else if (activity === "personal-tracking") {
+    actions.push("Review historical progress timelines", "Log new checkpoint observations and milestone goals");
+  } else {
     actions.push("Inspect detailed domain monographs", "Engage with interactive presentation tools");
   }
   return actions;
 }
 
 function deriveVisualPersonality(tone: ProductCharacteristics["emotionalTone"], pattern: ProductCharacteristics["experiencePattern"], text: string): string {
-  if (pattern === "immersive-3d" || text.includes("claymation") || text.includes("3d fantasy")) {
-    return "Tactile 3D claymation aesthetic with playful dimensional geometry, volumetric spatial depth, rich chromatic saturation, and floating interactive HUD overlays";
+  if (pattern === "immersive-3d") {
+    return "Tactile 3D aesthetic with playful dimensional geometry, volumetric spatial depth, rich chromatic saturation, and floating interactive HUD overlays";
   }
-  if (text.includes("ceramic") || text.includes("pottery") || tone.primary === "calm" || tone.primary === "warm") {
+  if (tone.primary === "calm" || tone.primary === "warm") {
     return "Tactile, warm artisanal aesthetics with organic earth tones, generous whitespace, subtle stone borders, and clean typography";
   }
   if (tone.primary === "technical" || tone.primary === "serious") {
@@ -893,59 +847,13 @@ function deriveVisualPersonality(tone: ProductCharacteristics["emotionalTone"], 
 }
 
 function deriveContentHierarchy(activity: ProductCharacteristics["primaryActivity"], pattern: ProductCharacteristics["experiencePattern"], text?: string): string[] {
-  const lower = (text || "").toLowerCase();
-  if (isSpace(lower)) {
-    return [
-      "Satellite Constellation Command & Orbit Telemetry Deck",
-      "Orbital Maneuver Burn & Delta-V Planner",
-      "Subsystem Telemetry & Power Distribution Inspector",
-      "Ground Station Downlink Pass Scheduler",
-      "Encrypted Satellite Command Uplink Log",
-    ];
-  }
-  if (isCleanEnergy(lower)) {
-    return [
-      "Renewable Energy Generation & Grid Telemetry Deck",
-      "Solar Farm & Wind Turbine Asset Inventory",
-      "Grid Performance & Environmental Analytics",
-      "Technician Dispatch & Preventive Maintenance",
-      "Operational Incident Triage & Emergency Escalation",
-    ];
-  }
-  if (isOperationalOrConsole(lower)) {
-    return [
-      "Mission Telemetry Command & Avionics Flight Deck",
-      "Real-Time Telemetry Stream & Flight Data Recorder",
-      "Airspace Fleet Operations & Aircraft Roster Ledger",
-      "Flight Plan Routing & Waypoint Navigation Console",
-      "Subsystem Diagnostics & Bus Health",
-    ];
-  }
-  if (isArchitecturalPublicationDomain(lower) || ((lower.includes("journal") || lower.includes("monograph")) && !isOperationalOrConsole(lower)) || pattern === "craft-editorial") {
-    return [
-      "Editorial Monograph Cover & Manifesto",
-      "Scroll-Driven Visual Photo Essay",
-      "Deep Tectonic Case Study Monograph",
-      "Architect Curatorial Profiles",
-      "High-Resolution Archival Folio",
-    ];
-  }
-  if (lower.includes("watch") || lower.includes("horology") || lower.includes("timepiece")) {
-    return [
-      "Manufacture Timepiece Stage & Configurator",
-      "Caliber Architecture & Finissage Loupe",
-      "Metallurgy Comparison Plinth",
-      "Atelier Chronicle",
-      "Private Salon Concierge",
-    ];
-  }
   switch (pattern) {
     case "immersive-3d":
-      return ["Interactive 3D World Stage Canvas", "Spatial Landmark & Biome Explorer", "3D Character Inspection & Animation Stage", "Atmospheric Audio & Sound Mixer", "Quest Log & Adventure HUD"];
+      return ["Interactive 3D World Stage Canvas", "Spatial Landmark & Coordinate Explorer", "3D Subject Inspection Stage", "Atmospheric Audio & Sound Mixer", "Progress Log & Interaction HUD"];
     case "storefront-commerce":
-      return ["Promotional Banner & Deals Carousel", "Top Category Navigation Row", "Product Catalog Grid with Ratings & Discounts", "Interactive Slide-out Cart Drawer", "Order & Delivery Summary"];
+      return ["Promotional Banner & Featured Offerings", "Category Navigation Row", "Product Catalog Grid with Specifications", "Interactive Cart Drawer", "Order & Delivery Summary"];
     case "hospitality-portal":
-      return ["Immersive Editorial Hero & Availability Bar", "Villa & Suite Showcase", "Curated Retreat Experiences & Dining", "Guest Reviews & Provenance", "Reservation Intake Flow"];
+      return ["Immersive Editorial Hero & Availability Bar", "Accommodation Showcase", "Curated Experiences & Amenities", "Guest Testimonials & Provenance", "Reservation Intake Flow"];
     case "catalog-browser":
     case "booking-flow":
       return ["Hero Showcase & Ethos", "Interactive Showcase Stage", "Detail & Specification View", "Intake / Reservation Flow"];

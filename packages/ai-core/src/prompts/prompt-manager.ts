@@ -42,20 +42,25 @@ Return ONLY valid JSON matching this schema exactly — no extra text, no markdo
 }
 
 Rules for each field:
-- "domainCategory": The precise domain category (e.g. "marine-engineering", "satellite-telemetry", "luxury-hospitality", "scientific-observatory", "automotive-engineering").
-- "features": Every meaningful feature the user described (e.g. ["upload", "parsing", "scoring", "history", "export", "auth"]). Each entry becomes a folder under src/features/.
-- "inferredLibraries": npm packages the project will need. Infer from the feature set even if not explicitly mentioned (e.g. PDF upload → "pdfjs-dist", charts → "recharts", auth → "jsonwebtoken"). Be exhaustive.
-- "userFlows": Top-level user journeys as kebab-case strings (e.g. ["upload-resume", "scan-keywords", "view-history", "export-pdf"]).
-- "dataModels": Core TypeScript entity names (e.g. ["User", "ScanResult", "JobDescription"]).
-- "featureDescriptions": One sentence per feature describing what it does and what files it needs.
-- "auth": Authentication strategy inferred from the request (e.g. "JWT", "OAuth2", "session", "none").
-- "deployment": Deployment target inferred from the request (e.g. "vercel", "docker", "railway", "none").
-- "domainVocabulary": Extract the real domain-specific vocabulary from the user request:
-    - "entityName": The singular noun for the primary data entity (e.g. "Transaction", "Task", "Workout", "Product").
-    - "entityPlural": The plural form (e.g. "Transactions", "Tasks", "Workouts").
-    - "primaryMetrics": REAL metric names for KPI cards, derived from the domain (e.g. ["Total Expenses", "Monthly Budget", "Remaining Balance"] NOT ["Total Activity Volume", "Goal Metric"]).
-    - "actionVerbs": Domain-specific CTA labels (e.g. ["Add Expense", "Edit", "Export CSV"] NOT ["Submit", "Process", "Execute"]).
-    - "domainPrefix": Lowercase prefix for CSS/routes (e.g. "expense", "task", "workout").
+- "frontend": Unless the user explicitly requests another frontend framework, lock to "React-Vite" (React 18 + Vite).
+- "backend": Unless the user explicitly requests another backend framework, lock to "Express" (Express REST API with TypeScript).
+- "database": Unless the user explicitly requests another database, lock to "PostgreSQL" (with Prisma ORM).
+- "language": Lock to "TypeScript".
+- "packageManager": Lock to "pnpm".
+- "domainCategory": The precise bespoke domain category (e.g. "specialty-coffee-roastery", "marine-biology", "luxury-hospitality", "scientific-observatory", "artisan-bakery").
+- "features": Bespoke, domain-native features that make the application feel like a handcrafted human-built digital experience for this specific industry. Never plan generic or template CRUD features. Each entry becomes a dedicated view or capability.
+- "inferredLibraries": npm packages the project will need. Infer from the feature set (e.g. charts → "recharts", icons → "lucide-react", auth → "jsonwebtoken"). Do NOT include dev/test tools like "vitest" here.
+- "userFlows": Top-level user journeys as kebab-case strings tailored to the authentic domain experience.
+- "dataModels": Core TypeScript domain entity names (e.g. ["User", "RoastProfile", "CuppingFlight", "GreenBeanLot"]).
+- "featureDescriptions": One sentence per feature describing what it does and how users experience it.
+- "auth": Authentication strategy inferred from the request (e.g. "JWT", "none").
+- "deployment": Deployment target (e.g. "docker", "vercel", "railway", "none").
+- "domainVocabulary": Extract authentic domain-specific vocabulary:
+    - "entityName": The singular noun for the primary data entity (e.g. "RoastBatch", "CuppingFlight", "Specimen", "Reservation").
+    - "entityPlural": The plural form (e.g. "RoastBatches", "CuppingFlights", "Specimens", "Reservations").
+    - "primaryMetrics": REAL metric names for KPI cards (e.g. ["Total Batches Roasted", "Average Cupping Score", "Active Sourcing Lots"]).
+    - "actionVerbs": Domain-specific CTA labels (e.g. ["Log Roast Batch", "Book Tasting Flight", "Inspect Origin", "Order Beans"]).
+    - "domainPrefix": Lowercase prefix for routes/classes (e.g. "roast", "cupping", "origin").
 
 Never output markdown backticks or extra text. Return only the raw JSON object.`;
   }
@@ -112,7 +117,7 @@ RULES:
 - Plan ONLY backend, database, and integration tasks.
 - Do NOT plan any frontend tasks (the frontend is locked and approved).
 - Tasks must implement the Express server, Prisma database persistence, and API endpoints matching the approved frontend requirements.
-- MANDATORY AUTHENTICATION & ACCESS CONTROL: Protected routes (admin, management, private user records) must verify authentication tokens (JWT or session) and return HTTP 401 Unauthorized or 403 Forbidden when unauthorized. Sensitive credentials must be hashed with bcrypt. Never hardcode credentials.
+- MANDATORY AUTHENTICATION & ACCESS CONTROL: Protected routes (admin, management, private user records) must verify authentication tokens (JWT or session) and return HTTP 401 Unauthorized or 403 Forbidden when unauthorized. Sensitive credentials must be hashed with bcryptjs (always import bcrypt from 'bcryptjs', never 'bcrypt'). Never hardcode credentials.
 - MANDATORY HTTP 400 VALIDATION: Every POST, PUT, and PATCH controller must validate required payload fields. If required fields are missing, empty, or if req.body contains invalid/malformed data, immediately return res.status(400).json({ success: false, error: 'Validation failed' }). NEVER default missing required fields or return 200 on invalid requests.
 - MANDATORY CLIENT-SERVER INTEGRATION: Ensure frontend client services (e.g. src/services/api.ts, src/lib/auth.ts) and state stores connect to live backend endpoints.
 - Express controller catch blocks must return resilient fallback responses (HTTP 200 for GET/PUT, 201 for POST, 204 for DELETE), never HTTP 500.
@@ -188,7 +193,7 @@ TASK DECOMPOSITION & ATOMIC WORKSPACE PRINCIPLE:
   - Each task must produce complete, production-grade, fully interactive components.
 
 TASK ORDERING & ADAPTIVE STAGES:
-  1. Product shell + navigation + routing scaffold (Navbar, routes, layout, and clean page stubs for feature views. DO NOT generate full pages for all routes in Task 1; feature pages belong in subsequent tasks)
+  1. Product shell + navigation + routing scaffold (Navbar, routes, layout, and route definitions. DO NOT attempt to write all feature pages in Task 1; each feature page must be independently and fully implemented with its own authentic composition in subsequent tasks)
   2. Primary workspace / Landing Hero experience (Brand hero, value propositions, feature highlights, and call-to-action)
   3. Domain catalog / Primary workspace explorer (Domain-appropriate catalog, explorer, feed, or data browser with search and filtering)
   4. Interactive transaction / Core domain workflow (Domain-specific primary interactive flow: booking/scheduling, checkout/order, content authoring, data analysis, or submission workflows)
@@ -211,7 +216,7 @@ EXAMPLE OUTPUT for a lighting configurator product:
   {
     "id": 1,
     "title": "Studio Shell, Navigation & Routing",
-    "description": "Create the application shell with sticky nav, brand identity, layout, route configuration (/, /configurator, /photometric, /quote), and responsive mobile menu. Use React Router with clean page stubs. Detailed feature pages are fully implemented in subsequent tasks.",
+    "description": "Create the application shell with sticky nav, brand identity, layout, route configuration (/, /configurator, /photometric, /quote), and responsive mobile menu. Detailed feature pages are independently and fully implemented with authentic domain-specific compositions in subsequent tasks.",
     "completed": false,
     "stage": "Frontend",
     "priority": 1,
@@ -266,11 +271,15 @@ PRODUCTION QUALITY INVARIANTS:
 1. COMPLETE IMPLEMENTATION: Never write "// TODO", "// Implement later", or placeholder comments. Every function, hook, handler, and state machine must be 100% complete, working, and typed.
 2. ACCURATE DOMAIN VOCABULARY & DATA: Use authentic domain entity terms and units from the project contract. Every KPI card, chart, and ledger must render dynamic data computed from state or props — no hardcoded static scores, fake timers, or random percentages.
 3. PROFESSIONAL UI & ACCESSIBILITY:
-   - Adhere to the locked 8px spacing grid, consistent border-radius, and high-contrast WCAG AA palette.
+   - Adhere to the locked 8px spacing grid, consistent border-radius, and high-contrast WCAG AA palette (>= 4.5:1 normal text, >= 3:1 large text).
+   - SEMANTIC FOREGROUND/BACKGROUND PAIRING: Every foreground text color must be explicitly paired with its container's background. On dark surfaces (e.g. bg-background, bg-surface), use high-contrast light text (text-foreground, text-slate-100). On light surfaces, use dark text (text-slate-900). NEVER apply near-white text on white/light backgrounds.
    - All interactive controls (buttons, links, tabs, selects) must have hover, focus-visible ring, and active cursor states.
    - Icon-only buttons must have aria-label. Form inputs must have visible labels or aria-label.
    - Include loading skeletons for async data, EmptyState with a CTA when collections are empty, and inline error messages with retry actions.
-4. RESPONSIVE DESIGN: Mobile-first responsive layouts across sm (640px), md (768px), and lg (1024px) without horizontal overflow or broken layout.
+4. RESPONSIVE DESIGN:
+   - Mobile-first responsive layouts across sm (640px), md (768px), and lg (1024px) without horizontal overflow or clipped containers.
+   - Action controls and button groups must adapt fluidly to the viewport (e.g. stack cleanly on narrow screens or wrap naturally with flex-wrap and gap-3), ensuring button labels remain legible without rigid min-widths that induce horizontal scrolling.
+   - Badges, status pills, and filter chips must wrap cleanly (flex-wrap) and preserve comfortable vertical breathing room without colliding with section headings.
 5. ROUTING & CONTRACT CONVENTIONS:
    - When using react-router-dom, declare <BrowserRouter> exactly once in App.tsx.
    - Primary feature views must include exactly one semantic <h1> with the feature title followed by a descriptive <p>.
@@ -279,6 +288,11 @@ PRODUCTION QUALITY INVARIANTS:
    - Keep individual component files modular, clean, and under 300 lines of code. Avoid monolithic files that risk output truncation.
 7. SECURITY & BACKEND INTEGRATION:
    - Sanitize user content. Never hardcode secrets. Always use relative API paths or the canonical API client (never insecure http://).
+   - In backend controllers/routes, hash passwords using pure-JS bcryptjs (import bcrypt from 'bcryptjs', never 'bcrypt'). Ensure token signing uses jsonwebtoken.
+8. EQUAL EXCELLENCE ACROSS ALL PAGES:
+   - Every route page must receive equal visual richness, polish, and interactive depth as the landing page.
+   - Every page includes: compelling masthead, dynamic metric cards, interactive controls (search, filter tabs, modals) wired to React state, and 6-8 authentic domain items with working event handlers.
+   - Every button click must trigger observable UI state changes (never inert callbacks).
 
 OUTPUT PROTOCOL (STRICT):
 Return ONLY code blocks. No markdown explanations, conversational text, or backtick wrappers.

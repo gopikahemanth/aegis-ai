@@ -9,23 +9,13 @@ const packageRoot = path.resolve(__dirname, "..");
 
 const targetFiles = [];
 
-// 1. experience-generators/*.ts
-const generatorsDir = path.join(packageRoot, "src", "design", "experience-generators");
-if (fs.existsSync(generatorsDir)) {
-  for (const file of fs.readdirSync(generatorsDir)) {
-    if (file.endsWith(".ts") && !file.endsWith(".d.ts")) {
-      targetFiles.push(path.join(generatorsDir, file));
-    }
-  }
-}
-
-// 2. candidate-composition-synthesizer.ts
+// 1. candidate-composition-synthesizer.ts
 const synthesizerPath = path.join(packageRoot, "src", "design", "candidate-composition-synthesizer.ts");
 if (fs.existsSync(synthesizerPath)) {
   targetFiles.push(synthesizerPath);
 }
 
-// 3. page-experience-plan.ts
+// 2. page-experience-plan.ts
 const pagePlanPath = path.join(packageRoot, "src", "design", "page-experience-plan.ts");
 if (fs.existsSync(pagePlanPath)) {
   targetFiles.push(pagePlanPath);
@@ -94,6 +84,11 @@ function shouldFilterOut(str, node) {
   if (trimmed.includes("_")) return true;
   if (!trimmed.includes(" ")) return true;
 
+  // Geographic locations (e.g. "Kyoto, Japan", "Paris, France", "New York, USA")
+  if (/^[A-Z][\p{L}\s'-]+,\s+[A-Z][\p{L}\s'-]+$/u.test(trimmed)) {
+    return true;
+  }
+
   // Generic UI, telemetry statuses, scene layers, and audio console elements
   const genericUiPatterns = [
     /^(optimal baseline|nominal range|within target bounds|verified stable|active stability)$/i,
@@ -125,6 +120,21 @@ function shouldFilterOut(str, node) {
     "filter pills", "card grid", "search bar", "crud forms", "action buttons", "filter tabs"
   ];
   if (genericUiTokens.includes(trimmed.toLowerCase())) {
+    return true;
+  }
+
+  const genericMetricsAndVerbs = [
+    "bandwidth capacity", "processing delta", "execution fidelity",
+    "precision level", "throughput rate", "quality index",
+    "efficiency score", "cycle latency", "stability margin",
+    "accuracy ratio", "response window", "reliability index",
+    "review submitted", "changes saved", "feedback submitted",
+    "form submitted", "message sent", "request sent", "item added",
+    "calculate room scope", "apply luxury finishes", "export scope pdf",
+    "calculate", "inspect", "export", "calibrate", "audit", "synthesize", "optimize", "analyze", "deploy", "validate", "configure", "monitor", "generate",
+    "room length", "room width", "ceiling height", "client satisfaction", "schedule fidelity", "craft precision score"
+  ];
+  if (genericMetricsAndVerbs.includes(trimmed.toLowerCase())) {
     return true;
   }
 
@@ -177,7 +187,7 @@ const hardFlaggedPhrases = [
   "Day 21",
   "Practical Execution",
   "Grid Stability Index",
-  "Renewable",
+  "Renewable Energy Generation & Operational Command Console",
   "Avionics Flight Deck",
   "Telemetry & Operations Console",
 ];

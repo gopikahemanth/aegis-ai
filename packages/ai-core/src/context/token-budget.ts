@@ -91,9 +91,9 @@ export class TokenBudgetManager {
     if (norm.includes("gemini") && (norm.includes("flash") || norm.includes("flash-lite"))) {
       return {
         name: norm,
-        maxPromptTokens: 32000,
+        maxPromptTokens: 250000,
         maxCompletionTokens: 8192,
-        maxFileTokens: 18000,
+        maxFileTokens: 32000,
         tpmLimit: 1000000,
       };
     }
@@ -101,9 +101,9 @@ export class TokenBudgetManager {
     if (norm.includes("deepseek")) {
       return {
         name: norm,
-        maxPromptTokens: 32000,
-        maxCompletionTokens: 8192,
-        maxFileTokens: 18000,
+        maxPromptTokens: 64000,
+        maxCompletionTokens: 16384,
+        maxFileTokens: 24000,
         tpmLimit: 500000,
       };
     }
@@ -111,9 +111,9 @@ export class TokenBudgetManager {
     if (norm.includes("gemini") || norm.includes("failover") || norm === "default" || !norm) {
       return {
         name: norm || "failover",
-        maxPromptTokens: 32000,
-        maxCompletionTokens: 16384,
-        maxFileTokens: 18000,
+        maxPromptTokens: 250000,
+        maxCompletionTokens: 32768,
+        maxFileTokens: 32000,
         tpmLimit: 1000000,
       };
     }

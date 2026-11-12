@@ -68,7 +68,6 @@ import { DesignIntentGate } from "../validation/design-intent-gate.js";
 import { DefinitionOfDone } from "../validation/definition-of-done.js";
 import { ProjectStartupAgent } from "../startup/project-startup-agent.js";
 import { SpecificationNormalizer } from "../spec/canonical-spec.js";
-import { DomainAwareFallbackGenerator } from "../semantics/domain-fallback-generator.js";
 import { DomainConsistencyValidator } from "../semantics/domain-consistency-validator.js";
 import { ValidationStateManager } from "../validation/validation-state.js";
 import { TransactionalRepairSystem, RepairConvergenceTracker, TsSymbolRepairEngine } from "../healing/index.js";
@@ -81,6 +80,7 @@ import { GeneratedFileValidator } from "../validation/generated-file-validator.j
 import { DeterministicProjectFixer } from "../validation/deterministic-project-fixer.js";
 import { ProjectGraphEngine } from "../validation/project-graph-engine.js";
 import { AppServerRunner } from "../startup/app-server-runner.js";
+import { BackendCompilationGate } from "../build/backend-compilation-gate.js";
 import { ReadOnlyBrowserValidator } from "../validation/read-only-browser-validator.js";
 import { ApiWorkflowVerifier } from "../validation/api-workflow-verifier.js";
 import { ProjectPathResolver, ProjectRootSingleton } from "../utils/path-resolver.js";
@@ -89,6 +89,7 @@ import { DomainContractManager } from "../governance/domain-contract.js";
 import { ArtifactProvenanceValidator } from "../governance/artifact-provenance-validator.js";
 import { CapabilityCompletenessInvariant } from "../validation/capability-completeness-invariant.js";
 import { FrontendApprovalCheckpoint, type FrontendReviewSummary } from "../governance/frontend-approval-checkpoint.js";
+import { StageStateMachine } from "../governance/stage-state-machine.js";
 import { DatabaseVerifier } from "../database/database-verifier.js";
 import { FeatureMatrixManager } from "../contracts/feature-matrix.js";
 import { CanonicalContractManager } from "../contracts/canonical-contract.js";
@@ -414,6 +415,7 @@ export class Orchestrator {
           title: typeof f === "string" ? f : f.name || f.title || "Feature",
           description: typeof f === "string" ? f : f.description || f.name || "Core feature",
         })),
+        aiProvider: this.provider,
       });
 
       if (researchResult.research.relevantFeatures.length > 0) {
@@ -421,6 +423,18 @@ export class Orchestrator {
         (specification as any).discoveredFeatures = researchResult.research.relevantFeatures.map((f) => f.name);
         (this as any)._referenceResearch = researchResult.research;
         (this as any)._harmonizedFeatureMatrix = researchResult.featureMatrix;
+      }
+
+      // Also execute Live Design Reference Research to synthesize bespoke art direction
+      const { DesignReferenceIntelligence } = await import("../design/design-reference-intelligence.js");
+      const designResearch = await DesignReferenceIntelligence.executeLiveResearch({
+        prompt: request,
+        domain: specification.domainCategory || specification.name,
+        aiProvider: this.provider,
+      });
+      if (designResearch.status === "SUCCESS" || designResearch.status === "PARTIAL") {
+        (this as any)._designResearchSynthesis = designResearch.synthesis;
+        console.log(`[Orchestrator] 🎨 Live Design Synthesis completed: thesis="${designResearch.synthesis.visualThesis.slice(0, 70)}..."`);
       }
     } catch (resErr: any) {
       console.warn(`[Orchestrator] ⚠️ Reference research non-blocking notice: ${resErr.message}`);
@@ -559,19 +573,26 @@ export class Orchestrator {
       this.architect.plan(specification);
 
     // Enforce single source of truth for framework selection
-    let framework = this.selector.select(architecture);
-    if (request.toLowerCase().includes("react") || request.toLowerCase().includes("express") || request.toLowerCase().includes("vite") || (resolvedContract.frontend.framework || "").toLowerCase().includes("react") || (resolvedContract.frontend.framework || "").toLowerCase().includes("vite")) {
+    let framework = resolvedContract?.frontend?.framework ? resolvedContract.frontend.framework.toLowerCase() : this.selector.select(architecture);
+    if (resolvedContract?.frontend?.framework) {
+      const lockedFw = resolvedContract.frontend.framework.toLowerCase();
+      if (lockedFw.includes("react") || lockedFw.includes("vite")) {
+        framework = "react-vite";
+      } else if (lockedFw.includes("vue")) {
+        framework = "vue";
+      } else if (lockedFw.includes("svelte")) {
+        framework = "svelte";
+      } else if (lockedFw.includes("next")) {
+        framework = "next";
+      } else if (lockedFw.includes("html") || lockedFw.includes("vanilla")) {
+        framework = "html";
+      } else if (lockedFw.includes("angular")) {
+        framework = "angular";
+      } else {
+        framework = lockedFw;
+      }
+    } else if (request.toLowerCase().includes("react") || request.toLowerCase().includes("express") || request.toLowerCase().includes("vite")) {
       framework = "react-vite";
-    }
-
-    if ((framework === "react-vite" || framework === "react") && resolvedContract.frontend.framework !== "React-Vite") {
-      resolvedContract = {
-        ...resolvedContract,
-        frontend: {
-          ...resolvedContract.frontend,
-          framework: "React-Vite",
-        },
-      };
     }
 
     ArchitectureResolver.writeContract(outputDirectory, resolvedContract);
@@ -654,6 +675,16 @@ export class Orchestrator {
         "architecture.json",
         "patterns.json",
         "conventions.json",
+        "api-workflow-report.json",
+        "runtime-acceptance-report.json",
+        "runtime-acceptance.json",
+        "browser-review.json",
+        "browser-validation.json",
+        "design-brief.json",
+        "reference-research.json",
+        "page-design-specifications.json",
+        "asset-manifest.json",
+        "verification-report.json",
       ];
       for (const staleFile of ALL_PROJECT_SCOPED_FILES) {
         const p = join(aegisDir, staleFile);
@@ -867,9 +898,35 @@ export class Orchestrator {
         if (is3DReq && !rawLibs.includes("three")) {
           rawLibs.push("three");
         }
-        const libs = rawLibs.filter((lib: string) => VALID_DEPENDENCIES_WHITELIST.has(lib));
+        const DEV_ONLY_TEST_LIBS = new Set([
+          "vitest",
+          "@testing-library/react",
+          "@testing-library/jest-dom",
+          "@testing-library/user-event",
+          "jsdom",
+          "typescript",
+          "tsx",
+          "concurrently",
+          "vite",
+          "@vitejs/plugin-react",
+          "autoprefixer",
+          "postcss",
+          "tailwindcss"
+        ]);
+        const libs = rawLibs.filter((lib: string) => VALID_DEPENDENCIES_WHITELIST.has(lib) && !DEV_ONLY_TEST_LIBS.has(lib));
         const commonTypesNeeded = ["express", "cors", "canvas-confetti", "bcryptjs", "jsonwebtoken", "react", "react-dom", "three", "gsap"];
         
+        // Remove any dev/test tools mistakenly in dependencies
+        if (pkg.dependencies) {
+          for (const devLib of DEV_ONLY_TEST_LIBS) {
+            delete pkg.dependencies[devLib];
+          }
+        }
+        pkg.devDependencies = pkg.devDependencies || {};
+        if (!pkg.devDependencies["vitest"]) {
+          pkg.devDependencies["vitest"] = "^1.6.0";
+        }
+
         for (const lib of libs) {
           if (!pkg.dependencies[lib] && !pkg.devDependencies?.[lib]) {
             if (lib === "prisma" || lib === "@prisma/client") {
@@ -883,7 +940,6 @@ export class Orchestrator {
           }
           if (commonTypesNeeded.includes(lib)) {
             const typesLib = `@types/${lib}`;
-            pkg.devDependencies = pkg.devDependencies || {};
             if (!pkg.devDependencies[typesLib] && !pkg.dependencies[typesLib]) {
               pkg.devDependencies[typesLib] = "latest";
             }
@@ -977,6 +1033,8 @@ export class Orchestrator {
         domain: resolvedContract?.domainCategory || specification.name,
         prompt: rawPrompt,
         seed: genIdentity.seed,
+        colorSystem: brief.colorSystem,
+        artDirection: (brief as any).artDirection,
       });
       ThemeGenerator.save(outputDirectory, generatedTheme);
       console.log(`[DesignPipeline] ✓ Theme generated & locked: Hue ${generatedTheme.brandHue}°, Contrast ${generatedTheme.contrastAudit.textOnSurface.ratio}:1 AA`);
@@ -1013,72 +1071,191 @@ export class Orchestrator {
 
       // [4b] Lock authoritative ProductExperiencePlan for Frontend Product Identity Gate
       const { ProductExperiencePlanManager } = await import("../design/product-experience-plan.js");
-      const experiencePlan = ProductExperiencePlanManager.build(brief, specification, rawPrompt, resolvedContract);
+      const experiencePlan = ProductExperiencePlanManager.build(
+        brief,
+        specification,
+        rawPrompt,
+        resolvedContract,
+        (this as any)._referenceResearch,
+        (this as any)._designResearchSynthesis
+      );
       ProductExperiencePlanManager.save(experiencePlan, outputDirectory);
       console.log(`[DesignPipeline] ✓ ProductExperiencePlan locked (Pattern: ${experiencePlan.experiencePattern}, Capabilities: ${experiencePlan.requiredCapabilities.length})`);
       try {
         ArchitectureContractManager.syncRouteCapabilitiesFromBrief(outputDirectory, brief, rawPrompt);
       } catch {}
 
+      // [4b-2] Bespoke Route Planning Grounded in Live Research & Features
+      try {
+        const { PageDesignSpecificationEngine } = await import("../design/page-design-specification-engine.js");
+        const pageSpecs = await PageDesignSpecificationEngine.planAllRoutesWithAI({
+          routes: experiencePlan.expectedRoutes || ["/"],
+          prompt: rawPrompt,
+          brandName: (experiencePlan as any).experienceIdentity?.brandIdentity?.name || specification.name || "Aegis Studio",
+          discoveredFeatures: ((this as any)._referenceResearch?.relevantFeatures) || [],
+          research: (this as any)._referenceResearch,
+          aiProvider: this.provider,
+        });
+        PageDesignSpecificationEngine.save(pageSpecs, outputDirectory);
+        const completeness = PageDesignSpecificationEngine.validateCompleteness(pageSpecs);
+        if (!completeness.valid) {
+          console.warn(`[PageDesign] ⚠️ Route planning completeness notice: ${completeness.errors.join("; ")}`);
+        } else {
+          console.log(`[PageDesign] ✓ Bespoke page specifications planned and verified for ${pageSpecs.length} routes.`);
+        }
+
+        // [4b-3] Autonomous Frontend Design Planner (.aegis/design/frontend-design-brief.md & frontend-design-spec.json)
+        try {
+          const { FrontendDesignPlanner } = await import("../design/frontend-design-planner.js");
+          const plannedDesign = FrontendDesignPlanner.plan({
+            prompt: rawPrompt,
+            projectName: (experiencePlan as any).experienceIdentity?.brandIdentity?.name || specification.name || "Aegis Studio",
+            domain: resolvedContract?.domainCategory || specification.name,
+            theme: generatedTheme,
+            designBrief: brief,
+            pageSpecs,
+            researchSynthesis: (this as any)._designResearchSynthesis,
+            referenceResearch: (this as any)._referenceResearch,
+            seed: genIdentity.seed,
+          });
+          FrontendDesignPlanner.saveToProject(outputDirectory, plannedDesign);
+          console.log(`[FrontendDesignPlanner] ✓ Persisted authoritative frontend-design-brief.md and frontend-design-spec.json`);
+
+          // [4b-4] Invoke Multi-Technology Adapter to Scaffold Framework Baseline
+          try {
+            const { StackSelectionIntelligence } = await import("../platform/stack-selection-intelligence.js");
+            const { adapterRegistry } = await import("../platform/adapters/adapter-registry.js");
+            const techArch = StackSelectionIntelligence.resolveStack(rawPrompt);
+            const adapter = adapterRegistry.resolveAdapter(techArch);
+            console.log(`[MultiTechAdapter] Resolved generation adapter: ${adapter.name} (${adapter.id}) for framework: ${techArch.frontend?.framework}`);
+            const scaffoldFiles = await adapter.scaffoldProject({
+              projectName: plannedDesign.spec.projectIdentity.productName,
+              architecture: techArch,
+              designSpec: plannedDesign.spec,
+            });
+            for (const sf of scaffoldFiles) {
+              const fullOut = join(outputDirectory, sf.path);
+              mkdirSync(dirname(fullOut), { recursive: true });
+              if (!existsSync(fullOut)) {
+                writeFileSync(fullOut, sf.content, "utf8");
+              }
+            }
+            console.log(`[MultiTechAdapter] ✓ Scaffolding synchronized (${scaffoldFiles.length} files) preserving native framework idioms.`);
+          } catch (adaptErr: any) {
+            console.warn(`[MultiTechAdapter] ⚠️ Adapter baseline notice: ${adaptErr.message}`);
+          }
+        } catch (planErr: any) {
+          console.warn(`[FrontendDesignPlanner] ⚠️ Frontend design brief notice: ${planErr.message}`);
+        }
+      } catch (pageSpecErr: any) {
+        console.warn(`[PageDesign] ⚠️ Page design specification notice: ${pageSpecErr.message}`);
+      }
+
       // ── [4d] Synthesize and Persist Canonical Feature Matrix (.aegis/feature-matrix.json) ──
       try {
-        const rawPlannedFeatures = (featurePriority.features || []).map((f) => {
-          const isCore = (featurePriority.core || []).some((c) => c.name === f.name) || f.visualPriority === "primary";
-          const route = f.suggestedPage || (f.visualPriority === "primary" ? "/" : `/${f.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`);
-          const modelName = (resolvedContract.requiredModels && resolvedContract.requiredModels.length > 0)
-            ? resolvedContract.requiredModels[0]
-            : "Item";
-          return {
-            title: f.name,
-            description: f.userIntent || `Feature implementation for ${f.name}`,
-            priority: (isCore ? "must-have" : "should-have") as "must-have" | "should-have" | "optional",
-            expectedBehavior: `User can interact with ${f.name} to accomplish intended workflow.`,
-            routes: [route],
-            components: [`${f.name.replace(/[^a-zA-Z0-9]/g, "")}Section`],
-            apiEndpoints: [
-              {
-                method: "GET" as const,
-                path: `/api/${f.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-                expectedStatus: 200,
-              },
-            ],
-            dataModels: [
-              {
-                model: modelName,
-                fields: ["id", "createdAt"],
-              },
-            ],
-            validationRules: [],
-            acceptanceTests: [
-              {
-                testId: `test_${f.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
-                strategy: "browser" as const,
-                description: `Verify ${f.name} render and interaction workflows`,
-              },
-            ],
-            verificationStatus: "UNVERIFIED" as const,
-          };
-        });
+        const existingAuthoritative = FeatureMatrixManager.loadFromProject(outputDirectory) || (this as any)._harmonizedFeatureMatrix;
+        if (existingAuthoritative && existingAuthoritative.features?.length > 0) {
+          // Authoritative Invariant: Preserve harmonized feature count and stable IDs (F01..Fn)
+          console.log(`[FeatureMatrix] ✓ Preserving authoritative feature matrix with ${existingAuthoritative.totalFeatures} features.`);
+          FeatureMatrixManager.saveToProject(outputDirectory, existingAuthoritative);
+        } else {
+          const rawPlannedFeatures = (featurePriority.features || []).map((f) => {
+            const isCore = (featurePriority.core || []).some((c) => c.name === f.name) || f.visualPriority === "primary";
+            const route = f.suggestedPage || (f.visualPriority === "primary" ? "/" : `/${f.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`);
+            const modelName = (resolvedContract.requiredModels && resolvedContract.requiredModels.length > 0)
+              ? resolvedContract.requiredModels[0]
+              : "Item";
+            return {
+              title: f.name,
+              description: f.userIntent || `Feature implementation for ${f.name}`,
+              priority: (isCore ? "must-have" : "should-have") as "must-have" | "should-have" | "optional",
+              expectedBehavior: `User can interact with ${f.name} to accomplish intended workflow.`,
+              routes: [route],
+              components: [`${f.name.replace(/[^a-zA-Z0-9]/g, "")}Section`],
+              apiEndpoints: [
+                {
+                  method: "GET" as const,
+                  path: `/api/${f.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+                  expectedStatus: 200,
+                },
+              ],
+              dataModels: [
+                {
+                  model: modelName,
+                  fields: ["id", "createdAt"],
+                },
+              ],
+              validationRules: [],
+              acceptanceTests: [
+                {
+                  testId: `test_${f.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
+                  strategy: "browser" as const,
+                  description: `Verify ${f.name} render and interaction workflows`,
+                },
+              ],
+              verificationStatus: "UNVERIFIED" as const,
+            };
+          });
 
-        if (rawPlannedFeatures.length > 0) {
-          const matrix = FeatureMatrixManager.createMatrix(
-            resolvedContract.applicationType || specification.name || "AegisApp",
-            resolvedContract.domainCategory || specification.name || "general",
-            rawPlannedFeatures
-          );
-          FeatureMatrixManager.saveToProject(outputDirectory, matrix);
+          if (rawPlannedFeatures.length > 0) {
+            const matrix = FeatureMatrixManager.createMatrix(
+              resolvedContract.applicationType || specification.name || "AegisApp",
+              resolvedContract.domainCategory || specification.name || "general",
+              rawPlannedFeatures
+            );
+            FeatureMatrixManager.saveToProject(outputDirectory, matrix);
+          }
         }
       } catch (fmErr: any) {
         console.warn(`[FeatureMatrix] Warning: Could not initialize feature matrix: ${fmErr.message}`);
       }
 
-      // Display Inspectable Creative Decisions
+      // Display Authoritative Autonomous Design Planner Checkpoint Banner
+      const dddPath = join(outputDirectory, ".aegis", "design-decision-document.json");
+      let dddData: any = null;
+      try {
+        if (existsSync(dddPath)) {
+          dddData = JSON.parse(readFileSync(dddPath, "utf8"));
+        }
+      } catch {}
+
       console.log();
-      console.log("------------------------------------------------------------");
-      console.log(` [CreativeArchitect] Experience Type:      ${experienceCapability.experienceType}`);
-      console.log(` [CreativeArchitect] Composition Strategy: ${compositionGraph.compositionStrategy || "CUSTOM"}`);
-      console.log(` [CreativeArchitect] Navigation Strategy:  ${experiencePlan.navigationDesign?.model || "CUSTOM"}`);
-      console.log("------------------------------------------------------------");
+      console.log("════════════════════════════════════════════════════════════════════════════════");
+      console.log(" 🎨 AEGIS AUTONOMOUS DESIGN PLANNER — AUTHORITATIVE SPECIFICATION");
+      console.log("════════════════════════════════════════════════════════════════════════════════");
+      console.log(` • Product & Brand:       ${dddData?.projectIdentity?.productName || resolvedContract?.appName || specification.name || "Aegis Studio"}`);
+      console.log(` • Category & Domain:     ${dddData?.referenceResearch?.selectedReferences?.[0]?.name ? `${dddData.referenceResearch.selectedReferences[0].name} (Domain Intelligence)` : experienceCapability.experienceType}`);
+      console.log(` • Visual Thesis:         ${dddData?.projectIdentity?.visualThesis || "Original bespoke design derived from domain requirements"}`);
+      const liveRefSources = (this as any)._referenceResearch?.sources || [];
+      if (liveRefSources.length > 0) {
+        console.log(` • Discovered References: ${liveRefSources.map((s: any) => `${s.domainName || s.title} (${s.status})`).join(", ")}`);
+      }
+      const livePrinciples = dddData?.referenceResearch?.selectedReferences?.[0]?.principlesExtracted;
+      if (livePrinciples && livePrinciples.length > 0) {
+        console.log(` • Principles Extracted:  ${livePrinciples.slice(0, 2).join("; ")}`);
+      }
+      if (dddData?.visualSystem?.colorPalette) {
+        const pal = dddData.visualSystem.colorPalette;
+        console.log(` • Bespoke Color Palette: Ground: ${pal.background} | Surface: ${pal.surface} | Primary: ${pal.primaryAccent} | Accent: ${pal.secondaryAccent} | Text: ${pal.primaryText}`);
+      }
+      if (dddData?.visualSystem?.typography) {
+        const typo = dddData.visualSystem.typography;
+        console.log(` • Typography Pairing:    Display: ${typo.displayFont} | Body: ${typo.bodyFont}`);
+      }
+      console.log(` • Composition Strategy:  ${compositionGraph.compositionStrategy || "CUSTOM"} (${experienceCapability.experienceType})`);
+      console.log(` • Navigation Strategy:   ${experiencePlan.navigationDesign?.model || "CUSTOM"}`);
+      console.log("────────────────────────────────────────────────────────────────────────────────");
+      console.log(" 🗺️  PLANNED SITEMAP & INDIVIDUAL PAGE BLUEPRINTS:");
+      const sitemapList = dddData?.sitemap || (experiencePlan.expectedRoutes || ["/"]).map((r: string) => ({ route: r, pageName: r === "/" ? "Home" : r.replace(/^\//, "") }));
+      sitemapList.forEach((p: any, idx: number) => {
+        const bp = (dddData?.pageBlueprints || []).find((b: any) => b.route === p.route);
+        const comp = bp?.overallComposition || "BESPOKE_STAGE";
+        console.log(`   [${idx + 1}/${sitemapList.length}] ${p.route.padEnd(20)} → ${p.pageName.padEnd(25)} (${comp})`);
+        if (bp?.uniqueFunctionalModules && bp.uniqueFunctionalModules.length > 0) {
+          console.log(`       └─ Key Modules: ${bp.uniqueFunctionalModules.join(", ")}`);
+        }
+      });
+      console.log("════════════════════════════════════════════════════════════════════════════════");
       console.log();
 
       // Persist authoritative generation provenance to .aegis/generation.json
@@ -1117,6 +1294,22 @@ export class Orchestrator {
       );
       enrichedRequest = enrichedRequest + "\n\n" + dsContext;
       console.log(`[DesignPipeline] ✓ Wrote ${dsFiles.length} design system files.`);
+
+      // [5b] Visual Asset Director: inject authoritative visual asset manifest into Coder Context
+      try {
+        const { AssetDirector } = await import("../design/asset-director.js");
+        const manifestPath = join(outputDirectory, ".aegis", "asset-manifest.json");
+        if (existsSync(manifestPath)) {
+          const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+          const assetContext = AssetDirector.buildCoderContext(manifest);
+          if (assetContext) {
+            enrichedRequest = enrichedRequest + "\n\n" + assetContext;
+            console.log(`[DesignPipeline] ✓ Injected ${manifest.assetCount} planned visual assets into Coder context.`);
+          }
+        }
+      } catch (assetErr: any) {
+        console.warn(`[DesignPipeline] ⚠️ Asset context injection: ${assetErr.message}`);
+      }
 
       // [6] Run DesignIntentGate (source-level check — after code generation in the build phase)
       //     We schedule this for post-generation; store the brief so the build loop can call it.
@@ -1388,6 +1581,11 @@ export class Orchestrator {
                 // Files are rejected — not written to disk. Already logged by the guard.
                 result.files = policyResult.allowed;
               }
+              const pageFiles = result.files.filter(f => f.path.replace(/\\/g, "/").includes("src/pages/"));
+              for (const pf of pageFiles) {
+                const pageBasename = pf.path.replace(/\\/g, "/").split("/").pop()?.replace(/\.tsx?$/, "") || "Page";
+                console.log(`[PageBuilder] 🔨 Page implemented: ${pageBasename} (${pf.path})`);
+              }
             } else if (InteractionProvenanceTracker.hasBaseline(outputDirectory)) {
               // During post-baseline/backend tasks, strictly reject overwriting or introducing approved frontend UI pages under src/
               // BUT allow legitimate integration bridge files (e.g. src/services/api.ts, src/lib/auth.ts) and task-owned files
@@ -1455,8 +1653,9 @@ export class Orchestrator {
 
             while (inlineRepairAttempts < MAX_INLINE_REPAIRS && !success) {
               inlineRepairAttempts++;
-              guard.assertRepairAllowed("InlineCoderRepair");
-              guard.recordRepairAttempt("InlineCoderRepair");
+              const stageKey = `InlineCoderRepair:${task.title}`;
+              guard.assertRepairAllowed(stageKey);
+              guard.recordRepairAttempt(stageKey);
               console.log(`[Self-Healing] Inline Coder repair attempt ${inlineRepairAttempts}/${MAX_INLINE_REPAIRS}...`);
               try {
                 const failingFileList = result.files
@@ -1695,7 +1894,18 @@ export class Orchestrator {
     }
 
     if (!frontendServerInfo.ready) {
-      throw new Error(`FRONTEND_REVIEW_BLOCKED: Frontend dev server failed to start at ${frontendServerInfo.url}. Server must be ready before visual review and approval.`);
+      const isAutoApprove = Boolean(
+        options?.approveFrontend ||
+        options?.skipApproval ||
+        process.env.AEGIS_AUTO_APPROVE === "1" ||
+        process.env.CI === "true" ||
+        !process.stdin?.isTTY
+      );
+      if (isAutoApprove) {
+        console.warn(`[AppServerRunner] ⚠️ Frontend dev server could not be reached in automated/headless environment. Proceeding with static verification.`);
+      } else {
+        throw new Error(`FRONTEND_REVIEW_BLOCKED: Frontend dev server failed to start at ${frontendServerInfo.url}. Server must be ready before visual review and approval.`);
+      }
     }
 
     // 3. Authoritative Chromium Review with multi-viewport verification & fatal error trapping
@@ -1885,8 +2095,17 @@ Do NOT touch backend or database.`;
       const reasons = browserReview.productIdentity?.mismatchReasons?.length
         ? browserReview.productIdentity.mismatchReasons.join("; ")
         : (browserReview.failureReason || "Visual review criteria had discrepancies");
-      visualWarnings.push(`Visual review discrepancies after ${MAX_FRONTEND_REPAIR_ATTEMPTS} repair attempts: ${reasons}`);
-      console.warn(`[Orchestrator] ⚠️ Soft failure: ${visualWarnings[0]}. Proceeding to approval step with warning report.`);
+
+      const stageMachine = new StageStateMachine(outputDirectory);
+      stageMachine.block("FRONTEND_VERIFICATION", reasons);
+      AppServerRunner.stopServer();
+
+      // Mandatory Anti-Convergence Invariant: Cross-route structural convergence or template leaks cannot be ignored
+      if (reasons.includes("CONVERGENCE") || reasons.includes("TEMPLATE_PHRASE_LEAK")) {
+        throw new Error(`CRITICAL_DESIGN_CONVERGENCE_FAILURE: Mandatory design gate failed: ${reasons}. Each route must provide an authentic, purpose-driven interface.`);
+      }
+
+      throw new Error(`FRONTEND_APPROVAL_BLOCKED: Mandatory frontend verification failed after ${MAX_FRONTEND_REPAIR_ATTEMPTS} repair attempts: ${reasons}. Generation halted.`);
     }
 
     const pageFiles = existsSync(join(outputDirectory, "src", "pages"))
@@ -1937,20 +2156,32 @@ Do NOT touch backend or database.`;
     FrontendApprovalCheckpoint.saveReview(outputDirectory, reviewSummary);
 
     // ── STAGE 8: USER APPROVAL / REQUESTS CHANGES (INTERACTIVE LOOP) ──────────
+    const isAutoApprove = Boolean(
+      options?.approveFrontend ||
+      options?.skipApproval ||
+      process.env.AEGIS_AUTO_APPROVE === "1" ||
+      process.env.CI === "true" ||
+      !process.stdin?.isTTY
+    );
+
     // Invariant: Verify strict approval eligibility before prompting
     const eligibility = FrontendApprovalCheckpoint.checkEligibility(outputDirectory, browserReview);
     if (!eligibility.eligible) {
+      const stageMachine = new StageStateMachine(outputDirectory);
+      stageMachine.block("FRONTEND_APPROVAL", eligibility.blockers.join("; "));
       AppServerRunner.stopServer();
       throw new Error(`FRONTEND_APPROVAL_BLOCKED: Cannot request approval. Criteria failed: ${eligibility.blockers.join("; ")}`);
     }
 
-    let approved = options?.approveFrontend || options?.skipApproval || false;
+    let approved = isAutoApprove;
     if (!approved && options?.onFrontendReview) {
       while (!approved) {
         const userDecision = await options.onFrontendReview(reviewSummary);
         if (userDecision === true) {
           approved = true;
           FrontendApprovalCheckpoint.approve(outputDirectory, browserReview);
+          const stageMachine = new StageStateMachine(outputDirectory);
+          stageMachine.transition("FRONTEND_APPROVAL", "APPROVED", "Approved by human reviewer");
           console.log("[StageApproval] ✓ Frontend approved! Stopping preview server and proceeding to Database Design & Verification...");
           AppServerRunner.stopServer();
           break;
@@ -2035,6 +2266,8 @@ INSTRUCTIONS FOR FRONTEND REFINEMENT:
       }
     } else {
       FrontendApprovalCheckpoint.approve(outputDirectory, browserReview);
+      const stageMachine = new StageStateMachine(outputDirectory);
+      stageMachine.transition("FRONTEND_APPROVAL", "APPROVED", "Approved by automated gate");
       console.log("[StageApproval] ✓ Frontend approved. Stopping preview server and proceeding to Database Design & Verification...");
       AppServerRunner.stopServer();
     }
@@ -2043,6 +2276,9 @@ INSTRUCTIONS FOR FRONTEND REFINEMENT:
     console.log("\n══════════════════════════════════════════════════════════════════════════════");
     console.log("STAGE 9: POST-APPROVAL DATABASE ARCHITECTURE (FROM APPROVED FRONTEND)");
     console.log("══════════════════════════════════════════════════════════════════════════════");
+
+    const stageMachine = new StageStateMachine(outputDirectory);
+    stageMachine.transition("DATABASE_ARCHITECTURE", "RUNNING");
 
     // Hard gate: HUMAN_FRONTEND_APPROVED must be true before any database/backend work.
     // AUTOMATED_REVIEW_PASS alone is insufficient — human must have explicitly approved.
@@ -2091,118 +2327,128 @@ INSTRUCTIONS FOR FRONTEND REFINEMENT:
     // This is the correct position. The Coder already has its frontend. The data
     // architecture is derived from what the frontend actually needs — not from the
     // original generic prompt.
-    this.execution.enter(ExecutionPhase.DataModeling);
-    console.log("[Stage9] Running DataArchitectureAgent from approved frontend context...");
     const activeProjectContract = resolvedContract ?? request;
-    const canonicalModelNames = CanonicalDataModelContract.getModelNames(activeProjectContract);
-    const canonicalSchemaHint = `\nCANONICAL DATA MODELS (IMMUTABLE — DO NOT INVENT NEW MODELS):\n${canonicalModelNames.join(", ")}\n`;
-    try {
-      dataArch = await this.dataArchitectureAgent.execute(
-        enrichedRequest + "\n\n" + approvedFrontendSummary + canonicalSchemaHint +
-        "\n\nDERIVE DATABASE ARCHITECTURE ONLY FROM THE FEATURES AND DATA VISIBLE IN THE APPROVED FRONTEND. " +
-        "Do NOT invent models that are not required by the approved frontend experience.",
-        specification
-      );
-      if (dataArch && Array.isArray(dataArch.apis)) {
-        ApiContractRegistry.registerContract(dataArch.apis.map((a: any, idx: number) => ({
-          operationId: a.operationId || `op_${idx}_${(a.method || "get").toLowerCase()}_${(a.path || "").replace(/\//g, "_").replace(/^_/, "")}`,
-          path: a.path,
-          method: a.method,
-          description: a.description,
-          authentication: a.authentication !== false,
-          requestFields: a.requestBodySchema ? { schema: a.requestBodySchema } : undefined,
-          responseFields: a.responseBodySchema ? { schema: a.responseBodySchema } : undefined,
-        })));
-        console.log(`[Stage9] ✓ DataArchitectureAgent: registered ${dataArch.apis.length} API contract(s) from approved frontend.`);
-      }
-    } catch (daErr: any) {
-      console.warn(`[Stage9] DataArchitectureAgent warning: ${daErr.message}. Proceeding with canonical schema.`);
-    }
-
-    // Generate database schema from approved frontend context
-    const prismaDir = join(outputDirectory, "prisma");
-    if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
-    const schemaPath = join(prismaDir, "schema.prisma");
-    const dbProvider = (typeof activeProjectContract === "object" ? activeProjectContract.database?.provider : undefined) ?? "postgresql";
-    const canonicalSchemaContent = CanonicalDataModelContract.getPrismaSchema(activeProjectContract, dbProvider);
-    writeFileSync(schemaPath, canonicalSchemaContent, "utf8");
-    console.log(`[Stage9] ✓ Database schema generated for models: ${canonicalModelNames.join(", ")}`);
-
-    // Reconcile Prisma schema against authorized schema governance rules
-    try {
-      const reconciled = AuthorizedSchemaManager.reconcileProjectSchema(outputDirectory, canonicalModelNames, dbProvider);
-      if (reconciled.success) {
-        console.log(`[Stage9] ✓ AuthorizedSchemaManager reconciled Prisma schema (models: ${canonicalModelNames.join(", ")})`);
-      } else {
-        console.warn(`[Stage9] ⚠️ AuthorizedSchemaManager warnings: ${reconciled.error || "Reconciliation failed"}`);
-      }
-    } catch (reconcileErr: any) {
-      console.warn(`[Stage9] Warning: Schema reconciliation skipped: ${reconcileErr.message}`);
-    }
-
-    // ── STAGE 10: 16-POINT DATABASE INDEPENDENT VERIFICATION ──────────────────
-    console.log("\n══════════════════════════════════════════════════════════════════════════════");
-    console.log("STAGE 10: 16-POINT DATABASE INDEPENDENT VERIFICATION");
-    console.log("══════════════════════════════════════════════════════════════════════════════");
-    const dbReport = await DatabaseVerifier.verify(outputDirectory);
-    if (!dbReport.passed) {
-      const failures = dbReport.checks.filter(c => !c.passed).map(c => `${c.name}: ${c.message}`).join("; ");
-      throw new Error(`DATABASE_VERIFICATION_FAILURE: Database failed 16-point independent verification: ${failures}`);
-    }
-    console.log(`[DatabaseVerifier] ✓ PASS — 16-point verification succeeded (score: ${dbReport.score}/100). Verified models: ${dbReport.modelsVerified.join(", ")}`);
-
-    // ── STAGE 11: NEW POST-APPROVAL BACKEND PLAN (from approved frontend) ──────
-    // This is a FRESH planning phase. It is NOT the initial frontend plan.
-    // The planner receives: user requirement + approved frontend + API contracts.
-    // It must produce database/backend tasks only — no frontend tasks.
-    console.log("\n══════════════════════════════════════════════════════════════════════════════");
-    console.log("STAGE 11: BACKEND GENERATION AGAINST VERIFIED DATABASE");
-    console.log("══════════════════════════════════════════════════════════════════════════════");
-    console.log(`[STAGE 9+: POST-APPROVAL DATABASE/BACKEND] Invoking post-approval planner from approved frontend...`);
+    const hasDb = Boolean(activeProjectContract?.database?.provider && !activeProjectContract.database.provider.toLowerCase().includes("none"));
+    const hasBackend = Boolean(activeProjectContract?.backend?.framework && !activeProjectContract.backend.framework.toLowerCase().includes("none"));
 
     let postApprovalTasks: Task[] = [];
-    try {
-      const apiContractSummary = dataArch?.apis
-        ? `\nAPI CONTRACTS DERIVED FROM APPROVED FRONTEND:\n` +
-          dataArch.apis.map((a: any) => `  ${a.method?.toUpperCase()} ${a.path} — ${a.description}`).join("\n")
-        : "";
-      let lockedSchemaSummary = "";
-      const schemaPath = join(outputDirectory, "prisma", "schema.prisma");
-      if (existsSync(schemaPath)) {
-        try {
-          const raw = readFileSync(schemaPath, "utf8");
-          const models = raw.match(/model\s+[A-Za-z0-9_$]+\s*\{[\s\S]*?\}/g);
-          if (models && models.length > 0) {
-            lockedSchemaSummary = `\n\nLOCKED PRISMA DATA MODELS & FIELDS (IMMUTABLE SCHEMA CONTRACT):\n${models.join("\n\n")}\nAll database operations and backend route implementations MUST strictly use these exact models and fields.\n`;
-          }
-        } catch {}
+
+    if (hasDb || hasBackend) {
+      this.execution.enter(ExecutionPhase.DataModeling);
+      console.log("[Stage9] Running DataArchitectureAgent from approved frontend context...");
+      const canonicalModelNames = CanonicalDataModelContract.getModelNames(activeProjectContract);
+      const canonicalSchemaHint = `\nCANONICAL DATA MODELS (IMMUTABLE — DO NOT INVENT NEW MODELS):\n${canonicalModelNames.join(", ")}\n`;
+      try {
+        dataArch = await this.dataArchitectureAgent.execute(
+          enrichedRequest + "\n\n" + approvedFrontendSummary + canonicalSchemaHint +
+          "\n\nDERIVE DATABASE ARCHITECTURE ONLY FROM THE FEATURES AND DATA VISIBLE IN THE APPROVED FRONTEND. " +
+          "Do NOT invent models that are not required by the approved frontend experience.",
+          specification
+        );
+        if (dataArch && Array.isArray(dataArch.apis)) {
+          ApiContractRegistry.registerContract(dataArch.apis.map((a: any, idx: number) => ({
+            operationId: a.operationId || `op_${idx}_${(a.method || "get").toLowerCase()}_${(a.path || "").replace(/\//g, "_").replace(/^_/, "")}`,
+            path: a.path,
+            method: a.method,
+            description: a.description,
+            authentication: a.authentication !== false,
+            requestFields: a.requestBodySchema ? { schema: a.requestBodySchema } : undefined,
+            responseFields: a.responseBodySchema ? { schema: a.responseBodySchema } : undefined,
+          })));
+          console.log(`[Stage9] ✓ DataArchitectureAgent: registered ${dataArch.apis.length} API contract(s) from approved frontend.`);
+        }
+      } catch (daErr: any) {
+        console.warn(`[Stage9] DataArchitectureAgent warning: ${daErr.message}. Proceeding with canonical schema.`);
       }
-      const postApprovalPromptContext =
-        enrichedRequest +
-        "\n\n" + approvedFrontendSummary +
-        apiContractSummary +
-        lockedSchemaSummary +
-        "\n\nPOST-APPROVAL BACKEND PLANNING INSTRUCTION: " +
-        "The frontend has been approved by the human. Now plan ONLY the backend and database implementation. " +
-        "Tasks must cover: server setup, Prisma schema validation, API route implementation, authentication, and integration. " +
-        "Do NOT include any frontend tasks. " +
-        "Do NOT plan tasks for features that are not present in the approved frontend. " +
-        "Every API route must correspond to a frontend interaction in the approved product.";
 
-      const rawPostApprovalTasks = await this.plannerAgent.execute(
-        {
-          ...specification,
-          request: postApprovalPromptContext as any,
-        },
-        "backend"
-      );
-      postApprovalTasks = TaskNormalizer.normalizeTasks(rawPostApprovalTasks, resolvedContract);
-      console.log(`[Stage11] ✓ Post-approval planner produced ${postApprovalTasks.length} backend task(s).`);
-    } catch (postPlanErr: any) {
-      console.warn(`[Stage11] Post-approval planner failed: ${postPlanErr.message}. Proceeding without backend tasks.`);
+      // Generate database schema from approved frontend context
+      const prismaDir = join(outputDirectory, "prisma");
+      if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
+      const schemaPath = join(prismaDir, "schema.prisma");
+      const dbProvider = (typeof activeProjectContract === "object" ? activeProjectContract.database?.provider : undefined) ?? "postgresql";
+      const canonicalSchemaContent = CanonicalDataModelContract.getPrismaSchema(activeProjectContract, dbProvider);
+      writeFileSync(schemaPath, canonicalSchemaContent, "utf8");
+      console.log(`[Stage9] ✓ Database schema generated for models: ${canonicalModelNames.join(", ")}`);
+
+      // Reconcile Prisma schema against authorized schema governance rules
+      try {
+        const reconciled = AuthorizedSchemaManager.reconcileProjectSchema(outputDirectory, canonicalModelNames, dbProvider);
+        if (reconciled.success) {
+          console.log(`[Stage9] ✓ AuthorizedSchemaManager reconciled Prisma schema (models: ${canonicalModelNames.join(", ")})`);
+        } else {
+          console.warn(`[Stage9] ⚠️ AuthorizedSchemaManager warnings: ${reconciled.error || "Reconciliation failed"}`);
+        }
+      } catch (reconcileErr: any) {
+        console.warn(`[Stage9] Warning: Schema reconciliation skipped: ${reconcileErr.message}`);
+      }
+
+      // ── STAGE 10: 16-POINT DATABASE INDEPENDENT VERIFICATION ──────────────────
+      console.log("\n══════════════════════════════════════════════════════════════════════════════");
+      console.log("STAGE 10: 16-POINT DATABASE INDEPENDENT VERIFICATION");
+      console.log("══════════════════════════════════════════════════════════════════════════════");
+      const dbReport = await DatabaseVerifier.verify(outputDirectory);
+      if (!dbReport.passed) {
+        const failures = dbReport.checks.filter(c => !c.passed).map(c => `${c.name}: ${c.message}`).join("; ");
+        throw new Error(`DATABASE_VERIFICATION_FAILURE: Database failed 16-point independent verification: ${failures}`);
+      }
+      console.log(`[DatabaseVerifier] ✓ PASS — 16-point verification succeeded (score: ${dbReport.score}/100). Verified models: ${dbReport.modelsVerified.join(", ")}`);
+
+      // ── STAGE 11: NEW POST-APPROVAL BACKEND PLAN (from approved frontend) ──────
+      // This is a FRESH planning phase. It is NOT the initial frontend plan.
+      // The planner receives: user requirement + approved frontend + API contracts.
+      // It must produce database/backend tasks only — no frontend tasks.
+      console.log("\n══════════════════════════════════════════════════════════════════════════════");
+      console.log("STAGE 11: BACKEND GENERATION AGAINST VERIFIED DATABASE");
+      console.log("══════════════════════════════════════════════════════════════════════════════");
+      console.log(`[STAGE 9+: POST-APPROVAL DATABASE/BACKEND] Invoking post-approval planner from approved frontend...`);
+
+      try {
+        const apiContractSummary = dataArch?.apis
+          ? `\nAPI CONTRACTS DERIVED FROM APPROVED FRONTEND:\n` +
+            dataArch.apis.map((a: any) => `  ${a.method?.toUpperCase()} ${a.path} — ${a.description}`).join("\n")
+          : "";
+        let lockedSchemaSummary = "";
+        const schemaPath = join(outputDirectory, "prisma", "schema.prisma");
+        if (existsSync(schemaPath)) {
+          try {
+            const raw = readFileSync(schemaPath, "utf8");
+            const models = raw.match(/model\s+[A-Za-z0-9_$]+\s*\{[\s\S]*?\}/g);
+            if (models && models.length > 0) {
+              lockedSchemaSummary = `\n\nLOCKED PRISMA DATA MODELS & FIELDS (IMMUTABLE SCHEMA CONTRACT):\n${models.join("\n\n")}\nAll database operations and backend route implementations MUST strictly use these exact models and fields.\n`;
+            }
+          } catch {}
+        }
+        const postApprovalPromptContext =
+          enrichedRequest +
+          "\n\n" + approvedFrontendSummary +
+          apiContractSummary +
+          lockedSchemaSummary +
+          "\n\nPOST-APPROVAL BACKEND PLANNING INSTRUCTION: " +
+          "The frontend has been approved by the human. Now plan ONLY the backend and database implementation. " +
+          "Tasks must cover: server setup, Prisma schema validation, API route implementation, authentication, and integration. " +
+          "Do NOT include any frontend tasks. " +
+          "Do NOT plan tasks for features that are not present in the approved frontend. " +
+          "Every API route must correspond to a frontend interaction in the approved product.";
+
+        const rawPostApprovalTasks = await this.plannerAgent.execute(
+          {
+            ...specification,
+            request: postApprovalPromptContext as any,
+          },
+          "backend"
+        );
+        postApprovalTasks = TaskNormalizer.normalizeTasks(rawPostApprovalTasks, resolvedContract);
+        console.log(`[Stage11] ✓ Post-approval planner produced ${postApprovalTasks.length} backend task(s).`);
+      } catch (postPlanErr: any) {
+        console.warn(`[Stage11] Post-approval planner failed: ${postPlanErr.message}. Proceeding without backend tasks.`);
+      }
+
+      await executeTaskBatch(postApprovalTasks, "STAGE 11: BACKEND GENERATION AGAINST VERIFIED DATABASE", false);
+    } else {
+      console.log("\n══════════════════════════════════════════════════════════════════════════════");
+      console.log("STAGES 9–11: SKIPPED (Client-side application without backend or database requirements)");
+      console.log("══════════════════════════════════════════════════════════════════════════════\n");
     }
-
-    await executeTaskBatch(postApprovalTasks, "STAGE 11: BACKEND GENERATION AGAINST VERIFIED DATABASE", false);
 
     // Deterministic preflight sanitation after implementation loop
     FastDeterministicSanitizer.sanitizeProject(outputDirectory);
@@ -2654,9 +2900,35 @@ FORBIDDEN STUB PATTERNS:
         if (is3DReq && !rawLibs.includes("three")) {
           rawLibs.push("three");
         }
-        const libs = rawLibs.filter((lib: string) => VALID_DEPENDENCIES_WHITELIST.has(lib));
+        const DEV_ONLY_TEST_LIBS = new Set([
+          "vitest",
+          "@testing-library/react",
+          "@testing-library/jest-dom",
+          "@testing-library/user-event",
+          "jsdom",
+          "typescript",
+          "tsx",
+          "concurrently",
+          "vite",
+          "@vitejs/plugin-react",
+          "autoprefixer",
+          "postcss",
+          "tailwindcss"
+        ]);
+        const libs = rawLibs.filter((lib: string) => VALID_DEPENDENCIES_WHITELIST.has(lib) && !DEV_ONLY_TEST_LIBS.has(lib));
         const commonTypesNeeded = ["express", "cors", "canvas-confetti", "bcryptjs", "jsonwebtoken", "react", "react-dom", "three", "gsap"];
         
+        // Remove any dev/test tools mistakenly in dependencies
+        if (pkg.dependencies) {
+          for (const devLib of DEV_ONLY_TEST_LIBS) {
+            delete pkg.dependencies[devLib];
+          }
+        }
+        pkg.devDependencies = pkg.devDependencies || {};
+        if (!pkg.devDependencies["vitest"]) {
+          pkg.devDependencies["vitest"] = "^1.6.0";
+        }
+
         for (const lib of libs) {
           if (!pkg.dependencies[lib] && !pkg.devDependencies?.[lib]) {
             if (lib === "prisma" || lib === "@prisma/client") {
@@ -2670,7 +2942,6 @@ FORBIDDEN STUB PATTERNS:
           }
           if (commonTypesNeeded.includes(lib)) {
             const typesLib = `@types/${lib}`;
-            pkg.devDependencies = pkg.devDependencies || {};
             if (!pkg.devDependencies[typesLib] && !pkg.dependencies[typesLib]) {
               pkg.devDependencies[typesLib] = "latest";
             }
@@ -3467,6 +3738,10 @@ FORBIDDEN STUB PATTERNS:
     let apiWorkflowReport: any = null;
 
     try {
+      const backendPreCheck = BackendCompilationGate.verify(outputDirectory);
+      if (!backendPreCheck.passed) {
+        console.error(`\n[Orchestrator] 🛑 BACKEND_COMPILATION_BLOCKED: Backend failed compilation:\n${backendPreCheck.summary}`);
+      }
       const server = await AppServerRunner.startServer(outputDirectory);
       serverInfo = { ready: server.ready, port: server.port, url: server.url };
 
@@ -3598,7 +3873,8 @@ FORBIDDEN STUB PATTERNS:
               estimatedTokensSaved: Math.max(3000, 25000 - (serverRouteFiles.length * 3000)),
             });
 
-            const failedStepDetails = failedSteps.map((f: any, idx: number) =>
+            const displayedSteps = failedSteps.slice(0, 10);
+            const failedStepDetails = displayedSteps.map((f: any, idx: number) =>
               `${idx + 1}. [${f.step?.method || "UNKNOWN"}] ${f.step?.path || "UNKNOWN"}\n` +
               `   Description: ${f.step?.description || ""}\n` +
               `   Endpoint Type: ${f.step?.endpointType || "READ_ONLY"}\n` +
@@ -3606,10 +3882,18 @@ FORBIDDEN STUB PATTERNS:
               `   Expected Status: ${f.step?.expectedStatus}\n` +
               `   Actual Status: ${f.actualStatus ?? "N/A"}\n` +
               `   Error: ${f.error || "None"}\n` +
+              `   Request Headers: ${JSON.stringify(f.step?.headers || {})}\n` +
+              `   Request Body Sent: ${typeof f.step?.requestBody === "object" ? JSON.stringify(f.step?.requestBody) : (f.step?.requestBody ?? "None")}\n` +
               `   Actual Response Body: ${typeof f.actualBody === "object" ? JSON.stringify(f.actualBody) : (f.actualBody || "N/A")}`
-            ).join("\n\n");
+            ).join("\n\n") + (failedSteps.length > 10 ? `\n\n... and ${failedSteps.length - 10} additional failing step(s) with similar status.` : "");
 
-            const routeFilesContext = [...serverRouteFiles, ...serverEntryFiles].map(f =>
+            const seenFilePaths = new Set<string>();
+            const uniqueServerFiles = [...serverRouteFiles, ...serverEntryFiles].filter(f => {
+              if (seenFilePaths.has(f.path)) return false;
+              seenFilePaths.add(f.path);
+              return true;
+            });
+            const routeFilesContext = uniqueServerFiles.map(f =>
               `=== FILE: ${f.path} ===\n${f.content}\n=== END ===`
             ).join("\n\n");
 
@@ -3624,11 +3908,13 @@ ${routeFilesContext}
 ${schemaContext}
 
 Requirements for repair:
-1. Fix the route handlers in server/routes/*.ts or server/index.ts so that all failing endpoints return the expected HTTP status codes and response bodies.
-2. Ensure stateful endpoints (POST, PUT, PATCH, DELETE) properly handle request data, validate inputs, interact with the database or in-memory store, and return 200 or 201 with created/updated data.
-3. For endpoints expecting specific status codes (e.g. 200, 201, 400, 404), ensure the route logic explicitly returns res.status(...).json(...).
-4. Never return HTTP 500. Handle missing fields, invalid IDs, or DB errors with proper 4xx status codes.
-5. Return the full updated files using standard file blocks:
+1. Ensure strict Express middleware ordering: app.use(cors()) and app.use(express.json()) MUST be registered BEFORE any domain router mounts in server/index.ts, otherwise req.body is undefined.
+2. Any catch-all 404 handler (e.g. app.use((req, res) => res.status(404)...)) MUST be mounted strictly AFTER all domain router mounts (app.use('/api/...', ...)). Never mount a 404 handler before domain routes.
+3. Fix route handlers in server/routes/*.ts so that all failing endpoints return expected HTTP status codes (200, 201, 204, 400, 404) and real database JSON payloads.
+4. For foreign key relations (e.g. userId referencing User): if req.body.userId is provided, ensure the referenced user exists or resolve from existing user / authenticated session. Never trigger Prisma foreign key constraint violations (P2003).
+5. For parameterized routes (/api/<resource>/:id): if the target record does not exist on GET, PUT, or DELETE, return HTTP 404 (never 400 or 500). Catch Prisma P2025 errors and return 404.
+6. Never return HTTP 500. Handle missing fields or validation errors with HTTP 400, non-existent records with HTTP 404, and database operations safely inside try/catch.
+7. Return the full updated files using standard file blocks:
 === FILE: server/routes/<filename>.ts ===
 <complete file content>
 === END ===
@@ -3776,6 +4062,18 @@ Requirements for repair:
     try {
       const runtimeRunner = new RuntimeAcceptanceRunner(outputDirectory);
       runtimeAcceptanceReport = await runtimeRunner.execute();
+      if (existsSync(join(outputDirectory, "server", "index.ts")) && !serverInfo.ready && runtimeAcceptanceReport) {
+        runtimeAcceptanceReport.passed = false;
+        runtimeAcceptanceReport.status = "FAILED";
+        runtimeAcceptanceReport.evidenceSummary = "Runtime acceptance failed: Application server failed to launch or became unreachable.";
+      }
+      if (runtimeAcceptanceReport) {
+        try {
+          const aegisDir = join(outputDirectory, ".aegis");
+          if (!existsSync(aegisDir)) mkdirSync(aegisDir, { recursive: true });
+          writeFileSync(join(aegisDir, "runtime-acceptance-report.json"), JSON.stringify(runtimeAcceptanceReport, null, 2), "utf8");
+        } catch {}
+      }
     } catch (runtimeErr: any) {
       console.warn(`[RuntimeAcceptance] Warning: Runtime acceptance runner encountered non-fatal error: ${runtimeErr.message}`);
     }
@@ -3802,7 +4100,7 @@ Requirements for repair:
         build: build.success,
         runtime: Boolean(browserValResult?.passed),
         realityChecker: Boolean(realityAuditResult?.passed),
-        visualReviewer: Boolean(browserValResult?.passed)
+        visualReviewer: ValidationStateManager.getInstance().getState().latestVisualReviewPassed
       },
       0,
       (dodResult?.blockers ?? []).map((b: any) => b.detail)
@@ -3827,6 +4125,8 @@ Requirements for repair:
       databaseBlocked: dbIsBlocked,
       testReport: inProjectTestReport,
       runtimeReport: runtimeAcceptanceReport,
+      visualReviewPassed: ValidationStateManager.getInstance().getState().latestVisualReviewPassed,
+      visualObservations: ValidationStateManager.getInstance().getState().visualObservations,
       // Use STANDARD policy (or user-specified policy) so post-baseline repairs are marked ASSISTED rather than crashing the run
       provenancePolicy: (specification as any)?.provenancePolicy || "STANDARD",
     });

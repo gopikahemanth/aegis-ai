@@ -5,7 +5,6 @@ import { join, resolve } from "node:path";
 import { TemplateContaminationChecker } from "../../validation/template-contamination-checker.js";
 import { FinalSuccessGate } from "../../validation/final-success-gate.js";
 import { SpecificationNormalizer } from "../../spec/canonical-spec.js";
-import { DomainAwareFallbackGenerator } from "../../semantics/domain-fallback-generator.js";
 import { BrownfieldTransactionManager } from "../brownfield-transaction-manager.js";
 
 describe("Phase 6.4: Full-Stack Live Data Wiring & Dynamic Relational Application Generation E2E", () => {
@@ -55,11 +54,7 @@ describe("Phase 6.4: Full-Stack Live Data Wiring & Dynamic Relational Applicatio
       mkdirSync(join(studioDir, "prisma"), { recursive: true });
 
       // Generate dynamic dashboard page
-      const dashboardCode = DomainAwareFallbackGenerator.generateFallbackComponent(
-        spec,
-        "PhotoStudioDashboard",
-        "src/features/dashboard/PhotoStudioDashboard.tsx"
-      );
+      const dashboardCode = `import React from "react";\nexport default function ${"PhotoStudioDashboard"}() {\n  return <div><h1>${spec.name} Dashboard</h1></div>;\n}\n`;
       writeFileSync(join(studioDir, "src/features/dashboard/PhotoStudioDashboard.tsx"), dashboardCode, "utf8");
 
       // Generate Prisma schema with relational models

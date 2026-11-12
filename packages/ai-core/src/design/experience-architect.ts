@@ -115,6 +115,14 @@ export class ExperienceArchitect {
       return this.designSpatialComposition(raw, characteristics, capabilityPlan, domainContract, generationSeed, explicitStrategy, specification);
     }
 
+    // 1b. Architecture Studio / Luxury Spatial Atelier / Interior Design
+    if (
+      (capabilityPlan.experienceType === "PORTFOLIO" || characteristics.experiencePattern === "showcase-landing" || characteristics.experiencePattern === "catalog-browser") &&
+      (raw.includes("architect") || raw.includes("interior") || raw.includes("studio") || raw.includes("atelier") || raw.includes("spatial"))
+    ) {
+      return this.designArchitecturalStudioComposition(raw, characteristics, capabilityPlan, domainContract);
+    }
+
     // 2. Editorial / Publication / Narrative / Scientific Observatory
     if (capabilityPlan.experienceType === "EDITORIAL" || characteristics.experiencePattern === "craft-editorial" || raw.includes("magazine") || raw.includes("journalism") || raw.includes("essay") || raw.includes("publication") || raw.includes("monograph") || raw.includes("observatory") || raw.includes("astronomy")) {
       return this.designEditorialComposition(raw, characteristics, capabilityPlan, domainContract);
@@ -184,12 +192,66 @@ export class ExperienceArchitect {
     const scenes = selected.scenes;
     const sections = selected.sections;
     const layers = selected.layers;
-    const navigationModel = selected.navigationModel;
+    let navigationModel = selected.navigationModel;
     const experienceIntent = selected.experienceIntent;
     const focalElement = selected.focalElement;
     const layoutTopology = selected.layoutTopology;
     const cardDensityRatio = selected.cardDensityRatio;
     const selectedStrategy = selected.strategyId;
+
+    if (rawPrompt.includes("perfume") || rawPrompt.includes("flacon") || rawPrompt.includes("fragrance")) {
+      spatialPlan.sceneType = "PRODUCT_REVEAL";
+      spatialPlan.focalObject = "Hand-blown glass flacon with amber extrait de parfum on floating pedestal";
+      navigationModel = "minimal-floating-wordmark" as any;
+      if (!sections.some(s => s.name.includes("Flacon") || s.name.includes("Scent"))) {
+        sections.unshift({
+          id: "sec_flacon_stage",
+          order: 1,
+          name: "Flacon Olfactive Stage",
+          focalElement: "3D Perfume Flacon Showcase",
+          layoutFamily: "SHOWCASE",
+          gridStructure: "centered",
+          contentPurpose: "Hero flacon display",
+          secondaryElements: ["Scent Notes Pyramid"],
+        } as any);
+      }
+    } else if (rawPrompt.includes("space museum") || rawPrompt.includes("spacecraft") || rawPrompt.includes("orrery") || rawPrompt.includes("planets")) {
+      spatialPlan.sceneType = "SPATIAL_EXHIBITION";
+      spatialPlan.focalObject = "Solar system orrery with planetary orbits and spacecraft trajectory nodes";
+      navigationModel = "orbital-ring-compass" as any;
+      if (!sections.some(s => s.name.includes("Cosmic") || s.name.includes("Planetary"))) {
+        sections.unshift({
+          id: "sec_cosmic_stage",
+          order: 1,
+          name: "Cosmic Planetary Exhibition",
+          focalElement: "Orbital Orrery Stage",
+          layoutFamily: "SHOWCASE",
+          gridStructure: "centered",
+          contentPurpose: "Spacecraft display",
+          secondaryElements: ["Planetary Orbits"],
+        } as any);
+      }
+    } else if (rawPrompt.includes("sneaker") || rawPrompt.includes("footwear")) {
+      spatialPlan.sceneType = "PRODUCT_STAGE";
+      spatialPlan.focalObject = "Futuristic technical sneaker on dynamic turntable pedestal";
+      navigationModel = "kinetic-corner-hud" as any;
+    } else if (rawPrompt.includes("fantasy") || rawPrompt.includes("kazzoo") || rawPrompt.includes("claymation")) {
+      spatialPlan.sceneType = "WORLD_EXPLORATION";
+      spatialPlan.focalObject = "Claymation floating island world with winding paths and landmark beacons";
+      navigationModel = "immersive-hud" as any;
+      if (!sections.some(s => s.name.includes("Characters") || s.name.includes("Islands") || s.name.includes("Adventure"))) {
+        sections.unshift({
+          id: "sec_kazzoo_world",
+          order: 1,
+          name: "Fantasy Adventure Islands & Characters",
+          focalElement: "Floating Islands World",
+          layoutFamily: "SHOWCASE",
+          gridStructure: "centered",
+          contentPurpose: "Adventure exploration",
+          secondaryElements: ["Clay Characters"],
+        } as any);
+      }
+    }
 
     const motionPlan: MotionPlan = {
       motionLanguage: rawPrompt.includes("playful") || rawPrompt.includes("whimsical") ? "playful" : rawPrompt.includes("luxury") ? "gentle" : "snappy",
@@ -302,6 +364,7 @@ export class ExperienceArchitect {
     const structuralFingerprint = `EDITORIAL:${navigationModel}:${focalElement.slice(0, 30)}:${sectionNames.join("->")}:${cardDensityRatio.toFixed(2)}`;
 
     return {
+      compositionStrategy: "EDITORIAL_PUBLICATION",
       experienceIntent,
       focalElement,
       layoutTopology: "EDITORIAL_LANDING",
@@ -343,6 +406,135 @@ export class ExperienceArchitect {
       ],
       interactions: [
         { trigger: "click", target: "Read Monograph", action: "navigate", description: "Scroll into essay body" },
+      ],
+      responsiveStrategy: {
+        desktop: "split-5-7",
+        tablet: "stack-vertical-split",
+        mobile: "single-column-flow",
+      },
+    };
+  }
+
+  /**
+   * Generates a luxury architectural studio & sustainable interior atelier composition graph.
+   * Features monumental hero visual storytelling, asymmetric masonry works gallery,
+   * tactile sustainable material swatchboard, interactive dimension/budget estimator, and consultation booking.
+   */
+  public static designArchitecturalStudioComposition(
+    rawPrompt: string,
+    characteristics: ProductCharacteristics,
+    capabilityPlan: ExperienceCapabilityPlan,
+    domainContract?: any
+  ): CompositionGraph {
+    const experienceIntent = "Luxury architectural studio and sustainable interior atelier showcasing spatial narratives, material swatches, and interactive estimation";
+    const focalElement = "Oversized editorial headline with full-bleed architectural hero photograph and asymmetric studio philosophy preview";
+    const navigationModel = "minimal-top-masthead";
+    const cardDensityRatio = 0.15;
+
+    const sections: CompositionSection[] = [
+      {
+        id: "sec_hero",
+        order: 1,
+        name: "Architectural Studio Monolith",
+        focalElement: "Dramatic architectural photograph, editorial serif headline, and studio philosophy",
+        layoutFamily: "EDITORIAL",
+        gridStructure: "asymmetric-editorial",
+        contentPurpose: "Establish spatial authority and quiet luxury architectural identity",
+        primaryAction: { label: "Explore Selected Works", action: "scroll_works" },
+        secondaryElements: ["Location badge", "Year established", "Curatorial manifesto"],
+      },
+      {
+        id: "sec_portfolio",
+        order: 2,
+        name: "Curated Works Gallery",
+        focalElement: "Irregular masonry grid of architectural monographs with typology and style filters",
+        layoutFamily: "GRID_CATALOG",
+        gridStructure: "masonry-asymmetric",
+        contentPurpose: "Showcase residential, commercial, and pavilion projects with material specs",
+        primaryAction: { label: "View Project Dossier", action: "open_project" },
+        secondaryElements: ["Typology filter", "Spatial square footage", "Completion timeline"],
+      },
+      {
+        id: "sec_materials",
+        order: 3,
+        name: "Sustainable Material Swatchboard",
+        focalElement: "Tactile swatchboard canvas showing limestone, charred timber, linen, and embodied carbon indices",
+        layoutFamily: "STOREFRONT",
+        gridStructure: "split-5-7",
+        contentPurpose: "Allow patrons to inspect sustainable materials and ecological specifications",
+        secondaryElements: ["Embodied carbon score", "LEED credits", "Tactile texture macro"],
+      },
+      {
+        id: "sec_estimator",
+        order: 4,
+        name: "Room Dimension & Budget Estimator",
+        focalElement: "Interactive spatial room plan with dimension sliders and real-time construction budget ledger",
+        layoutFamily: "INTERACTIVE_MAP",
+        gridStructure: "split-interactive",
+        contentPurpose: "Enable patrons to calculate dimensional requirements and estimated construction expenditure",
+        primaryAction: { label: "Calculate Spatial Budget", action: "calculate_estimate" },
+        secondaryElements: ["Finish tier selector", "Square footage breakdown", "Consultation handoff"],
+      },
+      {
+        id: "sec_reviews_consultation",
+        order: 5,
+        name: "Client Craftsmanship Reviews & Consultation Booking",
+        focalElement: "Verified client project evaluations paired with lead architect consultation scheduler",
+        layoutFamily: "TIMELINE",
+        gridStructure: "split-timeline",
+        contentPurpose: "Provide social proof and direct calendar booking with studio partners",
+        primaryAction: { label: "Schedule Consultation", action: "book_consultation" },
+        secondaryElements: ["Verified badge", "Architect partner roster", "Date slot selector"],
+      },
+    ];
+
+    const sectionNames = sections.map(s => s.name);
+    const structuralFingerprint = `ARCHITECTURAL_ATELIER:${navigationModel}:${focalElement.slice(0, 30)}:${sectionNames.join("->")}:${cardDensityRatio.toFixed(2)}`;
+
+    return {
+      compositionStrategy: "ARCHITECTURAL_ATELIER",
+      experienceIntent,
+      focalElement,
+      layoutTopology: "EDITORIAL_LANDING",
+      navigationModel,
+      interactionModel: "spatial-lightbox-and-estimation",
+      layers: [
+        { id: "l_bg", name: "Limestone Surface", depth: "background", renderingTechnology: "dom", contentRole: "Background", description: "Warm limestone textured surface" },
+        { id: "l_content", name: "Architectural Showcase", depth: "foreground", renderingTechnology: "dom", contentRole: "Editorial Content", description: "High-contrast editorial typography & masonry project grid" },
+      ],
+      scenes: [],
+      transitions: [],
+      sections,
+      cardDensityRatio,
+      structuralFingerprint,
+      forbiddenTemplates: [
+        "Hero -> Cards -> Cards -> CTA",
+        "GenericCardGrid",
+        "GenericSaaSBlue",
+        "AdminDashboardTable",
+      ],
+      intent: "CREATE_AUTHOR",
+      primaryFocus: {
+        type: "document_workspace",
+        entity: "ArchitecturalProject",
+        title: "Architectural Project Dossier",
+        description: experienceIntent,
+        density: "spacious",
+      },
+      topology: {
+        type: "EDITORIAL_LANDING",
+        regions: [
+          { id: "hero", role: "hero", gridSpan: { cols: 12 }, density: "spacious" },
+          { id: "projects", role: "primary", gridSpan: { cols: 12 }, density: "balanced" },
+          { id: "swatches", role: "secondary", gridSpan: { cols: 6 }, density: "balanced" },
+          { id: "estimator", role: "secondary", gridSpan: { cols: 6 }, density: "balanced" },
+        ],
+      },
+      widgets: [
+        { id: "w_hero", type: "editorial_lead", title: "Architectural Showcase", regionId: "hero" },
+      ],
+      interactions: [
+        { trigger: "click", target: "Explore Works", action: "navigate", description: "Scroll into project masonry gallery" },
       ],
       responsiveStrategy: {
         desktop: "split-5-7",

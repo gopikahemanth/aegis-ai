@@ -4,6 +4,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { BuildRunner } from "./build-runner.js";
 import { SandboxVerifier } from "./sandbox-verifier.js";
+import { BackendCompilationGate } from "./backend-compilation-gate.js";
 import { SecurityGuard } from "../utils/security.js";
 import { RealityCheckerAgent } from "../agents/reality-checker-agent.js";
 
@@ -44,6 +45,22 @@ export class BuildOrchestrator {
     console.log(
       "✓ Build succeeded.",
     );
+
+    // ─── Step 1b: Backend Compilation Gate ────────────────────────────────────
+    const backendResult = BackendCompilationGate.verify(projectPath);
+    if (!backendResult.passed) {
+      console.log("✗ Backend compilation failed.");
+      console.error("===== BACKEND COMPILATION STDERR =====");
+      console.error(backendResult.summary);
+      return {
+        success: false,
+        stdout: "",
+        stderr: `Backend Compilation Failure:\n${backendResult.summary}`,
+      };
+    }
+    if (backendResult.filesAudited > 0) {
+      console.log(`✓ Backend compilation succeeded (${backendResult.filesAudited} files verified).`);
+    }
 
     // ─── Step 2: Dynamic Lint Check ───────────────────────────────────────────
     const packageJsonPath = join(projectPath, "package.json");

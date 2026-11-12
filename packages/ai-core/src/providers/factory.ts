@@ -5,7 +5,6 @@ import { OpenRouterProvider } from "./openrouter.js";
 import { CerebrasProvider } from "./cerebras.js";
 import { GitHubProvider } from "./github.js";
 import { FailoverProvider } from "./failover.js";
-import { OllamaProvider } from "./ollama.js";
 import { env } from "../utils/env.js";
 import type { AIProvider } from "./base.js";
 
@@ -18,7 +17,6 @@ export class ProviderFactory {
     registry.register(new OpenRouterProvider());
     registry.register(new CerebrasProvider());
     registry.register(new GitHubProvider());
-    registry.register(new OllamaProvider());
 
     return registry;
   }
@@ -59,6 +57,10 @@ export class ProviderFactory {
       providers.push(new GroqProvider());
     }
 
+    if (providers.length === 0) {
+      throw new Error("No AI providers configured in env.");
+    }
+
     // If a non-gemini provider is preferred, move it to the front
     if (preferred && preferred !== "gemini") {
       const idx = providers.findIndex(p => p.name === preferred);
@@ -66,13 +68,6 @@ export class ProviderFactory {
         const [prefComp] = providers.splice(idx, 1);
         providers.unshift(prefComp);
       }
-    }
-
-    // Always append local Ollama provider as final failsafe fallback
-    providers.push(new OllamaProvider());
-
-    if (providers.length === 0) {
-      throw new Error("No AI providers configured in env.");
     }
 
     console.log(

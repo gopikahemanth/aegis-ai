@@ -152,14 +152,22 @@ export class PatchEngine {
         const searchBlock = blockMatch[1];
         const replaceBlock = blockMatch[2];
 
+        const normTemp = tempContent.replace(/\r\n/g, "\n");
+        const normSearch = searchBlock.replace(/\r\n/g, "\n");
+        const normReplace = replaceBlock.replace(/\r\n/g, "\n");
+
         if (tempContent.includes(searchBlock)) {
           tempContent = tempContent.replace(searchBlock, replaceBlock);
           blocksReplaced++;
+        } else if (normTemp.includes(normSearch)) {
+          // Normalize line endings on Windows
+          tempContent = normTemp.replace(normSearch, normReplace);
+          blocksReplaced++;
         } else {
-          // Fallback to trimmed matching to prevent platform line-ending issues
-          const cleanSearch = searchBlock.trim();
-          if (tempContent.includes(cleanSearch)) {
-            tempContent = tempContent.replace(cleanSearch, replaceBlock.trim());
+          // Fallback to trimmed and whitespace-tolerant matching
+          const cleanSearch = searchBlock.trim().replace(/\r\n/g, "\n");
+          if (normTemp.includes(cleanSearch)) {
+            tempContent = normTemp.replace(cleanSearch, replaceBlock.trim().replace(/\r\n/g, "\n"));
             blocksReplaced++;
           } else {
             console.warn(`[PatchEngine] Warning: Search block not found in ${safeRelPath}:\n${searchBlock}`);

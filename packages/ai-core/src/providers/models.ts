@@ -62,13 +62,6 @@ export const Models = {
     balanced: "gemini-3.6-flash",
   },
 
-  ollama: {
-    default: "llama3.1",
-    strong: "llama3.1",
-    fast: "llama3.1",
-    balanced: "llama3.1",
-  },
-
   openrouter: {
     default: "deepseek/deepseek-chat",
     strong: "deepseek/deepseek-chat",

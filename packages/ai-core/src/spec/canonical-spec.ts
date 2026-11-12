@@ -49,7 +49,7 @@ export class SpecificationNormalizer {
       ) {
         domainCategory = "aeronautical-telemetry";
       } else if (!PromptConstraints.isForbiddenByPrompt(combinedPrompt, "hotel") && !PromptConstraints.isForbiddenByPrompt(combinedPrompt, "hospitality") &&
-        (/\b(hotel|boutique hotel|resort|hospitality|luxury stay|luxury suites|villa resort)\b/i.test(promptCleanLower) || (promptCleanLower.includes("room reservation") || promptCleanLower.includes("room booking") || (promptCleanLower.includes("hotel") && promptCleanLower.includes("booking"))))) {
+        (/\b(boutique hotel|resort|hospitality|luxury stay|luxury suites|villa resort)\b/i.test(promptCleanLower) || (promptCleanLower.includes("luxury") && promptCleanLower.includes("hotel")))) {
         domainCategory = "luxury-hospitality";
       } else if (promptLower.includes("real estate") || promptLower.includes("real-estate") || promptLower.includes("realestate") || promptLower.includes("realtor") || promptLower.includes("mortgage") || promptLower.includes("tour schedule") || promptLower.includes("tour booking") || promptLower.includes("listing") || (promptLower.includes("property") && !promptLower.includes("hotel") && !promptLower.includes("resort") && !promptLower.includes("boutique") && !promptLower.includes("suite"))) {
         domainCategory = "real-estate";
@@ -67,7 +67,7 @@ export class SpecificationNormalizer {
         domainCategory = "bicycle-rental";
       } else if ((promptLower.includes("bicycle") || promptLower.includes("bike")) && (promptLower.includes("repair") || promptLower.includes("mechanic") || promptLower.includes("fix") || promptLower.includes("tune-up") || promptLower.includes("shop") || promptLower.includes("service"))) {
         domainCategory = "bicycle-repair";
-      } else if (!/\b(satellite|constellation|spacecraft)\b/i.test(promptLower) && (promptLower.includes("solar") || promptLower.includes("wind") || promptLower.includes("renewable") || promptLower.includes("greenpulse") || promptLower.includes("clean energy") || promptLower.includes("photovoltaic") || promptLower.includes("inverter") || (promptLower.includes("telemetry") && (promptLower.includes("sensor") || promptLower.includes("power") || promptLower.includes("grid") || promptLower.includes("kilowatt") || promptLower.includes("megawatt") || promptLower.includes("array"))))) {
+      } else if (!/\b(satellite|constellation|spacecraft)\b/i.test(promptLower) && (promptLower.includes("solar") || promptLower.includes("wind") || promptLower.includes("renewable") || promptLower.includes("clean energy") || promptLower.includes("photovoltaic") || promptLower.includes("inverter") || (promptLower.includes("telemetry") && (promptLower.includes("sensor") || promptLower.includes("power") || promptLower.includes("grid") || promptLower.includes("kilowatt") || promptLower.includes("megawatt") || promptLower.includes("array"))))) {
         domainCategory = "solar-telemetry";
     } else if (promptLower.includes("museum") || (promptLower.includes("exhibition") && (promptLower.includes("curat") || promptLower.includes("artifact") || promptLower.includes("provenance") || promptLower.includes("collection")))) {
       domainCategory = "museum-collection";
@@ -122,38 +122,62 @@ export class SpecificationNormalizer {
     else if (promptLower.includes("vite") || promptLower.includes("react")) frontend = "React-Vite";
     else if (rawSpec.frontend) frontend = rawSpec.frontend;
 
-    let backend = "Express";
+    const hasExplicitBackendOrDb =
+      /\b(database|postgres|postgresql|sqlite|mysql|mongodb|backend|server|api|rest api|endpoints|prisma|drizzle|mongoose)\b/i.test(promptLower) ||
+      /\b(user accounts|user management|login|signup|auth|jwt|sessions|multi-tenant|tenant|subscription|stripe|billing)\b/i.test(promptLower);
+
+    const hasExplicitPersistenceFlow =
+      /\b(book appointments|manage bookings|schedule appointments|booking platform|appointment booking|reservation platform|order system|e-commerce|checkout|shopping cart|inventory management|fleet management)\b/i.test(promptLower);
+
+    const isClientOnly =
+      !hasExplicitBackendOrDb &&
+      !hasExplicitPersistenceFlow &&
+      !promptLower.includes("saas") &&
+      (/\b(portfolio|single-page|single page|showcase|brochure|resume|cv|personal site|photographer|artist|musician|marketing page|client-side|frontend-only|static showcase|calculator|demo app)\b/i.test(promptLower) ||
+       /\b(landing page|landing)\b/i.test(promptLower));
+
+    let backend = isClientOnly ? "None" : "Express";
     if (promptLower.includes("next.js api") || promptLower.includes("next api")) backend = "Next.js API Routes";
     else if (promptLower.includes("express")) backend = "Express";
+    else if (promptLower.includes("no backend") || promptLower.includes("without backend")) backend = "None";
     else if (rawSpec.backend) backend = rawSpec.backend;
 
-    let database = "PostgreSQL";
+    let database = isClientOnly ? "None" : (promptLower.includes("saas") ? "PostgreSQL" : "SQLite");
     if (promptLower.includes("postgres") || promptLower.includes("postgresql")) database = "PostgreSQL";
     else if (promptLower.includes("mongo") || promptLower.includes("mongodb")) database = "MongoDB";
     else if (promptLower.includes("sqlite")) database = "SQLite";
+    else if (promptLower.includes("no database") || promptLower.includes("without database")) database = "None";
+    else if (rawSpec.database) database = rawSpec.database;
 
-    let orm = "Prisma";
+    let orm = (isClientOnly || database === "None") ? "None" : "Prisma";
     if (promptLower.includes("drizzle")) orm = "Drizzle";
     else if (promptLower.includes("mongoose")) orm = "Mongoose";
     else if (promptLower.includes("prisma")) orm = "Prisma";
 
-    let auth = "JWT";
+    let auth = (isClientOnly || promptLower.includes("no auth") || promptLower.includes("without auth")) ? "None" : (hasExplicitBackendOrDb ? "JWT" : "None");
     if (promptLower.includes("nextauth") || promptLower.includes("next-auth")) auth = "NextAuth.js";
     else if (promptLower.includes("jwt")) auth = "JWT";
 
     // 3. Define Forbidden Domain Patterns dynamically using DomainContaminationDetector
     const activeDomainKey = DomainContaminationDetector.getActiveDomainKey(promptLower);
-    const forbiddenPatterns: string[] = [];
+    const rawForbiddenPatterns: string[] = [];
     if (activeDomainKey !== "generic") {
       for (const [key, sig] of Object.entries(DomainContaminationDetector.DOMAIN_SIGNATURES)) {
         if (key !== activeDomainKey) {
-          forbiddenPatterns.push(...sig.forbiddenInOtherDomains);
+          rawForbiddenPatterns.push(...sig.forbiddenInOtherDomains);
         }
       }
     } else {
       // Novel domain fallback: strictly restrict to explicit known starter template code artifacts
-      forbiddenPatterns.push("resumeUpload", "MatchDashboard", "scan.service", "ArtworkCard", "ArtworkDashboard");
+      rawForbiddenPatterns.push("Artwork", "Gallery", "resumeUpload", "MatchDashboard", "scan.service", "ArtworkCard", "ArtworkDashboard");
     }
+
+    // Permit gallery and photography artifacts when the user explicitly requested them in prompt or features
+    const allowsGallery = promptLower.includes("gallery") || promptLower.includes("galleries") || promptLower.includes("photo") || (rawSpec.features || []).some((f: any) => String(f).toLowerCase().includes("gallery"));
+    const forbiddenPatterns = rawForbiddenPatterns.filter(p => {
+      if (allowsGallery && (p === "Gallery" || p === "Artwork" || p === "ArtworkCard" || p === "ArtworkDashboard")) return false;
+      return true;
+    });
 
     // 4. Deterministically extract Domain Vocabulary and Data Models
     // Authority order: Authoritative LLM spec > Synthesized from features/models > Category fallback
@@ -395,8 +419,9 @@ export class SpecificationNormalizer {
       case "restaurant-reservation":
         return ["User", "Reservation", "Table", "Guest", "MenuItem", "Order"];
       case "luxury-hospitality":
-      case "hotel-booking":
         return ["User", "Suite", "Reservation", "GuestPreference", "StayPlan", "Amenity", "DiningVenue", "LocalExperience"];
+      case "hotel-booking":
+        return ["User", "Booking", "Room", "Guest", "CheckIn", "Payment"];
       case "vehicle-service":
         return ["User", "Vehicle", "ServiceOrder", "Customer", "Part"];
       case "equipment-maintenance":
@@ -629,13 +654,22 @@ export class SpecificationNormalizer {
         };
       }
 
-      case "luxury-hospitality":
-      case "hotel-booking": {
+      case "luxury-hospitality": {
         return {
           entityName: "Suite",
           entityPlural: "Suites",
           primaryMetrics: ["Available Suites", "Active Reservations", "Guest Satisfaction", "Curated Experiences"],
           actionVerbs: ["Reserve Suite", "Explore Amenities", "Curate Stay", "Save Preferences"],
+          domainPrefix: "hotel"
+        };
+      }
+
+      case "hotel-booking": {
+        return {
+          entityName: "Booking",
+          entityPlural: "Bookings",
+          primaryMetrics: ["Active Bookings", "Available Rooms", "Guest Check-ins", "Total Revenue"],
+          actionVerbs: ["Create Booking", "Check In", "Check Out", "Manage Rooms"],
           domainPrefix: "hotel"
         };
       }
